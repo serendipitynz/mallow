@@ -1,7 +1,7 @@
 /**
  * Runtime markdown pipeline. markdown-it + Shiki (dual theme) + emoji + GitHub
- * alerts + heading anchors, plus a mermaid fence rewrite. Returns the HTML and a
- * flat heading list for the outline.
+ * alerts + heading anchors, plus a mermaid fence rewrite and GFM task lists.
+ * Returns the HTML and a flat heading list for the outline.
  */
 import { fromHighlighter } from '@shikijs/markdown-it/core';
 import type { BundledLanguage } from 'shiki';
@@ -45,6 +45,65 @@ function mermaidFence(md: MarkdownIt): void {
   };
 }
 
+/** `- [ ] ` / `- [x] ` at the very start of a list item's first paragraph. */
+const TASK_MARKER = /^\[([ xX])\][ \t]+/;
+
+/**
+ * GFM task lists (`- [ ] todo` / `- [x] done`) as disabled checkboxes.
+ *
+ * Hand-rolled instead of pulling in markdown-it-task-lists: the whole plugin is
+ * this one core rule, and mallow is a read-only viewer so none of that package's
+ * interactive/label options apply. The checkbox is emitted as an `html_inline`
+ * token, which the *renderer* always passes through — `html: false` only governs
+ * raw HTML in the source, so the untrusted-input boundary is unaffected.
+ */
+function taskLists(md: MarkdownIt): void {
+  md.core.ruler.after('inline', 'task-lists', (state) => {
+    const tokens = state.tokens;
+    // Enclosing list tokens, so the checkbox marker can be suppressed on the
+    // right `<ul>`/`<ol>` only.
+    const listStack: (typeof tokens)[number][] = [];
+
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+      if (token.type === 'bullet_list_open' || token.type === 'ordered_list_open') {
+        listStack.push(token);
+        continue;
+      }
+      if (token.type === 'bullet_list_close' || token.type === 'ordered_list_close') {
+        listStack.pop();
+        continue;
+      }
+      if (token.type !== 'inline' || i < 2) continue;
+      if (tokens[i - 1].type !== 'paragraph_open' || tokens[i - 2].type !== 'list_item_open') continue;
+
+      // Match on the first child rather than `inline.content` so a marker that
+      // inline parsing already turned into something else (a link, emphasis) is
+      // left alone.
+      const first = token.children?.[0];
+      if (!first || first.type !== 'text') continue;
+      const match = TASK_MARKER.exec(first.content);
+      if (!match) continue;
+
+      const checkbox = new state.Token('html_inline', '', 0);
+      checkbox.content = `<input class="task-list-item-checkbox" type="checkbox" disabled${
+        match[1].toLowerCase() === 'x' ? ' checked' : ''
+      }>`;
+      first.content = first.content.slice(match[0].length);
+      token.content = token.content.slice(match[0].length);
+      token.children!.unshift(checkbox);
+
+      tokens[i - 2].attrJoin('class', 'task-list-item');
+      // attrJoin would repeat the class once per item in the list.
+      const list = listStack[listStack.length - 1];
+      if (list && !list.attrGet('class')?.includes('contains-task-list')) {
+        list.attrJoin('class', 'contains-task-list');
+      }
+    }
+    return true;
+  });
+}
+
 let mdPromise: Promise<MarkdownIt> | null = null;
 
 async function getMd(): Promise<MarkdownIt> {
@@ -83,6 +142,7 @@ async function getMd(): Promise<MarkdownIt> {
           });
         },
       });
+      md.use(taskLists);
       // Must run after the Shiki plugin so it wraps Shiki's fence rule.
       mermaidFence(md);
 

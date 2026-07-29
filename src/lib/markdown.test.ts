@@ -82,6 +82,21 @@ describe('renderMarkdown — normal rendering still works', () => {
     expect(html).toMatch(/<a[^>]+href="https:\/\/example\.com"/);
   }, TIMEOUT);
 
+  it('renders GFM task lists as disabled checkboxes', async () => {
+    const { html } = await renderMarkdown('- [ ] ToDo\n- [x] Done\n');
+    expect(html).toContain('<ul class="contains-task-list">');
+    expect(html).toMatch(/<li class="task-list-item"><input class="task-list-item-checkbox" type="checkbox" disabled>ToDo/);
+    expect(html).toMatch(/type="checkbox" disabled checked>Done/);
+    // The class is added once per list, not once per item.
+    expect(html.match(/contains-task-list/g)).toHaveLength(1);
+  }, TIMEOUT);
+
+  it('leaves a non-task list item untouched', async () => {
+    const { html } = await renderMarkdown('- [link](https://example.com)\n- [not a task]x\n');
+    expect(html).not.toContain('task-list-item');
+    expect(html).not.toMatch(/<input\b/);
+  }, TIMEOUT);
+
   it('collects a heading outline', async () => {
     const { headings } = await renderMarkdown('# A\n\n## B\n\n### C\n');
     expect(headings.map((h) => [h.depth, h.text])).toEqual([

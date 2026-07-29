@@ -11,7 +11,8 @@ OS ネイティブの WebView で表示できます。
 
 - **2 カラム UI**: 左にファイルツリー（フォルダ階層・遅延読み込み）、右にビューア。
 - **Markdown レンダリング**
-  - GitHub-flavored markdown（テーブル、絵文字 `:emoji:`、GFM alerts `> [!NOTE]` …）
+  - GitHub-flavored markdown（テーブル、絵文字 `:emoji:`、タスクリスト `- [ ]` / `- [x]`、
+    GFM alerts `> [!NOTE]` …）
   - コードブロックのシンタックスハイライト（Shiki / github-light・github-dark）＋コピー
   - mermaid 図（PNG / SVG コピー対応）
   - 目次（アウトライン、スクロールスパイ）

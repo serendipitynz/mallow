@@ -154,6 +154,24 @@
     margin: 0.25em 0 0;
   }
 
+  // GFM task lists. The bullet is dropped and the padding reclaimed so the
+  // checkbox sits where the marker was; nested plain lists keep their bullets.
+  ul.contains-task-list {
+    padding-left: 1.2em;
+  }
+
+  li.task-list-item {
+    list-style: none;
+  }
+
+  input.task-list-item-checkbox {
+    margin: 0 0.4em 0 0;
+    vertical-align: middle;
+    // The checkbox is informational only — mallow never writes files back.
+    cursor: default;
+    accent-color: $teal;
+  }
+
   blockquote {
     margin: 0 0 1em;
     padding: 0 1em;
