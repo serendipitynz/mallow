@@ -85,10 +85,31 @@ describe('renderMarkdown — normal rendering still works', () => {
   it('renders GFM task lists as disabled checkboxes', async () => {
     const { html } = await renderMarkdown('- [ ] ToDo\n- [x] Done\n');
     expect(html).toContain('<ul class="contains-task-list">');
-    expect(html).toMatch(/<li class="task-list-item"><input class="task-list-item-checkbox" type="checkbox" disabled>ToDo/);
-    expect(html).toMatch(/type="checkbox" disabled checked>Done/);
+    expect(html).toMatch(/<li class="task-list-item"><label[^>]*><input class="task-list-item-checkbox" type="checkbox" disabled>ToDo<\/label>/);
+    expect(html).toMatch(/type="checkbox" disabled checked>Done<\/label>/);
     // The class is added once per list, not once per item.
     expect(html.match(/contains-task-list/g)).toHaveLength(1);
+  }, TIMEOUT);
+
+  it('names each checkbox with its own task text (label wrapper)', async () => {
+    const { html } = await renderMarkdown('- [ ] write **docs**\n');
+    // The label wraps the checkbox AND the item text, so the accessible name is
+    // the task itself rather than a generic "incomplete task".
+    expect(html).toMatch(
+      /<label class="task-list-item-label"><input class="task-list-item-checkbox"[^>]*>write <strong>docs<\/strong><\/label>/,
+    );
+  }, TIMEOUT);
+
+  it('accepts a tab inside the task marker', async () => {
+    const { html } = await renderMarkdown('- [\t] tab-inside\n');
+    expect(html).toMatch(/type="checkbox" disabled>tab-inside/);
+    expect(html).not.toContain('[');
+  }, TIMEOUT);
+
+  it('renders task items in an ordered list too', async () => {
+    const { html } = await renderMarkdown('1. [x] first\n');
+    expect(html).toContain('<ol class="contains-task-list">');
+    expect(html).toMatch(/type="checkbox" disabled checked>first/);
   }, TIMEOUT);
 
   it('leaves a non-task list item untouched', async () => {

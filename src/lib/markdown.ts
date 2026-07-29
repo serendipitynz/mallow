@@ -45,8 +45,9 @@ function mermaidFence(md: MarkdownIt): void {
   };
 }
 
-/** `- [ ] ` / `- [x] ` at the very start of a list item's first paragraph. */
-const TASK_MARKER = /^\[([ xX])\][ \t]+/;
+/** `- [ ] ` / `- [x] ` at the very start of a list item's first paragraph.
+ *  GFM allows any whitespace (not just a space) between the brackets. */
+const TASK_MARKER = /^\[([ \txX])\][ \t]+/;
 
 /**
  * GFM task lists (`- [ ] todo` / `- [x] done`) as disabled checkboxes.
@@ -85,13 +86,23 @@ function taskLists(md: MarkdownIt): void {
       const match = TASK_MARKER.exec(first.content);
       if (!match) continue;
 
+      // Wrap the checkbox together with the item's own text in a `<label>` so the
+      // checkbox takes its accessible name from that text. A generic name
+      // ("Completed task") would announce the state without saying which task it
+      // belongs to, and it would need the UI language plumbed into what is
+      // otherwise a pure, i18n-free module.
+      const labelOpen = new state.Token('html_inline', '', 0);
+      labelOpen.content = '<label class="task-list-item-label">';
       const checkbox = new state.Token('html_inline', '', 0);
       checkbox.content = `<input class="task-list-item-checkbox" type="checkbox" disabled${
         match[1].toLowerCase() === 'x' ? ' checked' : ''
       }>`;
+      const labelClose = new state.Token('html_inline', '', 0);
+      labelClose.content = '</label>';
       first.content = first.content.slice(match[0].length);
       token.content = token.content.slice(match[0].length);
-      token.children!.unshift(checkbox);
+      token.children!.unshift(labelOpen, checkbox);
+      token.children!.push(labelClose);
 
       tokens[i - 2].attrJoin('class', 'task-list-item');
       // attrJoin would repeat the class once per item in the list.
