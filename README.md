@@ -11,7 +11,8 @@ videos are shown too, rendered by the OS-native WebView.
 
 - **Two-column UI**: file tree on the left (folder hierarchy, lazy-loaded), viewer on the right.
 - **Markdown rendering**
-  - GitHub-flavored Markdown (tables, `:emoji:`, GFM alerts `> [!NOTE]`, …)
+  - GitHub-flavored Markdown (tables, `:emoji:`, task lists `- [ ]` / `- [x]`,
+    GFM alerts `> [!NOTE]`, …)
   - Code-block syntax highlighting (Shiki / github-light · github-dark) with copy
   - mermaid diagrams (copy as PNG / SVG)
   - Table of contents (outline with scroll-spy)
