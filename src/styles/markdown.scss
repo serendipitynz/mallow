@@ -156,20 +156,53 @@
 
   // GFM task lists. The bullet is dropped and the padding reclaimed so the
   // checkbox sits where the marker was; nested plain lists keep their bullets.
-  ul.contains-task-list {
+  ul.contains-task-list,
+  ol.contains-task-list {
     padding-left: 1.2em;
   }
 
+  // The checkbox is lifted out of the text flow so a wrapped task hangs at the
+  // text edge instead of running back underneath the box.
   li.task-list-item {
+    position: relative;
     list-style: none;
+    padding-left: 1.7em;
   }
 
+  // Drawn from scratch rather than sized as a platform control: native
+  // checkboxes ignore width/height on some WebViews, and their baseline
+  // alignment leaves the box below the centre of the line it belongs to.
   input.task-list-item-checkbox {
-    margin: 0 0.4em 0 0;
-    vertical-align: middle;
+    appearance: none;
+    position: absolute;
+    left: 0;
+    // Form controls do not inherit `font-size`, so without this every `em`
+    // below would resolve against the UA default (~13px) instead of the body
+    // text — the box came out small and sat above the line's centre.
+    font: inherit;
+    // Half of `.markdown-body`'s line-height, i.e. the centre of the first line
+    // box — matching that box is what keeps the mark visually on the line.
+    top: 0.875em;
+    transform: translateY(-50%);
+    box-sizing: border-box;
+    width: 1.15em;
+    height: 1.15em;
+    margin: 0;
+    border: 1px solid $border-strong;
+    border-radius: 0.25em;
+    background: $surface-raised;
     // The checkbox is informational only — mallow never writes files back.
     cursor: default;
-    accent-color: $teal;
+
+    &:checked {
+      border-color: $teal;
+      // Inline SVG (not a pseudo-element): pseudo-elements on form controls are
+      // undefined per spec and unreliable across the three platform WebViews.
+      background:
+        $teal
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E")
+        center / 0.85em 0.85em no-repeat;
+    }
   }
 
   blockquote {
