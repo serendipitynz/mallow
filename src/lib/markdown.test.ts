@@ -85,31 +85,42 @@ describe('renderMarkdown — normal rendering still works', () => {
   it('renders GFM task lists as disabled checkboxes', async () => {
     const { html } = await renderMarkdown('- [ ] ToDo\n- [x] Done\n');
     expect(html).toContain('<ul class="contains-task-list">');
-    expect(html).toMatch(/<li class="task-list-item"><label[^>]*><input class="task-list-item-checkbox" type="checkbox" disabled>ToDo<\/label>/);
-    expect(html).toMatch(/type="checkbox" disabled checked>Done<\/label>/);
+    expect(html).toMatch(/<li class="task-list-item"><input class="task-list-item-checkbox" type="checkbox" disabled aria-label="ToDo">ToDo/);
+    expect(html).toMatch(/type="checkbox" disabled checked aria-label="Done">Done/);
     // The class is added once per list, not once per item.
     expect(html.match(/contains-task-list/g)).toHaveLength(1);
   }, TIMEOUT);
 
-  it('names each checkbox with its own task text (label wrapper)', async () => {
+  it('names each checkbox with its own task text', async () => {
     const { html } = await renderMarkdown('- [ ] write **docs**\n');
-    // The label wraps the checkbox AND the item text, so the accessible name is
-    // the task itself rather than a generic "incomplete task".
-    expect(html).toMatch(
-      /<label class="task-list-item-label"><input class="task-list-item-checkbox"[^>]*>write <strong>docs<\/strong><\/label>/,
-    );
+    // The name is the task itself, not a generic "incomplete task".
+    expect(html).toContain('aria-label="write docs"');
+  }, TIMEOUT);
+
+  it('names a linked task without wrapping the link in a label', async () => {
+    const { html } = await renderMarkdown('- [ ] review [PR #12](https://example.com)\n');
+    // A <label> must not contain interactive content, so the link stays outside
+    // any labelling element; the name uses the link text, not the URL.
+    expect(html).not.toMatch(/<label\b/);
+    expect(html).toContain('aria-label="review PR #12"');
+    expect(html).toMatch(/<a[^>]+href="https:\/\/example\.com"/);
+  }, TIMEOUT);
+
+  it('escapes quotes in the generated accessible name', async () => {
+    const { html } = await renderMarkdown('- [ ] say "hi" & <bye>\n');
+    expect(html).toContain('aria-label="say &quot;hi&quot; &amp; &lt;bye&gt;"');
   }, TIMEOUT);
 
   it('accepts a tab inside the task marker', async () => {
     const { html } = await renderMarkdown('- [\t] tab-inside\n');
-    expect(html).toMatch(/type="checkbox" disabled>tab-inside/);
+    expect(html).toMatch(/type="checkbox" disabled aria-label="tab-inside">tab-inside/);
     expect(html).not.toContain('[');
   }, TIMEOUT);
 
   it('renders task items in an ordered list too', async () => {
     const { html } = await renderMarkdown('1. [x] first\n');
     expect(html).toContain('<ol class="contains-task-list">');
-    expect(html).toMatch(/type="checkbox" disabled checked>first/);
+    expect(html).toMatch(/type="checkbox" disabled checked aria-label="first">first/);
   }, TIMEOUT);
 
   it('leaves a non-task list item untouched', async () => {

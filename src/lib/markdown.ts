@@ -50,6 +50,24 @@ function mermaidFence(md: MarkdownIt): void {
 const TASK_MARKER = /^\[([ \txX])\][ \t]+/;
 
 /**
+ * Plain text of an inline token's children, for the checkbox's accessible name.
+ * markdown-it keeps inline children flat, so a link contributes its text token
+ * here while `link_open` / `link_close` contribute nothing — the name reads as
+ * the item does, without the URL. `image` carries its alt text in `content`.
+ */
+function inlineText(children: { type: string; content: string }[]): string {
+  let out = '';
+  for (const child of children) {
+    if (child.type === 'text' || child.type === 'code_inline' || child.type === 'image' || child.type === 'emoji') {
+      out += child.content;
+    } else if (child.type === 'softbreak' || child.type === 'hardbreak') {
+      out += ' ';
+    }
+  }
+  return out.trim();
+}
+
+/**
  * GFM task lists (`- [ ] todo` / `- [x] done`) as disabled checkboxes.
  *
  * Hand-rolled instead of pulling in markdown-it-task-lists: the whole plugin is
@@ -86,23 +104,22 @@ function taskLists(md: MarkdownIt): void {
       const match = TASK_MARKER.exec(first.content);
       if (!match) continue;
 
-      // Wrap the checkbox together with the item's own text in a `<label>` so the
-      // checkbox takes its accessible name from that text. A generic name
-      // ("Completed task") would announce the state without saying which task it
-      // belongs to, and it would need the UI language plumbed into what is
-      // otherwise a pure, i18n-free module.
-      const labelOpen = new state.Token('html_inline', '', 0);
-      labelOpen.content = '<label class="task-list-item-label">';
+      first.content = first.content.slice(match[0].length);
+      token.content = token.content.slice(match[0].length);
+
+      // Name the checkbox after the item's own text. A generic name ("Completed
+      // task") would announce the state without saying which task it belongs to,
+      // and it would need the UI language plumbed into what is otherwise a pure,
+      // i18n-free module. `aria-label` rather than a wrapping `<label>`: task text
+      // routinely contains links, and a label must not contain interactive
+      // elements. `aria-labelledby` would work too but needs ids that could
+      // collide with the heading anchors in the same document.
+      const name = inlineText(token.children ?? []);
       const checkbox = new state.Token('html_inline', '', 0);
       checkbox.content = `<input class="task-list-item-checkbox" type="checkbox" disabled${
         match[1].toLowerCase() === 'x' ? ' checked' : ''
-      }>`;
-      const labelClose = new state.Token('html_inline', '', 0);
-      labelClose.content = '</label>';
-      first.content = first.content.slice(match[0].length);
-      token.content = token.content.slice(match[0].length);
-      token.children!.unshift(labelOpen, checkbox);
-      token.children!.push(labelClose);
+      }${name ? ` aria-label="${md.utils.escapeHtml(name)}"` : ''}>`;
+      token.children!.unshift(checkbox);
 
       tokens[i - 2].attrJoin('class', 'task-list-item');
       // attrJoin would repeat the class once per item in the list.
