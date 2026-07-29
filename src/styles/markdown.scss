@@ -188,7 +188,10 @@
     width: 1.15em;
     height: 1.15em;
     margin: 0;
-    border: 1px solid $border-strong;
+    // Drawing the control makes these colors the only state indicator, so both
+    // states carry their own token / knocked-out glyph rather than borrowing a
+    // decorative one — each clears 3:1 against what it sits on in all palettes.
+    border: 1px solid $control-border;
     border-radius: 0.25em;
     background: $surface-raised;
     // The checkbox is informational only — mallow never writes files back.
@@ -198,10 +201,16 @@
       border-color: $teal;
       // Inline SVG (not a pseudo-element): pseudo-elements on form controls are
       // undefined per spec and unreliable across the three platform WebViews.
-      background:
-        $teal
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E")
-        center / 0.85em 0.85em no-repeat;
+      // A data URI cannot read a custom property, so the glyph color is baked
+      // in — knocked out of the fill in the page's own tone, which the two
+      // light-accent dark palettes (dracula/nord greens) need to stay legible.
+      --task-check-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E");
+
+      @include on-dark {
+        --task-check-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%230d1117' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E");
+      }
+
+      background: $teal var(--task-check-glyph) center / 0.85em 0.85em no-repeat;
     }
   }
 
