@@ -68,6 +68,13 @@ const ja: Dict = {
   left: '左',
   right: '右',
   language: '言語',
+  customEmoji: 'カスタム絵文字',
+  customEmojiHint: '画像を入れたフォルダを指定すると、ファイル名が :ショートコード: になります（emoji.json があれば併用）。',
+  customEmojiUnset: '未設定',
+  chooseFolder: 'フォルダを選択…',
+  clear: '解除',
+  customEmojiLoaded: '{n} 個の絵文字を読み込みました。',
+  customEmojiFailed: 'フォルダを読み込めませんでした。',
 };
 
 const en: Dict = {
@@ -120,6 +127,14 @@ const en: Dict = {
   left: 'Left',
   right: 'Right',
   language: 'Language',
+  customEmoji: 'Custom emoji',
+  customEmojiHint:
+    'Point at a folder of images and each file name becomes a :shortcode: (an emoji.json manifest is used when present).',
+  customEmojiUnset: 'Not set',
+  chooseFolder: 'Choose folder…',
+  clear: 'Clear',
+  customEmojiLoaded: 'Loaded {n} emoji.',
+  customEmojiFailed: 'Could not read that folder.',
 };
 
 const messages: Record<Lang, Dict> = { ja, en };

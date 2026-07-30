@@ -40,9 +40,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
-  `frontmatter`、`config-parse`、`scroll`（スクロール位置保持）、`watch`、
+  `frontmatter`、`config-parse`、`custom-emoji`（ユーザーの絵文字フォルダ →
+  ショートコード表）、`scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
-  localStorage に永続化）、`file`、`tauri`（invoke ラッパ）、`types`。
+  localStorage に永続化）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
   `markdown`、`config`、`source`。
 
@@ -105,6 +106,24 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   フォームの WebView に依存する（heic/heif は `file_kind` で macOS に限定。PDF は一部 Linux の
   WebKitGTK では非対応）。`<img>` / `<video>` は復号失敗時にフォールバック文言を出す。
   `<iframe>`（PDF）は信頼できるエラー信号がないため、空表示になることがある。
+- **絵文字。** Unicode 絵文字は `<span class="emoji">` で包み、そこだけカラー絵文字
+  フォント（`$font-emoji`）を先頭にしたスタックを当てる。包まないと、本文の日本語
+  フォントが持っている一部の絵文字でフォールバック競争に勝ってしまう — `:ok:` は
+  U+1F197（日本のキャリア絵文字由来の記号）で、Hiragino / Noto Sans JP がモノクロ
+  字形を持つため、他がカラーなのにそこだけ平板になる。本文のフォントスタック自体の
+  先頭にカラー絵文字フォントを置くのは NG: Apple Color Emoji は keycap 用に ASCII
+  数字も持っているため、数字まで奪われる。
+- **カスタム絵文字。** `lib/custom-emoji` がユーザーの選んだフォルダ（設定 →
+  カスタム絵文字。`customEmojiDir` として永続化）をショートコード表に変換し、
+  `lib/markdown` の `setCustomEmoji` に渡す。基準になるのはディスク上の画像で、
+  `emoji.json` は任意（Unicode エントリと、名前ごとの優先ファイル指定を足すだけ）。
+  この分割は `lib/markdown` を Tauri API から切り離し、Node 環境で単体テストできる
+  状態に保つため。セット適用時はキャッシュ済み MarkdownIt インスタンスを捨て
+  （ショートコード表は `md.use` 時に正規表現へコンパイルされる）、`MarkdownView` が
+  `useSyncExternalStore` で読むバージョンを進めるので、開いている文書が再描画される。
+  ショートコードを `<img>` にしても未信頼 Markdown の境界は広がらない: 文書が渡せる
+  のは**名前**だけで、名前はアプリ側が組み立てた表のキーである時しかマッチせず、URL は
+  文書由来にならない。フォルダには別途 `allow_media_dir` の許可が必要。
 - テーマ = `data-theme` 属性 + CSS 変数パレット（瞬時切替・非 React の描画 HTML にも適用）。
   7 種類。ダークパレットを追加する際は `_vars.scss` の `on-dark` mixin と `global.scss`
   の適用にも追加すること。
@@ -129,8 +148,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 
 - フロント: `pnpm build`（tsc + vite）と `pnpm test`（Vitest）。ユニットテストは
   コードと同じ場所に `src/**/*.test.ts` として置き、純ロジックのモジュール（`markdown`
-  ＝未信頼入力のセキュリティ境界含む・`config-parse`・`frontmatter`・`title`）を
-  カバーする。Node 環境で走るため jsdom/GUI は不要。
+  ＝未信頼入力のセキュリティ境界含む・`config-parse`・`frontmatter`・`title`・`path`・
+  `custom-emoji`＝Tauri 層をモック）をカバーする。Node 環境で走るため jsdom/GUI は不要。
 - バックエンド: `src-tauri/` 内で `cargo check` と `cargo test`。`commands` モジュールに
   ユニットテストがある（`tempfile` 依存を避けた自己クリーンアップ式の temp-dir ヘルパー）。
 - エンドツーエンド: `pnpm tauri dev`（GUI）または `pnpm tauri build`。

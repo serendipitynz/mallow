@@ -37,6 +37,13 @@ export function basename(path: string): string {
   return segs.length > 0 ? segs[segs.length - 1] : path;
 }
 
+/** Append child components to a directory path, keeping the input's separator
+ *  style so the result lines up with the paths Rust hands back. */
+export function join(dir: string, ...parts: string[]): string {
+  const sep = separatorOf(dir);
+  return [dir.replace(/[/\\]+$/, ''), ...parts].join(sep);
+}
+
 /** Whether `path` is `root` itself or sits below it, matched on whole segments
  *  so `C:\foo` is not treated as containing `C:\foobar`. */
 export function isInside(root: string, path: string): boolean {

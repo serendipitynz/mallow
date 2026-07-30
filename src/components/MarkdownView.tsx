@@ -1,8 +1,13 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
-import { renderMarkdown, type RenderResult } from '../lib/markdown';
+import {
+  getMarkdownConfigVersion,
+  renderMarkdown,
+  subscribeMarkdownConfig,
+  type RenderResult,
+} from '../lib/markdown';
 import { renderMermaid } from '../lib/mermaid';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
@@ -39,6 +44,9 @@ export function MarkdownView({ source }: { source: string }) {
   const pendingRestore = useRef<ScrollAnchor>(null);
   const resultRef = useRef<RenderResult | null>(null);
   resultRef.current = result;
+  // Re-render the open document when the pipeline is reconfigured (custom emoji
+  // changed in Settings) instead of making the user reopen the file.
+  const configVersion = useSyncExternalStore(subscribeMarkdownConfig, getMarkdownConfigVersion);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,7 +63,7 @@ export function MarkdownView({ source }: { source: string }) {
     return () => {
       cancelled = true;
     };
-  }, [source]);
+  }, [source, configVersion]);
 
   // After the article mounts (in preview mode), run the imperative enhancements,
   // bind external-link handling, and restore the scroll position. Keyed on `mode`

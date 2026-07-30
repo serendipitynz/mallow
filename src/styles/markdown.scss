@@ -365,6 +365,24 @@
     max-width: 100%;
   }
 
+  // ---- Emoji ----------------------------------------------------------------
+  // Unicode emoji get their own font stack (see `$font-emoji`); custom
+  // shortcodes are images sized to sit on the text baseline like a glyph.
+  .emoji {
+    font-family: $font-emoji;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  img.emoji--custom {
+    height: 1.25em;
+    width: auto;
+    // Cap wide/animated Slack-style emoji so one cannot stretch a line.
+    max-width: 3em;
+    vertical-align: -0.25em;
+  }
+
   hr {
     height: 1px;
     border: 0;

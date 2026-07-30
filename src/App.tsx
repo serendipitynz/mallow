@@ -6,8 +6,10 @@ import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
 import { Viewer } from './components/Viewer';
 import { useFileTree } from './hooks/useFileTree';
+import { loadCustomEmoji, NO_CUSTOM_EMOJI, type CustomEmojiStatus } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
+import { setCustomEmoji, type CustomEmojiSet } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
 import { loadSettings, saveSetting } from './lib/settings';
 import { allowMediaDir, pathExists, pickFolder } from './lib/tauri';
@@ -26,9 +28,12 @@ export default function App() {
   const [explorerWidth, setExplorerWidth] = useState(DEFAULT_WIDTH);
   const [explorerSide, setExplorerSide] = useState<'left' | 'right'>('left');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
 
   const selectedRef = useRef<FileEntry | null>(null);
   const widthRef = useRef(explorerWidth);
+  // Serialises overlapping custom-emoji loads; see `applyEmojiDir`.
+  const emojiGeneration = useRef(0);
   useEffect(() => {
     selectedRef.current = selected;
   }, [selected]);
@@ -56,6 +61,50 @@ export default function App() {
     startWatch(dir).catch((e) => console.error('Failed to start watch', e));
   }, [openTree]);
 
+  // ---- Custom emoji ---------------------------------------------------------
+  // Applying the set rebuilds the markdown pipeline, and any open document
+  // re-renders itself off that (see MarkdownView's config subscription).
+  //
+  // A folder can be re-picked while the previous one is still loading, and the
+  // loads can finish in either order, so each carries a generation number and
+  // only the newest one is allowed to commit. Persistence happens in that same
+  // commit rather than at pick time: otherwise a superseded pick could still be
+  // the last `saveSetting` to land, and the remembered folder would disagree
+  // with the one on screen.
+  const applyEmojiDir = useCallback(async (dir: string | null, persist = false) => {
+    const generation = (emojiGeneration.current += 1);
+    const commit = (status: CustomEmojiStatus, set: CustomEmojiSet | null) => {
+      if (generation !== emojiGeneration.current) return;
+      setCustomEmoji(set);
+      setEmoji(status);
+      if (persist) void saveSetting('customEmojiDir', status.dir ?? undefined);
+    };
+
+    if (!dir) {
+      commit(NO_CUSTOM_EMOJI, null);
+      return;
+    }
+    try {
+      const { set, count } = await loadCustomEmoji(dir);
+      commit({ dir, count, error: null }, set);
+    } catch (e) {
+      // Keep the folder on screen with its error rather than silently dropping
+      // it: the user needs to see which path failed to fix it.
+      console.error('Failed to load custom emoji', e);
+      commit({ dir, count: 0, error: String(e) }, null);
+    }
+  }, []);
+
+  const pickEmojiDir = useCallback(async () => {
+    const dir = await pickFolder();
+    if (!dir) return;
+    await applyEmojiDir(dir, true);
+  }, [applyEmojiDir]);
+
+  const clearEmojiDir = useCallback(() => {
+    void applyEmojiDir(null, true);
+  }, [applyEmojiDir]);
+
   // ---- Session restore + settings (on launch) -------------------------------
   useEffect(() => {
     let disposed = false;
@@ -64,6 +113,8 @@ export default function App() {
       if (disposed) return;
       if (s.explorerWidth) setExplorerWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, s.explorerWidth)));
       if (s.explorerSide) setExplorerSide(s.explorerSide);
+      if (s.customEmojiDir) await applyEmojiDir(s.customEmojiDir);
+      if (disposed) return;
 
       if (s.lastFolder && (await pathExists(s.lastFolder))) {
         // Await the scope grant before restoring the selection below, so a
@@ -82,7 +133,7 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [openTree, expandPaths]);
+  }, [openTree, expandPaths, applyEmojiDir]);
 
   // ---- Filesystem watch (debounced) -----------------------------------------
   useEffect(() => {
@@ -208,7 +259,15 @@ export default function App() {
           <SettingsIcon />
         </button>
       </footer>
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} side={explorerSide} onSideChange={changeSide} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        side={explorerSide}
+        onSideChange={changeSide}
+        emoji={emoji}
+        onPickEmojiDir={pickEmojiDir}
+        onClearEmojiDir={clearEmojiDir}
+      />
     </div>
   );
 }

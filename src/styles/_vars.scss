@@ -205,6 +205,11 @@ $font-jp:
   'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'BIZ UDPGothic', 'Yu Gothic', 'Meiryo', system-ui,
   sans-serif;
 $font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+// Applied to emoji only, never to the body: `$font-jp` covers a few emoji
+// (`:ok:` = U+1F197 and other Japanese carrier symbols) with monochrome glyphs
+// and would win the fallback race, while leading the body stack with a colour
+// emoji font would hijack the ASCII digits those fonts carry for keycaps.
+$font-emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla', sans-serif;
 
 // ---- Layout -----------------------------------------------------------------
 $toolbar-height: 44px;
