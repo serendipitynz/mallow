@@ -106,6 +106,13 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   by the platform WebView (heic/heif are gated to macOS in `file_kind`; PDF is absent
   on some Linux WebKitGTK builds). `<img>`/`<video>` fall back to a message on decode
   error; `<iframe>` (PDF) has no reliable error signal, so it can show blank.
+- **Emoji.** Unicode emoji are wrapped in `<span class="emoji">` so CSS can put a
+  colour-emoji stack (`$font-emoji`) in front for them alone. Without the wrapper
+  the JP body font wins the fallback race for the few emoji it covers — `:ok:` is
+  U+1F197, a Japanese carrier symbol Hiragino / Noto Sans JP ship as a monochrome
+  glyph — so those render flat next to colour ones. Do NOT fix this by leading the
+  body stack with the emoji font: Apple Color Emoji also covers the ASCII digits
+  it needs for keycap sequences.
 - Theme = `data-theme` attribute + CSS-variable palettes (instant switch; also
   styles the non-React rendered HTML). 7 themes. When adding a dark palette, also
   add it to the `on-dark` mixin in `_vars.scss` and apply it in `global.scss`.

@@ -132,6 +132,22 @@ function taskLists(md: MarkdownIt): void {
   });
 }
 
+/**
+ * Wrap emoji in a `<span class="emoji">` so CSS can put a colour emoji font
+ * first for them alone.
+ *
+ * Without it the document's Japanese body font wins the fallback race for the
+ * handful of emoji it happens to cover (`:ok:` is U+1F197, a Japanese carrier
+ * symbol that Hiragino / Noto Sans JP ship as a monochrome glyph), so those
+ * render flat while every other emoji is in colour. The font stack cannot simply
+ * lead with the emoji font: Apple Color Emoji also covers the ASCII digits used
+ * by keycap sequences.
+ */
+function emojiRenderer(md: MarkdownIt): void {
+  md.renderer.rules.emoji = (tokens, idx) =>
+    `<span class="emoji">${md.utils.escapeHtml(tokens[idx].content)}</span>`;
+}
+
 let mdPromise: Promise<MarkdownIt> | null = null;
 
 async function getMd(): Promise<MarkdownIt> {
@@ -159,6 +175,8 @@ async function getMd(): Promise<MarkdownIt> {
         }),
       );
       md.use(emoji);
+      // After the plugin, which installs its own default emoji rule.
+      emojiRenderer(md);
       md.use(githubAlerts);
       md.use(anchor, {
         slugify: (s: string) => slugger.slug(s),

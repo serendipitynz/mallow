@@ -365,6 +365,15 @@
     max-width: 100%;
   }
 
+  // ---- Emoji ----------------------------------------------------------------
+  // Emoji get their own font stack; see `$font-emoji` for why the body cannot.
+  .emoji {
+    font-family: $font-emoji;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1;
+  }
+
   hr {
     height: 1px;
     border: 0;

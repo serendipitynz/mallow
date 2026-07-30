@@ -138,3 +138,17 @@ describe('renderMarkdown — normal rendering still works', () => {
     ]);
   }, TIMEOUT);
 });
+
+describe('renderMarkdown — emoji', () => {
+  it('wraps an emoji so the colour emoji font can be targeted', async () => {
+    const { html } = await renderMarkdown('done :ok:\n');
+    // Without the wrapper the JP body font supplies U+1F197 as a monochrome glyph.
+    expect(html).toContain('<span class="emoji">\u{1F197}</span>');
+  }, TIMEOUT);
+
+  it('leaves an unknown shortcode as literal text', async () => {
+    const { html } = await renderMarkdown(':tmnf: nope\n');
+    expect(html).toContain(':tmnf:');
+    expect(html).not.toContain('class="emoji"');
+  }, TIMEOUT);
+});

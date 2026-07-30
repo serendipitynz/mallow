@@ -105,6 +105,13 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   フォームの WebView に依存する（heic/heif は `file_kind` で macOS に限定。PDF は一部 Linux の
   WebKitGTK では非対応）。`<img>` / `<video>` は復号失敗時にフォールバック文言を出す。
   `<iframe>`（PDF）は信頼できるエラー信号がないため、空表示になることがある。
+- **絵文字。** Unicode 絵文字は `<span class="emoji">` で包み、そこだけカラー絵文字
+  フォント（`$font-emoji`）を先頭にしたスタックを当てる。包まないと、本文の日本語
+  フォントが持っている一部の絵文字でフォールバック競争に勝ってしまう — `:ok:` は
+  U+1F197（日本のキャリア絵文字由来の記号）で、Hiragino / Noto Sans JP がモノクロ
+  字形を持つため、他がカラーなのにそこだけ平板になる。本文のフォントスタック自体の
+  先頭にカラー絵文字フォントを置くのは NG: Apple Color Emoji は keycap 用に ASCII
+  数字も持っているため、数字まで奪われる。
 - テーマ = `data-theme` 属性 + CSS 変数パレット（瞬時切替・非 React の描画 HTML にも適用）。
   7 種類。ダークパレットを追加する際は `_vars.scss` の `on-dark` mixin と `global.scss`
   の適用にも追加すること。
