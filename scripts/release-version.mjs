@@ -48,14 +48,22 @@ const gitOk = (...args) => {
 
 // --- arguments -------------------------------------------------------------
 
+const usage = 'usage: pnpm release <patch|minor|major|X.Y.Z> [--push] [--dry-run]'
+
 const argv = process.argv.slice(2)
+const knownFlags = new Set(['--push', '--dry-run'])
+
+// Reject anything option-shaped that we do not know, rather than ignoring it:
+// otherwise a `--dryrun` typo reads as a plain release and commits and tags for
+// real — the exact opposite of what the caller asked for.
+const unknown = argv.filter((a) => a.startsWith('-') && !knownFlags.has(a))
+if (unknown.length > 0) die(`unknown option: ${unknown.join(' ')}\n${usage}`)
+
 const push = argv.includes('--push')
 const dryRun = argv.includes('--dry-run')
 const positional = argv.filter((a) => !a.startsWith('-'))
 
-if (positional.length !== 1) {
-  die('usage: pnpm release <patch|minor|major|X.Y.Z> [--push] [--dry-run]')
-}
+if (positional.length !== 1) die(usage)
 const spec = positional[0]
 
 // --- files that declare the version ---------------------------------------
