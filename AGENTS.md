@@ -39,9 +39,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   ThemePicker, SettingsModal, icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
-  enhancements), `frontmatter`, `config-parse`, `scroll` (anchor preservation),
-  `watch`, `settings` (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/
-  hooks; language persisted in localStorage), `file`, `tauri` (invoke wrappers), `types`.
+  enhancements), `frontmatter`, `config-parse`, `custom-emoji` (user emoji folder →
+  shortcode table), `scroll` (anchor preservation), `watch`, `settings`
+  (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
+  persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
   `markdown`, `config`, `source`.
 
@@ -113,6 +114,18 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   glyph — so those render flat next to colour ones. Do NOT fix this by leading the
   body stack with the emoji font: Apple Color Emoji also covers the ASCII digits
   it needs for keycap sequences.
+- **Custom emoji.** `lib/custom-emoji` turns a user-picked folder (Settings →
+  Custom emoji, persisted as `customEmojiDir`) into a shortcode table and hands it
+  to `setCustomEmoji` in `lib/markdown`. Images on disk are the source of truth;
+  `emoji.json` is optional and only adds unicode entries plus a preferred file per
+  name. Splitting it this way keeps `lib/markdown` free of Tauri APIs so it stays
+  unit-testable under a Node environment. Applying a set discards the cached
+  MarkdownIt instance (the shortcode table compiles into a regexp at `md.use`
+  time) and bumps a version that `MarkdownView` reads via `useSyncExternalStore`,
+  so an open document re-renders. Emitting `<img>` for a shortcode does not widen
+  the untrusted-Markdown boundary: the document only supplies the *name*, and a
+  name only matches when it is a key of the app-built table — the URL never comes
+  from the document. The folder needs its own `allow_media_dir` grant.
 - Theme = `data-theme` attribute + CSS-variable palettes (instant switch; also
   styles the non-React rendered HTML). 7 themes. When adding a dark palette, also
   add it to the `on-dark` mixin in `_vars.scss` and apply it in `global.scss`.
@@ -138,7 +151,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - Frontend: `pnpm build` (tsc + vite) and `pnpm test` (Vitest). Unit tests live
   next to the code as `src/**/*.test.ts` and cover the pure-logic modules
   (`markdown` — incl. the untrusted-input security boundary — `config-parse`,
-  `frontmatter`, `title`). Run a Node environment, so no jsdom/GUI is needed.
+  `frontmatter`, `title`, `path`, and `custom-emoji` with the Tauri layer mocked).
+  Run a Node environment, so no jsdom/GUI is needed.
 - Backend: `cargo check` and `cargo test` inside `src-tauri/`. The `commands`
   module has unit tests (a small self-cleaning temp-dir helper, no `tempfile` dep).
 - End-to-end: `pnpm tauri dev` (GUI) or `pnpm tauri build`.

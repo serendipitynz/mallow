@@ -442,3 +442,29 @@
   letter-spacing: 0.05em;
   color: $muted;
 }
+
+.settings-group__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $muted;
+
+  &.is-error {
+    color: $danger;
+  }
+}
+
+// The chosen folder. Wrapped rather than truncated: a path has no spaces to
+// break at, and the whole thing is what the user needs to verify.
+.settings-path {
+  margin: 0;
+  padding: 6px 8px;
+  font-family: $font-mono;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $ink;
+  word-break: break-all;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 6px;
+}

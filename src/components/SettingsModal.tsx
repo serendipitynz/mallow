@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { CustomEmojiStatus } from '../lib/custom-emoji';
 import { LANGS, useI18n } from '../lib/i18n';
 import { CloseIcon } from './icons';
 
@@ -7,9 +8,20 @@ interface SettingsModalProps {
   onClose: () => void;
   side: 'left' | 'right';
   onSideChange: (side: 'left' | 'right') => void;
+  emoji: CustomEmojiStatus;
+  onPickEmojiDir: () => void;
+  onClearEmojiDir: () => void;
 }
 
-export function SettingsModal({ open, onClose, side, onSideChange }: SettingsModalProps) {
+export function SettingsModal({
+  open,
+  onClose,
+  side,
+  onSideChange,
+  emoji,
+  onPickEmojiDir,
+  onClearEmojiDir,
+}: SettingsModalProps) {
   const { t, lang, setLang } = useI18n();
 
   useEffect(() => {
@@ -76,6 +88,27 @@ export function SettingsModal({ open, onClose, side, onSideChange }: SettingsMod
                 </button>
               ))}
             </div>
+          </section>
+
+          <section className="settings-group">
+            <h3 className="settings-group__label">{t('customEmoji')}</h3>
+            <p className="settings-group__hint">{t('customEmojiHint')}</p>
+            <p className="settings-path" title={emoji.dir ?? undefined}>
+              {emoji.dir ?? t('customEmojiUnset')}
+            </p>
+            <div className="seg">
+              <button type="button" className="btn" onClick={onPickEmojiDir}>
+                {t('chooseFolder')}
+              </button>
+              <button type="button" className="btn" disabled={!emoji.dir} onClick={onClearEmojiDir}>
+                {t('clear')}
+              </button>
+            </div>
+            {emoji.dir ? (
+              <p className={`settings-group__hint${emoji.error ? ' is-error' : ''}`}>
+                {emoji.error ? t('customEmojiFailed') : t('customEmojiLoaded', { n: emoji.count })}
+              </p>
+            ) : null}
           </section>
         </div>
       </div>

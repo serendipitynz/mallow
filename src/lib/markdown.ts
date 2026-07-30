@@ -9,6 +9,7 @@ import GithubSlugger from 'github-slugger';
 import MarkdownIt from 'markdown-it';
 import anchor from 'markdown-it-anchor';
 import { full as emoji } from 'markdown-it-emoji';
+import builtinEmojiDefs from 'markdown-it-emoji/lib/data/full.mjs';
 import githubAlerts from 'markdown-it-github-alerts';
 import { extractFrontMatter, renderFrontMatterTable } from './frontmatter';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from './shiki';
@@ -22,6 +23,51 @@ export interface Heading {
 export interface RenderResult {
   html: string;
   headings: Heading[];
+}
+
+/**
+ * A user-supplied set of extra `:shortcode:` definitions, already resolved by
+ * the caller (`lib/custom-emoji`) — this module stays free of Tauri APIs so it
+ * remains unit-testable in a plain Node environment.
+ */
+export interface CustomEmojiSet {
+  /** shortcode -> the character(s) to substitute. */
+  unicode: Record<string, string>;
+  /** shortcode -> a ready-to-use image URL (`asset:` in the app). */
+  images: Record<string, string>;
+}
+
+const EMPTY_EMOJI: CustomEmojiSet = { unicode: {}, images: {} };
+let customEmoji: CustomEmojiSet = EMPTY_EMOJI;
+
+// Bumped whenever the pipeline's configuration changes, so mounted views can
+// re-render a document that is already open instead of waiting to be reopened.
+let configVersion = 0;
+const configListeners = new Set<() => void>();
+
+/** Subscribe to pipeline-configuration changes (for `useSyncExternalStore`). */
+export function subscribeMarkdownConfig(listener: () => void): () => void {
+  configListeners.add(listener);
+  return () => {
+    configListeners.delete(listener);
+  };
+}
+
+/** Current configuration revision; changes when `setCustomEmoji` takes effect. */
+export function getMarkdownConfigVersion(): number {
+  return configVersion;
+}
+
+/**
+ * Install (or, with `null`, remove) the user's custom emoji set. Discards the
+ * cached MarkdownIt instance because the shortcode table is compiled into a
+ * regexp when the plugin is registered, so it cannot be swapped in place.
+ */
+export function setCustomEmoji(set: CustomEmojiSet | null): void {
+  customEmoji = set ?? EMPTY_EMOJI;
+  mdPromise = null;
+  configVersion += 1;
+  for (const listener of configListeners) listener();
 }
 
 // GitHub-compatible, deduplicating slugs (same library Astro uses). Reset before
@@ -133,19 +179,31 @@ function taskLists(md: MarkdownIt): void {
 }
 
 /**
- * Wrap emoji in a `<span class="emoji">` so CSS can put a colour emoji font
- * first for them alone.
+ * Emoji rendering.
  *
- * Without it the document's Japanese body font wins the fallback race for the
- * handful of emoji it happens to cover (`:ok:` is U+1F197, a Japanese carrier
- * symbol that Hiragino / Noto Sans JP ship as a monochrome glyph), so those
- * render flat while every other emoji is in colour. The font stack cannot simply
- * lead with the emoji font: Apple Color Emoji also covers the ASCII digits used
- * by keycap sequences.
+ * Unicode emoji are wrapped in a `<span class="emoji">` so CSS can put a colour
+ * emoji font first for them alone. Without it the document's Japanese body font
+ * wins the fallback race for the handful of emoji it happens to cover (`:ok:` is
+ * U+1F197, a Japanese carrier symbol that Hiragino / Noto Sans JP ship as a
+ * monochrome glyph), so those render flat while every other emoji is in colour.
+ * The font stack cannot simply lead with the emoji font: Apple Color Emoji also
+ * covers the ASCII digits used by keycap sequences.
+ *
+ * Custom shortcodes backed by an image render as an `<img>`. That is safe with
+ * `html: false` because the document only ever contributes the shortcode name,
+ * and a name is only matched at all when it is a key of the table the app built
+ * from the user's own emoji folder — the URL never comes from the document.
  */
 function emojiRenderer(md: MarkdownIt): void {
-  md.renderer.rules.emoji = (tokens, idx) =>
-    `<span class="emoji">${md.utils.escapeHtml(tokens[idx].content)}</span>`;
+  md.renderer.rules.emoji = (tokens, idx) => {
+    const { markup, content } = tokens[idx];
+    const src = customEmoji.images[markup];
+    if (src) {
+      const name = md.utils.escapeHtml(markup);
+      return `<img class="emoji emoji--custom" src="${md.utils.escapeHtml(src)}" alt=":${name}:" title=":${name}:" draggable="false">`;
+    }
+    return `<span class="emoji">${md.utils.escapeHtml(content)}</span>`;
+  };
 }
 
 let mdPromise: Promise<MarkdownIt> | null = null;
@@ -174,7 +232,17 @@ async function getMd(): Promise<MarkdownIt> {
           fallbackLanguage: 'text' as unknown as BundledLanguage,
         }),
       );
-      md.use(emoji);
+      // Custom shortcodes are merged on top of the preset table (the plugin's
+      // `defs` option replaces it, so the preset defs are re-supplied). An image
+      // shortcode's substitution text is the shortcode itself, which is what the
+      // plain-text fallbacks (task-list `aria-label`, outline titles) then show.
+      md.use(emoji, {
+        defs: {
+          ...builtinEmojiDefs,
+          ...customEmoji.unicode,
+          ...Object.fromEntries(Object.keys(customEmoji.images).map((name) => [name, `:${name}:`])),
+        },
+      });
       // After the plugin, which installs its own default emoji rule.
       emojiRenderer(md);
       md.use(githubAlerts);

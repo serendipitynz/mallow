@@ -17,6 +17,9 @@ videos are shown too, rendered by the OS-native WebView.
   - mermaid diagrams (copy as PNG / SVG)
   - Table of contents (outline with scroll-spy)
   - Preview / source toggle (source view has line numbers)
+- **Custom emoji**: point Settings at a folder of images and each file name
+  becomes a `:shortcode:` — Slack-style `:my-team:` renders as the picture
+  instead of staying literal text. See [Custom emoji](#custom-emoji).
 - **Config files** (json / jsonc / json5 / jsonl / ndjson / yaml / yml / toml)
   - Collapsible tree (expand/collapse all, tree/source toggle)
   - On a syntax error, switches to the source view and highlights the offending line
@@ -30,8 +33,9 @@ videos are shown too, rendered by the OS-native WebView.
 - **Open in editor**: detects and launches VS Code / Zed / CotEditor / mi (macOS),
   Notepad++ / Sakura (Windows), etc. Can also reveal the file in the OS file manager.
 - **Themes**: light / dark / auto + Solarized Light/Dark · Dracula · Nord.
-- **Persisted settings / session restore**: theme, explorer width and side, the last
-  opened folder/file, and window geometry are saved and restored on the next launch.
+- **Persisted settings / session restore**: theme, explorer width and side, the
+  custom emoji folder, the last opened folder/file, and window geometry are saved
+  and restored on the next launch.
 
 ## Tech stack
 
@@ -40,6 +44,30 @@ videos are shown too, rendered by the OS-native WebView.
 - SCSS (no Tailwind)
 - markdown-it + @shikijs/markdown-it + mermaid + markdown-it-emoji / -github-alerts / -anchor
 - Config parsing: yaml / smol-toml / jsonc-parser / json5
+
+## Custom emoji
+
+Settings → **Custom emoji** → *Choose folder…* points mallow at a folder of your
+own emoji. Every image in it (png / jpg / gif / webp / svg) becomes a shortcode
+named after the file: `images/my-team.png` renders `:my-team:` as that picture.
+Built-in shortcodes keep working; a name defined in your folder wins.
+
+A `emoji.json` manifest is optional — it adds shortcodes that map to a Unicode
+character rather than a file, and lets an entry name a specific image file:
+
+```json
+{
+  "image_dir": "images",
+  "images": [{ "name": "my-team", "file": "my-team.png" }],
+  "unicode": [{ "name": "flag-nz", "char": "🇳🇿" }]
+}
+```
+
+`image_dir` defaults to `images`, and falls back to the folder itself when that
+subfolder does not exist. The files on disk are what count: an entry whose
+`file` is missing still resolves if some image shares its name, and images not
+listed in the manifest are picked up anyway. Only names made of letters,
+digits, `_`, `+` and `-` are accepted.
 
 ## Security
 

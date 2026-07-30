@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { renderMarkdown } from './markdown';
+import { afterEach, describe, expect, it } from 'vitest';
+import { renderMarkdown, setCustomEmoji } from './markdown';
 
 // First render boots the Shiki highlighter (WASM + grammars), which can be slow.
 const TIMEOUT = 20_000;
@@ -140,7 +140,9 @@ describe('renderMarkdown — normal rendering still works', () => {
 });
 
 describe('renderMarkdown — emoji', () => {
-  it('wraps an emoji so the colour emoji font can be targeted', async () => {
+  afterEach(() => setCustomEmoji(null));
+
+  it('wraps a built-in emoji so the colour emoji font can be targeted', async () => {
     const { html } = await renderMarkdown('done :ok:\n');
     // Without the wrapper the JP body font supplies U+1F197 as a monochrome glyph.
     expect(html).toContain('<span class="emoji">\u{1F197}</span>');
@@ -150,5 +152,47 @@ describe('renderMarkdown — emoji', () => {
     const { html } = await renderMarkdown(':tmnf: nope\n');
     expect(html).toContain(':tmnf:');
     expect(html).not.toContain('class="emoji"');
+  }, TIMEOUT);
+
+  it('substitutes a custom unicode shortcode', async () => {
+    setCustomEmoji({ unicode: { 'flag-nz': '\u{1F1F3}\u{1F1FF}' }, images: {} });
+    const { html } = await renderMarkdown(':flag-nz: kia ora\n');
+    expect(html).toContain('<span class="emoji">\u{1F1F3}\u{1F1FF}</span>');
+  }, TIMEOUT);
+
+  it('renders a custom image shortcode as an inline image', async () => {
+    setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://localhost/tmnf.png' } });
+    const { html } = await renderMarkdown(':tmnf: rinse-dev\n');
+    expect(html).toContain('<img class="emoji emoji--custom" src="asset://localhost/tmnf.png" alt=":tmnf:"');
+  }, TIMEOUT);
+
+  it('matches adjacent shortcodes with hyphens in their names', async () => {
+    setCustomEmoji({ unicode: {}, images: { progress: 'asset://p.png', 'male-support': 'asset://m.png' } });
+    const { html } = await renderMarkdown(':progress::male-support: both\n');
+    expect(html).toContain('src="asset://p.png"');
+    expect(html).toContain('src="asset://m.png"');
+    // Both were consumed — nothing of the run survives as literal text.
+    expect(html).toMatch(/^<p><img[^>]*><img[^>]*> both<\/p>/);
+  }, TIMEOUT);
+
+  it('keeps built-in shortcodes working alongside custom ones', async () => {
+    setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://tmnf.png' } });
+    const { html } = await renderMarkdown(':ok: :tmnf:\n');
+    expect(html).toContain('<span class="emoji">\u{1F197}</span>');
+    expect(html).toContain('src="asset://tmnf.png"');
+  }, TIMEOUT);
+
+  it('names a task-list checkbox with the shortcode for an image emoji', async () => {
+    setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://tmnf.png' } });
+    const { html } = await renderMarkdown('- [x] :tmnf: ship it\n');
+    expect(html).toContain('aria-label=":tmnf: ship it"');
+  }, TIMEOUT);
+
+  it('drops a custom set again when cleared', async () => {
+    setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://tmnf.png' } });
+    setCustomEmoji(null);
+    const { html } = await renderMarkdown(':tmnf:\n');
+    expect(html).toContain(':tmnf:');
+    expect(html).not.toMatch(/<img\b/);
   }, TIMEOUT);
 });

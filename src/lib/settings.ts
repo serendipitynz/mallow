@@ -7,6 +7,8 @@ export interface Settings {
   lastFile?: string;
   explorerWidth?: number;
   explorerSide?: 'left' | 'right';
+  /** Folder holding the user's custom `:shortcode:` emoji (see lib/custom-emoji). */
+  customEmojiDir?: string;
 }
 
 let storePromise: Promise<Store> | null = null;

@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { ancestorDirs, basename, isInside } from './path';
+import { ancestorDirs, basename, isInside, join } from './path';
+
+describe('join', () => {
+  it('appends components with the input separator', () => {
+    expect(join('/Users/me/emoji', 'images', 'a.png')).toBe('/Users/me/emoji/images/a.png');
+    expect(join('C:\\Users\\me\\emoji', 'images')).toBe('C:\\Users\\me\\emoji\\images');
+  });
+
+  it('does not double a trailing separator', () => {
+    expect(join('/Users/me/emoji/', 'emoji.json')).toBe('/Users/me/emoji/emoji.json');
+    expect(join('C:\\emoji\\', 'emoji.json')).toBe('C:\\emoji\\emoji.json');
+  });
+});
 
 describe('basename', () => {
   it('takes the last component of a POSIX path', () => {
