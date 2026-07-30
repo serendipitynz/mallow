@@ -20,7 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri",
-    "notices": "node scripts/gen-third-party-notices.mjs"
+    "notices": "node scripts/gen-third-party-notices.mjs",
+    "release": "node scripts/release-version.mjs"
   },
   "dependencies": {
     "@shikijs/markdown-it": "^4.3.0",
