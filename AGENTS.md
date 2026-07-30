@@ -17,6 +17,7 @@ pnpm tauri build    # release build + bundle
 ./scripts/macos-sign-build.sh   # signed + notarized macOS build (needs .env.signing)
 pnpm tauri icon src-tauri/icons/app-icon.png   # regenerate all app icons
 pnpm notices        # regenerate THIRD-PARTY-NOTICES.md (bundled dep licenses)
+pnpm release 0.4.0  # bump the version everywhere, commit, tag (--push to push)
 cargo check         # run inside src-tauri/ to validate Rust
 cargo test          # run inside src-tauri/ to run the Rust unit tests
 ```
@@ -214,9 +215,17 @@ all six from `.env.signing` + an exported `.p12` (no value is printed):
 - `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` — the same values as
   `.env.signing`.
 
-Cutting a release: bump the version in **all three** of `package.json`,
-`src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, commit, then
-`git tag vX.Y.Z && git push origin vX.Y.Z`. Windows/Linux bundles are unsigned.
+Cutting a release: `pnpm release <patch|minor|major|X.Y.Z>`
+(`scripts/release-version.mjs`). It bumps the version in **all four** places it
+is declared — `package.json`, `src-tauri/tauri.conf.json`,
+`src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` — then commits and creates the
+`vX.Y.Z` tag; add `--push` to push both, or push by hand as it prints. It
+refuses to run off the default branch, on a dirty tree, or when the tag already
+exists. `--dry-run` shows what it would do. Bumping all four together is what
+matters: **Tauri names the bundles after `tauri.conf.json`, not after the tag**,
+so a tag pushed without the bump ships assets carrying the old version's name.
+The `create-release` job re-checks tag ↔ manifest agreement and fails the
+workflow before anything is built. Windows/Linux bundles are unsigned.
 The draft's notes are generated from the pull requests merged since the previous
 tag, grouped by label per `.github/release.yml` (label PRs `feature` / `bug` /
 `documentation` to sort them; everything else falls under "Other Changes").

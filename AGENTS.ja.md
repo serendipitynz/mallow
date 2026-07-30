@@ -17,6 +17,7 @@ pnpm tauri build    # リリースビルド + バンドル
 ./scripts/macos-sign-build.sh   # 署名 + 公証済みの macOS ビルド（.env.signing が必要）
 pnpm tauri icon src-tauri/icons/app-icon.png   # 全アプリアイコンの再生成
 pnpm notices        # THIRD-PARTY-NOTICES.md を再生成（同梱する依存ライセンス）
+pnpm release 0.4.0  # 全箇所のバージョン更新 + コミット + タグ（--push で push まで）
 cargo check         # src-tauri/ 内で実行し Rust を検証
 cargo test          # src-tauri/ 内で実行し Rust のユニットテストを走らせる
 ```
@@ -204,9 +205,17 @@ runtime 下で起動に失敗する場合は `bundle.macOS.entitlements` で追�
   文字列一致で照合するため、ローカル署名で有効な SHA-1 ハッシュだと失敗する）。
 - `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` — `.env.signing` と同じ値。
 
-リリース手順: `package.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml`
-の **3か所すべて** のバージョンを上げてコミットし、
-`git tag vX.Y.Z && git push origin vX.Y.Z`。Windows / Linux バンドルは未署名。
+リリース手順: `pnpm release <patch|minor|major|X.Y.Z>`
+（`scripts/release-version.mjs`）。バージョンが書かれた **4か所すべて**
+（`package.json` / `src-tauri/tauri.conf.json` / `src-tauri/Cargo.toml` /
+`src-tauri/Cargo.lock`）を更新してコミットし、`vX.Y.Z` タグを打つ。`--push`
+を付ければ push まで行う（付けない場合は push コマンドを表示する）。デフォルト
+ブランチ以外・作業ツリーが汚れている・タグが既に存在する場合は実行を拒否する。
+`--dry-run` で変更内容だけ確認できる。4か所を同時に上げることが重要で、
+**Tauri は成果物の名前をタグではなく `tauri.conf.json` の version から作る**
+ため、バージョンを上げずにタグだけ打つと旧バージョン名のファイルが公開される。
+`create-release` ジョブでもタグとマニフェストの一致を検査し、ビルド前に失敗させる。
+Windows / Linux バンドルは未署名。
 Draft のリリースノートは前回タグ以降にマージされた PR から生成され、`.github/release.yml`
 に従いラベルで分類される（PR に `feature` / `bug` / `documentation` を付けると振り分けられ、
 それ以外は "Other Changes" に入る）。

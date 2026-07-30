@@ -53,6 +53,32 @@ jobs:
             exit 1
           fi
 
+      # Tauri names the bundles after tauri.conf.json's version, not after the
+      # tag, so a tag pushed without bumping it produces a release whose assets
+      # carry the previous version's name. Fail before anything is built.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Verify the manifests match the release tag
+        run: |
+          set -eu
+          expected="${RELEASE_TAG#v}"
+          fail=0
+          check() {
+            if [ "$2" != "$expected" ]; then
+              echo "::error::$1 declares version '$2' but the tag is '$RELEASE_TAG'. Bump with 'pnpm release $expected'." >&2
+              fail=1
+            fi
+          }
+          json_version() {
+            grep -m1 '"version"' "$1" | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/'
+          }
+          check package.json "$(json_version package.json)"
+          check src-tauri/tauri.conf.json "$(json_version src-tauri/tauri.conf.json)"
+          check src-tauri/Cargo.toml "$(sed -n '/^\[package\]/,/^\[/{s/^version = "\([^"]*\)".*/\1/p;}' src-tauri/Cargo.toml | head -1)"
+          exit "$fail"
+
       - name: Create (or reuse) the draft release with generated notes
         id: release
         run: |
