@@ -188,6 +188,24 @@ describe('renderMarkdown — emoji', () => {
     expect(html).toContain('aria-label=":tmnf: ship it"');
   }, TIMEOUT);
 
+  it('leaves an Object.prototype name undefined when the set does not define it', async () => {
+    setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://tmnf.png' } });
+    const { html } = await renderMarkdown(':constructor: :toString:\n');
+    expect(html).toContain(':constructor:');
+    expect(html).toContain(':toString:');
+    expect(html).not.toMatch(/<img\b/);
+  }, TIMEOUT);
+
+  it('renders a shortcode that shares its name with an Object.prototype member', async () => {
+    setCustomEmoji({ unicode: { toString: '\u{1F44D}' }, images: { constructor: 'asset://c.png' } });
+    const { html } = await renderMarkdown(':constructor: :toString:\n');
+    expect(html).toContain('src="asset://c.png"');
+    // A plain-object image lookup for `toString` would hit Object.prototype and
+    // emit an <img> whose src is that function's source text.
+    expect(html).toContain('<span class="emoji">\u{1F44D}</span>');
+    expect(html).not.toContain('native code');
+  }, TIMEOUT);
+
   it('drops a custom set again when cleared', async () => {
     setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://tmnf.png' } });
     setCustomEmoji(null);

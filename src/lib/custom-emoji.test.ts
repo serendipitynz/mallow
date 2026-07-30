@@ -128,6 +128,15 @@ describe('loadCustomEmoji', () => {
     expect(set.unicode).toEqual({});
   });
 
+  it('keeps a file whose name collides with an Object.prototype member', async () => {
+    dirs.set(ROOT, [image(ROOT, 'constructor.png'), image(ROOT, 'toString.png')]);
+
+    // On a plain object the `already claimed` check would report both as taken.
+    const { set } = await loadCustomEmoji(ROOT);
+    expect(set.images.constructor).toBe('asset://localhost//emoji/constructor.png');
+    expect(set.images.toString).toBe('asset://localhost//emoji/toString.png');
+  });
+
   it('ignores a malformed manifest but keeps the folder scan', async () => {
     dirs.set(ROOT, [image(ROOT, 'jic.png')]);
     files.set(`${ROOT}/emoji.json`, 'not json at all');

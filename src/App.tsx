@@ -9,7 +9,7 @@ import { useFileTree } from './hooks/useFileTree';
 import { loadCustomEmoji, NO_CUSTOM_EMOJI, type CustomEmojiStatus } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
-import { setCustomEmoji } from './lib/markdown';
+import { setCustomEmoji, type CustomEmojiSet } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
 import { loadSettings, saveSetting } from './lib/settings';
 import { allowMediaDir, pathExists, pickFolder } from './lib/tauri';
@@ -32,6 +32,8 @@ export default function App() {
 
   const selectedRef = useRef<FileEntry | null>(null);
   const widthRef = useRef(explorerWidth);
+  // Serialises overlapping custom-emoji loads; see `applyEmojiDir`.
+  const emojiGeneration = useRef(0);
   useEffect(() => {
     selectedRef.current = selected;
   }, [selected]);
@@ -62,35 +64,45 @@ export default function App() {
   // ---- Custom emoji ---------------------------------------------------------
   // Applying the set rebuilds the markdown pipeline, and any open document
   // re-renders itself off that (see MarkdownView's config subscription).
-  const applyEmojiDir = useCallback(async (dir: string | null) => {
+  //
+  // A folder can be re-picked while the previous one is still loading, and the
+  // loads can finish in either order, so each carries a generation number and
+  // only the newest one is allowed to commit. Persistence happens in that same
+  // commit rather than at pick time: otherwise a superseded pick could still be
+  // the last `saveSetting` to land, and the remembered folder would disagree
+  // with the one on screen.
+  const applyEmojiDir = useCallback(async (dir: string | null, persist = false) => {
+    const generation = (emojiGeneration.current += 1);
+    const commit = (status: CustomEmojiStatus, set: CustomEmojiSet | null) => {
+      if (generation !== emojiGeneration.current) return;
+      setCustomEmoji(set);
+      setEmoji(status);
+      if (persist) void saveSetting('customEmojiDir', status.dir ?? undefined);
+    };
+
     if (!dir) {
-      setCustomEmoji(null);
-      setEmoji(NO_CUSTOM_EMOJI);
+      commit(NO_CUSTOM_EMOJI, null);
       return;
     }
     try {
       const { set, count } = await loadCustomEmoji(dir);
-      setCustomEmoji(set);
-      setEmoji({ dir, count, error: null });
+      commit({ dir, count, error: null }, set);
     } catch (e) {
       // Keep the folder on screen with its error rather than silently dropping
       // it: the user needs to see which path failed to fix it.
       console.error('Failed to load custom emoji', e);
-      setCustomEmoji(null);
-      setEmoji({ dir, count: 0, error: String(e) });
+      commit({ dir, count: 0, error: String(e) }, null);
     }
   }, []);
 
   const pickEmojiDir = useCallback(async () => {
     const dir = await pickFolder();
     if (!dir) return;
-    void saveSetting('customEmojiDir', dir);
-    await applyEmojiDir(dir);
+    await applyEmojiDir(dir, true);
   }, [applyEmojiDir]);
 
   const clearEmojiDir = useCallback(() => {
-    void saveSetting('customEmojiDir', undefined);
-    void applyEmojiDir(null);
+    void applyEmojiDir(null, true);
   }, [applyEmojiDir]);
 
   // ---- Session restore + settings (on launch) -------------------------------

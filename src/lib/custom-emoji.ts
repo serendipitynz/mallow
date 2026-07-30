@@ -111,7 +111,9 @@ export async function loadCustomEmoji(dir: string): Promise<CustomEmojiLoad> {
   const imageDir = (await pathExists(declaredDir)) ? declaredDir : dir;
   const { byFile, byStem } = await scanImages(imageDir);
 
-  const images: Record<string, string> = {};
+  // Prototype-less: a shortcode may legitimately be named `constructor`, and on
+  // a normal object the `in` check below would then report it as already taken.
+  const images: Record<string, string> = Object.create(null);
   // Manifest entries first: they get to pick which file backs their name.
   if (Array.isArray(manifest?.images)) {
     for (const entry of manifest.images) {
@@ -126,7 +128,7 @@ export async function loadCustomEmoji(dir: string): Promise<CustomEmojiLoad> {
     if (validName(stem) && !(stem in images)) images[stem] = convertFileSrc(path);
   }
 
-  const unicode: Record<string, string> = {};
+  const unicode: Record<string, string> = Object.create(null);
   if (Array.isArray(manifest?.unicode)) {
     for (const entry of manifest.unicode) {
       if (!isRecord(entry) || !validName(entry.name)) continue;

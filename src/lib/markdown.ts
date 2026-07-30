@@ -37,7 +37,21 @@ export interface CustomEmojiSet {
   images: Record<string, string>;
 }
 
-const EMPTY_EMOJI: CustomEmojiSet = { unicode: {}, images: {} };
+/**
+ * Copy a shortcode table into a prototype-less object.
+ *
+ * Shortcodes are user data and nothing stops one being named `constructor` or
+ * `toString`. On a normal object literal those names are inherited, so a lookup
+ * for a shortcode that was never defined returns `Object.prototype`'s member
+ * and the renderer emits an `<img>` whose src is a function's source text.
+ */
+function ownKeysOnly(table: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = Object.create(null);
+  for (const name of Object.keys(table)) out[name] = table[name];
+  return out;
+}
+
+const EMPTY_EMOJI: CustomEmojiSet = { unicode: ownKeysOnly({}), images: ownKeysOnly({}) };
 let customEmoji: CustomEmojiSet = EMPTY_EMOJI;
 
 // Bumped whenever the pipeline's configuration changes, so mounted views can
@@ -64,7 +78,9 @@ export function getMarkdownConfigVersion(): number {
  * regexp when the plugin is registered, so it cannot be swapped in place.
  */
 export function setCustomEmoji(set: CustomEmojiSet | null): void {
-  customEmoji = set ?? EMPTY_EMOJI;
+  // Normalised here rather than trusting the caller, so the renderer's lookups
+  // can stay plain indexing whatever the set was built from.
+  customEmoji = set ? { unicode: ownKeysOnly(set.unicode), images: ownKeysOnly(set.images) } : EMPTY_EMOJI;
   mdPromise = null;
   configVersion += 1;
   for (const listener of configListeners) listener();
