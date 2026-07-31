@@ -4,7 +4,7 @@ title: 'Wire the frame to the app: lifecycle, outline, height, input'
 status: To Do
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-07-30 10:45'
+updated_date: '2026-07-31 09:34'
 labels:
   - feature
 dependencies:
@@ -24,7 +24,10 @@ Part 2 of 3 for TASK-5 (see decision-3). Makes the frame behave like part of the
 1. Respect the frame lifecycle, which everything else depends on: contentDocument is about:blank until the load event, and every srcdoc replacement builds a fresh document that loses ids, listeners and the measured height. Fix the order - wait for load, assign heading ids, bind listeners, restore the scroll anchor, then measure the height - and re-run all of it on a live reload.
 2. Give h1-h6 ids, but only where the element has none, and de-duplicate generated slugs. Overwriting an existing id breaks the document's own fragment links.
 3. Drive the existing Outline through the lookup root and coordinate conversion from TASK-8. Use the scroll mechanism TASK-8 settles on; do not leave the current el.scrollIntoView({ block: 'start' }) in Outline.tsx:60 to decide by accident.
-4. Size the frame from the scrollHeight of contentDocument so the app scroller stays in charge. This is a feedback loop: a document with body { min-height: 200vh } grows every time the measured height is applied. Bound it - cap the measurement passes and the maximum height, settle on the last stable value - and re-measure after a live reload and after late layout changes (images, details elements).
+4. Size the frame from the scrollHeight of contentDocument so the app scroller stays in charge. Two separate bounds are needed here and they solve different problems:
+   - A measurement-pass cap, because this is a feedback loop: a document with body { min-height: 200vh } grows every time the measured height is applied. Settle on the last stable value, and reset the counter on a width change rather than exhausting it and leaving the height stale.
+   - A maximum height - and this one needs its over-limit behaviour defined, because 'the frame matches its content' and 'the frame never exceeds H' cannot both hold once legitimate content is taller than H. Either the remainder is clipped and unreachable, or the frame becomes a second scroll region, and in that case parent-side fragment scrolling stops describing what actually happens. Decide it explicitly: fall back to the capped source view above the maximum, or accept nested scrolling and adjust the fragment-scrolling behaviour to work in both modes.
+   Re-measure after a live reload, after late layout changes (images, details elements), and after anything that changes the frame's width: window resize, Explorer splitter drag, outline open/close.
 5. Attach a click handler to contentDocument. It cannot simply mirror MarkdownView.tsx:79-93: that handler returns early for '#' links and lets native fragment navigation scroll, which does nothing here because a frame sized to its content has no scrollable viewport. Fragment links must be preventDefault-ed and scrolled by the parent; http(s) links go to the OS browser via openUrl; everything else is inert.
 6. Forward keyboard scrolling. Once focus moves into the frame - which Outline.tsx:61-62 does deliberately via tabindex and focus() - arrow keys, Space, PageDown, Home and End reach a document that cannot scroll and the app scroller stays put. Wheel events chain; keyboard events do not. Forward keydown to the parent scroller, or keep focus in the parent.
 <!-- SECTION:DESCRIPTION:END -->
@@ -41,4 +44,5 @@ Part 2 of 3 for TASK-5 (see decision-3). Makes the frame behave like part of the
 - [ ] #8 pnpm build and pnpm test pass
 - [ ] #9 Height is re-measured when the frame's width changes: window resize, Explorer splitter drag, and outline open/close
 - [ ] #10 The measurement-pass cap resets on a width change rather than exhausting itself and leaving the height stale
+- [ ] #11 Content taller than the maximum frame height has a defined outcome that is implemented and checked - falling back to the capped source view, or nested scrolling accepted explicitly with the fragment-scrolling criterion adjusted to match
 <!-- AC:END -->
