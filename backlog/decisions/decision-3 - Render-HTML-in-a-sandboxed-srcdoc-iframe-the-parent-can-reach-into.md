@@ -218,6 +218,16 @@ app-origin external script, permitted by `script-src 'self'`.
   bounded — a capped number of measurement passes and a maximum height — while
   still re-measuring after a live reload and after late layout changes (images,
   `<details>`).
+
+  **The app scroller stays the only scroller, so exceeding the maximum height sends
+  the document to the capped source view** rather than giving the frame a scrollbar
+  of its own. This is not a free choice at the task level: fragment links being
+  scrolled by the parent, the keyboard forwarding below, and TASK-8's single
+  boundary-crossing mechanism all assume the frame has no scrollable viewport.
+  Allowing nested scrolling would mean reopening this decision, TASK-8, and the
+  fragment and keyboard criteria together as one contract. The maximum is therefore
+  a backstop against pathological growth, set high enough that ordinary long
+  documents never reach it.
 - **The rendered view needs a complexity ceiling of its own.** The 10 MiB
   `read_file` cap bounds bytes, not element count; hundreds of thousands of nodes
   or heavy SVG filters fit well inside it, and the rendered view is the default.
