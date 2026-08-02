@@ -4,6 +4,7 @@ title: Own the recent-folder list in Rust
 status: To Do
 assignee: []
 created_date: '2026-08-02 21:14'
+updated_date: '2026-08-02 22:39'
 labels:
   - feature
 dependencies: []
@@ -25,11 +26,13 @@ Not a style preference; two things force it:
 - The Open Recent submenu is built in Rust and has to be rebuilt whenever the list changes. If the frontend owned the list it would have to notify Rust after every write anyway.
 - Two windows doing a read-modify-write of an array through the store from JS lose entries. The store is one instance in the Rust process, but the read, the splice and the write are three separate steps on the JS side with no lock between them.
 
-So: `record_recent(path)` and `list_recent()` as Rust commands, mutating settings.json through tauri-plugin-store's Rust API, with the submenu rebuild happening inside `record_recent`. The frontend calls `record_recent` wherever it currently calls `saveSetting('lastFolder', dir)`.
+So: `record_recent(path)` and `list_recent()` as Rust commands, mutating settings.json through tauri-plugin-store's Rust API. The frontend calls `record_recent` whenever a window starts showing a folder - through the folder picker, through a restored or handed-over initial location, or through TASK-12.5's Open Recent replace. Those are the same moments at which TASK-12.7 reports the window's content into the restored session; both calls belong together, they record different facts, and neither task may drop the other's write. Do not anchor this to `saveSetting('lastFolder', …)` in `src/App.tsx`: TASK-12.7 lands first in the planned order and removes that key.
+
+The submenu rebuild triggered by a change is **not** part of this task even though it is the reason Rust owns the list: the submenu does not exist until TASK-12.4. Ship the list here (store ownership, the two commands, the pure ordering function) and let TASK-12.4 add the rebuild and the prune call, which is why the prune rule below is described here but verified there.
 
 TASK-12.7 puts the restored session under the same ownership for the same reason, so whichever of the two lands first sets the pattern the other follows.
 
-**Verify before building on it**: that `StoreExt::store("settings.json")` in Rust and `load('settings.json')` in `src/lib/settings.ts` resolve to the same in-process store. If they do not, the frontend's `autoSave: true` write of an unrelated key could clobber `recentFolders`, and the ownership split has to move (either the whole settings file goes to Rust, or `recentFolders` gets its own file).
+**Already answered, so do not re-investigate**: the Rust and JS handles are the same in-process store - `StoreBuilder::build_inner` returns the existing store for a path rather than making a second one (tauri-plugin-store-2.4.3 `src/store.rs:194-203`). So there is no clobbering risk. The real consequence is smaller and worth a comment: whichever side creates the store first wins on options, and the later side's options are dropped silently. Both sides ask for a 100 ms auto-save today (JS passes `autoSave: true`, the Rust default is the same, `src/store.rs:68`), so nothing diverges - but a future option set on only one side would not take effect.
 
 ## Ordering, dedupe, cap, prune
 
@@ -49,11 +52,10 @@ A `Clear Recent` item at the bottom of the submenu, below a separator, emptying 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 recentFolders is persisted in settings.json, newest first, capped, holding folder paths only
-- [ ] #2 record_recent and list_recent exist as Rust commands, and the frontend records a folder wherever it currently saves lastFolder
-- [ ] #3 Recording an already-listed folder moves it to the front instead of duplicating it, and the oldest entry is dropped at the cap
-- [ ] #4 Ordering, dedupe and cap live in a pure function with cargo test coverage; case-insensitive filesystems are handled by a stated decision, not by silent normalisation
-- [ ] #5 Entries whose path no longer exists are dropped from the list and the store at submenu build time, and nowhere else
-- [ ] #6 Whether the Rust store handle and the frontend's load('settings.json') share one instance has been verified, and the ownership split reflects the answer
+- [ ] #2 Recording an already-listed folder moves it to the front instead of duplicating it, and the oldest entry is dropped at the cap
+- [ ] #3 Ordering, dedupe and cap live in a pure function with cargo test coverage; case-insensitive filesystems are handled by a stated decision, not by silent normalisation
+- [ ] #4 record_recent and list_recent exist as Rust commands, and the frontend calls record_recent at the same App.tsx call site that reports the window's content, without removing that report
+- [ ] #5 The comment records that the Rust and JS store handles are the same instance and that the later side's options are dropped — not a verification task, a recorded fact
 <!-- AC:END -->
 
 ## Definition of Done

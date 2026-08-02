@@ -4,11 +4,12 @@ title: 'Open Recent: replace in place, or open a new window under the modifier'
 status: To Do
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-08-02 21:25'
+updated_date: '2026-08-02 22:39'
 labels:
   - feature
 dependencies:
   - TASK-12.4
+  - TASK-12.7
 parent_task_id: TASK-12
 priority: high
 type: feature
@@ -34,6 +35,8 @@ Do macOS first (primary development platform), then decide whether the other two
 - Windows - `GetKeyState(VK_CONTROL)` via windows-sys.
 - Linux - the GDK keyboard modifier state via gtk/gdk.
 
+What the spike must actually answer is narrower than "can the state be read": menu events are queued through the event loop rather than dispatched at click time (tauri-2.11.3 `src/app.rs:2350-2351`, delivered at `:2588`), so the handler reads the *current* physical key state, not a snapshot of the click. Pass criterion: a user who releases the key as they click still gets a new window. If that fails, the gesture is unreliable on that platform even though the read "works".
+
 Each is a new production dependency. Adding them was approved when TASK-12 was opened, so the ask-first rule in AGENTS.md is already satisfied; add only the ones the spike shows are actually needed, each behind the `cfg` for its platform, and report what the spike found either way.
 
 ## Fallback, which ships regardless
@@ -44,29 +47,31 @@ If a platform's native read fails the spike, that platform's menu entry keeps th
 
 ## Behaviour, both branches
 
-- Without the modifier: the chosen folder replaces the focused window's folder. Selection clears, `allowMediaDir` is awaited before the tree opens, `startWatch` restarts for that window only, and `recentFolders` moves the entry to the front.
-- With the modifier: `open_window(folder)`; the focused window is untouched.
+- Without the modifier: the chosen folder replaces the focused window's folder. Selection clears, `allowMediaDir` is awaited before the tree opens, `startWatch` restarts for that window only, `recentFolders` moves the entry to the front, and the window reports its new content into the restored session. That last one is easy to miss: this is a second way a window's folder changes, and TASK-12.7's reporting rule is a predicate over that change, not a fixed call site.
+- With the modifier: `open_window(location, label)` from TASK-12.2, with the folder as the initial location and no label; the focused window is untouched.
 
 Edge cases to settle rather than discover:
 
 - The chosen folder no longer exists - TASK-12.3 prunes at submenu build time, so this is the race where it vanished between build and click. Report it and prune, do not open an empty tree silently.
-- The folder is already open in another window - recommend focusing that window instead of opening a second window on the same folder, which is what VS Code does. Applies to the modifier branch only.
+- The folder is already open in another window - recommend focusing that window instead of opening a second window on the same folder, which is what VS Code does. Applies to the modifier branch only. Scan `webview_windows()` for it; `Manager::windows()` and `get_focused_window` are behind the `unstable` feature this project does not enable (see TASK-12.4).
 - No window is focused - only reachable if the macOS stay-alive behaviour is ever adopted (TASK-12.2 keeps the exit-on-last-close default), but the handler should still fall back to opening a new window rather than dropping the event.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Choosing a recent entry without the modifier replaces the focused window's folder: selection cleared, media scope granted before the tree opens, watch restarted for that window only, entry moved to the front of recentFolders
-- [ ] #2 Choosing it with the modifier opens a new window on the folder and leaves the focused window untouched
-- [ ] #3 An in-app Open Recent list ships regardless of the spike result, reads metaKey/ctrlKey from the DOM click event, and has ja and en dictionary keys
-- [ ] #4 A folder that vanished between submenu build and click is reported and pruned rather than opening an empty tree
-- [ ] #5 Choosing a folder already open in another window focuses that window instead of duplicating it
-- [ ] #6 No platform is left with a modifier gesture that silently does nothing; what works where is written down
-- [ ] #7 The spike reports, per platform, whether the modifier state can be read at menu-event time and which dependency it costs; only the dependencies it justifies are added, each behind its platform cfg
+- [ ] #1 Choosing it with the modifier opens a new window on the folder and leaves the focused window untouched
+- [ ] #2 An in-app Open Recent list ships regardless of the spike result, reads metaKey/ctrlKey from the DOM click event, and has ja and en dictionary keys
+- [ ] #3 A folder that vanished between submenu build and click is reported and pruned rather than opening an empty tree
+- [ ] #4 No platform is left with a modifier gesture that silently does nothing; what works where is written down
+- [ ] #5 The spike reports, per platform, whether the modifier state can be read at menu-event time and which dependency it costs; only the dependencies it justifies are added, each behind its platform cfg
+- [ ] #6 Choosing a folder already open in another window focuses that window instead of opening a duplicate, in the modifier branch
+- [ ] #7 Choosing a recent entry without the modifier replaces the focused window's folder — selection cleared, media scope granted before the tree opens, watch restarted for that window only, entry moved to the front of recentFolders — and the window reports its new content into the restored session
+- [ ] #8 The spike's pass criterion includes a user who releases the modifier as they click, since the handler reads the current key state rather than a snapshot of the click
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 pnpm build, pnpm test, cargo check and cargo test pass
 - [ ] #2 The gesture has been exercised by hand on macOS, and on each other platform either exercised or recorded as falling back to the in-app list
+- [ ] #3 THIRD-PARTY-NOTICES.md is regenerated with pnpm notices, since the spike adds Rust dependencies that scripts/gen-third-party-notices.mjs collects
 <!-- DOD:END -->
