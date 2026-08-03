@@ -28,7 +28,7 @@ Note on timing: the release-note half of AC#2 can only be closed when the first 
 Neither README has an install or download section, nor any mention of Releases, so this means adding one and choosing where it goes - not inserting a paragraph.
 
 - mallow updates itself from GitHub Releases, and the check can be turned off in Settings.
-- Every distributed form self-updates: the macOS .app, the Windows setup.exe and .msi, and the Linux AppImage, deb and rpm.
+- Which distributed forms self-update: the macOS .app, the Windows setup.exe and .msi, and the Linux AppImage and deb. Whether rpm belongs in that list is decided by TASK-11.1 against a real latest.json - write what was observed, not what was hoped, and say plainly which forms are download-only so an rpm user is not left waiting for an update that never comes.
 - One-time exception, and the reason the promise needs a caveat: anyone on a release older than the first updater-carrying one has a binary with no updater in it, so nothing will reach them. They download once by hand and are then on the channel. Put the same sentence in that release note.
 - What the update will ask for: UAC on the Windows msi, a system password prompt on deb and rpm, and on macOS a password only when the .app is not writable by the user. Describe the prompt, not the mechanism - the Linux path picks between pkexec, a GUI dialog and terminal sudo at runtime.
 - Windows SmartScreen belongs here, in the distribution context - it appears on the first browser download of the unsigned installer, and per TASK-11.2 it is not expected on the in-app update path. Only state what was actually observed.
@@ -53,5 +53,5 @@ Keep the two language versions of each document in step; they are parallel files
 - [ ] #4 The chosen latest.json concurrency fix and the tauri-action pin are recorded with their reasons
 - [ ] #5 The key runbook states where the private key is kept and that losing or rotating it forces every user to reinstall
 - [ ] #6 The prompts users will meet are described without naming a mechanism the plugin chooses at runtime, and no warning is documented that was not actually observed
-- [ ] #7 The ja and en versions of both documents carry the same content
+- [ ] #7 The ja and en versions of each document have the same sections and make the same statements - self-update coverage per install form, the one-time manual update, the prompts to expect, and for AGENTS the rollout trigger, the secret list and the key runbook
 <!-- AC:END -->
