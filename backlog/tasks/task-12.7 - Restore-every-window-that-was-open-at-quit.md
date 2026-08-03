@@ -4,7 +4,7 @@ title: Restore every window that was open at quit
 status: To Do
 assignee: []
 created_date: '2026-08-02 21:24'
-updated_date: '2026-08-02 22:39'
+updated_date: '2026-08-03 01:16'
 labels:
   - feature
 dependencies:
@@ -28,7 +28,7 @@ A `windows` key in settings.json: one entry per window, `{ label, folder, file }
 
 Rust owns it, for the same reason TASK-12.3 gives Rust the recent list: several windows read-modify-writing one array from JS lose entries, and the sequence is three unsynchronised steps on the JS side. Keep the live set in app state as a label-keyed map and write it out as an ordered list.
 
-**The rule for reporting is a predicate, not a call site**: whenever a window's displayed folder or selected file changes, that window reports the new pair. Today that is `src/App.tsx:48` and `:55-56`, which is also where TASK-12.3 records the folder as recent - both calls belong there, they record different facts, and neither task may drop the other's write. But TASK-12.5 adds a second way for a window's folder to change (Open Recent replacing it in place) and TASK-12.2 adds a third (a window opening its initial location at mount). Anchoring the rule to today's line numbers is how those two get missed, and the symptom is subtle: replace the folder via Open Recent, quit, and the restored window comes back on the folder it had before.
+**The rule for reporting is a predicate, not a call site**: whenever a window's displayed folder or selected file changes, that window calls `report_window_content(folder, file)`. Today that is `src/App.tsx:48` and `:55-56`, which is also where TASK-12.3 records the folder as recent - both calls belong there, they record different facts, and neither task may drop the other's write. But TASK-12.5 adds a second way for a window's folder to change (Open Recent replacing it in place) and TASK-12.2 adds a third (a window opening its initial location at mount). Anchoring the rule to today's line numbers instead of to the named command is how those two get missed, and the symptom is subtle: replace the folder via Open Recent, quit, and the restored window comes back on the folder it had before.
 
 Focus order comes from `WindowEvent::Focused(true)` - the event carries a bool, and reordering on the `false` edge would invert the order: a window moves to the end when it gains focus.
 
@@ -37,7 +37,7 @@ Focus order comes from `WindowEvent::Focused(true)` - the event carries a bool, 
 A window's destroy handler cannot tell why it is being destroyed, so the tempting rule is "set a flag on `RunEvent::ExitRequested`, and drop my entry only while the flag is false". Every quit path contradicts it:
 
 - **Closing the last window** (the only way to quit on Windows and Linux without a menu item) - `ExitRequested` is emitted *inside* the handling of `TaoWindowEvent::Destroyed`, once the window map has gone empty (tauri-runtime-wry-2.11.3 `src/lib.rs:4310-4316`), while the per-window event listeners run *before* that match (same file `:4270-4289`). The last window's destroy handler always sees the flag false, so the restored session would be emptied on every quit.
-- **macOS ⌘Q** - the predefined Quit item sends `terminate:` (muda-0.19.3 `src/platform_impl/macos/mod.rs`), reaching tao's `applicationWillTerminate` → `AppState::exit()` → `Event::LoopDestroyed` (tao-0.35.3 `src/platform_impl/macos/app_delegate.rs:130-134`), which tauri turns into `RunEvent::Exit` only (tauri-runtime-wry-2.11.3 `src/lib.rs:4185-4186`). No `ExitRequested`, no per-window destroy.
+- **macOS ⌘Q** - the predefined Quit item sends `terminate:` (muda-0.19.3 `src/platform_impl/macos/mod.rs`), reaching tao's `applicationWillTerminate` → `AppState::exit()` → `Event::LoopDestroyed` (tao-0.35.3 `src/platform_impl/macos/app_delegate.rs:131-135`), which tauri turns into `RunEvent::Exit` only (tauri-runtime-wry-2.11.3 `src/lib.rs:4185-4186`). No `ExitRequested`, no per-window destroy.
 - **Windows File > Exit**, the item TASK-12.4 adds - the predefined Quit calls `PostQuitMessage(0)`, tao's message loop returns 0 and runs `loop_destroyed()` (tao-0.35.3 `src/platform_impl/windows/event_loop.rs:256-284`), so again `RunEvent::Exit` alone.
 - **`AppHandle::exit()`**, which the Linux Exit item needs (see TASK-12.4) - emits `ExitRequested` and sets the control flow to exit (tauri-runtime-wry-2.11.3 `src/lib.rs:4354-4366`); the windows are torn down without their destroy handlers being called either.
 
@@ -50,7 +50,7 @@ Two details that decide whether this works:
 - **Count with the dying window already gone.** By the time a `Builder::on_window_event` handler runs, tauri has already removed the window from its map: the handlers are runtime-level per-window listeners (tauri-2.11.3 `src/manager/window.rs:98-102`) which fire at tauri-runtime-wry-2.11.3 `src/lib.rs:4282-4286`, *after* the `callback(RunEvent::WindowEvent)` at `:4278` in which `on_event_loop_event` calls `manager.on_window_close(label)` (tauri-2.11.3 `src/app.rs:2542-2547`). The test is therefore "the map is not empty", not "the map holds more than one" - the naive version is off by one and never drops anything.
 - **Enumerate with the stable API.** `Manager::get_focused_window` / `windows()` / `get_window()` are behind the `unstable` cargo feature (tauri-2.11.3 `src/lib.rs:541-560`), which this project does not enable and which tauri warns can break in a minor release. `webview_windows()` and `get_webview_window()` (`:576`, `:588`) are not gated. Use those here, in TASK-12.4's focus resolution and in TASK-12.5's "is this folder already open" check.
 
-**Flush the live set on `RunEvent::Exit`, and save the store synchronously in the same handler.** The flush is what covers the three paths above that emit no destroy events. Writing it through the store is not enough on its own: tauri-plugin-store saves every store in its own `RunEvent::Exit` handler (tauri-plugin-store-2.4.3 `src/lib.rs:448-459`), and plugin `on_event` handlers run *before* the app's `run` callback (tauri-2.11.3 `src/app.rs:2645-2648`, called from `:1429-1430`), so the plugin's save has already happened by the time this code writes. `autoSave` will not rescue it either - it is a debounce, and the process exits first. Call `Store::save()` synchronously after writing, or keep the restored session in its own file. Receiving `RunEvent::Exit` at all is a change of shape: `src-tauri/src/lib.rs:80` ends with `.run(tauri::generate_context!())` and no callback, so this becomes `.build(ctx)?.run(|handle, event| …)` - keep the existing failure message when the build fails.
+**Flush the live set on `RunEvent::Exit`, and save the store synchronously in the same handler.** The flush is what covers the three paths above that emit no destroy events. Writing it through the store is not enough on its own: tauri-plugin-store saves every store in its own `RunEvent::Exit` handler (tauri-plugin-store-2.4.3 `src/lib.rs:448-459`), and plugin `on_event` handlers run *before* the app's `run` callback (tauri-2.11.3 `src/app.rs:2645-2648`, called from `:1429-1430`), so the plugin's save has already happened by the time this code writes. `autoSave` will not rescue it either - it is a debounce, and the process exits first. Call `Store::save()` synchronously after writing, or keep the restored session in its own file. Receiving `RunEvent::Exit` at all is a change of shape: `src-tauri/src/lib.rs:85` ends with `.run(tauri::generate_context!())` and no callback, so this becomes `.build(ctx)?.run(|handle, event| …)` - keep the existing failure message when the build fails.
 
 **Decide how often the live set reaches disk, not just when it is flushed.** Holding it in memory until Exit means a crash or a force-quit loses the whole session, which is a regression from today: `saveSetting('lastFolder', …)` reaches disk through the store's 100 ms auto-save (tauri-plugin-store-2.4.3 `src/store.rs:68`), so today's single folder survives a crash. Writing through on every report keeps that property at the cost of more small writes; the Exit flush then only covers the paths that emit no destroy events.
 
@@ -73,20 +73,25 @@ Cases to settle rather than discover:
 ## Migrating the existing setting
 
 An installed copy has `lastFolder` / `lastFile` and no `windows`. On first launch after the change, seed a single-entry restored session from the pair, then delete both keys so nothing reads them again. Without that step, everyone with mallow already installed loses their open folder on the upgrade - a small loss, but an avoidable one.
+
+**The geometry needs the same migration, and it is the more visible loss.** `.window-state.json` is keyed by label (tauri-plugin-window-state-2.4.1 `src/lib.rs:109`), every existing install has its size and position filed under `main`, and after `"create": false` nothing is ever labelled `main` again - so without a migration the first launch after the upgrade resizes and repositions every existing user's window. The entry does not even go away: the plugin loads the whole cache at setup (`:397`) and writes it back at `RunEvent::Exit` (`:502-504`) whether or not any window claims the label, so a dead `main` key would persist forever and quietly falsify TASK-12.2's claim that per-slot labels keep the file bounded by the number of windows open at once.
+
+So rename the `main` entry to the label of the first restored window, in the same one-time migration as the settings keys. The cost to accept and state in the code comment: this reads and rewrites another plugin's state file, so it is coupled to that file's format - acceptable for a migration that runs once and can be dropped later, not a pattern to reuse.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 settings.json holds a windows key with one entry per open window (label, folder, file), ordered least-recently-focused first; it is owned and written by Rust, and lastFolder / lastFile are gone
-- [ ] #2 A window reports its folder and file whenever either changes — including the Open Recent replace path (TASK-12.5) and the initial-location mount path (TASK-12.2), not just today's App.tsx call site — and focus changes reorder the entries
-- [ ] #3 An entry is dropped on destroy only when the window map is non-empty at that point (the dying window is already removed), and window enumeration uses webview_windows() rather than the unstable Manager::get_focused_window family
-- [ ] #4 RunEvent::Exit flushes the live set and calls Store::save() synchronously, since the store plugin's own Exit save has already run by then and autoSave's debounce never fires
-- [ ] #5 tauri.conf.json sets create: false, every window is created in setup with its own label, and the capability window list drops main
-- [ ] #6 Launch creates one window per saved entry in saved order with its label and initial location, leaving the last one focused
-- [ ] #7 A missing folder yields an empty window rather than a dropped one; a missing file yields its folder with nothing selected; an absent windows key yields one empty window; whether a folder-less window is restored is decided and stated
-- [ ] #8 The number of restored windows is capped, dropping from the least-recently-focused end, and the cap is stated with its per-window cost (a Shiki WASM highlighter and a mermaid instance per WebView)
-- [ ] #9 An existing lastFolder / lastFile pair is migrated into a single-entry windows list on first launch and both keys are then deleted
-- [ ] #10 How often the live set reaches disk is decided and stated, so a crash does not lose more than today's single-folder behaviour does
+- [ ] #2 An entry is dropped on destroy only when the window map is non-empty at that point (the dying window is already removed), and window enumeration uses webview_windows() rather than the unstable Manager::get_focused_window family
+- [ ] #3 RunEvent::Exit flushes the live set and calls Store::save() synchronously, since the store plugin's own Exit save has already run by then and autoSave's debounce never fires
+- [ ] #4 tauri.conf.json sets create: false, every window is created in setup with its own label, and the capability window list drops main
+- [ ] #5 Launch creates one window per saved entry in saved order with its label and initial location, leaving the last one focused
+- [ ] #6 A missing folder yields an empty window rather than a dropped one; a missing file yields its folder with nothing selected; an absent windows key yields one empty window; whether a folder-less window is restored is decided and stated
+- [ ] #7 The number of restored windows is capped, dropping from the least-recently-focused end, and the cap is stated with its per-window cost (a Shiki WASM highlighter and a mermaid instance per WebView)
+- [ ] #8 An existing lastFolder / lastFile pair is migrated into a single-entry windows list on first launch and both keys are then deleted
+- [ ] #9 How often the live set reaches disk is decided and stated, so a crash does not lose more than today's single-folder behaviour does
+- [ ] #10 report_window_content(folder, file) exists and is called whenever a window's displayed folder or file changes — the folder picker, a handed-over or restored initial location, and TASK-12.5's Open Recent replace — and focus changes reorder the entries
+- [ ] #11 The one-time migration also renames the main entry in .window-state.json to the first restored window's label, so an existing install keeps its size and position and no dead label is left behind
 <!-- AC:END -->
 
 ## Definition of Done

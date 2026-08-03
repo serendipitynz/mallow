@@ -47,7 +47,7 @@ If a platform's native read fails the spike, that platform's menu entry keeps th
 
 ## Behaviour, both branches
 
-- Without the modifier: the chosen folder replaces the focused window's folder. Selection clears, `allowMediaDir` is awaited before the tree opens, `startWatch` restarts for that window only, `recentFolders` moves the entry to the front, and the window reports its new content into the restored session. That last one is easy to miss: this is a second way a window's folder changes, and TASK-12.7's reporting rule is a predicate over that change, not a fixed call site.
+- Without the modifier: the chosen folder replaces the focused window's folder. Selection clears, `allowMediaDir` is awaited before the tree opens, `startWatch` restarts for that window only, `recentFolders` moves the entry to the front, and the window calls `report_window_content`. That last one is easy to miss: this is a second way a window's folder changes, and TASK-12.7's rule for that command is a predicate over the change, not a fixed call site.
 - With the modifier: `open_window(location, label)` from TASK-12.2, with the folder as the initial location and no label; the focused window is untouched.
 
 Edge cases to settle rather than discover:

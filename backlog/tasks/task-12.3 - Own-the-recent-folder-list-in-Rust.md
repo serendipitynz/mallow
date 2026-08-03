@@ -4,7 +4,7 @@ title: Own the recent-folder list in Rust
 status: To Do
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-08-02 22:39'
+updated_date: '2026-08-03 01:16'
 labels:
   - feature
 dependencies: []
@@ -26,7 +26,9 @@ Not a style preference; two things force it:
 - The Open Recent submenu is built in Rust and has to be rebuilt whenever the list changes. If the frontend owned the list it would have to notify Rust after every write anyway.
 - Two windows doing a read-modify-write of an array through the store from JS lose entries. The store is one instance in the Rust process, but the read, the splice and the write are three separate steps on the JS side with no lock between them.
 
-So: `record_recent(path)` and `list_recent()` as Rust commands, mutating settings.json through tauri-plugin-store's Rust API. The frontend calls `record_recent` whenever a window starts showing a folder - through the folder picker, through a restored or handed-over initial location, or through TASK-12.5's Open Recent replace. Those are the same moments at which TASK-12.7 reports the window's content into the restored session; both calls belong together, they record different facts, and neither task may drop the other's write. Do not anchor this to `saveSetting('lastFolder', …)` in `src/App.tsx`: TASK-12.7 lands first in the planned order and removes that key.
+So: `record_recent(path)` and `list_recent()` as Rust commands, mutating settings.json through tauri-plugin-store's Rust API. The frontend calls `record_recent` whenever a window starts showing a folder - through the folder picker, through a restored or handed-over initial location, or through TASK-12.5's Open Recent replace. Those are the same moments at which a window calls `report_window_content` (TASK-12.7); both calls belong together, they record different facts, and neither task may drop the other's write.
+
+That is a predicate, not a dependency: this task can ship against whatever paths exist when it lands. Today that is one - the folder picker, where `src/App.tsx:55-56` writes `lastFolder` - and TASK-12.7 replaces that key with `report_window_content` at the same site while TASK-12.2 and TASK-12.5 add the other two. Whichever order they land in, the rule is the same, which is why this task declares no dependency on them.
 
 The submenu rebuild triggered by a change is **not** part of this task even though it is the reason Rust owns the list: the submenu does not exist until TASK-12.4. Ship the list here (store ownership, the two commands, the pure ordering function) and let TASK-12.4 add the rebuild and the prune call, which is why the prune rule below is described here but verified there.
 
@@ -55,7 +57,7 @@ A `Clear Recent` item at the bottom of the submenu, below a separator, emptying 
 - [ ] #2 Recording an already-listed folder moves it to the front instead of duplicating it, and the oldest entry is dropped at the cap
 - [ ] #3 Ordering, dedupe and cap live in a pure function with cargo test coverage; case-insensitive filesystems are handled by a stated decision, not by silent normalisation
 - [ ] #4 record_recent and list_recent exist as Rust commands, and the frontend calls record_recent at the same App.tsx call site that reports the window's content, without removing that report
-- [ ] #5 The comment records that the Rust and JS store handles are the same instance and that the later side's options are dropped — not a verification task, a recorded fact
+- [ ] #5 record_recent and list_recent exist as Rust commands, and the frontend records a folder wherever a window starts showing one — alongside report_window_content where that already exists, without removing it
 <!-- AC:END -->
 
 ## Definition of Done

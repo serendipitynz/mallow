@@ -4,7 +4,7 @@ title: 'Document multiple windows, the File menu and session restore'
 status: To Do
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-08-02 22:24'
+updated_date: '2026-08-03 01:16'
 labels:
   - documentation
 dependencies:
@@ -40,6 +40,7 @@ Document multiple windows, the File menu and session restore once the behaviour 
 - [ ] #5 AGENTS.md and AGENTS.ja.md describe the watcher registry, the capability window glob, the initial-location handover, the label slot scheme, the create:false decision and the destroy-versus-quit rule with its event-ordering facts; the stale 'watcher handle lives in WatcherState' and 'macOS only' lines are gone
 - [ ] #6 Whatever TASK-12.8 does not propagate across windows is listed as a known limitation, per setting
 - [ ] #7 AGENTS.md records that window enumeration must use webview_windows(), because the obvious Manager methods are unstable-gated
+- [ ] #8 The window-state migration is documented: an existing install keeps its geometry because the main entry is renamed once, and that migration reads another plugin's state file by design
 <!-- AC:END -->
 
 ## Definition of Done
