@@ -31,11 +31,11 @@ GitHub resolves latest against published, non-prerelease releases only, so the d
 
 Two things this does NOT touch, worth stating so nobody re-derives them: the updater fetches from Rust, not the WebView, so the CSP in tauri.conf.json needs no widening; and nothing here reaches the untrusted-Markdown boundary.
 
-Platform reach - every artifact the v0.4.0 release ships can self-update. Checked against the plugin and CLI sources, not the docs, which lag:
+Platform reach - most of what the v0.4.0 release ships can self-update, with one form still open. Checked against the pinned sources rather than the docs, which lag:
 - macOS: the .app.tar.gz, wrapping the .app the existing pipeline already signs and notarizes;
 - Windows: both bundles, since bundle.targets is all and the release carries mallow_x64-setup.exe and mallow_x64_en-US.msi;
 - Linux: AppImage and deb, with rpm to be confirmed rather than assumed. The client side is settled (plugins-workspace PR 2624; the Installer enum covers appimage, deb, rpm, app, msi, nsis), and in the lockfile-pinned tauri-cli 2.11.4 sign_updaters signs appimage, deb, rpm, nsis, msi and the app archive. But the bundler counts only appimage, nsis, msi and deb as self-contained updater targets, and the warning it prints lists only app, appimage, msi and nsis - stale text that reads as a capability list and has already misled one review. rpm is the loose end; TASK-11.1 closes it against a real latest.json and this claim follows the answer.
-Applying an update is not silent on any platform - TASK-11.2 has the per-platform detail and owns the UI copy for it. That is a wording problem, not a reason to narrow platform support.
+Applying an update is not silent on any platform - TASK-11.2 has the per-platform detail and owns the UI copy for it. That much is a wording problem rather than a reach problem; rpm above is the one open question about reach itself.
 
 Reach has one hard edge: nobody on 0.4.0 or earlier is reachable, because their binary has no updater. Everyone must download once by hand to get onto the first updater-carrying release. TASK-11.3 says so in the README and in that release note.
 
