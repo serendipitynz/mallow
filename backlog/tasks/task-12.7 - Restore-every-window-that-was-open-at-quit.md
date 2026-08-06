@@ -24,7 +24,11 @@ Geometry is already handled - tauri-plugin-window-state restores it per label, a
 
 ## The restored session
 
-A `windows` key in settings.json: one entry per window, `{ label, folder, file }`, ordered least-recently-focused first so the last entry is the window to focus after restore. It replaces `lastFolder` / `lastFile` entirely rather than sitting beside them - two sources of truth for "where was I" is how they drift apart.
+A `windows` key in settings.json: one entry per window, `{ label, folder, files, active }`, ordered least-recently-focused first so the last entry is the window to focus after restore. It replaces `lastFolder` / `lastFile` entirely rather than sitting beside them - two sources of truth for "where was I" is how they drift apart.
+
+**`files` is a list, and `active` names one of its entries, even though nothing in TASK-12 opens more than one file per window.** TASK-13's document tabs do, and decision-4 settles the shape here for one reason: this task already carries a one-time migration of `lastFolder` / `lastFile` *and* a rewrite of another plugin's `.window-state.json`, and adding a second round of that when tabs land is avoidable at the cost of one shape decision taken now. So write `files: [path]` with `active: path` where today's single file would go, and `files: []` with `active: null` for a window on no file.
+
+`report_window_content(folder, file)` keeps its single-file signature in this task - one window genuinely shows one file until tabs exist - and TASK-13 widens it to carry the tab set. That is a Rust signature change, not a stored-data migration, which is why the two are split this way.
 
 Rust owns it, for the same reason TASK-12.3 gives Rust the recent list: several windows read-modify-writing one array from JS lose entries, and the sequence is three unsynchronised steps on the JS side. Keep the live set in app state as a label-keyed map and write it out as an ordered list.
 
@@ -67,12 +71,16 @@ Cases to settle rather than discover:
 - Empty or absent `windows` - one empty window, which is what a first launch already does.
 - A window that was open on no folder at all - decide whether it comes back. Restoring it keeps the window count honest; dropping it avoids a blank window nobody asked for. Either is defensible; pick one.
 - A folder in an entry no longer exists - open that window empty rather than dropping it, so the window count is preserved and the user sees which one lost its folder. Its file entry goes with it.
-- A file no longer exists but its folder does - open the folder with nothing selected. `src/App.tsx:119-130` already validates both halves with `pathExists`; keep that check, now per entry.
+- A file no longer exists but its folder does - open the folder with nothing selected. `src/App.tsx:119-130` already validates both halves - `pathExists` on each, plus `isInside` on the file (`:127`), which is what keeps a file from being restored outside its own folder; keep all of that, now per entry.
 - The saved set is large - cap the number of restored windows, say what the cap is, and drop from the front (least recently focused). It is not only about surprise: every window carries its own Shiki WASM highlighter and mermaid instance in its own WebView, so the cost of a restored window is not small.
 
 ## Migrating the existing setting
 
-An installed copy has `lastFolder` / `lastFile` and no `windows`. On first launch after the change, seed a single-entry restored session from the pair, then delete both keys so nothing reads them again. Without that step, everyone with mallow already installed loses their open folder on the upgrade - a small loss, but an avoidable one.
+An installed copy has `lastFolder` plus either `lastFile` or, if TASK-13.4 landed first, `lastFiles` / `lastActive` (see the branch below), and no `windows`. On first launch after the change, seed a single-entry restored session from whichever keys are there, then delete them so nothing reads them again. Without that step, everyone with mallow already installed loses their open folder on the upgrade - a small loss, but an avoidable one.
+
+**If TASK-13.4 landed first, this task also owns the initial-location payload.** Hand the created window the whole `files` list plus `active`, not one file: the frontend it hands to already has a tab set, and TASK-12's vocabulary assigns that widening to TASK-13.4 only because that is the usual order. Get this wrong and the migration below preserves the tab set in settings.json and the restore path throws it away one step later.
+
+**And the key to read is not `lastFile`.** That task's fallback for shipping ahead of this one replaces `lastFile` with `lastFiles` plus `lastActive` (see it for why), so this migration seeds from whichever pair the install actually has and deletes all of them. It is one branch in a migration that has to exist regardless, which is what makes the fallback affordable; discovering it after this task ships means an install that upgraded through tabs first silently loses its tab set.
 
 **The geometry needs the same migration, and it is the more visible loss.** `.window-state.json` is keyed by label (tauri-plugin-window-state-2.4.1 `src/lib.rs:109`), every existing install has its size and position filed under `main`, and after `"create": false` nothing is ever labelled `main` again - so without a migration the first launch after the upgrade resizes and repositions every existing user's window. The entry does not even go away: the plugin loads the whole cache at setup (`:397`) and writes it back at `RunEvent::Exit` (`:502-504`) whether or not any window claims the label, so a dead `main` key would persist forever and quietly falsify TASK-12.2's claim that per-slot labels keep the file bounded by the number of windows open at once.
 
@@ -81,14 +89,14 @@ So rename the `main` entry to the label of the first restored window, in the sam
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 settings.json holds a windows key with one entry per open window (label, folder, file), ordered least-recently-focused first; it is owned and written by Rust, and lastFolder / lastFile are gone
+- [ ] #1 settings.json holds a windows key with one entry per open window (label, folder, files, active) where files is a list and active names one of its entries, ordered least-recently-focused first; it is owned and written by Rust, and lastFolder / lastFile are gone
 - [ ] #2 An entry is dropped on destroy only when the window map is non-empty at that point (the dying window is already removed), and window enumeration uses webview_windows() rather than the unstable Manager::get_focused_window family
 - [ ] #3 RunEvent::Exit flushes the live set and calls Store::save() synchronously, since the store plugin's own Exit save has already run by then and autoSave's debounce never fires
 - [ ] #4 tauri.conf.json sets create: false, every window is created in setup with its own label, and the capability window list drops main
 - [ ] #5 Launch creates one window per saved entry in saved order with its label and initial location, leaving the last one focused
 - [ ] #6 A missing folder yields an empty window rather than a dropped one; a missing file yields its folder with nothing selected; an absent windows key yields one empty window; whether a folder-less window is restored is decided and stated
 - [ ] #7 The number of restored windows is capped, dropping from the least-recently-focused end, and the cap is stated with its per-window cost (a Shiki WASM highlighter and a mermaid instance per WebView)
-- [ ] #8 An existing lastFolder / lastFile pair is migrated into a single-entry windows list on first launch and both keys are then deleted
+- [ ] #8 Whichever keys the install actually carries are migrated into a single-entry windows list on first launch and all of them are then deleted: lastFolder / lastFile, or lastFolder / lastFiles / lastActive if TASK-13.4 landed first
 - [ ] #9 How often the live set reaches disk is decided and stated, so a crash does not lose more than today's single-folder behaviour does
 - [ ] #10 report_window_content(folder, file) exists and is called whenever a window's displayed folder or file changes — the folder picker, a handed-over or restored initial location, and TASK-12.5's Open Recent replace — and focus changes reorder the entries
 - [ ] #11 The one-time migration also renames the main entry in .window-state.json to the first restored window's label, so an existing install keeps its size and position and no dead label is left behind
