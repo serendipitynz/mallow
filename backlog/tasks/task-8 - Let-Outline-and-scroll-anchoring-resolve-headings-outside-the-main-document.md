@@ -28,6 +28,8 @@ Scroll mechanism: Outline.tsx:60 currently calls el.scrollIntoView({ block: 'sta
 
 Give both modules a way to receive the lookup root and the coordinate conversion, defaulting to current behavior so MarkdownView is unaffected.
 
+TASK-13.2 may introduce the lookup root first - that half only; the coordinate conversion has no caller until a viewer's headings sit in a frame - and for a reason this task does not have in view: heading slugs are unique per document only, so two mounted markdown tabs can share an id and every lookup here is document-wide. If it lands first, this task finds the parameter already in place, and AC #2 below reads as "MarkdownView's behaviour is unchanged for a single mounted document" rather than "passes the default" - because by then it passes its tab's container. That task also gives the same treatment to a third call site outside these two modules: MarkdownView's fragment-link handler, which returns early for `#` links and lets native fragment navigation resolve them document-wide.
+
 While doing it: the Heading type lives in lib/markdown. Generalising these modules leaves a markdown-specific type dependency in code that is no longer markdown-specific - move it or record why it stays.
 <!-- SECTION:DESCRIPTION:END -->
 
