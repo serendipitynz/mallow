@@ -39,7 +39,11 @@ Check the result on Windows and Linux before calling it done. If the GTK or Win3
 - Open… - `CmdOrCtrl+O`, the same folder picker the toolbar button uses.
 - Open Recent - submenu, rebuilt from `recentFolders` (TASK-12.3).
 - separator, Clear Recent.
-- Close Window - `CmdOrCtrl+W`; the predefined `close_window` item on macOS and Windows, an ordinary item calling `window.close()` on Linux (see above).
+- Close Window - `CmdOrCtrl+W`; the predefined `close_window` item on macOS, and an ordinary item calling `window.close()` on Windows and Linux (see the accelerator note below, and the GTK rule above).
+
+**The predefined item does not give `CmdOrCtrl+W` on Windows, and its accelerator cannot be set.** muda derives it from the item type - `CmdOrCtrl+W` on macOS, `Alt+F4` everywhere else (muda-0.19.3 `src/items/predefined.rs:331-337`) - and `PredefinedMenuItem` has no accelerator setter, only a text override. `close_window` is additionally documented as unsupported on Linux (`:136-138`), which the GTK rule above already covers. So `CmdOrCtrl+W` on Windows means an ordinary `MenuItem` with that accelerator calling `window.close()`, exactly as on Linux; only macOS gets it from the predefined item. Either take that or accept `Alt+F4` on Windows, but record which.
+
+**And `CmdOrCtrl+W` moves off Close Window entirely once TASK-13 ships document tabs**, per decision-4: the expected binding then is Close Tab, with Close Window on `CmdOrCtrl+Shift+W`, and closing a tab never closing the window. Since no predefined item can hold `CmdOrCtrl+Shift+W`, that reassignment makes Close Window an ordinary item on all three platforms - so if TASK-13 has already landed, skip the predefined item here and go straight to the ordinary one. Whichever of the two tasks lands second does the reconciliation; it is recorded in both so it is not met as a surprise conflict.
 
 Menu item ids: use the folder path itself as the id for a recent entry rather than an index. Ids are arbitrary strings, and an index needs an id → path mapping kept in sync with every rebuild - a stale mapping opens the wrong folder, which is exactly the bug class worth designing out. Fixed items get `file:new-window`, `file:open`, `recent:clear`.
 
@@ -71,8 +75,9 @@ Menu labels are built in Rust; the UI language lives in localStorage and is read
 - [ ] #3 The menu bar has been looked at on Windows and on Linux and the result recorded, or the platform is explicitly recorded as unverified with the reason
 - [ ] #4 A recent entry's menu id is its folder path, not an index into the list
 - [ ] #5 macOS has a Window submenu registered via set_as_windows_menu_for_nsapp and carrying Minimize and Zoom of its own
-- [ ] #6 The menu is composed per platform: macOS keeps its app submenu; Windows and Linux get none, with Exit under File and About under Help; on Linux Exit and Close Window are ordinary items, since muda's GTK backend silently skips those predefined kinds
-- [ ] #7 Menu events resolve their target by scanning webview_windows() for the focused one — not with the unstable Manager::get_focused_window — are emitted to that window, and App.tsx listens for menu:settings through getCurrentWebviewWindow().listen
+- [ ] #6 The menu is composed per platform: macOS keeps its app submenu; Windows and Linux get none, with Exit under File and About under Help; on Linux Exit is an ordinary item, since muda's GTK backend silently skips those predefined kinds, and Close Window is ordinary on both Windows and Linux (see #7)
+- [ ] #7 While TASK-13 has not landed, Close Window carries CmdOrCtrl+W on Windows through an ordinary MenuItem, since the predefined item binds Alt+F4 there - or accepting Alt+F4 on Windows is recorded as the choice instead; if TASK-13 has landed, CmdOrCtrl+W belongs to Close Tab and Close Window takes CmdOrCtrl+Shift+W on every platform
+- [ ] #8 Menu events resolve their target by scanning webview_windows() for the focused one — not with the unstable Manager::get_focused_window — are emitted to that window, and App.tsx listens for menu:settings through getCurrentWebviewWindow().listen
 <!-- AC:END -->
 
 ## Definition of Done

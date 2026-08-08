@@ -37,6 +37,8 @@ There is no `main`. TASK-12.7 sets `"create": false` on the configured window so
 
 The rejected alternative and why: a query string (`WebviewUrl::App("index.html?folder=<encoded>".into())`, read from `location.search`) survives a WebView reload, but puts arbitrary filesystem paths through URL encoding, leaves them visible in the address the WebView loaded, and gets awkward now that the payload is a pair rather than a single path. The trade-off taken has to be stated in the code comment: after a devtools reload the entry is already consumed, so the window comes back empty rather than reopening.
 
+The payload's file half becomes a list plus which entry is active in TASK-13.4 - or, if tabs landed first, TASK-12.7 introduces it already widened and that task records it - since a window with tabs has several files open at once; the mechanism settled here does not change, only what it carries. That task and TASK-12's vocabulary both record it - see decision-4 for why the read side and the write side of that loop have to widen together.
+
 The created window then runs what `openFolder` in `src/App.tsx:51-62` runs - `allowMediaDir` awaited before `openTree`, then `startWatch` - and, when the initial location carries a file, the `expandPaths` + select sequence the restore effect already uses at `src/App.tsx:127-130`. Opening at mount is itself a change of what the window displays, so it calls `report_window_content` like any other such change (TASK-12.7 owns that command and states the rule as a predicate over the change, precisely so this path is not missed).
 
 ## Geometry stays per label
@@ -59,7 +61,7 @@ Tauri exits the app when the last window closes. On macOS the platform conventio
 <!-- AC:BEGIN -->
 - [ ] #1 open_window(location, label) is settled with both parameters: it allocates the lowest free w<n> when no label is given, and accepts one for the restore path
 - [ ] #2 A created window carries the width, height, minimum sizes and title from the configured window, so it is indistinguishable from a configured one before a document is opened
-- [ ] #3 A window created with an initial location opens it at mount: media scope granted before the tree opens, tree opened, watch started, and the file selected when the location carries one
+- [ ] #3 A window created with an initial location opens it at mount: media scope granted before the tree opens, tree opened, watch started, and the file selected when the location carries one (TASK-13.4 widens that half to a list without changing the mechanism)
 - [ ] #4 take_window_init is the handover mechanism; its consumed-on-reload behaviour and the slot-reuse geometry consequence are stated in code comments
 - [ ] #5 Window geometry stays keyed per label; map_label is not used, and the window-state file stays bounded by the number of windows open at once
 - [ ] #6 The cascade rule is one of the two recorded options and does not depend on asking the plugin whether a slot has remembered geometry; a new window never lands exactly on top of its spawner
