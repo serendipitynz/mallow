@@ -28,8 +28,10 @@ recorded anywhere:
 - *Two folders cannot be compared* — TASK-12, unchanged by this decision.
 - *Reading one document loses the previous one.* Selecting a second file in the
   tree replaces what is on screen (`src/App.tsx` sets a single `selected`, and
-  `Viewer` remounts on `key={file.path}`), so returning to the first document
-  means finding it in the tree again. Nothing in the backlog covers this.
+  `Viewer` keys its body on `key={file.path}` — `ViewerBody` at
+  `src/components/Viewer.tsx:107`, `MediaView` at `:81` — so the body remounts),
+  so returning to the first document means finding it in the tree again. Nothing
+  in the backlog covers this.
 
 ## Vocabulary (fixed before the design; TASK-13 and its subtasks use these words for these things)
 
