@@ -23,22 +23,26 @@ Close the gap TASK-14 documents: convert every implicit control-flow body to exp
 
 ## What is actually there
 
-**144 bodies**, counted from the TypeScript AST. Do not re-derive this with a regex over `if (…)` — that overcounts, because it backtracks into nested parentheses and reports braced bodies as bare. An earlier pass this way reported 151 and wrongly listed `src/lib/custom-emoji.ts:88`, which has a block.
+**143 bodies across 33 files**, re-measured on the tree TASK-15 left behind — `biome lint --only=lint/style/useBlockStatements` now reports them, so ask the tool rather than re-deriving. Do not use a regex over `if (…)`: it overcounts, because it backtracks into nested parentheses and reports braced bodies as bare. An earlier pass that way reported 151 and wrongly listed `src/lib/custom-emoji.ts:88`, which has a block.
 
-| scope | if | else | for | while | total |
-| --- | --- | --- | --- | --- | --- |
-| non-test `src/` (29 of its 39 files) | 116 | 3 | 3 | 0 | **122** |
-| `src/**/*.test.ts` | 5 | 0 | 0 | 0 | **5** |
-| `scripts/*.mjs` | 12 | 0 | 4 | 1 | **17** |
+| scope | if | else | for | while | total | files |
+| --- | --- | --- | --- | --- | --- | --- |
+| non-test `src/` | 115 | 3 | 3 | 0 | **121** | 29 |
+| `src/**/*.test.ts` | 5 | 0 | 0 | 0 | **5** | 2 |
+| `scripts/*.mjs` | 12 | 0 | 4 | 1 | **17** | 2 |
 
-Heaviest files in non-test `src/`: `App.tsx` 16, `lib/mermaid.ts` 11, `lib/mermaid-copy.ts` 9, `lib/custom-emoji.ts` 8, `components/ConfigTree.tsx` 7, then `lib/markdown.ts`, `components/MarkdownView.tsx`, `components/OpenWith.tsx` and `components/Outline.tsx` at 6 each.
+Was 144 before TASK-15: its `markdown.ts` refactor replaced three defensive operators with one guard, which cost that file one implicit `if`.
+
+Heaviest files: `src/App.tsx` 16, `src/lib/mermaid.ts` 11, `scripts/gen-third-party-notices.mjs` 10, `src/lib/mermaid-copy.ts` 9, `src/lib/custom-emoji.ts` 8, then `scripts/release-version.mjs` and `src/components/ConfigTree.tsx` at 7, and `src/components/MarkdownView.tsx`, `src/components/OpenWith.tsx`, `src/components/Outline.tsx` at 6.
 
 Everything that is not an `if` is enumerated, since these are the cases a reviewer will want to find by eye:
 
-- braceless `else` — `src/App.tsx:159`, `src/App.tsx:177`, `src/components/FileTree.tsx:75`
-- braceless `for` in `src/` — `src/lib/markdown.ts:50`, `src/lib/markdown.ts:86`, `src/lib/mermaid-copy.ts:184`
-- braceless `for` in `scripts/` — `gen-third-party-notices.mjs:151`, `:188`, `:193`, `release-version.mjs:171`
+- braceless `else` — `src/App.tsx:162`, `src/App.tsx:180`, `src/components/FileTree.tsx:75`
+- braceless `for` in `src/` — `src/lib/markdown.ts:50`, `src/lib/markdown.ts:86`, `src/lib/mermaid-copy.ts:188`
+- braceless `for` in `scripts/` — `gen-third-party-notices.mjs:151`, `:188`, `:193`, `release-version.mjs:168`
 - the repo's only braceless `while` — `gen-third-party-notices.mjs:70`
+
+These line numbers were re-derived after TASK-15's reformat moved them; treat them as a reading aid and let the tool be the authority, exactly as with `AGENTS.md` references.
 
 `src-tauri/src/` needs no change — Rust requires the braces, so it already conforms, and Biome does not read Rust in any case.
 
@@ -48,7 +52,7 @@ The dominant shape is the early return: `if (!dir) return;` at `src/App.tsx:53`,
 
 ## Scope comes from TASK-15
 
-TASK-15 decides what `biome.json` reads — `src/` only, or plus `src/**/*.test.ts`, or plus `scripts/*.mjs`. This task applies that decision and does not revisit it. If the scope excludes `scripts/*.mjs`, 17 of the 144 stay as they are, and that is the intended outcome rather than an omission to fix quietly.
+**TASK-15 decided it: everything is in scope.** `biome.json` reads `src/**/*.ts(x)` including `src/**/*.test.ts`, plus `scripts/*.mjs`, `vite.config.ts` and `vitest.config.ts`. So all 143 are this task's to convert — none are carved out. Apply that decision; do not revisit it.
 
 ## How to run it
 
