@@ -1,10 +1,10 @@
 ---
 id: TASK-15
 title: Set up Biome so the conventions are enforced
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-07 22:32'
-updated_date: '2026-08-14 12:11'
+updated_date: '2026-08-14 12:41'
 labels:
   - chore
 milestone: m-0
@@ -166,7 +166,7 @@ The defaults expand compact struct literals — `entries.push(FileEntry { name, 
 - [x] #10 Generated output is excluded (vcs.useIgnoreFile or explicit entries), and pnpm release --dry-run still matches its version patterns after any JSON reformat
 - [x] #11 stylelint is not added; the measurement that rejected it is recorded so the option is not reopened without new evidence
 - [x] #12 A CI workflow runs on pull requests and on the default branch, running biome ci, pnpm build, pnpm test, cargo fmt --check, cargo check and cargo test
-- [ ] #13 The first CI run was green before the check is relied on; any pre-existing failure was fixed or suppressed deliberately rather than by disabling the step
+- [x] #13 The first CI run was green before the check is relied on; any pre-existing failure was fixed or suppressed deliberately rather than by disabling the step
 - [x] #14 rustfmt.toml records a deliberately chosen configuration, not the defaults
 - [x] #15 formatter.indentStyle, indentWidth, lineWidth, javascript.formatter.quoteStyle and javascript.formatter.semicolons are chosen deliberately against the existing code, not left at Biome's defaults by omission
 - [x] #16 The size of the bulk reformat was measured after the scope was fixed, not assumed - excluding src/**/*.test.ts changes it from roughly 573 lines to roughly 81
@@ -174,5 +174,5 @@ The defaults expand compact struct literals — `entries.push(FileEntry { name, 
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 pnpm build and pnpm test still pass; THIRD-PARTY-NOTICES.md is confirmed unchanged rather than assumed unchanged
+- [x] #1 pnpm build and pnpm test still pass; THIRD-PARTY-NOTICES.md is confirmed unchanged rather than assumed unchanged
 <!-- DOD:END -->
