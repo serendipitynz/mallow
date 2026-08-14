@@ -18,7 +18,9 @@ export function Explorer({ tree, selectedPath, onSelect, onOpenFolder }: Explore
 
   // Roving keyboard navigation over the visible tree rows.
   function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    if (!['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      return;
+    }
     const rows = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('.tree__row'));
     const idx = rows.indexOf(document.activeElement as HTMLButtonElement);
     if (idx === -1) {

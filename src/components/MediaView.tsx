@@ -49,7 +49,9 @@ function ImageView({ src, name }: { src: string; name: string }) {
      next file loads fine. */
   useEffect(() => setFailed(false), [src]);
 
-  if (failed) return <Unsupported name={name} />;
+  if (failed) {
+    return <Unsupported name={name} />;
+  }
   return (
     <div className="media-view media-view--image">
       <img src={src} alt={name} onError={() => setFailed(true)} />
@@ -62,7 +64,9 @@ function VideoView({ src, name }: { src: string; name: string }) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: see ImageView above.
   useEffect(() => setFailed(false), [src]);
 
-  if (failed) return <Unsupported name={name} />;
+  if (failed) {
+    return <Unsupported name={name} />;
+  }
   return (
     <div className="media-view media-view--video">
       {/* biome-ignore lint/a11y/useMediaCaption: the file the user opened is the only source

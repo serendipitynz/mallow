@@ -14,7 +14,9 @@ export interface Settings {
 let storePromise: Promise<Store> | null = null;
 
 function getStore(): Promise<Store> {
-  if (!storePromise) storePromise = load('settings.json', { autoSave: true, defaults: {} });
+  if (!storePromise) {
+    storePromise = load('settings.json', { autoSave: true, defaults: {} });
+  }
   return storePromise;
 }
 

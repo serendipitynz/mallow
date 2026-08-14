@@ -59,31 +59,47 @@ function enqueueRerender(theme: Resolved): void {
 }
 
 function subscribeThemeOnce(): void {
-  if (subscribed) return;
+  if (subscribed) {
+    return;
+  }
   subscribed = true;
   onThemeChange((theme) => enqueueRerender(theme));
 }
 
 async function rerenderPass(theme: Resolved, gen: number): Promise<void> {
-  if (gen !== themeGeneration) return;
+  if (gen !== themeGeneration) {
+    return;
+  }
   const wrappers = Array.from(document.querySelectorAll<HTMLElement>('.mermaid-rendered[data-mermaid-source]'));
-  if (wrappers.length === 0) return;
+  if (wrappers.length === 0) {
+    return;
+  }
   const mermaid = await loadMermaid();
   initMermaid(mermaid, theme);
   for (const wrapper of wrappers) {
-    if (gen !== themeGeneration) return;
+    if (gen !== themeGeneration) {
+      return;
+    }
     const code = wrapper.dataset.mermaidSource;
-    if (!code) continue;
+    if (!code) {
+      continue;
+    }
     const svg = await renderSvg(code, mermaid);
-    if (svg === null) continue;
-    if (gen !== themeGeneration) return;
+    if (svg === null) {
+      continue;
+    }
+    if (gen !== themeGeneration) {
+      return;
+    }
     applySvg(wrapper, svg);
   }
 }
 
 export async function renderMermaid(root: ParentNode = document): Promise<void> {
   const blocks = Array.from(root.querySelectorAll<HTMLElement>('pre.mermaid'));
-  if (blocks.length === 0) return;
+  if (blocks.length === 0) {
+    return;
+  }
 
   const mermaid = await loadMermaid();
   const renderedTheme = resolveTheme();
@@ -91,9 +107,13 @@ export async function renderMermaid(root: ParentNode = document): Promise<void> 
 
   for (const block of blocks) {
     const code = (block.textContent ?? '').trim();
-    if (!code) continue;
+    if (!code) {
+      continue;
+    }
     const svg = await renderSvg(code, mermaid);
-    if (svg === null) continue;
+    if (svg === null) {
+      continue;
+    }
     const wrapper = document.createElement('div');
     wrapper.className = 'mermaid-rendered';
     wrapper.dataset.mermaidSource = code;
@@ -105,5 +125,7 @@ export async function renderMermaid(root: ParentNode = document): Promise<void> 
   // Catch-up: a theme change during the async render above fired before we
   // subscribed, so re-enqueue against the now-current theme if it moved.
   const current = resolveTheme();
-  if (current !== renderedTheme) enqueueRerender(current);
+  if (current !== renderedTheme) {
+    enqueueRerender(current);
+  }
 }

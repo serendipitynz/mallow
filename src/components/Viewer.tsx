@@ -63,7 +63,9 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
         }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;

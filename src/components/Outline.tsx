@@ -18,7 +18,9 @@ export function Outline({ headings, scrollRef }: OutlineProps) {
 
   useEffect(() => {
     const container = scrollRef.current;
-    if (!container || headings.length === 0) return;
+    if (!container || headings.length === 0) {
+      return;
+    }
 
     const offset = SPY_OFFSET_REM * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
 
@@ -27,7 +29,9 @@ export function Outline({ headings, scrollRef }: OutlineProps) {
       let current = headings[0]?.slug ?? null;
       for (const h of headings) {
         const el = document.getElementById(h.slug);
-        if (!el) continue;
+        if (!el) {
+          continue;
+        }
         if (el.getBoundingClientRect().top - containerTop - offset <= 0) {
           current = h.slug;
         } else {
@@ -38,7 +42,9 @@ export function Outline({ headings, scrollRef }: OutlineProps) {
     };
 
     const onScroll = () => {
-      if (ticking.current) return;
+      if (ticking.current) {
+        return;
+      }
       ticking.current = true;
       requestAnimationFrame(() => {
         ticking.current = false;
@@ -52,13 +58,19 @@ export function Outline({ headings, scrollRef }: OutlineProps) {
   }, [headings, scrollRef]);
 
   function go(event: React.MouseEvent, slug: string) {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
     event.preventDefault();
     const el = document.getElementById(slug);
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+    if (!el.hasAttribute('tabindex')) {
+      el.setAttribute('tabindex', '-1');
+    }
     el.focus({ preventScroll: true });
   }
 

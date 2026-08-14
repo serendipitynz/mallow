@@ -48,10 +48,14 @@ export async function copyText(text: string): Promise<boolean> {
 
 /** Wrap a single `<pre>` and attach its copy button. */
 function enhance(pre: HTMLElement): void {
-  if (pre.parentElement?.classList.contains('code-block')) return;
+  if (pre.parentElement?.classList.contains('code-block')) {
+    return;
+  }
 
   const code = pre.querySelector('code');
-  if (!code) return;
+  if (!code) {
+    return;
+  }
 
   const container = document.createElement('div');
   container.className = 'code-block';

@@ -36,8 +36,12 @@ function cloneForExport(live: SVGSVGElement): { clone: SVGSVGElement; width: num
   clone.setAttribute('height', String(height));
   clone.style.maxWidth = 'none';
 
-  if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  if (!clone.getAttribute('xmlns:xlink')) clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  if (!clone.getAttribute('xmlns')) {
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
+  if (!clone.getAttribute('xmlns:xlink')) {
+    clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  }
 
   return { clone, width, height };
 }
@@ -47,13 +51,19 @@ function inlineForeignObjectStyles(live: SVGSVGElement, clone: SVGSVGElement): v
   const cloneNodes = clone.querySelectorAll<HTMLElement>('foreignObject *');
   liveNodes.forEach((node, i) => {
     const target = cloneNodes[i];
-    if (!target) return;
+    if (!target) {
+      return;
+    }
     const computed = getComputedStyle(node);
     let inline = target.getAttribute('style')?.trim() ?? '';
-    if (inline && !inline.endsWith(';')) inline += ';';
+    if (inline && !inline.endsWith(';')) {
+      inline += ';';
+    }
     for (const prop of FOREIGN_OBJECT_PROPS) {
       const value = computed.getPropertyValue(prop);
-      if (value) inline += `${prop}:${value};`;
+      if (value) {
+        inline += `${prop}:${value};`;
+      }
     }
     target.setAttribute('style', inline);
   });
@@ -124,7 +134,9 @@ async function copyPng(svg: SVGSVGElement): Promise<CopyResult> {
     console.error('Failed to rasterize diagram to PNG', error);
     return null;
   });
-  if (!blob) return 'failed';
+  if (!blob) {
+    return 'failed';
+  }
   download(blob, 'diagram.png');
   return 'downloaded';
 }
@@ -179,12 +191,18 @@ function makeButton(action: Action, svg: SVGSVGElement): HTMLButtonElement {
 
 /** Attach the PNG/SVG copy toolbar to a rendered `.mermaid-rendered` container. */
 export function attachDiagramCopyControls(container: HTMLElement): void {
-  if (container.querySelector(':scope > .mermaid-copy')) return;
+  if (container.querySelector(':scope > .mermaid-copy')) {
+    return;
+  }
   const svg = container.querySelector<SVGSVGElement>('svg');
-  if (!svg) return;
+  if (!svg) {
+    return;
+  }
 
   const bar = document.createElement('div');
   bar.className = 'mermaid-copy';
-  for (const action of ACTIONS) bar.appendChild(makeButton(action, svg));
+  for (const action of ACTIONS) {
+    bar.appendChild(makeButton(action, svg));
+  }
   container.appendChild(bar);
 }

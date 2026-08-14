@@ -5,10 +5,10 @@ name: Check
 # list cannot drift apart.
 #
 # `biome ci` is the non-writing variant intended for this. It fails on errors
-# but not on warnings, which is what lets style/useBlockStatements sit at warn
-# until TASK-16 converts the bodies still in the tree. Do NOT add
-# --error-on-warnings while any rule is parked at warn — that is a reasonable
-# tightening only once nothing is.
+# but not on warnings, so a rule left at warn gates nothing here. Keep any rule
+# this workflow is meant to enforce at `error` in biome.json rather than reaching
+# for --error-on-warnings, which would promote every warn-level rule at once,
+# including ones nobody triaged.
 #
 # The frontend and Rust halves are separate jobs so a failure names which side
 # broke, and so the Rust job's system dependencies and toolchain cache do not
@@ -25,9 +25,18 @@ on:
 permissions:
   contents: read
 
+# Superseding a run is right on a pull request, where only the tip matters, and
+# wrong on main: a release has to be able to tell whether a given commit was
+# verified, and a cancelled run cannot answer that.
+#
+# `cancel-in-progress: false` alone would not achieve it. A queued run also
+# evicts whatever was already *pending* in its group, so three pushes to main in
+# quick succession leave the middle commit cancelled — the same hole, moved. So
+# main pushes get a group per commit instead, where nothing can contend and
+# nothing is ever pending; only pull requests share a group per ref.
 concurrency:
-  group: check-${{ github.ref }}
-  cancel-in-progress: true
+  group: check-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   frontend:

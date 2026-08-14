@@ -47,7 +47,9 @@ export interface CustomEmojiSet {
  */
 function ownKeysOnly(table: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = Object.create(null);
-  for (const name of Object.keys(table)) out[name] = table[name];
+  for (const name of Object.keys(table)) {
+    out[name] = table[name];
+  }
   return out;
 }
 
@@ -83,7 +85,9 @@ export function setCustomEmoji(set: CustomEmojiSet | null): void {
   customEmoji = set ? { unicode: ownKeysOnly(set.unicode), images: ownKeysOnly(set.images) } : EMPTY_EMOJI;
   mdPromise = null;
   configVersion += 1;
-  for (const listener of configListeners) listener();
+  for (const listener of configListeners) {
+    listener();
+  }
 }
 
 // GitHub-compatible, deduplicating slugs (same library Astro uses). Reset before
@@ -159,8 +163,12 @@ function taskLists(md: MarkdownIt): void {
         listStack.pop();
         continue;
       }
-      if (token.type !== 'inline' || i < 2) continue;
-      if (tokens[i - 1].type !== 'paragraph_open' || tokens[i - 2].type !== 'list_item_open') continue;
+      if (token.type !== 'inline' || i < 2) {
+        continue;
+      }
+      if (tokens[i - 1].type !== 'paragraph_open' || tokens[i - 2].type !== 'list_item_open') {
+        continue;
+      }
 
       // Match on the first child rather than `inline.content` so a marker that
       // inline parsing already turned into something else (a link, emphasis) is
@@ -174,7 +182,9 @@ function taskLists(md: MarkdownIt): void {
         continue;
       }
       const match = TASK_MARKER.exec(first.content);
-      if (!match) continue;
+      if (!match) {
+        continue;
+      }
 
       first.content = first.content.slice(match[0].length);
       token.content = token.content.slice(match[0].length);

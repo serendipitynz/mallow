@@ -71,8 +71,11 @@ function TreeItem({ entry, depth, tree, selectedPath, onSelect, onToggle }: Item
   const childStatusStyle = indentStyle(depth + 1);
 
   function activate() {
-    if (entry.isDir) onToggle(entry.path);
-    else onSelect(entry);
+    if (entry.isDir) {
+      onToggle(entry.path);
+    } else {
+      onSelect(entry);
+    }
   }
 
   return (

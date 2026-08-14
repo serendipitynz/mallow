@@ -70,7 +70,9 @@ function safeDirName(value: unknown): string | null {
 /** The manifest, or null when there is none / it is unreadable or malformed.
  *  A missing manifest is the normal case for a plain folder of images. */
 async function readManifest(path: string): Promise<Manifest | null> {
-  if (!(await pathExists(path))) return null;
+  if (!(await pathExists(path))) {
+    return null;
+  }
   try {
     const parsed: unknown = JSON.parse(await readFile(path));
     return isRecord(parsed) ? parsed : null;
@@ -86,11 +88,15 @@ async function scanImages(dir: string): Promise<{ byFile: Map<string, string>; b
   const byFile = new Map<string, string>();
   const byStem = new Map<string, string>();
   for (const entry of await readDirTree(dir)) {
-    if (entry.isDir || entry.kind !== 'image') continue;
+    if (entry.isDir || entry.kind !== 'image') {
+      continue;
+    }
     byFile.set(entry.name, entry.path);
     const stem = entry.name.replace(/\.[^.]+$/, '');
     // First file wins when two extensions share a stem, so the set is stable.
-    if (!byStem.has(stem)) byStem.set(stem, entry.path);
+    if (!byStem.has(stem)) {
+      byStem.set(stem, entry.path);
+    }
   }
   return { byFile, byStem };
 }
@@ -117,23 +123,33 @@ export async function loadCustomEmoji(dir: string): Promise<CustomEmojiLoad> {
   // Manifest entries first: they get to pick which file backs their name.
   if (Array.isArray(manifest?.images)) {
     for (const entry of manifest.images) {
-      if (!isRecord(entry) || !validName(entry.name)) continue;
+      if (!isRecord(entry) || !validName(entry.name)) {
+        continue;
+      }
       const path = (typeof entry.file === 'string' ? byFile.get(entry.file) : undefined) ?? byStem.get(entry.name);
-      if (path) images[entry.name] = convertFileSrc(path);
+      if (path) {
+        images[entry.name] = convertFileSrc(path);
+      }
     }
   }
   // Then everything else in the folder, so an image can be added without
   // touching the manifest.
   for (const [stem, path] of byStem) {
-    if (validName(stem) && !(stem in images)) images[stem] = convertFileSrc(path);
+    if (validName(stem) && !(stem in images)) {
+      images[stem] = convertFileSrc(path);
+    }
   }
 
   const unicode: Record<string, string> = Object.create(null);
   if (Array.isArray(manifest?.unicode)) {
     for (const entry of manifest.unicode) {
-      if (!isRecord(entry) || !validName(entry.name)) continue;
+      if (!isRecord(entry) || !validName(entry.name)) {
+        continue;
+      }
       const { char } = entry;
-      if (typeof char !== 'string' || char.length === 0 || char.length > MAX_CHAR_LENGTH) continue;
+      if (typeof char !== 'string' || char.length === 0 || char.length > MAX_CHAR_LENGTH) {
+        continue;
+      }
       unicode[entry.name] = char;
     }
   }

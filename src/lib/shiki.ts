@@ -63,7 +63,9 @@ export const stripPreBackground: ShikiTransformer = {
   name: 'strip-pre-background',
   pre(node) {
     const style = node.properties?.style;
-    if (typeof style !== 'string') return;
+    if (typeof style !== 'string') {
+      return;
+    }
     const stripped = style
       .replace(/background-color:[^;]*;?/g, '')
       .replace(/^\s*;?\s*/, '')

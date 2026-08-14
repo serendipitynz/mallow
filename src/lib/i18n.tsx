@@ -143,12 +143,16 @@ const messages: Record<Lang, Dict> = { ja, en };
 function detectLang(): Lang {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'ja' || stored === 'en') return stored;
+    if (stored === 'ja' || stored === 'en') {
+      return stored;
+    }
   } catch {
     // private mode / disabled storage: fall through to OS detection
   }
   const nav = (navigator.language || '').toLowerCase();
-  if (nav.startsWith('en')) return 'en';
+  if (nav.startsWith('en')) {
+    return 'en';
+  }
   return 'ja';
 }
 
@@ -157,7 +161,9 @@ export type TFn = (key: string, params?: TParams) => string;
 
 function translate(lang: Lang, key: string, params?: TParams): string {
   const template = messages[lang][key] ?? messages.ja[key] ?? key;
-  if (!params) return template;
+  if (!params) {
+    return template;
+  }
   return template.replace(/\{(\w+)\}/g, (_, name: string) =>
     params[name] !== undefined ? String(params[name]) : `{${name}}`,
   );
@@ -199,7 +205,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
 export function useI18n(): I18nValue {
   const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error('useI18n must be used within an I18nProvider');
+  if (!ctx) {
+    throw new Error('useI18n must be used within an I18nProvider');
+  }
   return ctx;
 }
 

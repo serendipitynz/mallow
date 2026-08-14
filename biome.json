@@ -38,7 +38,7 @@
     "rules": {
       "preset": "recommended",
       "style": {
-        "useBlockStatements": "warn"
+        "useBlockStatements": "error"
       }
     }
   }

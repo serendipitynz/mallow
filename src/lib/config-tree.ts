@@ -25,8 +25,12 @@ export const FORCE_EXPAND_MAX_DEPTH = 6;
  * - `undefined`           → default: only the top {@link AUTO_EXPAND_DEPTH} levels.
  */
 export function initialBranchOpen(forceOpen: boolean | undefined, depth: number): boolean {
-  if (forceOpen === true) return depth < FORCE_EXPAND_MAX_DEPTH;
-  if (forceOpen === false) return false;
+  if (forceOpen === true) {
+    return depth < FORCE_EXPAND_MAX_DEPTH;
+  }
+  if (forceOpen === false) {
+    return false;
+  }
   return depth < AUTO_EXPAND_DEPTH;
 }
 

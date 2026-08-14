@@ -6,8 +6,12 @@ import { ShareIcon } from './icons';
 
 function revealManagerKey(): string {
   const p = navigator.platform.toLowerCase();
-  if (p.includes('mac')) return 'manager.finder';
-  if (p.includes('win')) return 'manager.explorer';
+  if (p.includes('mac')) {
+    return 'manager.finder';
+  }
+  if (p.includes('win')) {
+    return 'manager.explorer';
+  }
   return 'manager.fileManager';
 }
 
@@ -24,9 +28,13 @@ export function OpenWith({ file }: { file: FileEntry | null }) {
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
@@ -35,12 +43,16 @@ export function OpenWith({ file }: { file: FileEntry | null }) {
   const disabled = !file;
 
   function openIn(id: string) {
-    if (file) void openInEditor(id, file.path).catch((e) => console.error(e));
+    if (file) {
+      void openInEditor(id, file.path).catch((e) => console.error(e));
+    }
     setOpen(false);
   }
 
   function reveal() {
-    if (file) void revealInOs(file.path).catch((e) => console.error(e));
+    if (file) {
+      void revealInOs(file.path).catch((e) => console.error(e));
+    }
     setOpen(false);
   }
 
