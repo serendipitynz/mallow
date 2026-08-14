@@ -1,10 +1,10 @@
 ---
 id: TASK-16
 title: Convert every implicit control-flow body to explicit blocks
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-07 22:33'
-updated_date: '2026-08-14 20:25'
+updated_date: '2026-08-14 22:20'
 labels:
   - chore
 milestone: m-0
