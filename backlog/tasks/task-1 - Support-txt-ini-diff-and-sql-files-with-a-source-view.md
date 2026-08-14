@@ -4,9 +4,10 @@ title: 'Support txt, ini, diff and sql files with a source view'
 status: To Do
 assignee: []
 created_date: '2026-07-30 08:55'
-updated_date: '2026-07-30 10:44'
+updated_date: '2026-08-14 05:03'
 labels:
   - feature
+milestone: m-0
 dependencies:
   - TASK-9
   - TASK-10

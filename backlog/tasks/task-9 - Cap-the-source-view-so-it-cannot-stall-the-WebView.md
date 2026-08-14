@@ -4,9 +4,10 @@ title: Cap the source view so it cannot stall the WebView
 status: To Do
 assignee: []
 created_date: '2026-07-30 10:04'
-updated_date: '2026-07-30 10:46'
+updated_date: '2026-08-14 05:03'
 labels:
   - feature
+milestone: m-0
 dependencies: []
 priority: high
 ordinal: 600

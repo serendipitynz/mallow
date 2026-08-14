@@ -4,9 +4,10 @@ title: Set up Biome so the conventions are enforced
 status: To Do
 assignee: []
 created_date: '2026-08-07 22:32'
-updated_date: '2026-08-08 00:41'
+updated_date: '2026-08-14 05:03'
 labels:
   - chore
+milestone: m-0
 dependencies:
   - TASK-14
 priority: medium

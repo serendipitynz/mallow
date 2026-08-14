@@ -4,9 +4,10 @@ title: Write the coding style into the project conventions
 status: To Do
 assignee: []
 created_date: '2026-08-07 22:31'
-updated_date: '2026-08-08 00:23'
+updated_date: '2026-08-14 05:03'
 labels:
   - documentation
+milestone: m-0
 dependencies: []
 priority: medium
 type: docs

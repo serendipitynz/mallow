@@ -4,9 +4,10 @@ title: Document the new file kinds and the HTML untrusted-input boundary
 status: To Do
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-07-30 10:45'
+updated_date: '2026-08-14 05:04'
 labels:
   - documentation
+milestone: m-0
 dependencies:
   - TASK-1
   - TASK-2
