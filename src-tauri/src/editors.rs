@@ -66,7 +66,12 @@ pub fn open(id: &str, path: &str) -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 pub fn reveal(path: &str) -> Result<(), String> {
-    Command::new("open").arg("-R").arg(path).spawn().map(|_| ()).map_err(|e| e.to_string())
+    Command::new("open")
+        .arg("-R")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 // ---- Windows ----------------------------------------------------------------
@@ -85,14 +90,10 @@ fn win_editor_exe(id: &str) -> Option<String> {
             format!("{local}\\Programs\\Microsoft VS Code\\Code.exe"),
             format!("{pf}\\Microsoft VS Code\\Code.exe"),
         ]),
-        "notepadpp" => first_existing(&[
-            format!("{pf}\\Notepad++\\notepad++.exe"),
-            format!("{pf86}\\Notepad++\\notepad++.exe"),
-        ]),
-        "sakura" => first_existing(&[
-            format!("{pf86}\\sakura\\sakura.exe"),
-            format!("{pf}\\sakura\\sakura.exe"),
-        ]),
+        "notepadpp" => {
+            first_existing(&[format!("{pf}\\Notepad++\\notepad++.exe"), format!("{pf86}\\Notepad++\\notepad++.exe")])
+        }
+        "sakura" => first_existing(&[format!("{pf86}\\sakura\\sakura.exe"), format!("{pf}\\sakura\\sakura.exe")]),
         _ => None,
     }
 }
@@ -109,25 +110,35 @@ pub fn detect() -> Vec<EditorInfo> {
 #[cfg(target_os = "windows")]
 pub fn open(id: &str, path: &str) -> Result<(), String> {
     let exe = win_editor_exe(id).ok_or_else(|| format!("editor not found: {id}"))?;
-    Command::new(exe).arg(path).spawn().map(|_| ()).map_err(|e| e.to_string())
+    Command::new(exe)
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(target_os = "windows")]
 pub fn reveal(path: &str) -> Result<(), String> {
-    Command::new("explorer").arg(format!("/select,{path}")).spawn().map(|_| ()).map_err(|e| e.to_string())
+    Command::new("explorer")
+        .arg(format!("/select,{path}"))
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 // ---- Linux ------------------------------------------------------------------
 #[cfg(target_os = "linux")]
 fn in_path(cmd: &str) -> bool {
-    Command::new("sh").arg("-c").arg(format!("command -v {cmd}")).output().map(|o| o.status.success()).unwrap_or(false)
+    Command::new("sh")
+        .arg("-c")
+        .arg(format!("command -v {cmd}"))
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
 }
 
 #[cfg(target_os = "linux")]
-const LINUX_EDITORS: &[(&str, &str, &str)] = &[
-    ("vscode", "VS Code", "code"),
-    ("zed", "Zed", "zed"),
-];
+const LINUX_EDITORS: &[(&str, &str, &str)] = &[("vscode", "VS Code", "code"), ("zed", "Zed", "zed")];
 
 #[cfg(target_os = "linux")]
 pub fn detect() -> Vec<EditorInfo> {
@@ -145,14 +156,25 @@ pub fn open(id: &str, path: &str) -> Result<(), String> {
         .find(|(eid, _, _)| *eid == id)
         .map(|(_, _, cmd)| *cmd)
         .ok_or_else(|| format!("unknown editor: {id}"))?;
-    Command::new(cmd).arg(path).spawn().map(|_| ()).map_err(|e| e.to_string())
+    Command::new(cmd)
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(target_os = "linux")]
 pub fn reveal(path: &str) -> Result<(), String> {
     // Reveal isn't standardized on Linux; open the parent directory.
-    let dir = Path::new(path).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_else(|| path.to_string());
-    Command::new("xdg-open").arg(dir).spawn().map(|_| ()).map_err(|e| e.to_string())
+    let dir = Path::new(path)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.to_string());
+    Command::new("xdg-open")
+        .arg(dir)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 // ---- Commands ---------------------------------------------------------------
