@@ -36,6 +36,9 @@ export function SettingsModal({
   if (!open) return null;
 
   return (
+    /* biome-ignore lint/a11y/noStaticElementInteractions: the overlay is a click-outside target,
+       not a control. Closing is also reachable by Escape (the effect above) and by the close
+       button below, so the backdrop is not the only path to it. */
     <div
       className="modal-overlay"
       role="presentation"
@@ -53,6 +56,9 @@ export function SettingsModal({
         <div className="modal__body">
           <section className="settings-group">
             <h3 className="settings-group__label">{t('explorerPosition')}</h3>
+            {/* biome-ignore lint/a11y/useSemanticElements: role="group" is the ARIA pattern for a
+                button cluster. The semantic alternative, <fieldset>, is for form controls and
+                requires a <legend>; the label is already carried by aria-label and the <h3>. */}
             <div className="seg" role="group" aria-label={t('explorerPosition')}>
               <button
                 type="button"
@@ -75,6 +81,7 @@ export function SettingsModal({
 
           <section className="settings-group">
             <h3 className="settings-group__label">{t('language')}</h3>
+            {/* biome-ignore lint/a11y/useSemanticElements: see the explorer-position group above. */}
             <div className="seg" role="group" aria-label={t('language')}>
               {LANGS.map((l) => (
                 <button

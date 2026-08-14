@@ -97,6 +97,10 @@ let headingSink: Heading[] = [];
  * them alone and the client renderer (lib/mermaid.ts) can pick them up.
  */
 function mermaidFence(md: MarkdownIt): void {
+  /* biome-ignore lint/style/noNonNullAssertion: markdown-it always installs a fence rule, but its
+     types make it optional. A fabricated fallback is worse than asserting: it would silently
+     diverge from markdown-it's real fence renderer (Shiki highlighting included) if this ever
+     stopped holding, instead of throwing where it can be seen. */
   const defaultFence = md.renderer.rules.fence!;
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {
     const token = tokens[idx];
@@ -161,8 +165,14 @@ function taskLists(md: MarkdownIt): void {
       // Match on the first child rather than `inline.content` so a marker that
       // inline parsing already turned into something else (a link, emphasis) is
       // left alone.
-      const first = token.children?.[0];
-      if (!first || first.type !== 'text') continue;
+      const children = token.children;
+      if (!children) {
+        continue;
+      }
+      const first = children[0];
+      if (first?.type !== 'text') {
+        continue;
+      }
       const match = TASK_MARKER.exec(first.content);
       if (!match) continue;
 
@@ -176,12 +186,12 @@ function taskLists(md: MarkdownIt): void {
       // routinely contains links, and a label must not contain interactive
       // elements. `aria-labelledby` would work too but needs ids that could
       // collide with the heading anchors in the same document.
-      const name = inlineText(token.children ?? []);
+      const name = inlineText(children);
       const checkbox = new state.Token('html_inline', '', 0);
       checkbox.content = `<input class="task-list-item-checkbox" type="checkbox" disabled${
         match[1].toLowerCase() === 'x' ? ' checked' : ''
       }${name ? ` aria-label="${md.utils.escapeHtml(name)}"` : ''}>`;
-      token.children!.unshift(checkbox);
+      children.unshift(checkbox);
 
       tokens[i - 2].attrJoin('class', 'task-list-item');
       // attrJoin would repeat the class once per item in the list.

@@ -34,6 +34,9 @@ export function ConfigView({ source, file }: ConfigViewProps) {
       <div className="doc cfg">
         <div className="doc__bar">
           {outcome.ok && mode === 'tree' && (
+            /* biome-ignore lint/a11y/useSemanticElements: role="group" is the ARIA pattern for a
+               button cluster; <fieldset> is for form controls and requires a <legend>, while the
+               label is already carried by aria-label. */
             <div className="cfg-expand" role="group" aria-label={t('expandControls')}>
               <button type="button" className="icon-btn" title={t('expandAll')} aria-label={t('expandAll')} onClick={expandAll}>
                 <ListChevronsUpDownIcon />
@@ -50,6 +53,7 @@ export function ConfigView({ source, file }: ConfigViewProps) {
             </div>
           )}
           {outcome.ok && (
+            /* biome-ignore lint/a11y/useSemanticElements: see the expand-controls group above. */
             <div className="seg" role="group" aria-label={t('viewMode')}>
               <button
                 type="button"

@@ -72,7 +72,8 @@ export default function App() {
   // the last `saveSetting` to land, and the remembered folder would disagree
   // with the one on screen.
   const applyEmojiDir = useCallback(async (dir: string | null, persist = false) => {
-    const generation = (emojiGeneration.current += 1);
+    emojiGeneration.current += 1;
+    const generation = emojiGeneration.current;
     const commit = (status: CustomEmojiStatus, set: CustomEmojiSet | null) => {
       if (generation !== emojiGeneration.current) return;
       setCustomEmoji(set);
@@ -151,7 +152,9 @@ export default function App() {
     };
 
     onFsChange((paths) => {
-      paths.forEach((p) => changed.add(p));
+      paths.forEach((p) => {
+        changed.add(p);
+      });
       window.clearTimeout(timer);
       timer = window.setTimeout(flush, 150);
     }).then((fn) => {
@@ -227,8 +230,14 @@ export default function App() {
     <Explorer tree={tree} selectedPath={selected?.path ?? null} onSelect={selectFile} onOpenFolder={openFolder} />
   );
   const resizer = (
+    // A drag-only splitter: no keyboard path today, so a tab stop would be focusable and inert,
+    // and aria-valuenow would report a width nothing can change. Arrow-key resizing is a UI
+    // change, tracked separately. HTML has no splitter element, so role says what this is.
+    // biome-ignore lint/a11y/useFocusableInteractive: drag-only, see above
+    // biome-ignore lint/a11y/useSemanticElements: no semantic splitter element exists
     <div
       className={`app__resizer${dragging ? ' is-dragging' : ''}`}
+      // biome-ignore lint/a11y/useAriaPropsForRole: drag-only, see above
       role="separator"
       aria-orientation="vertical"
       onMouseDown={startResize}

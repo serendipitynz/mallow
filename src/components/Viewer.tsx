@@ -25,6 +25,9 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: keyed on file?.path, not on `file`, on
+     purpose. The parent rebuilds the FileEntry object on every tree refresh, so depending on `file`
+     would re-read the same document each time the watcher fires. */
   useEffect(() => {
     if (!file) {
       setContent(null);

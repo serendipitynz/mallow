@@ -48,6 +48,9 @@ export function MarkdownView({ source }: { source: string }) {
   // changed in Settings) instead of making the user reopen the file.
   const configVersion = useSyncExternalStore(subscribeMarkdownConfig, getMarkdownConfigVersion);
 
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: configVersion is not read in the body
+     — it is the re-render trigger. Dropping it, as the rule suggests, would leave an open document
+     showing the old emoji table after Settings changes it. */
   useEffect(() => {
     let cancelled = false;
     // Capture against the still-mounted previous content before swapping it.
@@ -134,6 +137,9 @@ export function MarkdownView({ source }: { source: string }) {
               <TableOfContentsIcon />
             </button>
           )}
+          {/* biome-ignore lint/a11y/useSemanticElements: role="group" is the ARIA pattern for a
+              button cluster; <fieldset> is for form controls and requires a <legend>, while the
+              label is already carried by aria-label. */}
           <div className="seg" role="group" aria-label={t('viewMode')}>
             <button
               type="button"
@@ -162,11 +168,12 @@ export function MarkdownView({ source }: { source: string }) {
           <>
             {renderError && <div className="doc-error">{t('renderError', { message: renderError })}</div>}
             <div className="doc__body">
-              <article
-                ref={articleRef}
-                className="markdown-body"
-                dangerouslySetInnerHTML={{ __html: result?.html ?? '' }}
-              />
+              {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is rendered at
+                  runtime, so injecting the HTML is the mechanism, not an oversight. What keeps
+                  it safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":
+                  markdown-it runs with html: false, its validateLink drops dangerous schemes,
+                  and the CSP forbids inline script. Read that section before changing this. */}
+              <article ref={articleRef} className="markdown-body" dangerouslySetInnerHTML={{ __html: result?.html ?? '' }} />
               {showOutline && <Outline headings={headings} scrollRef={scrollRef} />}
             </div>
           </>

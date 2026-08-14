@@ -202,7 +202,7 @@ for (const { id, text } of textRegistry.values()) {
 }
 
 const target = join(root, 'THIRD-PARTY-NOTICES.md');
-writeFileSync(target, out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
+writeFileSync(target, `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`);
 console.log(
   `Wrote ${target}\n  npm deps:   ${npm.length}\n  cargo deps: ${cargo.length}\n  unique license texts: ${textRegistry.size}`,
 );

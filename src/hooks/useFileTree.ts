@@ -125,7 +125,9 @@ export function useFileTree(): FileTreeController {
       const ordered = [...paths].sort((a, b) => a.length - b.length);
       setExpanded((prev) => {
         const next = new Set(prev);
-        ordered.forEach((p) => next.add(p));
+        ordered.forEach((p) => {
+          next.add(p);
+        });
         return next;
       });
       for (const p of ordered) {

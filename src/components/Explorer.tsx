@@ -50,7 +50,9 @@ export function Explorer({ tree, selectedPath, onSelect, onOpenFolder }: Explore
       <div className="explorer__header">
         <span title={rootDir ?? undefined}>{rootName ?? t('explorer')}</span>
       </div>
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: the handler delegates arrow-key
+          navigation for the tree rows below, which are the focusable controls. Moving it onto
+          each row would re-register the same listener per file. */}
       <div className="explorer__scroll" onKeyDown={onKeyDown}>
         {!rootDir && (
           <div className="explorer__empty">
