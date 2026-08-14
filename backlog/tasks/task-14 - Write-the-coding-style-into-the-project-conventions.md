@@ -1,14 +1,17 @@
 ---
 id: TASK-14
 title: Write the coding style into the project conventions
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-07 22:31'
-updated_date: '2026-08-14 05:03'
+updated_date: '2026-08-14 09:58'
 labels:
   - documentation
 milestone: m-0
 dependencies: []
+modified_files:
+  - AGENTS.md
+  - AGENTS.ja.md
 priority: medium
 type: docs
 ordinal: 25000
@@ -60,16 +63,30 @@ Note also that TASK-15 selects Biome and leaves SCSS and Markdown unformatted de
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 AGENTS.md carries the Comments, Control flow and Functions rules under Conventions, and AGENTS.ja.md carries the same rules in Japanese
-- [ ] #2 The pre-existing 'Code comments in English' bullet is folded into the Comments text rather than left beside it as an overlapping rule
-- [ ] #3 The document states whether the rules apply retroactively or only to new and changed code
-- [ ] #4 The Control flow rule's gap against the 144 implicit bodies in the current tree is acknowledged with a pointer to TASK-16, so the mismatch cannot be read as an oversight
-- [ ] #5 Any rule that no tool will check is either kept to what a reviewer can hold or explicitly named as reviewer-enforced
-- [ ] #6 The SCSS-only / no-Tailwind rule is left untouched
-- [ ] #7 No code is changed - the useFileTree.ts P4/P6 citation is filed as a separate task if retroactive edits were chosen, not fixed here
+- [x] #1 AGENTS.md carries the Comments, Control flow and Functions rules under Conventions, and AGENTS.ja.md carries the same rules in Japanese
+- [x] #2 The pre-existing 'Code comments in English' bullet is folded into the Comments text rather than left beside it as an overlapping rule
+- [x] #3 The document states whether the rules apply retroactively or only to new and changed code
+- [x] #4 The Control flow rule's gap against the 144 implicit bodies in the current tree is acknowledged with a pointer to TASK-16, so the mismatch cannot be read as an oversight
+- [x] #5 Any rule that no tool will check is either kept to what a reviewer can hold or explicitly named as reviewer-enforced
+- [x] #6 The SCSS-only / no-Tailwind rule is left untouched
+- [x] #7 No code is changed - the useFileTree.ts P4/P6 citation is filed as a separate task if retroactive edits were chosen, not fixed here
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 AGENTS.md and AGENTS.ja.md say the same thing; no code changes are mixed into this task
+- [x] #1 AGENTS.md and AGENTS.ja.md say the same thing; no code changes are mixed into this task
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Decided **forward-only**: the rules bind new and changed code, not the existing tree. Rationale — reshaping untouched comments to satisfy a freshly written rule is the churn the Functions rule itself warns against. Consequences written into the text: the signature-restating doc comments, the 21 `// ---- Section ----` banners (SCSS included, so stylesheets are covered by the rule going forward but not retroactively), and the `useFileTree.ts:5-7` P4/P6 citations all stay until their surrounding code is edited for another reason. No follow-up comment-cleanup task was filed, since that is only required under the retroactive reading (AC 7).
+
+Control flow is named as the single exception, since TASK-16 closes it wholesale. The 144 count was re-measured from the TypeScript AST before being written down, not copied from this task: 122 non-test `src/` (39 files) + 5 `src/**/*.test.ts` + 17 `scripts/*.mjs`, matching the table exactly. That paragraph ends with an explicit instruction that TASK-16 deletes it, so it cannot outlive the task it points at.
+
+Comments and Functions are labelled reviewer-enforced, with a lead paragraph stating that no linter can judge them and that they are therefore scoped to what a reviewer can hold (AC 5). The conventions text says nothing about formatting, leaving that entirely to TASK-15 so the two cannot drift.
+
+Structure: a new `### Coding style` / `### コーディングスタイル` subsection under Conventions, with **Comments** / **Control flow** / **Functions** as bolded lead-ins rather than h4 headings. `Code comments in English` was removed from the bullet list and folded in as a Comments bullet, widened to name every language in the repo (AC 2). `SCSS only — never introduce Tailwind` is untouched at the top of the list (AC 6).
+
+Docs only: `git diff --stat` is AGENTS.md and AGENTS.ja.md, nothing else (DoD 1).
+<!-- SECTION:NOTES:END -->
