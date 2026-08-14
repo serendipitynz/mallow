@@ -120,7 +120,12 @@ describe('loadCustomEmoji', () => {
     dirs.set(ROOT, [image(ROOT, 'has space.png'), image(ROOT, 'ok.png')]);
     files.set(
       `${ROOT}/emoji.json`,
-      JSON.stringify({ unicode: [{ name: 'a:b', char: 'x' }, { name: 42, char: 'y' }] }),
+      JSON.stringify({
+        unicode: [
+          { name: 'a:b', char: 'x' },
+          { name: 42, char: 'y' },
+        ],
+      }),
     );
 
     const { set } = await loadCustomEmoji(ROOT);

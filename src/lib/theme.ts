@@ -45,7 +45,9 @@ function notify(): void {
   const resolved = resolveTheme();
   if (resolved === lastResolved) return;
   lastResolved = resolved;
-  listeners.forEach((cb) => cb(resolved));
+  listeners.forEach((cb) => {
+    cb(resolved);
+  });
 }
 
 /** Subscribe to effective light/dark changes. Returns an unsubscribe function. */

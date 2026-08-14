@@ -1,14 +1,5 @@
 /** Viewer category for a file, derived from its extension by the Rust backend. */
-export type FileKind =
-  | 'directory'
-  | 'markdown'
-  | 'mermaid'
-  | 'json'
-  | 'yaml'
-  | 'toml'
-  | 'image'
-  | 'pdf'
-  | 'video';
+export type FileKind = 'directory' | 'markdown' | 'mermaid' | 'json' | 'yaml' | 'toml' | 'image' | 'pdf' | 'video';
 
 /** A single directory entry returned by the `read_dir_tree` command. */
 export interface FileEntry {

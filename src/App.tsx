@@ -1,15 +1,15 @@
 import { listen } from '@tauri-apps/api/event';
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Explorer } from './components/Explorer';
 import { SettingsIcon } from './components/icons';
 import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
 import { Viewer } from './components/Viewer';
 import { useFileTree } from './hooks/useFileTree';
-import { loadCustomEmoji, NO_CUSTOM_EMOJI, type CustomEmojiStatus } from './lib/custom-emoji';
+import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
-import { setCustomEmoji, type CustomEmojiSet } from './lib/markdown';
+import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
 import { loadSettings, saveSetting } from './lib/settings';
 import { allowMediaDir, pathExists, pickFolder } from './lib/tauri';
@@ -72,7 +72,8 @@ export default function App() {
   // the last `saveSetting` to land, and the remembered folder would disagree
   // with the one on screen.
   const applyEmojiDir = useCallback(async (dir: string | null, persist = false) => {
-    const generation = (emojiGeneration.current += 1);
+    emojiGeneration.current += 1;
+    const generation = emojiGeneration.current;
     const commit = (status: CustomEmojiStatus, set: CustomEmojiSet | null) => {
       if (generation !== emojiGeneration.current) return;
       setCustomEmoji(set);
@@ -151,7 +152,9 @@ export default function App() {
     };
 
     onFsChange((paths) => {
-      paths.forEach((p) => changed.add(p));
+      paths.forEach((p) => {
+        changed.add(p);
+      });
       window.clearTimeout(timer);
       timer = window.setTimeout(flush, 150);
     }).then((fn) => {
@@ -227,8 +230,14 @@ export default function App() {
     <Explorer tree={tree} selectedPath={selected?.path ?? null} onSelect={selectFile} onOpenFolder={openFolder} />
   );
   const resizer = (
+    // A drag-only splitter: no keyboard path today, so a tab stop would be focusable and inert,
+    // and aria-valuenow would report a width nothing can change. Arrow-key resizing is a UI
+    // change, tracked separately. HTML has no splitter element, so role says what this is.
+    // biome-ignore lint/a11y/useFocusableInteractive: drag-only, see above
+    // biome-ignore lint/a11y/useSemanticElements: no semantic splitter element exists
     <div
       className={`app__resizer${dragging ? ' is-dragging' : ''}`}
+      // biome-ignore lint/a11y/useAriaPropsForRole: drag-only, see above
       role="separator"
       aria-orientation="vertical"
       onMouseDown={startResize}
@@ -239,7 +248,11 @@ export default function App() {
   return (
     <div className="app">
       <Toolbar selected={selected} onOpenFolder={openFolder} />
-      <div className="app__body" data-side={explorerSide} style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}>
+      <div
+        className="app__body"
+        data-side={explorerSide}
+        style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}
+      >
         {explorerSide === 'left' ? (
           <>
             {explorer}
@@ -255,7 +268,13 @@ export default function App() {
         )}
       </div>
       <footer className="app__footer">
-        <button type="button" className="icon-btn" title={t('settings')} aria-label={t('settings')} onClick={openSettings}>
+        <button
+          type="button"
+          className="icon-btn"
+          title={t('settings')}
+          aria-label={t('settings')}
+          onClick={openSettings}
+        >
           <SettingsIcon />
         </button>
       </footer>

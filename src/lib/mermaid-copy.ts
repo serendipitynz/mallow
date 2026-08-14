@@ -29,8 +29,8 @@ function cloneForExport(live: SVGSVGElement): { clone: SVGSVGElement; width: num
 
   const box = live.getBoundingClientRect();
   const viewBox = live.viewBox.baseVal;
-  const width = viewBox && viewBox.width ? viewBox.width : box.width;
-  const height = viewBox && viewBox.height ? viewBox.height : box.height;
+  const width = viewBox?.width ? viewBox.width : box.width;
+  const height = viewBox?.height ? viewBox.height : box.height;
 
   clone.setAttribute('width', String(width));
   clone.setAttribute('height', String(height));
@@ -85,7 +85,7 @@ function rasterize(svgString: string, width: number, height: number): Promise<Bl
       }
     };
     image.onerror = () => reject(new Error('Failed to load SVG into an image'));
-    image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString);
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
   });
 }
 
@@ -153,7 +153,11 @@ function makeButton(action: Action, svg: SVGSVGElement): HTMLButtonElement {
     event.stopPropagation();
     void action.run(svg).then((result) => {
       const feedback =
-        result === 'copied' ? 'コピーしました' : result === 'downloaded' ? 'ダウンロードしました' : 'コピーに失敗しました';
+        result === 'copied'
+          ? 'コピーしました'
+          : result === 'downloaded'
+            ? 'ダウンロードしました'
+            : 'コピーに失敗しました';
       const ok = result !== 'failed';
       button.textContent = ok ? '✓' : '×';
       button.classList.toggle('is-copied', ok);

@@ -1,6 +1,6 @@
-import { useState, type CSSProperties } from 'react';
-import { useT } from '../lib/i18n';
+import { type CSSProperties, useState } from 'react';
 import { BRANCH_INITIAL, initialBranchOpen, nextVisibleCount } from '../lib/config-tree';
+import { useT } from '../lib/i18n';
 import { ChevronRight } from './icons';
 
 type ValueType = 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
@@ -68,7 +68,13 @@ function BranchNode({ label, value, type, depth, forceOpen }: NodeProps & { type
 
   return (
     <div className="cfg-node">
-      <button type="button" className="cfg-row" style={indent(depth)} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button
+        type="button"
+        className="cfg-row"
+        style={indent(depth)}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
         <span className={`cfg-chevron${open ? ' is-open' : ''}`}>
           <ChevronRight />
         </span>

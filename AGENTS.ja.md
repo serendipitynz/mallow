@@ -13,6 +13,10 @@ pnpm install
 pnpm tauri dev      # ホットリロード付きで起動
 pnpm build          # フロントの型チェック(tsc) + バンドル(vite)。FE 変更の検証用
 pnpm test           # フロントのユニットテスト(Vitest, 単発実行)。watch は pnpm test:watch
+pnpm lint           # Biome の lint + フォーマット + import 順の検査（書き換えなし）
+pnpm lint:fix       # Biome の安全な修正を適用し、import を並べ替え、整形する
+pnpm format         # 整形のみ
+pnpm lint:ci        # CI が走らせるもの (biome ci)。書き換えず、error で落ちる
 pnpm tauri build    # リリースビルド + バンドル
 ./scripts/macos-sign-build.sh   # 署名 + 公証済みの macOS ビルド（.env.signing が必要）
 pnpm tauri icon src-tauri/icons/app-icon.png   # 全アプリアイコンの再生成
@@ -20,6 +24,7 @@ pnpm notices        # THIRD-PARTY-NOTICES.md を再生成（同梱する依存�
 pnpm release 0.4.0  # 全箇所のバージョン更新 + コミット + タグ（--push で push まで）
 cargo check         # src-tauri/ 内で実行し Rust を検証
 cargo test          # src-tauri/ 内で実行し Rust のユニットテストを走らせる
+cargo fmt           # src-tauri/ 内で実行し Rust を整形（--check で検査のみ）
 ```
 
 ## スタック
@@ -72,6 +77,63 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   （`scripts/gen-third-party-notices.mjs`）で生成し、`bundle.resources` でアプリに
   同梱する。依存を変更したら再生成する。
 
+### lint とフォーマット
+
+**lint / フォーマットの依存は Biome だけで、今後もそうする。** devDependency 1 件
+（ルートの `biome.json`）で TypeScript・TSX・JSON の lint・整形・import 順をまとめて見る。
+Prettier や ESLint を併置しない。Rust は `rustfmt.toml` に基づく `cargo fmt` が担当し、
+rustfmt はツールチェーン同梱なので依存は増えない。
+
+設定は Biome の既定（タブ・ダブルクォートを前提とする）ではなく、**既にあるコードに
+合わせて選んである**: `indentStyle: space`・`indentWidth: 2`・`lineWidth: 120`・
+`quoteStyle: single`・`semicolons: always`。この値なら追跡中の JSON は 1 行も変わらない。
+`rustfmt.toml` は `max_width` を 120、`use_small_heuristics` を `"Max"` にしつつ
+`chain_width` を 72 に固定する — コンパクトな struct literal を保ち、**かつ**手で折られた
+メソッドチェーンをそのまま残せる唯一の組み合わせである。
+
+**対象範囲は `biome.json` の明示的な include 一覧と明示的な exclude 一覧**で、推測の余地を
+残さない。対象: `src/**/*.ts(x)`（ユニットテストを含む）・`scripts/*.mjs`・
+`vite.config.ts`・`vitest.config.ts`・`package.json`・`tsconfig*.json`・
+`.vscode/extensions.json`。対象外: `src-tauri/**`（rustfmt の領分であり、Biome の JSON
+フォーマッタは同ディレクトリの 1 行 1 要素の `icon` と `permissions` 配列を 1 行に潰す）、
+および `.scss` と `.md`。生成物は `vcs.useIgnoreFile` が `.gitignore` を読むことで
+カバーされるので、`dist/` と `src-tauri/target` に別途一覧は要らない。
+`src-tauri/gen/schemas` は `src-tauri/.gitignore` で無視され、かつ include 一覧の外にある。
+
+**SCSS と Markdown は意図的に未整形であり、設定漏れではない。** Biome は SCSS の
+パースと整形を「進行中」、lint を「未着手」としている。`.scss` を渡すと黙って
+スキップされ、CSS パーサに食わせるため改名すると `_vars.scss` で 199 件、
+`global.scss` で 40 件のパースエラーになる。ここの SCSS 1,688 行は `//` コメント 116・
+`@use` 5・`@mixin` 7・`@include` 10・`$変数` 24・`#{}` 補間 6 を使っており、CSS ではない。
+以前もスタイルシートを整形するものは無かったので後退ではなく、Biome のロードマップは
+SCSS を最も要望の多い機能として着手済みとしている。**SCSS のためだけに Prettier を
+足さない** — Biome を選んで避けた 2 ツール構成を、そもそも誰も整形していなかった
+ファイルのために復活させることになる。Markdown も同じ状態で、重要度はさらに低い
+（追跡中の `.md` の大半は台帳のタスクで、整形は無意味な差分を生むだけである）。
+
+**stylelint は実測のうえで見送った。新しい根拠なしに再検討しない。** stylelint は
+フォーマッタではなく linter で（スタイル系ルールは v15 で非推奨・v16 で削除）、
+整形の穴は埋まらない。チェッカーとしても何も見つけなかった:
+`stylelint-config-recommended-scss` は 6 ファイル全体で 1 件だけ報告し、それは
+誤検出である（通常の `//` コメントブロック内の空の `//` 行に対する
+`scss/comment-no-empty`）。`stylelint-config-standard-scss` は 85 件報告するが
+欠陥は 1 件もない — 62 件は kebab-case を要求して、このコードベースが意図して
+使っている BEM の `__element` / `--modifier` 命名を否定する。14 件は `//` コメントの
+前に空行を求め、6 件は CSS キーワードの小文字化（フォント名・`optimizeLegibility`・
+`currentColor`）を求める。`-webkit-backdrop-filter` に対する
+`property-no-vendor-prefix` の助言はここでは**明確に誤り**で、このアプリの macOS
+WebView は WKWebView である。実効的な安全網は既に動いている: `sass` は未定義変数・
+不正な `@use`・構文エラーで `pnpm build` を落とす。スタイルシートが現在の規模を大きく
+超えるか、著者が 2 人目になったときに限り再検討する。
+
+**suppression。** ルールが特定の行について誤っているときは、ルールごと off にせず
+その場で `biome-ignore` に理由を書いて抑制する — グローバルに off にすると、次の
+根拠のない事例が黙って通ってしまう。仕組みで 2 点、いずれも気づくのに 1 往復かかる
+ので書いておく: `//` 形式は `biome-ignore` の行がコードの**直前行**でなければ効かない
+ので、複数行の理由は `/* … */` を使う。また JSX の**属性**に対して報告される診断は、
+要素の上ではなくその属性の直前にコメントを置く必要がある（要素の上に置くと、
+フォーマッタが要素を折り返した時点で離れてしまう）。
+
 ### コーディングスタイル
 
 **以下の規約が拘束するのは新規コードと変更したコードであり、既存ツリー全体ではない。**
@@ -107,18 +169,18 @@ Comments と Functions の規約は機械的に検査されない。コメント
 
 - 制御フローの本体は常に明示的なブロック構文で書く。言語が波括弧の省略を許す箇所も含む。
 
-3 つのうちツールで担保できるのはこの規約だけで、実際に Biome が担保する。ただしまだ
-その状態にはないため、それまでは Comments / Functions と同様にレビューで守る。TASK-15 は
-`style/useBlockStatements` を意図的に **`warn`** で設定する。TASK-16 が消化し終える前に、
-ツリーに残っている箇所が CI を落とさないようにするためである。warn では CI が緑のままなので、
-その期間は新しい暗黙のブロックを機械的に止めるものが何もない。TASK-16 が全件を変換した後に
-この規約を `error` に上げ、その時点で機械的な強制が始まる。
+3 つのうちツールで担保できるのはこの規約だけで、Biome が実際に報告する。ただし意図的に
+**`warn`** で入れてある。TASK-16 が消化し終える前に、ツリーに残っている箇所が CI を
+落とさないようにするためである。warn では `biome ci` が緑のままなので、その期間は新しい
+暗黙のブロックを機械的に止めるものが何もない。TASK-16 が `error` に上げるまでは、
+Comments / Functions とまったく同様にレビューで守る。
 
 ツリーはまだこれに適合していない。これは見落としではなく既知の状態で、
-**暗黙のブロックが 144 箇所**残っている（非テスト `src/` に 122、`src/**/*.test.ts` に 5、
-`scripts/*.mjs` に 17）。支配的な形は早期 return の `if (!dir) return;` で、意図して
-一貫適用されてきたものなので、この差分はドリフトではなく進行中のスタイル転換である。
-新規コードは波括弧付きで書き、残りには手を付けない。
+**暗黙のブロックが 33 ファイル・143 箇所**残っている（非テスト `src/` に 121、
+`src/**/*.test.ts` に 5、`scripts/*.mjs` に 17）。支配的な形は早期 return の
+`if (!dir) return;` で、意図して一貫適用されてきたものなので、この差分はドリフトではなく
+進行中のスタイル転換である。新規コードは波括弧付きで書き、残りには手を付けない。
+残っている箇所は `pnpm lint` が全件を列挙する。
 
 **この移行に関する記述は TASK-16 がすべて削除する** — 直前の 2 段落、この規約のラベルに
 ある「当面はレビュアーが担保し」という限定、本セクション冒頭の適用範囲の段落にある
@@ -209,13 +271,23 @@ Comments と Functions の規約は機械的に検査されない。コメント
 
 ## 変更の検証
 
-- フロント: `pnpm build`（tsc + vite）と `pnpm test`（Vitest）。ユニットテストは
-  コードと同じ場所に `src/**/*.test.ts` として置き、純ロジックのモジュール（`markdown`
-  ＝未信頼入力のセキュリティ境界含む・`config-parse`・`frontmatter`・`title`・`path`・
-  `custom-emoji`＝Tauri 層をモック）をカバーする。Node 環境で走るため jsdom/GUI は不要。
-- バックエンド: `src-tauri/` 内で `cargo check` と `cargo test`。`commands` モジュールに
-  ユニットテストがある（`tempfile` 依存を避けた自己クリーンアップ式の temp-dir ヘルパー）。
+- フロント: `pnpm lint`（Biome）・`pnpm build`（tsc + vite）・`pnpm test`（Vitest）。
+  ユニットテストはコードと同じ場所に `src/**/*.test.ts` として置き、純ロジックの
+  モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
+  `frontmatter`・`title`・`path`・`custom-emoji`＝Tauri 層をモック）をカバーする。
+  Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
+  タイムアウトを上げる — `it` ごとの第 3 引数では持たない（フォーマッタが 3 引数の呼び出しを
+  複数行に展開する）し、`vitest.config.ts` にも置かない（他のスイートで固まったテストは
+  5 秒で落ちてほしい）。
+- バックエンド: `src-tauri/` 内で `cargo fmt --check`・`cargo check`・`cargo test`。
+  `commands` モジュールにユニットテストがある（`tempfile` 依存を避けた
+  自己クリーンアップ式の temp-dir ヘルパー）。
 - エンドツーエンド: `pnpm tauri dev`（GUI）または `pnpm tauri build`。
+- CI（`.github/workflows/check.yml`）が pull request と `main` への push で
+  ちょうどこの一覧を走らせる — `biome ci`・`pnpm build`・`pnpm test`・
+  `cargo fmt --check`・`cargo check`・`cargo test`。ここに書いてあるものと
+  強制されるものが乖離しないようにするためなので、**検査を足すときは
+  この一覧とそのワークフローを同時に直す。**
 
 ## リリース（macOS 署名）
 

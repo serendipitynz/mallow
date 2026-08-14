@@ -13,6 +13,10 @@ pnpm install
 pnpm tauri dev      # run the app with hot reload
 pnpm build          # frontend type-check (tsc) + bundle (vite) — validate FE changes
 pnpm test           # frontend unit tests (Vitest, run once); pnpm test:watch to watch
+pnpm lint           # Biome lint + format + import-order check (no writes)
+pnpm lint:fix       # apply Biome's safe fixes, sort imports, format
+pnpm format         # format only
+pnpm lint:ci        # what CI runs (biome ci) — non-writing, fails on errors
 pnpm tauri build    # release build + bundle
 ./scripts/macos-sign-build.sh   # signed + notarized macOS build (needs .env.signing)
 pnpm tauri icon src-tauri/icons/app-icon.png   # regenerate all app icons
@@ -20,6 +24,7 @@ pnpm notices        # regenerate THIRD-PARTY-NOTICES.md (bundled dep licenses)
 pnpm release 0.4.0  # bump the version everywhere, commit, tag (--push to push)
 cargo check         # run inside src-tauri/ to validate Rust
 cargo test          # run inside src-tauri/ to run the Rust unit tests
+cargo fmt           # run inside src-tauri/ to format Rust (--check to verify only)
 ```
 
 ## Stack
@@ -71,6 +76,68 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `pnpm notices` (`scripts/gen-third-party-notices.mjs`) and bundled into the app
   via `bundle.resources`. Regenerate after changing dependencies.
 
+### Lint and formatting
+
+**Biome is the only lint/format dependency, and stays that way.** One
+devDependency (`biome.json` at the root) covers linting, formatting and import
+order for TypeScript, TSX and JSON. Do not add Prettier or ESLint alongside it.
+`cargo fmt` handles Rust from `rustfmt.toml`, and costs no dependency because
+rustfmt ships with the toolchain.
+
+The settings are chosen against the code that is already here rather than taken
+from Biome's defaults, which assume tabs and double quotes: `indentStyle: space`,
+`indentWidth: 2`, `lineWidth: 120`, `quoteStyle: single`, `semicolons: always`.
+At those values the tracked JSON needs no reformatting at all. `rustfmt.toml`
+holds `max_width` at 120 with `use_small_heuristics = "Max"` but pins
+`chain_width` to 72 — the only combination that keeps the compact struct literals
+*and* leaves the method chains that were broken by hand alone.
+
+**Scope is an explicit include list plus an explicit exclude list** in
+`biome.json`, so there is nothing to infer. In: `src/**/*.ts(x)` (unit tests
+included), `scripts/*.mjs`, `vite.config.ts`, `vitest.config.ts`, `package.json`,
+`tsconfig*.json`, `.vscode/extensions.json`. Out: `src-tauri/**` (rustfmt's, and
+Biome's JSON formatter would collapse the one-per-line `icon` and `permissions`
+arrays there onto single lines), plus `.scss` and `.md`. Generated output is
+covered by `vcs.useIgnoreFile` reading `.gitignore`, so `dist/` and
+`src-tauri/target` need no second list. `src-tauri/gen/schemas` is ignored by
+`src-tauri/.gitignore` and also sits outside the include list.
+
+**SCSS and Markdown are deliberately unformatted — this is not a
+misconfiguration.** Biome lists SCSS as in progress for parsing and formatting
+and not started for linting. Handing it a `.scss` file is a silent skip; renaming
+one so the CSS parser takes it produces 199 parse errors on `_vars.scss` and 40 on
+`global.scss`, because 1,688 lines of SCSS here use 116 `//` comments, 5 `@use`,
+7 `@mixin`, 10 `@include`, 24 `$variables` and 6 `#{}` interpolations. Nothing
+formatted the stylesheets before either, so this is not a regression, and Biome's
+roadmap has SCSS as its most-wanted feature with work started. **Do not add
+Prettier just for SCSS** — that reinstates the two-tool setup Biome was chosen to
+avoid, for files nothing was formatting anyway. Markdown is in the same state and
+matters less: most tracked `.md` files are backlog tasks a formatter would churn.
+
+**stylelint was measured and rejected; do not reopen it without new evidence.**
+It is a linter, not a formatter (stylistic rules were deprecated in v15 and
+removed in v16), so it would not have closed the formatting gap. As a checker it
+found nothing: `stylelint-config-recommended-scss` reports 1 finding across all
+six files and it is a false positive (`scss/comment-no-empty` on a bare `//` line
+inside an ordinary comment block). `stylelint-config-standard-scss` reports 85,
+none of them defects — 62 demand kebab-case, rejecting the BEM `__element` /
+`--modifier` naming used deliberately throughout; 14 want blank lines before `//`
+comments; 6 want CSS keywords lowercased (font names, `optimizeLegibility`,
+`currentColor`); and its `property-no-vendor-prefix` advice about
+`-webkit-backdrop-filter` is actively wrong here, since this app's macOS WebView
+is WKWebView. The real safety net already runs: `sass` fails `pnpm build` on an
+undefined variable, a bad `@use`, or a syntax error. Revisit only if the
+stylesheets grow well beyond their current size or gain a second author.
+
+**Suppressions.** When a rule is wrong about a specific line, suppress it there
+with `biome-ignore` and a stated reason rather than turning the rule off — a rule
+switched off globally lets the next, unjustified case land silently. Two
+mechanics are worth knowing because both cost a round to discover: a `//`
+suppression only counts when the `biome-ignore` line is the one *immediately*
+above the code, so multi-line reasons must use `/* … */`; and a diagnostic
+reported against a JSX attribute needs the comment above that attribute, not
+above the element, or the formatter re-wrapping the element will detach it.
+
 ### Coding style
 
 **These rules bind new and changed code, not the existing tree.** Do not reshape
@@ -110,19 +177,18 @@ hold rather than as an exhaustive style guide.
 - Always use explicit block syntax for control-flow bodies, including where the
   language lets the braces be omitted.
 
-This is the one rule a tool can hold, and Biome will — but not yet, so until then
-it is held in review exactly like Comments and Functions. TASK-15 wires
-`style/useBlockStatements` at **`warn`** deliberately, so the bodies still in the
-tree cannot fail CI before TASK-16 drains them; a warning keeps CI green, which
-means nothing mechanical stops a new implicit body during that window. TASK-16
-converts them and then raises the rule to `error`, and that is the point this
-becomes machine-enforced.
+This is the one rule a tool can hold, and Biome now reports it — at **`warn`**
+deliberately, so the bodies still in the tree cannot fail CI before TASK-16
+drains them. A warning keeps `biome ci` green, which also means nothing
+mechanical stops a new implicit body during this window; until TASK-16 raises the
+rule to `error`, it is held in review exactly like Comments and Functions.
 
 The tree does not conform yet, and that is known rather than overlooked:
-**144 implicit bodies** remain — 122 in non-test `src/`, 5 in `src/**/*.test.ts`,
-17 in `scripts/*.mjs`. The dominant shape is the early return `if (!dir) return;`,
-used consistently on purpose, so the gap is a style reversal in progress, not
-drift. Write new code braced and leave the rest alone.
+**143 implicit bodies** remain across 33 files — 121 in non-test `src/`, 5 in
+`src/**/*.test.ts`, 17 in `scripts/*.mjs`. The dominant shape is the early return
+`if (!dir) return;`, used consistently on purpose, so the gap is a style reversal
+in progress, not drift. Write new code braced and leave the rest alone; `pnpm
+lint` lists every remaining one.
 
 **TASK-16 removes this whole transition** — the two paragraphs above, the
 "reviewer-enforced for now" qualifier on this rule's label, the "see below" clause
@@ -217,14 +283,23 @@ outlive the task it points at.
 
 ## Verifying changes
 
-- Frontend: `pnpm build` (tsc + vite) and `pnpm test` (Vitest). Unit tests live
-  next to the code as `src/**/*.test.ts` and cover the pure-logic modules
-  (`markdown` — incl. the untrusted-input security boundary — `config-parse`,
-  `frontmatter`, `title`, `path`, and `custom-emoji` with the Tauri layer mocked).
-  Run a Node environment, so no jsdom/GUI is needed.
-- Backend: `cargo check` and `cargo test` inside `src-tauri/`. The `commands`
-  module has unit tests (a small self-cleaning temp-dir helper, no `tempfile` dep).
+- Frontend: `pnpm lint` (Biome), `pnpm build` (tsc + vite) and `pnpm test`
+  (Vitest). Unit tests live next to the code as `src/**/*.test.ts` and cover the
+  pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
+  `config-parse`, `frontmatter`, `title`, `path`, and `custom-emoji` with the
+  Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
+  markdown suite raises its timeout with one `vi.setConfig` at the top of the
+  file — not a third argument per `it` (the formatter expands a three-argument
+  call across lines) and not `vitest.config.ts` (a hung test in any other suite
+  should still fail in 5s).
+- Backend: `cargo fmt --check`, `cargo check` and `cargo test` inside
+  `src-tauri/`. The `commands` module has unit tests (a small self-cleaning
+  temp-dir helper, no `tempfile` dep).
 - End-to-end: `pnpm tauri dev` (GUI) or `pnpm tauri build`.
+- CI (`.github/workflows/check.yml`) runs exactly this list on pull requests and
+  on pushes to `main` — `biome ci`, `pnpm build`, `pnpm test`, `cargo fmt
+  --check`, `cargo check`, `cargo test` — so what is documented here and what is
+  enforced cannot drift apart. Add a check here and in that workflow together.
 
 ## Releasing (macOS signing)
 

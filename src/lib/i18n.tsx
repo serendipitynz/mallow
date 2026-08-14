@@ -4,7 +4,7 @@
  * first paint, like the theme) so there is no flash of the wrong language, and
  * also drives `<html lang>`. Falls back to the OS locale, then Japanese.
  */
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 export type Lang = 'ja' | 'en';
 
@@ -69,7 +69,8 @@ const ja: Dict = {
   right: '右',
   language: '言語',
   customEmoji: 'カスタム絵文字',
-  customEmojiHint: '画像を入れたフォルダを指定すると、ファイル名が :ショートコード: になります（emoji.json があれば併用）。',
+  customEmojiHint:
+    '画像を入れたフォルダを指定すると、ファイル名が :ショートコード: になります（emoji.json があれば併用）。',
   customEmojiUnset: '未設定',
   chooseFolder: 'フォルダを選択…',
   clear: '解除',

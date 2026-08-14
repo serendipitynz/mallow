@@ -14,8 +14,8 @@
 // Run with: pnpm notices   (or: node scripts/gen-third-party-notices.mjs)
 
 import { execSync } from 'node:child_process';
-import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -202,7 +202,13 @@ for (const { id, text } of textRegistry.values()) {
 }
 
 const target = join(root, 'THIRD-PARTY-NOTICES.md');
-writeFileSync(target, out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n');
+writeFileSync(
+  target,
+  `${out
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd()}\n`,
+);
 console.log(
   `Wrote ${target}\n  npm deps:   ${npm.length}\n  cargo deps: ${cargo.length}\n  unique license texts: ${textRegistry.size}`,
 );

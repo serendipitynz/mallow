@@ -48,5 +48,9 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
     hostRef.current?.querySelector('.src-error-line')?.scrollIntoView({ block: 'center' });
   }, [html, errorLine]);
 
+  /* biome-ignore lint/security/noDangerouslySetInnerHtml: the HTML here is Shiki's own output for
+     the file's text, not the file's text. Shiki escapes what it highlights, so the document cannot
+     contribute markup. This is the same boundary AGENTS.md sets out under "Untrusted-Markdown
+     boundary", with the CSP as the second layer. */
   return <div className="src-view" ref={hostRef} dangerouslySetInnerHTML={{ __html: html }} />;
 }

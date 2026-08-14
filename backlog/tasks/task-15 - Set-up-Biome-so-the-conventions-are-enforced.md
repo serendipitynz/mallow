@@ -1,10 +1,10 @@
 ---
 id: TASK-15
 title: Set up Biome so the conventions are enforced
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-07 22:32'
-updated_date: '2026-08-14 05:03'
+updated_date: '2026-08-14 12:11'
 labels:
   - chore
 milestone: m-0
@@ -154,22 +154,22 @@ The defaults expand compact struct literals — `entries.push(FileEntry { name, 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 biome.json names the scope as an include list plus an explicit exclude list, resolving src/**/*.test.ts, vite.config.ts, vitest.config.ts and scripts/*.mjs by name, so TASK-16 inherits an unambiguous decision
-- [ ] #2 style/useBlockStatements is enabled at warn, not error, so the 144 outstanding bodies cannot fail the new CI check before TASK-16 fixes them; CI does not pass --error-on-warnings while any rule is parked at warn
-- [ ] #3 Every file in the scope is formatted in one dedicated commit, so TASK-16 can add braces without its diff carrying unrelated formatting
-- [ ] #4 Every recommended-set finding in the chosen scope is triaged - each fixed, or suppressed with a stated reason - before CI is wired; no rule is turned off wholesale without writing down why it is a bad fit here
-- [ ] #5 Both noDangerouslySetInnerHtml findings (MarkdownView.tsx:168, SourceView.tsx:51) are suppressed with biome-ignore comments naming the AGENTS.md untrusted-Markdown section, and the rule is not disabled globally
-- [ ] #6 Both noStaticElementInteractions sites are resolved - the Explorer.tsx finding at :54 plus removal of its stale ESLint directive at :53, and SettingsModal.tsx:39 which has no suppression today
-- [ ] #7 Biome is the only lint/format dependency added; Prettier is not added for SCSS or anything else
-- [ ] #8 SCSS and Markdown are documented as deliberately unformatted, with the reason, so a later reader does not take it for a misconfiguration
-- [ ] #9 Lint and format scripts exist in package.json, and cargo fmt plus those scripts are listed in AGENTS.md's Commands and Verifying changes sections and both AGENTS.ja.md mirrors
-- [ ] #10 Generated output is excluded (vcs.useIgnoreFile or explicit entries), and pnpm release --dry-run still matches its version patterns after any JSON reformat
-- [ ] #11 stylelint is not added; the measurement that rejected it is recorded so the option is not reopened without new evidence
-- [ ] #12 A CI workflow runs on pull requests and on the default branch, running biome ci, pnpm build, pnpm test, cargo fmt --check, cargo check and cargo test
+- [x] #1 biome.json names the scope as an include list plus an explicit exclude list, resolving src/**/*.test.ts, vite.config.ts, vitest.config.ts and scripts/*.mjs by name, so TASK-16 inherits an unambiguous decision
+- [x] #2 style/useBlockStatements is enabled at warn, not error, so the 144 outstanding bodies cannot fail the new CI check before TASK-16 fixes them; CI does not pass --error-on-warnings while any rule is parked at warn
+- [x] #3 Every file in the scope is formatted in one dedicated commit, so TASK-16 can add braces without its diff carrying unrelated formatting
+- [x] #4 Every recommended-set finding in the chosen scope is triaged - each fixed, or suppressed with a stated reason - before CI is wired; no rule is turned off wholesale without writing down why it is a bad fit here
+- [x] #5 Both noDangerouslySetInnerHtml findings (MarkdownView.tsx:168, SourceView.tsx:51) are suppressed with biome-ignore comments naming the AGENTS.md untrusted-Markdown section, and the rule is not disabled globally
+- [x] #6 Both noStaticElementInteractions sites are resolved - the Explorer.tsx finding at :54 plus removal of its stale ESLint directive at :53, and SettingsModal.tsx:39 which has no suppression today
+- [x] #7 Biome is the only lint/format dependency added; Prettier is not added for SCSS or anything else
+- [x] #8 SCSS and Markdown are documented as deliberately unformatted, with the reason, so a later reader does not take it for a misconfiguration
+- [x] #9 Lint and format scripts exist in package.json, and cargo fmt plus those scripts are listed in AGENTS.md's Commands and Verifying changes sections and both AGENTS.ja.md mirrors
+- [x] #10 Generated output is excluded (vcs.useIgnoreFile or explicit entries), and pnpm release --dry-run still matches its version patterns after any JSON reformat
+- [x] #11 stylelint is not added; the measurement that rejected it is recorded so the option is not reopened without new evidence
+- [x] #12 A CI workflow runs on pull requests and on the default branch, running biome ci, pnpm build, pnpm test, cargo fmt --check, cargo check and cargo test
 - [ ] #13 The first CI run was green before the check is relied on; any pre-existing failure was fixed or suppressed deliberately rather than by disabling the step
-- [ ] #14 rustfmt.toml records a deliberately chosen configuration, not the defaults
-- [ ] #15 formatter.indentStyle, indentWidth, lineWidth, javascript.formatter.quoteStyle and javascript.formatter.semicolons are chosen deliberately against the existing code, not left at Biome's defaults by omission
-- [ ] #16 The size of the bulk reformat was measured after the scope was fixed, not assumed - excluding src/**/*.test.ts changes it from roughly 573 lines to roughly 81
+- [x] #14 rustfmt.toml records a deliberately chosen configuration, not the defaults
+- [x] #15 formatter.indentStyle, indentWidth, lineWidth, javascript.formatter.quoteStyle and javascript.formatter.semicolons are chosen deliberately against the existing code, not left at Biome's defaults by omission
+- [x] #16 The size of the bulk reformat was measured after the scope was fixed, not assumed - excluding src/**/*.test.ts changes it from roughly 573 lines to roughly 81
 <!-- AC:END -->
 
 ## Definition of Done

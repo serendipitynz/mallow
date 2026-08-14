@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { FileEntry } from './types';
 import { documentTitle, windowTitle } from './title';
+import type { FileEntry } from './types';
 
 function file(name: string, kind: FileEntry['kind']): FileEntry {
   return { name, path: `/x/${name}`, isDir: false, kind };

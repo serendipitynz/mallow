@@ -44,6 +44,9 @@ function Unsupported({ name }: { name: string }) {
 function ImageView({ src, name }: { src: string; name: string }) {
   const [failed, setFailed] = useState(false);
   // Reset the error state when the source changes (new file or reload).
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: src is the trigger, not something the
+     body reads. Dropping it would run the reset once and leave a decode failure latched when the
+     next file loads fine. */
   useEffect(() => setFailed(false), [src]);
 
   if (failed) return <Unsupported name={name} />;
@@ -56,11 +59,14 @@ function ImageView({ src, name }: { src: string; name: string }) {
 
 function VideoView({ src, name }: { src: string; name: string }) {
   const [failed, setFailed] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see ImageView above.
   useEffect(() => setFailed(false), [src]);
 
   if (failed) return <Unsupported name={name} />;
   return (
     <div className="media-view media-view--video">
+      {/* biome-ignore lint/a11y/useMediaCaption: the file the user opened is the only source
+          here. A viewer has no caption track to offer and cannot author one. */}
       <video src={src} controls onError={() => setFailed(true)} />
     </div>
   );

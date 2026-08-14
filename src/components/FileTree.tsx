@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import type { FileTreeState } from '../hooks/useFileTree';
 import { useT } from '../lib/i18n';
 import type { FileEntry, FileKind } from '../lib/types';

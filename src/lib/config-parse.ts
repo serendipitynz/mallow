@@ -2,10 +2,11 @@
  * Parse the supported config formats into a JS value, or a normalized error with
  * a 1-based line/column for the source-error view.
  */
-import { type ParseError, parse as parseJsonc, printParseErrorCode } from 'jsonc-parser';
+
 import JSON5 from 'json5';
-import { TomlError, parse as parseToml } from 'smol-toml';
-import { YAMLParseError, parse as parseYaml } from 'yaml';
+import { type ParseError, parse as parseJsonc, printParseErrorCode } from 'jsonc-parser';
+import { parse as parseToml, TomlError } from 'smol-toml';
+import { parse as parseYaml, YAMLParseError } from 'yaml';
 
 export type ConfigFormat = 'json' | 'jsonc' | 'json5' | 'jsonl' | 'yaml' | 'toml';
 
