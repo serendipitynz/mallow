@@ -125,9 +125,10 @@ used consistently on purpose, so the gap is a style reversal in progress, not
 drift. Write new code braced and leave the rest alone.
 
 **TASK-16 removes this whole transition** — the two paragraphs above, the
-"reviewer-enforced for now" qualifier on this rule's label, and the "see below"
-clause in the scope paragraph at the top of this section. None of it must outlive
-the task it points at.
+"reviewer-enforced for now" qualifier on this rule's label, the "see below" clause
+in the scope paragraph at the top of this section, and this paragraph itself, which
+is part of the transition rather than a standing instruction. None of it must
+outlive the task it points at.
 
 **Functions** — reviewer-enforced.
 

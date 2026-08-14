@@ -83,7 +83,7 @@ TASK-14 writes a note into `AGENTS.md` and `AGENTS.ja.md` saying the control-flo
 - [ ] #2 The fix was run as biome lint --write --unsafe --only=lint/style/useBlockStatements, not as check --write, and whether biome#11023 is still open was re-checked
 - [ ] #3 A bare biome format over the scope exits zero at commit time; the formatting of the lines this task changed is in this commit, and no unrelated file was reformatted
 - [ ] #4 style/useBlockStatements is raised from warn to error in biome.json as the final step, once the count is zero
-- [ ] #5 All three parts of TASK-14's transition note are removed from AGENTS.md and AGENTS.ja.md - the two paragraphs under Control flow, the 'reviewer-enforced for now' qualifier on its label, and the 'see below' clause in the scope paragraph - so no permanent document points at a completed backlog item and no pointer is left dangling
+- [ ] #5 All four parts of TASK-14's transition note are removed from AGENTS.md and AGENTS.ja.md - the two explanatory paragraphs under Control flow, the 'reviewer-enforced for now' qualifier on its label, the 'see below' clause in the scope paragraph, and the deletion instruction paragraph itself - so no permanent document points at a completed backlog item and no pointer is left dangling
 - [ ] #6 The change is mechanical only - no early return restructured, no condition inverted, no comment moved, and markdown.ts:40-47 stays where it is
 - [ ] #7 src-tauri/src is untouched, since Rust already conforms by language
 <!-- AC:END -->
