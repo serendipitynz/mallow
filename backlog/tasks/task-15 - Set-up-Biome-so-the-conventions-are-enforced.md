@@ -149,7 +149,7 @@ The defaults expand compact struct literals — `entries.push(FileEntry { name, 
 
 **It costs no dependency.** rustfmt ships with the Rust toolchain, so AC 2 still holds: Biome remains the only added lint/format package.
 
-`cargo fmt` goes into both `AGENTS.md:9-24` (`## Commands`) and `AGENTS.md:150-160` (`## Verifying changes`), and into the `## コマンド` / `## 変更の検証` mirrors in `AGENTS.ja.md`.
+`cargo fmt` goes into both `## Commands` and `## Verifying changes` in `AGENTS.md`, and into the `## コマンド` / `## 変更の検証` mirrors in `AGENTS.ja.md`. Located by heading on purpose: this sentence used to carry line numbers and they went stale twice over — once when TASK-14 landed the `### Coding style` subsection above them, then again within TASK-14's own review rounds. Any edit above a heading moves it, so a number here is wrong by default and a warning not to trust it is weaker than not writing it.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
