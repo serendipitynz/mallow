@@ -4,7 +4,7 @@
  * only loads when a document actually uses it.
  */
 import { attachDiagramCopyControls } from './mermaid-copy';
-import { type Resolved, onThemeChange, resolveTheme } from './theme';
+import { onThemeChange, type Resolved, resolveTheme } from './theme';
 
 type Mermaid = typeof import('mermaid').default;
 

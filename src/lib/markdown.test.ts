@@ -82,7 +82,9 @@ describe('renderMarkdown — normal rendering still works', () => {
   it('renders GFM task lists as disabled checkboxes', async () => {
     const { html } = await renderMarkdown('- [ ] ToDo\n- [x] Done\n');
     expect(html).toContain('<ul class="contains-task-list">');
-    expect(html).toMatch(/<li class="task-list-item"><input class="task-list-item-checkbox" type="checkbox" disabled aria-label="ToDo">ToDo/);
+    expect(html).toMatch(
+      /<li class="task-list-item"><input class="task-list-item-checkbox" type="checkbox" disabled aria-label="ToDo">ToDo/,
+    );
     expect(html).toMatch(/type="checkbox" disabled checked aria-label="Done">Done/);
     // The class is added once per list, not once per item.
     expect(html.match(/contains-task-list/g)).toHaveLength(1);

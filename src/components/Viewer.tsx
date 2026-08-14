@@ -98,11 +98,7 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
   }
 
   if (content === null) {
-    return (
-      <main className="viewer">
-        {loading && <div className="viewer__placeholder">{t('loading')}</div>}
-      </main>
-    );
+    return <main className="viewer">{loading && <div className="viewer__placeholder">{t('loading')}</div>}</main>;
   }
 
   return (

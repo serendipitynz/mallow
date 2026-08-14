@@ -4,13 +4,13 @@
  * Returns the HTML and a flat heading list for the outline.
  */
 import { fromHighlighter } from '@shikijs/markdown-it/core';
-import type { BundledLanguage } from 'shiki';
 import GithubSlugger from 'github-slugger';
 import MarkdownIt from 'markdown-it';
 import anchor from 'markdown-it-anchor';
 import { full as emoji } from 'markdown-it-emoji';
 import builtinEmojiDefs from 'markdown-it-emoji/lib/data/full.mjs';
 import githubAlerts from 'markdown-it-github-alerts';
+import type { BundledLanguage } from 'shiki';
 import { extractFrontMatter, renderFrontMatterTable } from './frontmatter';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from './shiki';
 

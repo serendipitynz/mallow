@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useT } from '../lib/i18n';
 import type { Heading } from '../lib/markdown';
 

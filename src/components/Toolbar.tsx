@@ -13,7 +13,13 @@ export function Toolbar({ selected, onOpenFolder }: ToolbarProps) {
   const t = useT();
   return (
     <header className="toolbar">
-      <button type="button" className="icon-btn" title={t('openFolder')} aria-label={t('openFolder')} onClick={onOpenFolder}>
+      <button
+        type="button"
+        className="icon-btn"
+        title={t('openFolder')}
+        aria-label={t('openFolder')}
+        onClick={onOpenFolder}
+      >
         <FolderOpenIcon />
       </button>
       <span className="toolbar__path" title={selected?.path ?? undefined}>

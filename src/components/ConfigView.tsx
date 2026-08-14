@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { configFormat, parseConfig, shikiLangFor, type ParseErrorInfo } from '../lib/config-parse';
-import { useI18n, type TFn } from '../lib/i18n';
+import { configFormat, type ParseErrorInfo, parseConfig, shikiLangFor } from '../lib/config-parse';
+import { type TFn, useI18n } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
-import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
 import { ConfigTree } from './ConfigTree';
+import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
 import { SourceView } from './SourceView';
 
 interface ConfigViewProps {
@@ -38,7 +38,13 @@ export function ConfigView({ source, file }: ConfigViewProps) {
                button cluster; <fieldset> is for form controls and requires a <legend>, while the
                label is already carried by aria-label. */
             <div className="cfg-expand" role="group" aria-label={t('expandControls')}>
-              <button type="button" className="icon-btn" title={t('expandAll')} aria-label={t('expandAll')} onClick={expandAll}>
+              <button
+                type="button"
+                className="icon-btn"
+                title={t('expandAll')}
+                aria-label={t('expandAll')}
+                onClick={expandAll}
+              >
                 <ListChevronsUpDownIcon />
               </button>
               <button
@@ -84,7 +90,11 @@ export function ConfigView({ source, file }: ConfigViewProps) {
         {outcome.ok && mode === 'tree' ? (
           <ConfigTree key={treeKey} value={outcome.value} forceOpen={forceOpen} />
         ) : (
-          <SourceView source={source} lang={shikiLangFor(format)} errorLine={outcome.ok ? undefined : outcome.error.line} />
+          <SourceView
+            source={source}
+            lang={shikiLangFor(format)}
+            errorLine={outcome.ok ? undefined : outcome.error.line}
+          />
         )}
       </div>
     </div>

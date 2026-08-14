@@ -69,25 +69,22 @@ export function useFileTree(): FileTreeController {
     }
   }, []);
 
-  const open = useCallback(
-    async (dir: string) => {
-      setRootDir(dir);
-      setExpanded(new Set());
-      setChildrenByPath(new Map());
-      setErrors(new Map());
-      setRootEntries([]);
-      setRootError(null);
-      setRootLoading(true);
-      try {
-        setRootEntries(await readDirTree(dir));
-      } catch (e) {
-        setRootError(String(e));
-      } finally {
-        setRootLoading(false);
-      }
-    },
-    [],
-  );
+  const open = useCallback(async (dir: string) => {
+    setRootDir(dir);
+    setExpanded(new Set());
+    setChildrenByPath(new Map());
+    setErrors(new Map());
+    setRootEntries([]);
+    setRootError(null);
+    setRootLoading(true);
+    try {
+      setRootEntries(await readDirTree(dir));
+    } catch (e) {
+      setRootError(String(e));
+    } finally {
+      setRootLoading(false);
+    }
+  }, []);
 
   const toggle = useCallback(
     (path: string) => {

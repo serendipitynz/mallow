@@ -1,15 +1,15 @@
 import { listen } from '@tauri-apps/api/event';
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Explorer } from './components/Explorer';
 import { SettingsIcon } from './components/icons';
 import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
 import { Viewer } from './components/Viewer';
 import { useFileTree } from './hooks/useFileTree';
-import { loadCustomEmoji, NO_CUSTOM_EMOJI, type CustomEmojiStatus } from './lib/custom-emoji';
+import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
-import { setCustomEmoji, type CustomEmojiSet } from './lib/markdown';
+import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
 import { loadSettings, saveSetting } from './lib/settings';
 import { allowMediaDir, pathExists, pickFolder } from './lib/tauri';
@@ -248,7 +248,11 @@ export default function App() {
   return (
     <div className="app">
       <Toolbar selected={selected} onOpenFolder={openFolder} />
-      <div className="app__body" data-side={explorerSide} style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}>
+      <div
+        className="app__body"
+        data-side={explorerSide}
+        style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}
+      >
         {explorerSide === 'left' ? (
           <>
             {explorer}
@@ -264,7 +268,13 @@ export default function App() {
         )}
       </div>
       <footer className="app__footer">
-        <button type="button" className="icon-btn" title={t('settings')} aria-label={t('settings')} onClick={openSettings}>
+        <button
+          type="button"
+          className="icon-btn"
+          title={t('settings')}
+          aria-label={t('settings')}
+          onClick={openSettings}
+        >
           <SettingsIcon />
         </button>
       </footer>

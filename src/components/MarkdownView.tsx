@@ -2,12 +2,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
-import {
-  getMarkdownConfigVersion,
-  renderMarkdown,
-  subscribeMarkdownConfig,
-  type RenderResult,
-} from '../lib/markdown';
+import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { renderMermaid } from '../lib/mermaid';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
@@ -168,12 +163,16 @@ export function MarkdownView({ source }: { source: string }) {
           <>
             {renderError && <div className="doc-error">{t('renderError', { message: renderError })}</div>}
             <div className="doc__body">
-              {/* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is rendered at
-                  runtime, so injecting the HTML is the mechanism, not an oversight. What keeps
-                  it safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":
-                  markdown-it runs with html: false, its validateLink drops dangerous schemes,
-                  and the CSP forbids inline script. Read that section before changing this. */}
-              <article ref={articleRef} className="markdown-body" dangerouslySetInnerHTML={{ __html: result?.html ?? '' }} />
+              <article
+                ref={articleRef}
+                className="markdown-body"
+                /* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is rendered at
+                   runtime, so injecting the HTML is the mechanism, not an oversight. What keeps it
+                   safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":
+                   markdown-it runs with html: false, its validateLink drops dangerous schemes, and
+                   the CSP forbids inline script. Read that section before changing this. */
+                dangerouslySetInnerHTML={{ __html: result?.html ?? '' }}
+              />
               {showOutline && <Outline headings={headings} scrollRef={scrollRef} />}
             </div>
           </>

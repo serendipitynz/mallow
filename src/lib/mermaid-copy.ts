@@ -153,7 +153,11 @@ function makeButton(action: Action, svg: SVGSVGElement): HTMLButtonElement {
     event.stopPropagation();
     void action.run(svg).then((result) => {
       const feedback =
-        result === 'copied' ? 'コピーしました' : result === 'downloaded' ? 'ダウンロードしました' : 'コピーに失敗しました';
+        result === 'copied'
+          ? 'コピーしました'
+          : result === 'downloaded'
+            ? 'ダウンロードしました'
+            : 'コピーに失敗しました';
       const ok = result !== 'failed';
       button.textContent = ok ? '✓' : '×';
       button.classList.toggle('is-copied', ok);

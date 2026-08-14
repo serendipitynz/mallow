@@ -84,9 +84,7 @@ describe('ancestorDirs', () => {
   });
 
   it('tolerates a trailing separator on the root', () => {
-    expect(ancestorDirs('/Users/me/docs/', '/Users/me/docs/a/README.md')).toEqual([
-      '/Users/me/docs/a',
-    ]);
+    expect(ancestorDirs('/Users/me/docs/', '/Users/me/docs/a/README.md')).toEqual(['/Users/me/docs/a']);
     expect(ancestorDirs('C:\\Users\\me\\docs\\', 'C:\\Users\\me\\docs\\a\\README.md')).toEqual([
       'C:\\Users\\me\\docs\\a',
     ]);

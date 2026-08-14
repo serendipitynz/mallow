@@ -1,10 +1,10 @@
 ---
 id: TASK-15
 title: Set up Biome so the conventions are enforced
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-08-07 22:32'
-updated_date: '2026-08-14 05:03'
+updated_date: '2026-08-14 11:32'
 labels:
   - chore
 milestone: m-0
