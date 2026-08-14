@@ -9,7 +9,9 @@ function errorLineTransformer(line: number): ShikiTransformer {
   return {
     name: 'mallow-error-line',
     line(node, lineNumber) {
-      if (lineNumber === line) this.addClassToHast(node, 'src-error-line');
+      if (lineNumber === line) {
+        this.addClassToHast(node, 'src-error-line');
+      }
     },
   };
 }
@@ -29,10 +31,14 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
   useEffect(() => {
     let cancelled = false;
     getHighlighter().then((hl) => {
-      if (cancelled) return;
+      if (cancelled) {
+        return;
+      }
       const resolvedLang = hl.getLoadedLanguages().includes(lang) ? lang : 'text';
       const transformers: ShikiTransformer[] = [stripPreBackground];
-      if (errorLine !== undefined) transformers.push(errorLineTransformer(errorLine));
+      if (errorLine !== undefined) {
+        transformers.push(errorLineTransformer(errorLine));
+      }
       // Trim trailing newlines so there is no spurious empty final line number.
       const code = source.replace(/\n+$/, '');
       setHtml(hl.codeToHtml(code, { themes: SHIKI_THEMES, lang: resolvedLang, transformers }));
@@ -44,7 +50,9 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
 
   // Scroll the flagged line into view once it is in the DOM.
   useEffect(() => {
-    if (errorLine === undefined || !html) return;
+    if (errorLine === undefined || !html) {
+      return;
+    }
     hostRef.current?.querySelector('.src-error-line')?.scrollIntoView({ block: 'center' });
   }, [html, errorLine]);
 

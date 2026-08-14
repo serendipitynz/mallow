@@ -50,7 +50,9 @@ export default function App() {
 
   const openFolder = useCallback(async () => {
     const dir = await pickFolder();
-    if (!dir) return;
+    if (!dir) {
+      return;
+    }
     setSelected(null);
     void saveSetting('lastFolder', dir);
     void saveSetting('lastFile', undefined);
@@ -75,10 +77,14 @@ export default function App() {
     emojiGeneration.current += 1;
     const generation = emojiGeneration.current;
     const commit = (status: CustomEmojiStatus, set: CustomEmojiSet | null) => {
-      if (generation !== emojiGeneration.current) return;
+      if (generation !== emojiGeneration.current) {
+        return;
+      }
       setCustomEmoji(set);
       setEmoji(status);
-      if (persist) void saveSetting('customEmojiDir', status.dir ?? undefined);
+      if (persist) {
+        void saveSetting('customEmojiDir', status.dir ?? undefined);
+      }
     };
 
     if (!dir) {
@@ -98,7 +104,9 @@ export default function App() {
 
   const pickEmojiDir = useCallback(async () => {
     const dir = await pickFolder();
-    if (!dir) return;
+    if (!dir) {
+      return;
+    }
     await applyEmojiDir(dir, true);
   }, [applyEmojiDir]);
 
@@ -111,23 +119,37 @@ export default function App() {
     let disposed = false;
     (async () => {
       const s = await loadSettings();
-      if (disposed) return;
-      if (s.explorerWidth) setExplorerWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, s.explorerWidth)));
-      if (s.explorerSide) setExplorerSide(s.explorerSide);
-      if (s.customEmojiDir) await applyEmojiDir(s.customEmojiDir);
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
+      if (s.explorerWidth) {
+        setExplorerWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, s.explorerWidth)));
+      }
+      if (s.explorerSide) {
+        setExplorerSide(s.explorerSide);
+      }
+      if (s.customEmojiDir) {
+        await applyEmojiDir(s.customEmojiDir);
+      }
+      if (disposed) {
+        return;
+      }
 
       if (s.lastFolder && (await pathExists(s.lastFolder))) {
         // Await the scope grant before restoring the selection below, so a
         // restored media file cannot build its asset URL and latch a load error
         // before the asset protocol is allowed to serve it.
         await allowMediaDir(s.lastFolder).catch((e) => console.error('Failed to allow media dir', e));
-        if (disposed) return;
+        if (disposed) {
+          return;
+        }
         await openTree(s.lastFolder);
         startWatch(s.lastFolder).catch((e) => console.error('Failed to start watch', e));
         if (s.lastFile && isInside(s.lastFolder, s.lastFile) && (await pathExists(s.lastFile))) {
           await expandPaths(ancestorDirs(s.lastFolder, s.lastFile));
-          if (!disposed) setSelected(fileEntryFromPath(s.lastFile));
+          if (!disposed) {
+            setSelected(fileEntryFromPath(s.lastFile));
+          }
         }
       }
     })().catch((e) => console.error('Session restore failed', e));
@@ -147,7 +169,9 @@ export default function App() {
       const paths = Array.from(changed);
       changed.clear();
       const sel = selectedRef.current;
-      if (sel && paths.includes(sel.path)) setReloadToken((t) => t + 1);
+      if (sel && paths.includes(sel.path)) {
+        setReloadToken((t) => t + 1);
+      }
       void refresh();
     };
 
@@ -158,8 +182,11 @@ export default function App() {
       window.clearTimeout(timer);
       timer = window.setTimeout(flush, 150);
     }).then((fn) => {
-      if (disposed) fn();
-      else unlisten = fn;
+      if (disposed) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
     });
 
     return () => {
@@ -176,8 +203,11 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     let disposed = false;
     listen('menu:settings', () => setSettingsOpen(true)).then((fn) => {
-      if (disposed) fn();
-      else unlisten = fn;
+      if (disposed) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
     });
     return () => {
       disposed = true;

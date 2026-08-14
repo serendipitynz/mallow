@@ -16,12 +16,16 @@ vi.mock('./tauri', () => ({
   pathExists: async (path: string) => files.has(path) || dirs.has(path),
   readFile: async (path: string) => {
     const content = files.get(path);
-    if (content === undefined) throw new Error(`no such file: ${path}`);
+    if (content === undefined) {
+      throw new Error(`no such file: ${path}`);
+    }
     return content;
   },
   readDirTree: async (path: string) => {
     const entries = dirs.get(path);
-    if (!entries) throw new Error(`no such dir: ${path}`);
+    if (!entries) {
+      throw new Error(`no such dir: ${path}`);
+    }
     return entries;
   },
 }));

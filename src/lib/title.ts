@@ -7,7 +7,9 @@ const APP_NAME = 'mallow';
 
 /** A markdown front-matter `title` (trimmed, non-empty) if present. */
 function frontMatterTitle(file: FileEntry, content: string): string | null {
-  if (file.kind !== 'markdown') return null;
+  if (file.kind !== 'markdown') {
+    return null;
+  }
   const { data } = extractFrontMatter(content);
   const title = data?.title;
   return typeof title === 'string' && title.trim() ? title.trim() : null;

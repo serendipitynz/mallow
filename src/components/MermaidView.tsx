@@ -8,11 +8,15 @@ export function MermaidView({ source }: { source: string }) {
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return;
+    if (!host) {
+      return;
+    }
     const code = source.trim();
     setEmpty(code.length === 0);
     host.innerHTML = '';
-    if (!code) return;
+    if (!code) {
+      return;
+    }
 
     const pre = document.createElement('pre');
     pre.className = 'mermaid';

@@ -59,7 +59,9 @@ export function isInside(root: string, path: string): boolean {
 export function ancestorDirs(root: string, file: string): string[] {
   const rootSegs = segments(root);
   const fileSegs = segments(file);
-  if (!hasPrefix(rootSegs, fileSegs)) return [];
+  if (!hasPrefix(rootSegs, fileSegs)) {
+    return [];
+  }
   // Segments between root and the file, dropping the trailing file name.
   const between = fileSegs.slice(rootSegs.length, -1);
   const sep = separatorOf(file);

@@ -25,15 +25,21 @@ export function SettingsModal({
   const { t, lang, setLang } = useI18n();
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   return (
     /* biome-ignore lint/a11y/noStaticElementInteractions: the overlay is a click-outside target,
@@ -43,7 +49,9 @@ export function SettingsModal({
       className="modal-overlay"
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
       }}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-label={t('settings')}>

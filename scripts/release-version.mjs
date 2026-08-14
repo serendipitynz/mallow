@@ -56,13 +56,17 @@ const knownFlags = new Set(['--push', '--dry-run']);
 // otherwise a `--dryrun` typo reads as a plain release and commits and tags for
 // real — the exact opposite of what the caller asked for.
 const unknown = argv.filter((a) => a.startsWith('-') && !knownFlags.has(a));
-if (unknown.length > 0) die(`unknown option: ${unknown.join(' ')}\n${usage}`);
+if (unknown.length > 0) {
+  die(`unknown option: ${unknown.join(' ')}\n${usage}`);
+}
 
 const push = argv.includes('--push');
 const dryRun = argv.includes('--dry-run');
 const positional = argv.filter((a) => !a.startsWith('-'));
 
-if (positional.length !== 1) die(usage);
+if (positional.length !== 1) {
+  die(usage);
+}
 const spec = positional[0];
 
 // --- files that declare the version ---------------------------------------
@@ -93,7 +97,9 @@ const read = (t) => {
   const path = join(root, t.file);
   const text = readFileSync(path, 'utf8');
   const m = text.match(t.find);
-  if (!m) die(`could not find a version to replace in ${t.file}`);
+  if (!m) {
+    die(`could not find a version to replace in ${t.file}`);
+  }
   return { path, text, current: m[2] };
 };
 
@@ -117,7 +123,9 @@ const semver = /^(\d+)\.(\d+)\.(\d+)$/;
 let next;
 if (['patch', 'minor', 'major'].includes(spec)) {
   const m = current.match(semver);
-  if (!m) die(`cannot bump non-semver current version "${current}"; pass X.Y.Z`);
+  if (!m) {
+    die(`cannot bump non-semver current version "${current}"; pass X.Y.Z`);
+  }
   const [major, minor, patch] = m.slice(1).map(Number);
   next =
     spec === 'major'
@@ -127,7 +135,9 @@ if (['patch', 'minor', 'major'].includes(spec)) {
         : `${major}.${minor}.${patch + 1}`;
 } else {
   // Tauri rejects non-semver versions at bundle time, so validate here.
-  if (!semver.test(spec)) die(`"${spec}" is not X.Y.Z`);
+  if (!semver.test(spec)) {
+    die(`"${spec}" is not X.Y.Z`);
+  }
   next = spec;
 }
 
@@ -165,7 +175,9 @@ try {
 console.log(`${current} -> ${next} (tag ${tag})`);
 
 if (dryRun) {
-  for (const s of states) console.log(`  would update ${s.file}`);
+  for (const s of states) {
+    console.log(`  would update ${s.file}`);
+  }
   console.log(`  would commit and tag ${tag}`);
   process.exit(0);
 }
@@ -181,7 +193,9 @@ for (const s of states) {
 // missed file is exactly the failure this script exists to prevent.
 for (const t of targets) {
   const after = read(t).current;
-  if (after !== next) die(`${t.file} still reads ${after} after the update`);
+  if (after !== next) {
+    die(`${t.file} still reads ${after} after the update`);
+  }
 }
 
 git('add', ...targets.map((t) => t.file));

@@ -41,7 +41,9 @@ function internText(text) {
 }
 
 function readLicenseTextIds(dir) {
-  if (!dir || !existsSync(dir)) return [];
+  if (!dir || !existsSync(dir)) {
+    return [];
+  }
   let entries;
   try {
     entries = readdirSync(dir);
@@ -53,9 +55,13 @@ function readLicenseTextIds(dir) {
   for (const f of files) {
     const p = join(dir, f);
     try {
-      if (!statSync(p).isFile()) continue;
+      if (!statSync(p).isFile()) {
+        continue;
+      }
       const text = readFileSync(p, 'utf8').replace(/\r\n/g, '\n').trimEnd();
-      if (text) ids.push(internText(text));
+      if (text) {
+        ids.push(internText(text));
+      }
     } catch {
       /* ignore unreadable files */
     }
@@ -67,7 +73,9 @@ function readLicenseTextIds(dir) {
 // a triple backtick (standard license texts never do, but be safe).
 function fence(text) {
   let ticks = '```';
-  while (text.includes(ticks)) ticks += '`';
+  while (text.includes(ticks)) {
+    ticks += '`';
+  }
   return `${ticks}text\n${text}\n${ticks}`;
 }
 
@@ -75,7 +83,9 @@ function renderEntry({ name, version, license, extra, textIds }) {
   const lines = [`### ${name}${version ? ` ${version}` : ''}`, ''];
   lines.push(`- License: ${license || 'See bundled text'}`);
   for (const [k, v] of Object.entries(extra || {})) {
-    if (v) lines.push(`- ${k}: ${v}`);
+    if (v) {
+      lines.push(`- ${k}: ${v}`);
+    }
   }
   if (textIds.length) {
     lines.push(`- License text: ${textIds.map((id) => `[${id}](#${id.toLowerCase()})`).join(', ')}`);
@@ -97,7 +107,9 @@ function collectNpm() {
   const pkgs = [];
   for (const [, list] of Object.entries(byLicense)) {
     for (const e of list) {
-      if (e.name === SELF) continue;
+      if (e.name === SELF) {
+        continue;
+      }
       const path0 = (e.paths || []).find(Boolean);
       const textIds = readLicenseTextIds(path0);
       let license = e.license && e.license !== 'Unknown' ? e.license : null;
@@ -132,7 +144,9 @@ function collectCargo() {
   const meta = JSON.parse(raw);
   const pkgs = [];
   for (const p of meta.packages) {
-    if (p.name === SELF) continue;
+    if (p.name === SELF) {
+      continue;
+    }
     const dir = p.manifest_path ? dirname(p.manifest_path) : null;
     pkgs.push({
       name: p.name,
@@ -148,7 +162,9 @@ function collectCargo() {
 
 function licenseSummary(pkgs) {
   const counts = {};
-  for (const p of pkgs) counts[p.license] = (counts[p.license] || 0) + 1;
+  for (const p of pkgs) {
+    counts[p.license] = (counts[p.license] || 0) + 1;
+  }
   return Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .map(([lic, n]) => `  - ${lic}: ${n}`)
@@ -185,12 +201,16 @@ out.push('---');
 out.push('');
 out.push('## npm dependencies');
 out.push('');
-for (const p of npm) out.push(renderEntry(p));
+for (const p of npm) {
+  out.push(renderEntry(p));
+}
 out.push('---');
 out.push('');
 out.push('## Rust (Cargo) dependencies');
 out.push('');
-for (const p of cargo) out.push(renderEntry(p));
+for (const p of cargo) {
+  out.push(renderEntry(p));
+}
 out.push('---');
 out.push('');
 out.push('## License texts');

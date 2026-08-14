@@ -68,19 +68,25 @@ describe('parseConfig — errors carry a 1-based line', () => {
   it('reports a JSON syntax error', () => {
     const out = parseConfig('{ "a": }', 'json');
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.error.message).toBeTruthy();
+    if (!out.ok) {
+      expect(out.error.message).toBeTruthy();
+    }
   });
 
   it('reports the offending line for JSONL', () => {
     const out = parseConfig('{"a":1}\nnot json\n', 'jsonl');
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.error.line).toBe(2);
+    if (!out.ok) {
+      expect(out.error.line).toBe(2);
+    }
   });
 
   it('reports a line for invalid YAML', () => {
     const out = parseConfig('a: 1\n  b: : :\n', 'yaml');
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(typeof out.error.line === 'number' || out.error.line === undefined).toBe(true);
+    if (!out.ok) {
+      expect(typeof out.error.line === 'number' || out.error.line === undefined).toBe(true);
+    }
   });
 
   it('reports a line/column for invalid TOML', () => {

@@ -53,7 +53,9 @@ export function useFileTree(): FileTreeController {
       const entries = await readDirTree(path);
       setChildrenByPath((m) => new Map(m).set(path, entries));
       setErrors((m) => {
-        if (!m.has(path)) return m;
+        if (!m.has(path)) {
+          return m;
+        }
         const n = new Map(m);
         n.delete(path);
         return n;
@@ -94,7 +96,9 @@ export function useFileTree(): FileTreeController {
           next.delete(path);
         } else {
           next.add(path);
-          if (!childrenRef.current.has(path)) void loadChildren(path);
+          if (!childrenRef.current.has(path)) {
+            void loadChildren(path);
+          }
         }
         return next;
       });
@@ -128,7 +132,9 @@ export function useFileTree(): FileTreeController {
         return next;
       });
       for (const p of ordered) {
-        if (!childrenRef.current.has(p)) await loadChildren(p);
+        if (!childrenRef.current.has(p)) {
+          await loadChildren(p);
+        }
       }
     },
     [loadChildren],

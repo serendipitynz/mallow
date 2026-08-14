@@ -53,10 +53,14 @@ export function MarkdownView({ source }: { source: string }) {
     setRenderError(null);
     renderMarkdown(source)
       .then((r) => {
-        if (!cancelled) setResult(r);
+        if (!cancelled) {
+          setResult(r);
+        }
       })
       .catch((e) => {
-        if (!cancelled) setRenderError(String(e));
+        if (!cancelled) {
+          setRenderError(String(e));
+        }
       });
     return () => {
       cancelled = true;
@@ -67,19 +71,27 @@ export function MarkdownView({ source }: { source: string }) {
   // bind external-link handling, and restore the scroll position. Keyed on `mode`
   // too so toggling source → preview re-applies them to the freshly mounted DOM.
   useEffect(() => {
-    if (mode !== 'preview' || !result) return;
+    if (mode !== 'preview' || !result) {
+      return;
+    }
     const article = articleRef.current;
-    if (!article) return;
+    if (!article) {
+      return;
+    }
 
     enhanceCodeBlocks(article);
     void renderMermaid(article);
 
     const onClick = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest('a');
-      if (!anchor) return;
+      if (!anchor) {
+        return;
+      }
       const href = anchor.getAttribute('href') ?? '';
       // In-page anchors (e.g. `[jump](#section)`) scroll within the document.
-      if (href.startsWith('#')) return;
+      if (href.startsWith('#')) {
+        return;
+      }
       // Anything else must never navigate the app's own WebView away. Real web
       // links open in the OS browser; every other scheme (relative paths, file:,
       // data:, mailto:, and — as defense in depth — javascript:) is treated as

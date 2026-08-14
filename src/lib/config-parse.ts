@@ -113,7 +113,9 @@ function parseJsonl(text: string): ParseOutcome {
   const records: unknown[] = [];
   for (let i = 0; i < lines.length; i++) {
     const trimmed = lines[i].trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      continue;
+    }
     try {
       records.push(JSON.parse(trimmed));
     } catch (e) {

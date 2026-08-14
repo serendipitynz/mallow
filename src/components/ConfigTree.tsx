@@ -6,11 +6,19 @@ import { ChevronRight } from './icons';
 type ValueType = 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null';
 
 function typeOf(value: unknown): ValueType {
-  if (value === null) return 'null';
-  if (Array.isArray(value)) return 'array';
+  if (value === null) {
+    return 'null';
+  }
+  if (Array.isArray(value)) {
+    return 'array';
+  }
   const t = typeof value;
-  if (t === 'object') return 'object';
-  if (t === 'number' || t === 'boolean' || t === 'string') return t;
+  if (t === 'object') {
+    return 'object';
+  }
+  if (t === 'number' || t === 'boolean' || t === 'string') {
+    return t;
+  }
   // bigint / undefined / function — render as string-ish.
   return 'string';
 }
@@ -20,13 +28,19 @@ function indent(depth: number): CSSProperties {
 }
 
 function formatPrimitive(value: unknown, type: ValueType): string {
-  if (type === 'string') return JSON.stringify(value);
-  if (type === 'null') return 'null';
+  if (type === 'string') {
+    return JSON.stringify(value);
+  }
+  if (type === 'null') {
+    return 'null';
+  }
   return String(value);
 }
 
 function entriesOf(value: unknown, type: ValueType): Array<[string, unknown]> {
-  if (type === 'array') return (value as unknown[]).map((v, i) => [String(i), v]);
+  if (type === 'array') {
+    return (value as unknown[]).map((v, i) => [String(i), v]);
+  }
   return Object.entries(value as Record<string, unknown>);
 }
 

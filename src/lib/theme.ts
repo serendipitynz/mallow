@@ -35,7 +35,9 @@ export function getTheme(): ThemeId {
 /** The effective light/dark mode once "auto" is resolved against the OS. */
 export function resolveTheme(): Resolved {
   const id = getTheme();
-  if (id === 'auto') return media.matches ? 'dark' : 'light';
+  if (id === 'auto') {
+    return media.matches ? 'dark' : 'light';
+  }
   return MODE[id];
 }
 
@@ -43,7 +45,9 @@ let lastResolved: Resolved = resolveTheme();
 
 function notify(): void {
   const resolved = resolveTheme();
-  if (resolved === lastResolved) return;
+  if (resolved === lastResolved) {
+    return;
+  }
   lastResolved = resolved;
   listeners.forEach((cb) => {
     cb(resolved);

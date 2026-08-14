@@ -12,8 +12,12 @@ const PROPER: Partial<Record<ThemeId, string>> = {
 };
 
 function glyphFor(id: ThemeId) {
-  if (id === 'auto') return SunMoonIcon;
-  if (id === 'light' || id === 'solarized-light') return SunIcon;
+  if (id === 'auto') {
+    return SunMoonIcon;
+  }
+  if (id === 'light' || id === 'solarized-light') {
+    return SunIcon;
+  }
   return MoonIcon;
 }
 
@@ -24,9 +28,13 @@ export function ThemePicker() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
     };
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
