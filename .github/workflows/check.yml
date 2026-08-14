@@ -20,6 +20,11 @@ on:
     branches:
       - main
 
+# Both jobs only read the checkout. Set the floor here while this is the
+# repository's first check workflow, rather than inheriting the default scope.
+permissions:
+  contents: read
+
 concurrency:
   group: check-${{ github.ref }}
   cancel-in-progress: true
@@ -53,8 +58,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The same set release.yml installs for its Linux bundle: the Tauri crate
-      # does not compile without the WebKitGTK headers.
+      # The same package list release.yml installs for its Linux bundle — the
+      # Tauri crate does not compile without the WebKitGTK headers — but
+      # deliberately not the same runner. release.yml pins ubuntu-22.04 so the
+      # AppImage it produces stays runnable on older glibc (release.yml:116);
+      # this job bundles nothing, so it has no stake in that and tracks
+      # ubuntu-latest instead, which is also what keeps it clear of the 22.04
+      # deprecation TASK-17 has to weigh. Verified on ubuntu-24.04: every package
+      # below, libappindicator3-dev included, resolves from noble/universe.
       - name: Install Linux system dependencies
         run: |
           sudo apt-get update

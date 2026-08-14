@@ -275,9 +275,10 @@ Comments / Functions とまったく同様にレビューで守る。
   ユニットテストはコードと同じ場所に `src/**/*.test.ts` として置き、純ロジックの
   モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
   `frontmatter`・`title`・`path`・`custom-emoji`＝Tauri 層をモック）をカバーする。
-  Node 環境で走るため jsdom/GUI は不要。markdown のテストが要する 20 秒のタイムアウト
-  （初回レンダーで Shiki の WASM が起動する）は `vitest.config.ts` の `testTimeout` に
-  あり、`it` ごとの第 3 引数では持たない。
+  Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
+  タイムアウトを上げる — `it` ごとの第 3 引数では持たない（フォーマッタが 3 引数の呼び出しを
+  複数行に展開する）し、`vitest.config.ts` にも置かない（他のスイートで固まったテストは
+  5 秒で落ちてほしい）。
 - バックエンド: `src-tauri/` 内で `cargo fmt --check`・`cargo check`・`cargo test`。
   `commands` モジュールにユニットテストがある（`tempfile` 依存を避けた
   自己クリーンアップ式の temp-dir ヘルパー）。

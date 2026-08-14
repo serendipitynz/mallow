@@ -1,5 +1,12 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderMarkdown, setCustomEmoji } from './markdown';
+
+// Headroom for the first render, which boots the Shiki highlighter (WASM +
+// grammars) and can exceed the 5s default on a cold or slow machine. Set for
+// this file rather than in vitest.config.ts so a hung test in any other suite
+// still fails in 5s, and not as a third argument on each `it`: the formatter
+// expands a three-argument call across lines, doubling every test below.
+vi.setConfig({ testTimeout: 20_000 });
 
 describe('renderMarkdown — untrusted-input security boundary', () => {
   it('escapes a raw <script> block instead of emitting live DOM', async () => {

@@ -288,8 +288,10 @@ outlive the task it points at.
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
   `config-parse`, `frontmatter`, `title`, `path`, and `custom-emoji` with the
   Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
-  20s timeout the markdown suite needs (first render boots Shiki's WASM) is
-  `testTimeout` in `vitest.config.ts`, not a third argument per `it`.
+  markdown suite raises its timeout with one `vi.setConfig` at the top of the
+  file — not a third argument per `it` (the formatter expands a three-argument
+  call across lines) and not `vitest.config.ts` (a hung test in any other suite
+  should still fail in 5s).
 - Backend: `cargo fmt --check`, `cargo check` and `cargo test` inside
   `src-tauri/`. The `commands` module has unit tests (a small self-cleaning
   temp-dir helper, no `tempfile` dep).
