@@ -1,10 +1,10 @@
 ---
 id: TASK-14
 title: Write the coding style into the project conventions
-status: Done
+status: In Review
 assignee: []
 created_date: '2026-08-07 22:31'
-updated_date: '2026-08-14 09:58'
+updated_date: '2026-08-14 10:07'
 labels:
   - documentation
 milestone: m-0
