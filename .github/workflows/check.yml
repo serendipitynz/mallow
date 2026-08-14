@@ -25,9 +25,12 @@ on:
 permissions:
   contents: read
 
+# Superseding a push is right on a pull request, where only the tip matters. It
+# is wrong on main: cancelling there leaves a merge commit whose checks never
+# finished, so a release cannot tell whether that commit was ever verified.
 concurrency:
   group: check-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   frontend:
