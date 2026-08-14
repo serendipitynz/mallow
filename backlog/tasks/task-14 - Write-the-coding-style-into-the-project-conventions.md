@@ -4,14 +4,11 @@ title: Write the coding style into the project conventions
 status: In Review
 assignee: []
 created_date: '2026-08-07 22:31'
-updated_date: '2026-08-14 10:07'
+updated_date: '2026-08-14 10:17'
 labels:
   - documentation
 milestone: m-0
 dependencies: []
-modified_files:
-  - AGENTS.md
-  - AGENTS.ja.md
 priority: medium
 type: docs
 ordinal: 25000
@@ -89,4 +86,10 @@ Comments and Functions are labelled reviewer-enforced, with a lead paragraph sta
 Structure: a new `### Coding style` / `### コーディングスタイル` subsection under Conventions, with **Comments** / **Control flow** / **Functions** as bolded lead-ins rather than h4 headings. `Code comments in English` was removed from the bullet list and folded in as a Comments bullet, widened to name every language in the repo (AC 2). `SCSS only — never introduce Tailwind` is untouched at the top of the list (AC 6).
 
 Docs only: `git diff --stat` is AGENTS.md and AGENTS.ja.md, nothing else (DoD 1).
+
+Review round 1 (PR #20) corrected one substantive error: the Control flow rule had been written as machine-enforced from TASK-15 onward, but TASK-15 AC 2 wires `style/useBlockStatements` at `warn`, so CI stays green and enforcement actually begins at TASK-16 AC 4 when the rule is raised to `error`. Between those two tasks nothing mechanical holds the rule, and Control flow was the one rule not labelled reviewer-enforced — the exact hole AC 5 exists to close. The text now names the warn window explicitly and puts the rule under review enforcement until TASK-16 lands.
+
+TASK-16 AC 5 was widened at the same time: the transition note has three parts (two paragraphs, the label qualifier, the intro's "see below"), and an AC naming only the note would have left the pointer dangling.
+
+Files changed: AGENTS.md and AGENTS.ja.md for the conventions text; this task and TASK-15 for the backlog record; TASK-16 for the widened AC 5.
 <!-- SECTION:NOTES:END -->

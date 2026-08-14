@@ -105,19 +105,29 @@ hold rather than as an exhaustive style guide.
   code cannot express: behavioural guarantees, preconditions, side effects,
   error semantics, compatibility constraints.
 
-**Control flow** — machine-enforced once TASK-15 wires Biome's
-`style/useBlockStatements`.
+**Control flow** — reviewer-enforced for now, machine-enforced from TASK-16 on.
 
 - Always use explicit block syntax for control-flow bodies, including where the
   language lets the braces be omitted.
 
-The current tree does not conform, and that is known rather than overlooked:
+This is the one rule a tool can hold, and Biome will — but not yet, so until then
+it is held in review exactly like Comments and Functions. TASK-15 wires
+`style/useBlockStatements` at **`warn`** deliberately, so the bodies still in the
+tree cannot fail CI before TASK-16 drains them; a warning keeps CI green, which
+means nothing mechanical stops a new implicit body during that window. TASK-16
+converts them and then raises the rule to `error`, and that is the point this
+becomes machine-enforced.
+
+The tree does not conform yet, and that is known rather than overlooked:
 **144 implicit bodies** remain — 122 in non-test `src/`, 5 in `src/**/*.test.ts`,
 17 in `scripts/*.mjs`. The dominant shape is the early return `if (!dir) return;`,
 used consistently on purpose, so the gap is a style reversal in progress, not
-drift. It is closed wholesale by TASK-16 in `backlog/tasks/`; until then write
-new code braced and leave the rest alone. **TASK-16 deletes this paragraph** —
-it must not outlive the task it points at.
+drift. Write new code braced and leave the rest alone.
+
+**TASK-16 removes this whole transition** — the two paragraphs above, the
+"reviewer-enforced for now" qualifier on this rule's label, and the "see below"
+clause in the scope paragraph at the top of this section. None of it must outlive
+the task it points at.
 
 **Functions** — reviewer-enforced.
 
