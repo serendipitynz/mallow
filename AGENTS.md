@@ -146,8 +146,7 @@ them — if something pre-dating the rules reads badly, say so rather than
 rewriting it as a drive-by. Concretely, the doc comments that restate a
 signature, the `// ---- Section ----` banners in `src/`, `scripts/` and the SCSS,
 and the stale plan citations in `src/hooks/useFileTree.ts:5-7` all stay until
-their surrounding code is edited for another reason. Control flow is the single
-exception, because it is being closed in one deliberate pass — see below.
+their surrounding code is edited for another reason.
 
 Nothing checks the Comments or Functions rules mechanically; no linter can judge
 whether a comment restates its code or whether an extraction improved anything.
@@ -172,29 +171,11 @@ hold rather than as an exhaustive style guide.
   code cannot express: behavioural guarantees, preconditions, side effects,
   error semantics, compatibility constraints.
 
-**Control flow** — reviewer-enforced for now, machine-enforced from TASK-16 on.
+**Control flow** — machine-enforced by Biome's `style/useBlockStatements`, at
+`error`.
 
 - Always use explicit block syntax for control-flow bodies, including where the
   language lets the braces be omitted.
-
-This is the one rule a tool can hold, and Biome now reports it — at **`warn`**
-deliberately, so the bodies still in the tree cannot fail CI before TASK-16
-drains them. A warning keeps `biome ci` green, which also means nothing
-mechanical stops a new implicit body during this window; until TASK-16 raises the
-rule to `error`, it is held in review exactly like Comments and Functions.
-
-The tree does not conform yet, and that is known rather than overlooked:
-**143 implicit bodies** remain across 33 files — 121 in non-test `src/`, 5 in
-`src/**/*.test.ts`, 17 in `scripts/*.mjs`. The dominant shape is the early return
-`if (!dir) return;`, used consistently on purpose, so the gap is a style reversal
-in progress, not drift. Write new code braced and leave the rest alone; `pnpm
-lint` lists every remaining one.
-
-**TASK-16 removes this whole transition** — the two paragraphs above, the
-"reviewer-enforced for now" qualifier on this rule's label, the "see below" clause
-in the scope paragraph at the top of this section, and this paragraph itself, which
-is part of the transition rather than a standing instruction. None of it must
-outlive the task it points at.
 
 **Functions** — reviewer-enforced.
 
