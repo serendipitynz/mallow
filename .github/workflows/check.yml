@@ -67,13 +67,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # The same package list release.yml installs for its Linux bundle — the
-      # Tauri crate does not compile without the WebKitGTK headers — but
-      # deliberately not the same runner. release.yml pins ubuntu-22.04 so the
-      # AppImage it produces stays runnable on older glibc (release.yml:116);
-      # this job bundles nothing, so it has no stake in that and tracks
-      # ubuntu-latest instead, which is also what keeps it clear of the 22.04
-      # deprecation TASK-17 has to weigh. Verified on ubuntu-24.04: every package
+      # release.yml's package list minus xdg-utils, which only its AppImage
+      # bundler needs — the Tauri crate does not compile without the WebKitGTK
+      # headers, hence the rest. Deliberately not the same runner either:
+      # release.yml pins its Linux images because the bundles it produces
+      # inherit that image's glibc floor, whereas this job produces no artifact
+      # and so tracks ubuntu-latest. Verified on ubuntu-24.04: every package
       # below, libappindicator3-dev included, resolves from noble/universe.
       - name: Install Linux system dependencies
         run: |

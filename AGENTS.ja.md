@@ -302,11 +302,16 @@ runtime 下で起動に失敗する場合は `bundle.macOS.entitlements` で追�
 
 ### GitHub Actions によるクロスプラットフォームリリース
 
-`.github/workflows/release.yml` が macOS（universal）/ Windows / Linux のバンドル
-をビルドし、**Draft** の GitHub リリースに添付する（内容を確認してから手動で公開）。
+`.github/workflows/release.yml` が macOS（Apple Silicon と Intel の両方を含む
+universal な `.dmg` 1 つ）/ Windows（x86_64 のみ）/ Linux（**x86_64 と arm64 の
+両方**。それぞれ deb・rpm・AppImage）のバンドルをビルドし、**Draft** の GitHub
+リリースに添付する（内容を確認してから手動で公開）。
 `v*` タグの push、または Actions タブからタグを指定した手動実行で起動する。
 `tauri-apps/tauri-action` を使い、macOS の `.dmg` は後段のステップで公証 + staple
 してから `gh release upload --clobber` で差し替える（ローカルスクリプトと同じ穴埋め）。
+Linux は 2 ジョブとも `ubuntu-24.04` 系イメージで動くので、Linux のバンドルは
+glibc 2.39 を要求する。Ubuntu 22 の 2.35 より下限を上げた理由はワークフローの
+matrix コメントが正本。`ubuntu-24.04-arm` ラベルは public リポジトリでしか解決しない。
 
 初回設定 — macOS ランナーは以下のリポジトリ Secrets がある時だけ署名・公証する。
 `scripts/setup-ci-signing-secrets.sh path/to/DeveloperID.p12` が `.env.signing` と

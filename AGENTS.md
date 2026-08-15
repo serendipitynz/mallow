@@ -319,12 +319,17 @@ build ever fails to launch under hardened runtime, add one via
 
 ### Cross-platform release via GitHub Actions
 
-`.github/workflows/release.yml` builds macOS (universal), Windows, and Linux
-bundles and attaches them to a **draft** GitHub release (review, then publish by
-hand). It triggers on a pushed `v*` tag, or manually from the Actions tab with a
-tag input. It uses `tauri-apps/tauri-action`; the macOS `.dmg` is notarized +
-stapled in a follow-up step (same gap the local script closes) and the asset is
-replaced via `gh release upload --clobber`.
+`.github/workflows/release.yml` builds macOS (one universal `.dmg` covering
+Apple Silicon and Intel), Windows (x86_64 only), and Linux on **both x86_64 and
+arm64** (deb, rpm and AppImage for each), and attaches them to a **draft**
+GitHub release (review, then publish by hand). It triggers on a pushed `v*` tag,
+or manually from the Actions tab with a tag input. It uses
+`tauri-apps/tauri-action`; the macOS `.dmg` is notarized + stapled in a
+follow-up step (same gap the local script closes) and the asset is replaced via
+`gh release upload --clobber`. Both Linux jobs run on `ubuntu-24.04` images, so
+the Linux bundles need glibc 2.39 — the matrix comment in the workflow is the
+source of truth for why that floor was taken over Ubuntu 22's 2.35. The
+`ubuntu-24.04-arm` label only resolves on public repositories.
 
 One-time setup — the macOS runner signs/notarizes only when these repo secrets
 exist. `scripts/setup-ci-signing-secrets.sh path/to/DeveloperID.p12` registers
