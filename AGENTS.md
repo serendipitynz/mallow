@@ -189,6 +189,17 @@ hold rather than as an exhaustive style guide.
 
 ## Implementation notes / gotchas
 
+- **Reading a file cannot fail with a bare string.** `read_file` returns
+  `Result<String, ReadError>`, a serde-tagged enum whose `kind` is `invalidUtf8`,
+  `binary`, `tooLarge` or `io` (decision-5). `readFile` in `lib/tauri.ts`
+  **resolves** `{ ok: true, text } | { ok: false, error }` rather than rejecting —
+  TypeScript cannot type a rejection value, so resolving a discriminated union is
+  what makes `tsc` force a caller through the failure branch. The mirrored type,
+  the decoder and the message selector live in `lib/read-error.ts`, which imports
+  no Tauri API so it stays testable under Node. `tooLarge` and `io` print the
+  backend's message verbatim; `invalidUtf8` and `binary` are worded in
+  `lib/i18n`. A new binary format is one entry in `BINARY_MAGICS`. **The UTF-8
+  BOM is stripped in `read_file`** — no parser downstream should strip it again.
 - Markdown is rendered **at runtime in the WebView** (not at build time).
   `renderMarkdown` returns `{ html, headings }`; leading front-matter (YAML `---`
   / TOML `+++`) is extracted and shown as a key/value table.
