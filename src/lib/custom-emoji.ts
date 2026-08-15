@@ -73,8 +73,13 @@ async function readManifest(path: string): Promise<Manifest | null> {
   if (!(await pathExists(path))) {
     return null;
   }
+  const result = await readFile(path);
+  if (!result.ok) {
+    console.error(`Ignoring unreadable ${MANIFEST_NAME}`, result.error);
+    return null;
+  }
   try {
-    const parsed: unknown = JSON.parse(await readFile(path));
+    const parsed: unknown = JSON.parse(result.text);
     return isRecord(parsed) ? parsed : null;
   } catch (e) {
     console.error(`Ignoring unreadable ${MANIFEST_NAME}`, e);
