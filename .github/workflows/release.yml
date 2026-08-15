@@ -113,8 +113,23 @@ jobs:
           - platform: macos-latest
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
             tauri_args: --target universal-apple-darwin
-          # 22.04 keeps the produced AppImage runnable on older glibc than 24.04.
-          - platform: ubuntu-22.04
+          # Both Linux jobs run on 24.04. The x86_64 one was pinned to 22.04 to
+          # keep the AppImage runnable against an older glibc (2.35 rather than
+          # 2.39), but the Ubuntu 22 images — x86_64 and arm64 alike — begin
+          # deprecation on 2026-09-17 and are failed outright during the
+          # brownouts leading to their 2027-04-17 removal. `fail-fast: false`
+          # means the other jobs still finish, so a release cut inside a
+          # brownout window would produce a draft with no Linux bundles at all.
+          # The wider glibc reach is given up here, deliberately, rather than
+          # under a deadline during a release.
+          - platform: ubuntu-24.04
+            rust_targets: ''
+            tauri_args: ''
+          # Natively arm64, so nothing is cross-compiled and rust_targets stays
+          # empty. Measured to produce deb, rpm and AppImage exactly like the
+          # x86_64 job. The label only resolves on public repositories; in a
+          # private one the job fails before it starts.
+          - platform: ubuntu-24.04-arm
             rust_targets: ''
             tauri_args: ''
           - platform: windows-latest
@@ -131,15 +146,23 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
+      # Matched by prefix, not by exact label: an exact match silently skips
+      # this step for any second Linux runner, and the build then fails deep in
+      # webkit2gtk rather than here.
       - name: Install Linux system dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: startsWith(matrix.platform, 'ubuntu')
         run: |
+          # xdg-utils is needed because the AppImage bundler shells out to
+          # /usr/bin/xdg-open, which the arm64 runner images do not ship and the
+          # x86_64 ones happen to. Without it the arm64 job bundles deb and rpm
+          # and then fails on the AppImage.
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            xdg-utils
 
       - uses: pnpm/action-setup@v4
 
