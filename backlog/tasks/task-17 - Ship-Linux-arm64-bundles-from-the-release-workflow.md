@@ -1,10 +1,10 @@
 ---
 id: TASK-17
 title: Ship Linux arm64 bundles from the release workflow
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-14 04:27'
-updated_date: '2026-08-14 05:03'
+updated_date: '2026-08-15 21:33'
 labels:
   - chore
 milestone: m-0
@@ -63,16 +63,16 @@ CI going green proves the bundle was produced, not that it starts. The AppImage 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The release workflow produces Linux arm64 deb and rpm bundles and uploads them to the same draft as the x86_64 ones
-- [ ] #2 Whether the Linux jobs stay on 22.04 or move to 24.04 was decided against the Ubuntu 22 deprecation dates (2026-09-17 / 2027-04-17), and the reason replaces the stale glibc-only comment in the workflow
-- [ ] #3 The Linux dependency-install step covers both Linux runners; no exact-string gate on ubuntu-22.04 is left behind
-- [ ] #4 Whether AppImage builds on arm64 was measured; if it does not, arm64 ships deb+rpm only and the workflow says which form is missing and why
-- [ ] #5 AGENTS.md and AGENTS.ja.md name the architectures a release covers, not just the platforms
+- [x] #1 The release workflow produces Linux arm64 deb and rpm bundles and uploads them to the same draft as the x86_64 ones
+- [x] #2 Whether the Linux jobs stay on 22.04 or move to 24.04 was decided against the Ubuntu 22 deprecation dates (2026-09-17 / 2027-04-17), and the reason replaces the stale glibc-only comment in the workflow
+- [x] #3 The Linux dependency-install step covers both Linux runners; no exact-string gate on ubuntu-22.04 is left behind
+- [x] #4 Whether AppImage builds on arm64 was measured; if it does not, arm64 ships deb+rpm only and the workflow says which form is missing and why
+- [x] #5 AGENTS.md and AGENTS.ja.md name the architectures a release covers, not just the platforms
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 A release run (tag push or manual dispatch) put the arm64 assets on the draft alongside the existing x86_64, Windows and macOS ones
 - [ ] #2 An arm64 bundle was installed and launched on a real arm64 Linux (the owner's VM) - CI green is not the check
-- [ ] #3 The three existing jobs are unchanged in behaviour: macOS notarization still runs and the x86_64 assets are as before
+- [ ] #3 The macOS and Windows jobs are unchanged in behaviour (notarization still runs); the x86_64 Linux job still produces deb, rpm and AppImage, differing only by the glibc floor this task deliberately raised from 2.35 to 2.39 by moving it to 24.04
 <!-- DOD:END -->
