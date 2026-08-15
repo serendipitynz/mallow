@@ -54,10 +54,15 @@ unlisted languages fall back to plain text.
 Two constraints apply to every text-reading kind, both from
 [read_file](../../src-tauri/src/commands.rs):
 
-- It is UTF-8 only (`fs::read_to_string`), and a file that fails to decode
-  surfaces the raw error through `Viewer.tsx:86-95`. If the new kind commonly
-  appears in another encoding or in a binary variant, plan a message that names
-  the cause — see decision-2.
+- It is UTF-8 only, and a file that fails to decode comes back as a typed
+  `ReadError` the frontend branches on — `invalidUtf8`, `binary`, `tooLarge` or
+  `io` (decision-5). A new kind gets the encoding and binary messages for free;
+  it needs work here only if it wants wording of its own. `readFile` resolves a
+  discriminated result rather than rejecting, so a new caller cannot skip the
+  failure branch. Which *encodings* are in scope is still decision-2's answer:
+  none beyond UTF-8.
+- The UTF-8 BOM is stripped in `read_file`, so a new parser must not strip it
+  again.
 - The 10 MiB cap bounds bytes, not work. A file well inside it can still stall the
   WebView once it is highlighted or expanded into DOM, which is why the source
   view is capped (TASK-9) and the CSV table and HTML renderer have their own

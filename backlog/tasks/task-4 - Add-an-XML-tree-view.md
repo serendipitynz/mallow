@@ -26,7 +26,7 @@ Gotcha: DOMParser does not exist in the Vitest Node environment. Keep the DOMPar
 
 Gotcha: a failed text/xml parse yields a parsererror document, but there is no standard API for the error line and column, and the text format differs across WKWebView, WebView2 and WebKitGTK. Decide the policy before building the error banner: extract line and column where the engine provides them, and fall back to a banner without a line number (and no flagged line in the source view) where it does not. Do not promise a line number that cannot be produced on every platform, and do not add an XML parser dependency to get one without asking first.
 
-Gotcha: binary plists are the norm on macOS, and read_file uses fs::read_to_string, so those fail to read at all and Viewer.tsx:86-95 surfaces the raw UTF-8 error. Advertising plist in the tree therefore advertises files that cannot open. Detect the bplist00 magic and say what it is, or drop plist from this task - decide rather than shipping a confusing error. See decision-2 on encoding scope.
+Gotcha: binary plists are the norm on macOS. TASK-10 already detects the bplist00 magic and reports it as the binary variant of ReadError, with a message of its own in both dictionaries (decision-5), so AC #4 needs no new detection here. What is left to decide is only whether to map plist into file_kind at all: mapping it is what makes that path reachable from the UI, and it means advertising files that open as an explanatory message rather than as a tree. See decision-2 on encoding scope.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
