@@ -24,6 +24,22 @@ function str(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+/** `String` renders a plain object as `[object Object]`, which tells whoever is
+ *  reading the viewer's error panel nothing. The shape that lands here is most
+ *  likely a variant added on the Rust side and not mirrored below, so its fields
+ *  are the whole diagnostic. `Error` is left to `String`, which already names it. */
+function describe(value: unknown): string {
+  if (typeof value === 'object' && value !== null && !(value instanceof Error)) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      // Cyclic, or a field whose toJSON throws.
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
 /**
  * Narrow whatever `invoke` rejected with to a `ReadError`.
  *
@@ -59,7 +75,7 @@ export function toReadError(value: unknown, path: string): ReadError {
         break;
     }
   }
-  return { kind: 'io', path, message: String(value) };
+  return { kind: 'io', path, message: describe(value) };
 }
 
 /**

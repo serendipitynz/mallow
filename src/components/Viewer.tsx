@@ -52,19 +52,27 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
     setError(null);
     // Reflect the file name immediately; refine to a front-matter title once read.
     setWindowTitle(windowTitle(file.name));
-    void readFile(file.path).then((result) => {
-      if (cancelled) {
-        return;
-      }
-      if (result.ok) {
-        setContent(result.text);
-        setWindowTitle(windowTitle(documentTitle(file, result.text)));
-      } else {
-        setError(result.error);
-        setContent(null);
-      }
-      setLoading(false);
-    });
+    readFile(file.path)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        if (result.ok) {
+          setContent(result.text);
+          setWindowTitle(windowTitle(documentTitle(file, result.text)));
+        } else {
+          setError(result.error);
+          setContent(null);
+        }
+      })
+      // readFile itself cannot reject, but a throw anywhere above would
+      // otherwise strand the viewer on the loading placeholder for good.
+      .catch((e) => console.error('read failed', e))
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };

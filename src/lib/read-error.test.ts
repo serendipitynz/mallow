@@ -33,10 +33,19 @@ describe('toReadError', () => {
     expect(toReadError('boom', PATH)).toEqual({ kind: 'io', path: PATH, message: 'boom' });
     expect(toReadError(new Error('ipc down'), PATH)).toEqual({ kind: 'io', path: PATH, message: 'Error: ipc down' });
     expect(toReadError(null, PATH)).toEqual({ kind: 'io', path: PATH, message: 'null' });
-    expect(toReadError({ kind: 'unheardOf' }, PATH)).toEqual({ kind: 'io', path: PATH, message: '[object Object]' });
+    // A variant added in Rust and not mirrored here shows its fields, not [object Object].
+    expect(toReadError({ kind: 'unheardOf' }, PATH)).toEqual({
+      kind: 'io',
+      path: PATH,
+      message: '{"kind":"unheardOf"}',
+    });
     // A known tag with its payload missing is not decodable either.
     expect(toReadError({ kind: 'binary', path: PATH }, PATH).kind).toBe('io');
     expect(toReadError({ kind: 'tooLarge', path: PATH }, PATH).kind).toBe('io');
+    // A cycle cannot be stringified; the fallback must not throw.
+    const cyclic: Record<string, unknown> = { kind: 'unheardOf' };
+    cyclic.self = cyclic;
+    expect(toReadError(cyclic, PATH).kind).toBe('io');
   });
 
   it('falls back to the requested path when the value carries none', () => {
