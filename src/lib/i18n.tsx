@@ -45,6 +45,9 @@ const ja: Dict = {
   // viewer
   selectFile: 'ファイルを選択してください',
   mediaUnsupported: 'このファイルはこのプラットフォームでは表示できません。',
+  readErrorInvalidUtf8:
+    'UTF-8 として読めないファイルです。別の文字コード（CP932 など）で保存されている可能性があります。',
+  readErrorBinary: 'バイナリ形式のファイル（{format}）のため、テキストとして表示できません。',
   // markdown view
   outline: 'アウトライン',
   contents: '目次',
@@ -105,6 +108,8 @@ const en: Dict = {
   // viewer
   selectFile: 'Select a file',
   mediaUnsupported: 'This file cannot be displayed on this platform.',
+  readErrorInvalidUtf8: 'This file is not valid UTF-8. It may be saved in another encoding, such as CP932.',
+  readErrorBinary: 'This is a binary file ({format}), so it cannot be shown as text.',
   // markdown view
   outline: 'Outline',
   contents: 'Contents',

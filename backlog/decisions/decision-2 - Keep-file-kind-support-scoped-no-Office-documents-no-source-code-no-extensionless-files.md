@@ -66,11 +66,10 @@ their trailing segment is a mapped extension.
 
 ### Non-UTF-8 text is out of scope
 
-`read_file` is `fs::read_to_string`, so a file that is not valid UTF-8 fails to
-read at all and `Viewer.tsx:86-95` surfaces the raw decoding error. Decoding other
-encodings would mean a new production dependency, so it is declined for now — but
-the two cases where this bites are common enough that the tasks must handle them
-as *messages*, not as raw errors:
+`read_file` decodes UTF-8 only, so a file in any other encoding cannot be shown.
+Decoding other encodings would mean a new production dependency, so it is
+declined for now — but the two cases where this bites are common enough that the
+tasks must handle them as *messages*, not as raw errors:
 
 - CSV exported by Excel in Japan is usually CP932 (TASK-3).
 - `.plist` on macOS is usually a binary plist (TASK-4).
@@ -78,6 +77,11 @@ as *messages*, not as raw errors:
 Requirement for both: say what the file is and why it cannot be shown. A UTF-8 BOM
 must also be stripped, or it leaks into the first CSV header cell and ahead of the
 XML declaration.
+
+decision-5 implements both requirements: the failure is a typed `ReadError` whose
+`invalidUtf8` and `binary` causes are worded by the frontend, and the BOM strip
+lives in `read_file`. The scope decision above is unaffected — still no encoding
+conversion.
 
 ## Consequences
 

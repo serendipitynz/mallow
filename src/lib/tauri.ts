@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { type ReadResult, toReadError } from './read-error';
 import type { EditorInfo, FileEntry } from './types';
 
 /** Set the native window title (fire-and-forget; errors are logged). */
@@ -16,9 +17,15 @@ export function readDirTree(path: string): Promise<FileEntry[]> {
   return invoke<FileEntry[]>('read_dir_tree', { path });
 }
 
-/** Read a text file as UTF-8 (rejects oversized files on the Rust side). */
-export function readFile(path: string): Promise<string> {
-  return invoke<string>('read_file', { path });
+/** Read a text file as UTF-8. Resolves a discriminated result rather than
+ *  rejecting, so callers are forced through the failure branch — see
+ *  `lib/read-error` for why the rejection could not be typed instead. */
+export async function readFile(path: string): Promise<ReadResult> {
+  try {
+    return { ok: true, text: await invoke<string>('read_file', { path }) };
+  } catch (e) {
+    return { ok: false, error: toReadError(e, path) };
+  }
 }
 
 /** Whether a path still exists (used to validate a restored session). */

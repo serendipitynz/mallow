@@ -89,7 +89,7 @@ Tabs share what a window does not: one Shiki WASM highlighter and one mermaid in
 
 Unmounted tabs get this for free - they re-read on activation. Mounted inactive ones do not, so the reload signal becomes per tab: a changed path invalidates the tab holding it - at most one, since TASK-13.1's rule 1 never allows two tabs of one file - whether or not it is the active one. Keep the 150 ms debounce and the single `fs:change` subscription; only the fan-out changes.
 
-**Deletion is the same event and needs a stated outcome.** The watcher reports a removed path exactly as it reports a modified one, so the tab stays open and the re-read fails. Show the read error in that tab - `Viewer` already renders one (`src/components/Viewer.tsx:86-95`) - rather than closing the tab out from under the user. Closing it silently would be indistinguishable from the app losing their place; TASK-13.4 drops such a tab only at restore time, where there is nothing on screen to lose.
+**Deletion is the same event and needs a stated outcome.** The watcher reports a removed path exactly as it reports a modified one, so the tab stays open and the re-read fails. Show the read error in that tab - `Viewer` already renders one, from the typed `ReadError` decision-5 defines - rather than closing the tab out from under the user. Closing it silently would be indistinguishable from the app losing their place; TASK-13.4 drops such a tab only at restore time, where there is nothing on screen to lose.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria

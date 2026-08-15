@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useT } from '../lib/i18n';
+import { type ReadError, readErrorMessage } from '../lib/read-error';
 import { readFile, setWindowTitle } from '../lib/tauri';
 import { documentTitle, windowTitle } from '../lib/title';
 import type { FileEntry } from '../lib/types';
@@ -22,7 +23,9 @@ function isMediaKind(kind: FileEntry['kind']): boolean {
 export function Viewer({ file, reloadToken }: ViewerProps) {
   const t = useT();
   const [content, setContent] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // The cause is held rather than its message, so switching language re-renders
+  // the message instead of leaving the one built when the read failed.
+  const [error, setError] = useState<ReadError | null>(null);
   const [loading, setLoading] = useState(false);
 
   /* biome-ignore lint/correctness/useExhaustiveDependencies: keyed on file?.path, not on `file`, on
@@ -50,18 +53,21 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
     // Reflect the file name immediately; refine to a front-matter title once read.
     setWindowTitle(windowTitle(file.name));
     readFile(file.path)
-      .then((text) => {
-        if (!cancelled) {
-          setContent(text);
-          setWindowTitle(windowTitle(documentTitle(file, text)));
+      .then((result) => {
+        if (cancelled) {
+          return;
         }
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(String(e));
+        if (result.ok) {
+          setContent(result.text);
+          setWindowTitle(windowTitle(documentTitle(file, result.text)));
+        } else {
+          setError(result.error);
           setContent(null);
         }
       })
+      // readFile itself cannot reject, but a throw anywhere above would
+      // otherwise strand the viewer on the loading placeholder for good.
+      .catch((e) => console.error('read failed', e))
       .finally(() => {
         if (!cancelled) {
           setLoading(false);
@@ -93,7 +99,7 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
       <main className="viewer">
         <div className="viewer__placeholder is-error">
           <code>{file.path}</code>
-          <p>{error}</p>
+          <p>{readErrorMessage(error, t)}</p>
         </div>
       </main>
     );

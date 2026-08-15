@@ -180,6 +180,17 @@ Comments と Functions の規約は機械的に検査されない。コメント
 
 ## 実装メモ / 注意点
 
+- **ファイル読み取りの失敗は素の文字列にならない。** `read_file` は
+  `Result<String, ReadError>` を返す。`ReadError` は serde のタグ付き列挙型で、
+  `kind` は `invalidUtf8` / `binary` / `tooLarge` / `io` の 4 値（decision-5）。
+  `lib/tauri.ts` の `readFile` は reject せず
+  `{ ok: true, text } | { ok: false, error }` を **resolve する** — TypeScript は
+  reject 値を型付けできないので、判別可能ユニオンを resolve することが、呼び出し側に
+  失敗の分岐を `tsc` で強制する唯一の手段になる。写した型・デコーダ・文言の選択は
+  `lib/read-error.ts` にあり、Tauri API を import しないので Node 環境で単体テスト
+  できる。`tooLarge` と `io` はバックエンドの文言をそのまま表示し、`invalidUtf8` と
+  `binary` は `lib/i18n` で文言を持つ。バイナリ形式の追加は `BINARY_MAGICS` に 1 行
+  足すだけ。**UTF-8 BOM は `read_file` で除去する** — 下流のパーサで再度剥がさない。
 - Markdown は**実行時に WebView 内でレンダリング**する（ビルド時ではない）。
   `renderMarkdown` は `{ html, headings }` を返し、先頭の front-matter（YAML `---` /
   TOML `+++`）は key/value テーブルとして抽出表示する。

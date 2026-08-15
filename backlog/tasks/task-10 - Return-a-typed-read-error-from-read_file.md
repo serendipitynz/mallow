@@ -1,10 +1,10 @@
 ---
 id: TASK-10
 title: Return a typed read error from read_file
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-07-30 10:27'
-updated_date: '2026-08-14 05:03'
+updated_date: '2026-08-15 22:36'
 labels:
   - feature
 milestone: m-0
@@ -32,13 +32,13 @@ Note on the frontend side of the contract: readFile in lib/tauri.ts is invoke<st
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A non-UTF-8 file produces an error the frontend can branch on, not a raw io::Error string
-- [ ] #2 A binary plist is reported as a binary file rather than as a decoding failure
-- [ ] #3 A UTF-8 BOM is stripped once in read_file, and no parser has to strip it again
-- [ ] #4 The 10 MiB cap still applies and its message is unchanged
-- [ ] #5 commands.rs unit tests cover the BOM, an invalid-UTF-8 file and a binary-magic file
-- [ ] #6 cargo check, cargo test, pnpm build and pnpm test all pass
-- [ ] #7 The existing not-found, permission and too-large errors still reach the UI as the same readable messages in Viewer and ConfigView
-- [ ] #8 The serialized read-error shape has a runtime decoder or type guard with unit tests, since a rejection value cannot be typed statically - alternatively the wrapper resolves an explicit discriminated Result union instead of rejecting
-- [ ] #9 The read-failure path in custom-emoji.ts still behaves after the wrapper changes
+- [x] #1 A non-UTF-8 file produces an error the frontend can branch on, not a raw io::Error string
+- [x] #2 A binary plist is reported as a binary file rather than as a decoding failure
+- [x] #3 A UTF-8 BOM is stripped once in read_file, and no parser has to strip it again
+- [x] #4 The 10 MiB cap still applies and its message is unchanged
+- [x] #5 commands.rs unit tests cover the BOM, an invalid-UTF-8 file and a binary-magic file
+- [x] #6 cargo check, cargo test, pnpm build and pnpm test all pass
+- [x] #7 The existing not-found, permission and too-large errors still reach the UI as the same readable messages in Viewer and ConfigView
+- [x] #8 The serialized read-error shape has a runtime decoder or type guard with unit tests, since a rejection value cannot be typed statically - alternatively the wrapper resolves an explicit discriminated Result union instead of rejecting
+- [x] #9 The read-failure path in custom-emoji.ts still behaves after the wrapper changes
 <!-- AC:END -->

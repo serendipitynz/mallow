@@ -6,6 +6,8 @@ import type { FileEntry } from './types';
 // the assertions can read the resolved path straight out of the URL.
 const files = new Map<string, string>();
 const dirs = new Map<string, FileEntry[]>();
+/** Paths that exist but cannot be read, so the read-failure branch is reachable. */
+const unreadable = new Set<string>();
 
 vi.mock('@tauri-apps/api/core', () => ({
   convertFileSrc: (path: string) => `asset://localhost/${path}`,
@@ -13,13 +15,13 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 vi.mock('./tauri', () => ({
   allowMediaDir: vi.fn(async () => {}),
-  pathExists: async (path: string) => files.has(path) || dirs.has(path),
+  pathExists: async (path: string) => files.has(path) || dirs.has(path) || unreadable.has(path),
   readFile: async (path: string) => {
     const content = files.get(path);
     if (content === undefined) {
-      throw new Error(`no such file: ${path}`);
+      return { ok: false, error: { kind: 'io', path, message: `${path}: no such file` } };
     }
-    return content;
+    return { ok: true, text: content };
   },
   readDirTree: async (path: string) => {
     const entries = dirs.get(path);
@@ -43,6 +45,7 @@ function image(dir: string, name: string): FileEntry {
 beforeEach(() => {
   files.clear();
   dirs.clear();
+  unreadable.clear();
   vi.mocked(allowMediaDir).mockClear();
 });
 
@@ -149,6 +152,14 @@ describe('loadCustomEmoji', () => {
   it('ignores a malformed manifest but keeps the folder scan', async () => {
     dirs.set(ROOT, [image(ROOT, 'jic.png')]);
     files.set(`${ROOT}/emoji.json`, 'not json at all');
+
+    const { set } = await loadCustomEmoji(ROOT);
+    expect(set.images).toHaveProperty('jic');
+  });
+
+  it('ignores a manifest that exists but cannot be read', async () => {
+    dirs.set(ROOT, [image(ROOT, 'jic.png')]);
+    unreadable.add(`${ROOT}/emoji.json`);
 
     const { set } = await loadCustomEmoji(ROOT);
     expect(set.images).toHaveProperty('jic');
