@@ -84,6 +84,7 @@ fn file_kind(name: &str) -> Option<String> {
             "ini" | "conf" | "cfg" | "properties" | "editorconfig" => "ini",
             "diff" | "patch" => "diff",
             "sql" => "sql",
+            "html" | "htm" => "html",
             "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" => "image",
             // HEIC/HEIF only decode in WKWebView (macOS).
             "heic" | "heif" if cfg!(target_os = "macos") => "image",
@@ -234,6 +235,8 @@ mod tests {
         assert_eq!(file_kind("fix.diff").as_deref(), Some("diff"));
         assert_eq!(file_kind("fix.patch").as_deref(), Some("diff"));
         assert_eq!(file_kind("schema.sql").as_deref(), Some("sql"));
+        assert_eq!(file_kind("index.html").as_deref(), Some("html"));
+        assert_eq!(file_kind("index.HTM").as_deref(), Some("html"));
     }
 
     #[test]
