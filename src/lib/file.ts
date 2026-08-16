@@ -3,7 +3,7 @@
 import { basename } from './path';
 import type { FileEntry, FileKind } from './types';
 
-export function kindFromName(name: string): FileKind {
+export function kindFromName(name: string): FileKind | null {
   const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1).toLowerCase() : '';
   switch (ext) {
     case 'md':
@@ -23,6 +23,21 @@ export function kindFromName(name: string): FileKind {
       return 'yaml';
     case 'toml':
       return 'toml';
+    case 'txt':
+    case 'text':
+    case 'log':
+      return 'text';
+    case 'ini':
+    case 'conf':
+    case 'cfg':
+    case 'properties':
+    case 'editorconfig':
+      return 'ini';
+    case 'diff':
+    case 'patch':
+      return 'diff';
+    case 'sql':
+      return 'sql';
     case 'png':
     case 'jpg':
     case 'jpeg':
@@ -41,11 +56,21 @@ export function kindFromName(name: string): FileKind {
     case 'mov':
       return 'video';
     default:
-      return 'markdown';
+      // Null rather than a kind, because `file_kind` returns None here and so
+      // keeps such a file out of the tree: naming a kind would let the restored
+      // session select a document the tree cannot show, and picking `'markdown'`
+      // (as this did) or `'text'` would also be the catch-all "render any
+      // unknown extension" rule decision-2 declines.
+      return null;
   }
 }
 
-export function fileEntryFromPath(path: string): FileEntry {
+/** Null for a path whose extension `file_kind` does not map — see `kindFromName`. */
+export function fileEntryFromPath(path: string): FileEntry | null {
   const name = basename(path);
-  return { name, path, isDir: false, kind: kindFromName(name) };
+  const kind = kindFromName(name);
+  if (kind === null) {
+    return null;
+  }
+  return { name, path, isDir: false, kind };
 }
