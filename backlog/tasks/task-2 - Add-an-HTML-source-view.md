@@ -1,10 +1,10 @@
 ---
 id: TASK-2
 title: Add an HTML source view
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-08-14 05:03'
+updated_date: '2026-08-16 07:37'
 labels:
   - feature
 milestone: m-0
@@ -24,8 +24,22 @@ Ships ahead of the rendered view so HTML files are at least openable; the render
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 html and htm files appear in the tree and open highlighted in the source view
-- [ ] #2 file_kind and kindFromName both map the new extensions, with tests
-- [ ] #3 pnpm build, pnpm test and cargo test all pass
-- [ ] #4 A non-UTF-8 HTML file, such as one saved as shift_jis, reports the cause by name rather than a raw decoding error
+- [x] #1 html and htm files appear in the tree and open highlighted in the source view
+- [x] #2 file_kind and kindFromName both map the new extensions, with tests
+- [x] #3 pnpm build, pnpm test and cargo test all pass
+- [x] #4 A non-UTF-8 HTML file, such as one saved as shift_jis, reports the cause by name rather than a raw decoding error
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Ships the html kind as source only. decision-3 makes the rendered view the default mode with a toggle to this view, so this task is the half that makes an HTML file openable at all; nothing here decides anything about rendering.
+
+Extensions are html and htm exactly, per the description. xhtml and shtml are deliberately not added: the allowlist stays explicit (decision-2), and neither has come up as a file mallow is asked to open.
+
+AC #4 needed no new code. The typed ReadError of decision-5 is chosen in read_file before any kind is consulted, so invalidUtf8 reaches the viewer with its own wording for html the same way it does for log and txt. The sample cp932.html exists to observe that, not to fix it.
+
+Icon: the FileKindIcon default (FileTextIcon) is left alone, on TASK-1's rule that FileConfigIcon marks kinds with a tree view. Whether a rendered html view deserves an icon of its own is that task's call.
+
+Sample files for the visual check are in _sandbox/samples/ (gitignored): index.html, legacy.htm and cp932.html, with CHECKLIST.md saying what each shows. The repository carries no html file, so opening the repo root shows nothing to check.
+<!-- SECTION:NOTES:END -->
