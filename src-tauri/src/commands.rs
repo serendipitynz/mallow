@@ -86,6 +86,12 @@ fn file_kind(name: &str) -> Option<String> {
             "sql" => "sql",
             "html" | "htm" => "html",
             "csv" | "tsv" => "csv",
+            // `plist` is mapped even though the macOS norm is the binary form,
+            // which `binary_format` rejects before the decode: an XML plist is
+            // common enough in repositories to be worth showing, and a binary one
+            // is better answered by "this is a bplist" than by absence from the
+            // tree (decision-2).
+            "xml" | "plist" | "xsd" | "xsl" => "xml",
             "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" => "image",
             // HEIC/HEIF only decode in WKWebView (macOS).
             "heic" | "heif" if cfg!(target_os = "macos") => "image",
@@ -247,6 +253,17 @@ mod tests {
         assert_eq!(file_kind("sales.csv").as_deref(), Some("csv"));
         assert_eq!(file_kind("sales.tsv").as_deref(), Some("csv"));
         assert_eq!(file_kind("SALES.CSV").as_deref(), Some("csv"));
+    }
+
+    #[test]
+    fn file_kind_maps_xml_extensions() {
+        assert_eq!(file_kind("pom.xml").as_deref(), Some("xml"));
+        assert_eq!(file_kind("Info.plist").as_deref(), Some("xml"));
+        assert_eq!(file_kind("schema.xsd").as_deref(), Some("xml"));
+        assert_eq!(file_kind("transform.xsl").as_deref(), Some("xml"));
+        assert_eq!(file_kind("BUILD.XML").as_deref(), Some("xml"));
+        // SVG is XML too, but it stays an image: it has a rendering of its own.
+        assert_eq!(file_kind("logo.svg").as_deref(), Some("image"));
     }
 
     #[test]
