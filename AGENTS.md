@@ -289,12 +289,17 @@ hold rather than as an exhaustive style guide.
   text, never computed from the declared `--src-line-height`** — WebKit lays
   each line box out at an integer height, so the declared 20.8px is used as 20px
   and a computed position drifts a line every 25.
-- **`TableView` is capped by three constants, and unlike `SourceView` it does
-  withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100) and
-  `TABLE_MAX_CELLS` (20,000) live in `lib/delimited`; three are needed because
-  the first two multiply — 5,000 records of 100 fields satisfies both and is half
-  a million DOM cells (decision-7). `tableExtent` applies them together, so the
-  row count falls as the table widens. There is deliberately **no "show more"**:
+- **`TableView` is capped by four constants, and unlike `SourceView` it does
+  withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100),
+  `TABLE_MAX_CELLS` (20,000) and `TABLE_MAX_CELL_CHARS` (500) live in
+  `lib/delimited`; four are needed because the first two multiply — 5,000 records
+  of 100 fields satisfies both and is half a million DOM cells — and because
+  capping how many cells exist says nothing about how much text one holds: an
+  unterminated quote is one field running to the end of the file, so a 10 MiB
+  document can satisfy the first three caps as a single wrapping cell
+  (decision-7). `tableExtent` applies the first three together, so the row count
+  falls as the table widens; the fourth clips a kept value and leaves an ellipsis
+  on it. There is deliberately **no "show more"**:
   the source half of the toggle already reaches the whole document at any size,
   which is also what the notice above the table says. `parseDelimited` counts
   every record and field but builds only what can be rendered, so the reported

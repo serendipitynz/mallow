@@ -24,7 +24,7 @@ view names is a real DOM node.
 
 ## Decision
 
-### Three caps, because they bound three different things
+### Four caps, because they bound four different things
 
 `src/lib/delimited.ts` owns them, as `lib/source-cap` and `lib/config-tree` own
 theirs:
@@ -34,10 +34,25 @@ theirs:
 | `TABLE_MAX_ROWS` | 5,000 | `<tr>` elements |
 | `TABLE_MAX_COLUMNS` | 100 | the width of one row |
 | `TABLE_MAX_CELLS` | 20,000 | their product |
+| `TABLE_MAX_CELL_CHARS` | 500 | the text inside one cell |
 
-`tableExtent` applies them together: columns are clamped first, then rows are
-clamped to the row cap *and* to what the cell budget leaves at that width — 5,000
-rows at 4 columns or fewer, 2,000 at 10 columns, 200 at 100.
+`tableExtent` applies the first three together: columns are clamped first, then
+rows are clamped to the row cap *and* to what the cell budget leaves at that
+width — 5,000 rows at 4 columns or fewer, 2,000 at 10 columns, 200 at 100.
+
+The fourth bounds something the other three do not touch. They cap how many cells
+exist, not how much text any one holds, and a field may run to the end of the
+file: an unterminated quote does exactly that by design, so a 10 MiB CSV whose
+first byte is `"` parses to one record of one field. Every other cap is satisfied,
+nothing is reported as omitted, and the view puts 10 MiB into a single wrapping
+cell whose intrinsic width the engine then has to measure. A well-formed export
+with a base64 or embedded-JSON column reaches the same place without any
+malformation. `parseDelimited` therefore clips a kept value at
+`TABLE_MAX_CELL_CHARS` and appends an ellipsis, so the cell shows that it was
+clipped without the reader consulting the notice, and counts the clips so the
+notice can report them. The source view's own above-cap path does not need this
+because it renders one *non-wrapping* text node; a wrapping table cell is a
+different trade.
 
 The cell budget was set against what this codebase already accepts. Measured
 with the bundled Shiki 4.3.0 under Node, a document at the source view's byte cap
@@ -68,13 +83,14 @@ costs no allocation per unrendered field.
 
 ### What was left out is stated above the table
 
-Three i18n keys in both dictionaries — `tableTruncatedRows`,
-`tableTruncatedColumns` and `tableTruncatedHint` — rendered as one line above the
-table, and only the parts that apply. Two counts rather than decision-6's single
-message because, unlike "why is this not coloured", the answers differ: a reader
-who has lost columns and a reader who has lost rows are looking for different
-things. The hint names the source view, so the message says where the rest is
-rather than only what is missing.
+Four i18n keys in both dictionaries — `tableTruncatedRows`,
+`tableTruncatedColumns`, `tableClippedCells` and `tableTruncatedHint` — rendered
+as one line above the table, and only the parts that apply. Separate counts
+rather than decision-6's single message because, unlike "why is this not
+coloured", the answers differ: a reader who has lost columns, one who has lost
+rows and one whose cells are clipped are looking for different things. The hint
+names the source view, so the message says where the rest is rather than only
+what is missing.
 
 ### The first record is the header, unconditionally
 
@@ -93,5 +109,17 @@ wrong, so the first record is always rendered as the column header.
 - `TABLE_MAX_COLUMNS` also decides how much of a very wide record is ever
   reachable in this view: a 5,000-column export shows its first 100 columns here
   and the rest only as text.
-- The values are unit-tested through `tableExtent` rather than asserted in prose:
-  the tests fix that no shape of input can exceed the budget.
+- **One ragged record sets the width for the whole table, including records the
+  view will never reach.** `columnCount` is the widest record in the file, so a
+  60,000-record export of 4 fields containing one 100-field record shows 200 rows
+  rather than 5,000, each padded to 96 empty columns, and reports no omitted
+  columns because none were omitted. This is chosen, not inherited: deriving the
+  width from the records actually rendered would make the table's shape depend on
+  the cap that the shape itself determines, and the alternative of taking the
+  width from the header record would silently narrow every legitimately wider
+  record. The rows notice still reports the omission; what it does not explain is
+  why the number is 200.
+- The values are unit-tested through `tableExtent` and `parseDelimited` rather
+  than asserted in prose: the tests fix that no shape of input can exceed the
+  budget, including the single-field file that satisfies every cap but the
+  fourth.
