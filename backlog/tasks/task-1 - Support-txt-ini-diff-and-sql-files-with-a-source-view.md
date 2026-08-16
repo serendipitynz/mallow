@@ -1,10 +1,10 @@
 ---
 id: TASK-1
 title: 'Support txt, ini, diff and sql files with a source view'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 08:55'
-updated_date: '2026-08-16 03:32'
+updated_date: '2026-08-16 05:12'
 labels:
   - feature
 milestone: m-0
@@ -39,9 +39,13 @@ Gotcha: the default branch of kindFromName in src/lib/file.ts currently returns 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-AC #1 and #2 are checked on the mechanism, not by eye. The mapping (file_kind, kindFromName) and the routing (ViewerBody) are unit-tested, and Shiki was measured against the bundled LANGS: ini/diff/sql resolve to real grammars and colour tokens, text resolves to the plain path and still emits one .line per line so the numbers work. What is unverified is the on-screen result — the implementing environment cannot take a screenshot. Confirm under `pnpm tauri dev` that a .txt/.log, .ini/.conf, .diff and .sql file each appear in the tree and open line-numbered.
+Confirmed by eye on 2026-08-16, after PR #26 merged: the four kinds appear in the tree and open line-numbered under `pnpm tauri dev`. AC #1 and #2 therefore rest on observation, not only on the mechanism — which is what the review asked be recorded here rather than left in the PR body.
+
+What the mechanism covers, for whoever changes this later: the mapping (file_kind, kindFromName) and the routing (ViewerBody) are unit-tested, and Shiki was measured against the bundled LANGS — ini/diff/sql resolve to real grammars and colour tokens, text resolves to the plain path and still emits one .line per line, so the numbers come from the same CSS counter either way.
 
 conf and cfg map to the INI grammar as a best-effort choice; the reasoning is in the comment beside that arm in commands.rs.
 
 The user-facing format list (README.md / README.ja.md) is TASK-6's, not this task's — see the note under the numbered list in doc-1.
+
+Sample files for the visual check live in `_sandbox/samples/` (gitignored), with `CHECKLIST.md` mapping each file to what it demonstrates. Reusable by TASK-2, TASK-3 and TASK-4 — the repository itself carries no file with any of these extensions, so opening the repo root shows nothing to check.
 <!-- SECTION:NOTES:END -->
