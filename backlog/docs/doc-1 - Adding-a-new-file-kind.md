@@ -21,7 +21,8 @@ limits on which kinds get added are in decision-2.
    in `ViewerBody`. Note `isMediaKind` above it: media kinds skip the text read
    entirely, so a new kind that reads bytes rather than text belongs there instead.
    A kind whose name is also a Shiki grammar id needs no kind→lang table: the
-   `text` / `ini` / `diff` / `sql` case passes `file.kind` through as `lang`.
+   `text` / `ini` / `diff` / `sql` / `html` case passes `file.kind` through as
+   `lang`.
    `.doc` has no top padding of its own, so a view rendered without a `.doc__bar`
    adds `doc--no-bar` to get the same top spacing.
 5. **[src/components/FileTree.tsx](../../src/components/FileTree.tsx)** —
