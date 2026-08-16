@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { configFormat, type ParseErrorInfo, parseConfig, shikiLangFor } from '../lib/config-parse';
-import { type TFn, useI18n } from '../lib/i18n';
+import { configFormat, parseConfig, shikiLangFor } from '../lib/config-parse';
+import { useI18n } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
 import { ConfigTree } from './ConfigTree';
+import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
 import { SourceView } from './SourceView';
 
@@ -85,7 +86,7 @@ export function ConfigView({ source, file }: ConfigViewProps) {
           )}
         </div>
 
-        {!outcome.ok && <ErrorBanner format={format} error={outcome.error} t={t} />}
+        {!outcome.ok && <ErrorBanner format={format} error={outcome.error} />}
 
         {outcome.ok && mode === 'tree' ? (
           <ConfigTree key={treeKey} value={outcome.value} forceOpen={forceOpen} />
@@ -97,25 +98,6 @@ export function ConfigView({ source, file }: ConfigViewProps) {
           />
         )}
       </div>
-    </div>
-  );
-}
-
-function ErrorBanner({ format, error, t }: { format: string; error: ParseErrorInfo; t: TFn }) {
-  let where = '';
-  if (error.line !== undefined) {
-    where =
-      error.column !== undefined
-        ? t('locLineCol', { line: error.line, column: error.column })
-        : t('locLine', { line: error.line });
-  }
-  return (
-    <div className="cfg-error-banner" role="alert">
-      <strong>
-        {t('syntaxError', { format: format.toUpperCase() })}
-        {where}
-      </strong>
-      <span className="cfg-error-message">{error.message}</span>
     </div>
   );
 }

@@ -19,6 +19,10 @@ function FileKindIcon({ kind }: { kind: FileKind }) {
     case 'json':
     case 'yaml':
     case 'toml':
+    // XML shares the config icon rather than getting one of its own: what these
+    // marks separate is a structured view from a text one, and plist / xsd / xsl
+    // are configuration by any reading.
+    case 'xml':
       return <FileConfigIcon />;
     // Marked apart from the plain-text kinds for the same reason the config
     // kinds are: it opens in a structured view rather than as text.

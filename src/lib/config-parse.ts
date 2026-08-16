@@ -34,6 +34,11 @@ export function configFormat(name: string): ConfigFormat {
       return 'yaml';
     case 'toml':
       return 'toml';
+    // Reached only for a `.plist` that holds JSON (`isJsonPlist` routes it here);
+    // an XML one never gets this far. Spelled out rather than left to the default
+    // below, because which of the two a `.plist` is is decided elsewhere.
+    case 'plist':
+      return 'json';
     default:
       return 'json';
   }

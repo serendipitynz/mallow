@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fileEntryFromPath, kindFromName } from './file';
+import { fileEntryFromPath, isJsonPlist, kindFromName } from './file';
 
 describe('kindFromName', () => {
   it('maps supported extensions (case-insensitive)', () => {
@@ -26,6 +26,14 @@ describe('kindFromName', () => {
     expect(kindFromName('index.HTM')).toBe('html');
   });
 
+  it('maps the xml extensions, leaving svg an image', () => {
+    expect(kindFromName('pom.xml')).toBe('xml');
+    expect(kindFromName('Info.plist')).toBe('xml');
+    expect(kindFromName('schema.xsd')).toBe('xml');
+    expect(kindFromName('transform.XSL')).toBe('xml');
+    expect(kindFromName('logo.svg')).toBe('image');
+  });
+
   it('maps media extensions', () => {
     expect(kindFromName('photo.PNG')).toBe('image');
     expect(kindFromName('pic.jpeg')).toBe('image');
@@ -44,6 +52,22 @@ describe('kindFromName', () => {
     expect(kindFromName('archive.zip')).toBeNull();
     expect(kindFromName('Makefile')).toBeNull();
     expect(kindFromName('.gitignore')).toBeNull();
+  });
+});
+
+describe('isJsonPlist', () => {
+  it('separates the two text forms a .plist can take', () => {
+    expect(isJsonPlist('Info.plist', '\n  {\n  "CFBundleName": "mallow"\n}')).toBe(true);
+    expect(isJsonPlist('Array.PLIST', '["a"]')).toBe(true);
+    expect(isJsonPlist('Info.plist', '<?xml version="1.0"?>\n<plist version="1.0"><dict/></plist>')).toBe(false);
+    expect(isJsonPlist('Info.plist', '')).toBe(false);
+  });
+
+  // Only this extension is sniffed: a `.xml` starting with `{` is a broken XML
+  // document, and saying so beats opening it as something it does not claim to be.
+  it('leaves every other extension to the name', () => {
+    expect(isJsonPlist('data.xml', '{"a": 1}')).toBe(false);
+    expect(isJsonPlist('data.json', '{"a": 1}')).toBe(false);
   });
 });
 

@@ -1,0 +1,59 @@
+@use './vars' as *;
+
+// ---- XML tree view ----------------------------------------------------------
+// Only what is specific to markup lives here. The row shell the tree is built
+// from — `.cfg-tree`, `.cfg-row`, `.cfg-chevron`, `.cfg-children`, `--cfg-indent`
+// and the "show more" control — is the config tree's, in `config.scss`, and is
+// shared rather than copied under a second prefix: the two views collapse the
+// same way and should not drift apart when one of them is adjusted.
+.doc.xml-doc {
+  max-width: 960px;
+}
+
+.xml-notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $ink;
+  background: var(--color-attention-bg);
+  border: 1px solid $border;
+  border-radius: 8px;
+}
+
+.xml-empty {
+  margin: 0;
+  color: $faint;
+  font-size: 14px;
+}
+
+// A text node may hold newlines the row cannot show on one line, so this is the
+// one place the tree wraps; `.cfg-row` is `white-space: pre` everywhere else.
+.xml-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.xml-tag {
+  color: var(--color-link);
+}
+
+.xml-punct {
+  color: $muted;
+}
+
+.xml-attr-name {
+  color: var(--color-orange);
+}
+
+.xml-attr-value {
+  color: var(--color-success);
+}
+
+.xml-comment {
+  color: $faint;
+  font-style: italic;
+}
+
+.xml-instruction {
+  color: $muted;
+}

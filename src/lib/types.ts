@@ -12,6 +12,7 @@ export type FileKind =
   | 'sql'
   | 'html'
   | 'csv'
+  | 'xml'
   | 'image'
   | 'pdf'
   | 'video';
