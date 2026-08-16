@@ -1,10 +1,10 @@
 ---
 id: TASK-9
 title: Cap the source view so it cannot stall the WebView
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 10:04'
-updated_date: '2026-08-16 01:09'
+updated_date: '2026-08-16 02:51'
 labels:
   - feature
 milestone: m-0
@@ -31,11 +31,11 @@ Note for whoever picks this up first: TASK-1 depends on this task, so .txt and .
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A multi-megabyte text file opens promptly with highlighting skipped and a message saying so
-- [ ] #2 Line numbers still work in the unhighlighted path, or their absence is deliberate and stated
+- [x] #1 A multi-megabyte text file opens promptly with highlighting skipped and a message saying so
+- [x] #2 Line numbers still work in the unhighlighted path, or their absence is deliberate and stated
 - [x] #3 New i18n keys are added to both the ja and en dictionaries
 - [x] #4 pnpm build and pnpm test pass
 - [x] #5 The threshold and the highlighting-skipped render path are each owned by one module a later fallback can target: lib/source-cap exports both caps and the skip reason, SourceView is the single view that applies them, and a caller needs no size check of its own before rendering it
 - [x] #6 The chosen behaviour (incremental reveal or hard stop) is consistent with lib/config-tree or its divergence is justified
-- [ ] #7 The verification path is a large JSON opened through the ConfigView source toggle, since txt and log are not available until TASK-1 and a large markdown file would measure MarkdownView instead
+- [x] #7 The verification path is a large JSON opened through the ConfigView source toggle, since txt and log are not available until TASK-1 and a large markdown file would measure MarkdownView instead
 <!-- AC:END -->
