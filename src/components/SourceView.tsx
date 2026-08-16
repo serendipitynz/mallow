@@ -4,8 +4,9 @@ import { useT } from '../lib/i18n';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from '../lib/shiki';
 import { countLines, highlightSkipReason } from '../lib/source-cap';
 
-/** Shared syntax-highlighted source view with line numbers. Used by both the
- *  markdown viewer (preview/source toggle) and the config viewer (tree/source). */
+/** Shared syntax-highlighted source view with line numbers. Used as one mode of
+ *  the markdown viewer (preview/source) and the config viewer (tree/source), and
+ *  as the whole view for the kinds that have no second mode (text/ini/diff/sql). */
 
 function errorLineTransformer(line: number): ShikiTransformer {
   return {

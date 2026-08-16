@@ -8,6 +8,7 @@ import { ConfigView } from './ConfigView';
 import { MarkdownView } from './MarkdownView';
 import { MediaView } from './MediaView';
 import { MermaidView } from './MermaidView';
+import { SourceView } from './SourceView';
 
 interface ViewerProps {
   file: FileEntry | null;
@@ -126,6 +127,20 @@ function ViewerBody({ file, content }: { file: FileEntry; content: string }) {
     case 'yaml':
     case 'toml':
       return <ConfigView source={content} file={file} />;
+    // The kind name doubles as the Shiki grammar id, so no kind→lang table is
+    // needed: ini, diff and sql are in `lib/shiki`'s LANGS, and `text` is what
+    // SourceView already falls back to for a grammar it has not loaded.
+    case 'text':
+    case 'ini':
+    case 'diff':
+    case 'sql':
+      return (
+        <div className="doc-scroll">
+          <div className="doc doc--no-bar">
+            <SourceView source={content} lang={file.kind} />
+          </div>
+        </div>
+      );
     default:
       return (
         <div className="doc-scroll">
