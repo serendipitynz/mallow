@@ -185,13 +185,21 @@ describe('xmlErrorInfo', () => {
     );
     expect(info.line).toBe(2);
     expect(info.column).toBe(6);
-    expect(info.message).toBe('error on line 2 at column 6: Opening and ending tag mismatch: a line 1 and b');
+    // The position is lifted out of the message rather than left in it: the
+    // banner writes it beside the message in the reader's own language.
+    expect(info.message).toBe('Opening and ending tag mismatch: a line 1 and b');
+  });
+
+  it('keeps a message that is nothing but the position', () => {
+    const info = xmlErrorInfo('error on line 9 at column 2');
+    expect(info).toEqual({ message: 'error on line 9 at column 2', line: 9, column: 2 });
   });
 
   it('reads the position out of the Gecko wording', () => {
     const info = xmlErrorInfo('XML Parsing Error: mismatched tag\nLocation: file:///t.xml\nLine Number 3, Column 5:');
     expect(info.line).toBe(3);
     expect(info.column).toBe(5);
+    expect(info.message).toBe('mismatched tag Location: file:///t.xml');
   });
 
   // The engine is not required to give a position, and this is the path that

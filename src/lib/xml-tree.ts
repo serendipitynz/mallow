@@ -286,7 +286,16 @@ export function xmlErrorInfo(text: string): XmlErrorInfo {
   for (const pattern of POSITIONS) {
     const found = message.match(pattern);
     if (found) {
-      return { message, line: Number(found[1]), column: Number(found[2]) };
+      // The clause is dropped from the message once it has been lifted out: the
+      // banner writes the position in the reader's own language beside it, and
+      // leaving it in prints the same numbers twice in two wordings. Kept when
+      // removing it would leave nothing, since a bare position still says more
+      // than an empty banner.
+      const rest = message
+        .replace(pattern, '')
+        .replace(/^[\s:,-]+/, '')
+        .replace(/[\s:,-]+$/, '');
+      return { message: rest === '' ? message : rest, line: Number(found[1]), column: Number(found[2]) };
     }
   }
   return { message };
