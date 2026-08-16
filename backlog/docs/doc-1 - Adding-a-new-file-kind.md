@@ -26,6 +26,10 @@ limits on which kinds get added are in decision-2.
    `csv` does.
    `.doc` has no top padding of its own, so a view rendered without a `.doc__bar`
    adds `doc--no-bar` to get the same top spacing.
+   **A `case` here may branch on the text as well as the kind.** `xml` does, for
+   `.plist` alone, which carries either markup or JSON under one extension
+   (decision-8) — so a kind and a view are no longer one to one, and code that
+   reasons from `file.kind` to what is on screen has to allow for that.
 5. **[src/components/FileTree.tsx](../../src/components/FileTree.tsx)** —
    `FileKindIcon`. Optional rather than required: its `default` branch already
    returns `FileTextIcon`, so a new kind without an entry shows a text icon
@@ -89,6 +93,15 @@ Two constraints apply to every text-reading kind, both from
   never the content, and says so in the UI (decision-6) — so a kind routed to
   `SourceView` needs no size check of its own, and any view may name it as its
   fallback. Every *other* way of expanding a document into DOM still needs its own
-  ceiling: the config tree has one, the CSV table has one (decision-7), and the
-  HTML renderer must get its own. A view that caps by truncating also owes the
-  reader a line saying what was left out and where the rest is.
+  ceiling: the config tree has one, the CSV table has one (decision-7), the XML
+  tree has one (decision-8), and the HTML renderer must get its own. A view that
+  caps by truncating also owes the reader a line saying what was left out and
+  where the rest is.
+
+A kind whose parse needs a browser API adds one constraint to the corollary
+above: keep the API call in the component and give everything below it a
+structural type the DOM satisfies, so the transform and its caps stay testable
+under Node. `XmlView` and `lib/xml-tree`'s `DomNodeLike` are the worked example.
+decision-8 records the other half of that bargain — what the API expresses only
+as text (an XML parse position, which no DOM API exposes) has to be read back out
+of a message, and the view has to hold up when it cannot be.

@@ -41,18 +41,21 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   map, `refresh`, `expandPaths`). The tree components are controlled by this.
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
+  XmlView/XmlTree (xml/plist/xsd/xsl), ErrorBanner (shared syntax-error banner),
   MermaidView,
   MediaView (image/pdf/video via the asset protocol), Outline, Toolbar, OpenWith,
   ThemePicker, SettingsModal, icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
-  caps), `delimited` (CSV/TSV parser + table caps), `custom-emoji` (user emoji folder →
+  caps), `delimited` (CSV/TSV parser + table caps), `xml-tree` (XML DOM → bounded
+  tree model + parse-error text), `clip` (shared value clip), `custom-emoji` (user
+  emoji folder →
   shortcode table), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
-  `markdown`, `config`, `source`, `table`.
+  `markdown`, `config`, `source`, `table`, `xml`.
 
 **Backend (`src-tauri/src/`)**
 - `commands.rs` — `read_dir_tree`, `read_file`, `path_exists`, `allow_media_dir`
@@ -307,6 +310,39 @@ hold rather than as an exhaustive style guide.
   no allocation per unrendered field. `clippedCells` is the exception and counts
   what the parser kept, so it can name more clipped cells than are on screen
   (decision-7 says why neither alternative is better).
+- **`XmlView` parses with the WebView's own `DOMParser` and is the only place
+  that touches it.** Everything below takes `DomNodeLike`, the structural subset
+  of a DOM node `lib/xml-tree` reads, which a real `Document` satisfies and a unit
+  test writes as an object literal — that split is what keeps the transform and
+  its caps testable under Node. The tree is bounded by `XML_MAX_NODES` (20,000),
+  `XML_MAX_ATTRIBUTES` (64) and `XML_MAX_VALUE_CHARS` (500). **An attribute spends
+  from the node budget *and* is capped per element**, because the two bound
+  different things: the budget stops a million attributes spread over many
+  elements, the per-element cap stops them all landing on one row (attributes
+  render inline, so that row does not wrap). 64 is measured — no element in
+  826,427 scanned carried more than 14 (decision-8). Nodes past the budget are
+  counted, never built; the walk is
+  iterative because nesting depth is the document's to choose. Whitespace-only
+  text is dropped, CDATA is kept whatever it holds. The row shell (`cfg-*`) and
+  the reveal constants in `lib/config-tree` are shared with the config tree on
+  purpose.
+- **A `.plist` picks its view from its text, and it is the only kind that does.**
+  A property list is XML, binary or OpenStep, and `plutil -convert json` writes a
+  fourth form under the same extension. Binary is answered by `read_file`'s magic
+  check; between the two text forms `isJsonPlist` (in `lib/file`) sends a document
+  whose first non-whitespace character is `{` or `[` to `ConfigView` and every
+  other one to `XmlView`. **Only `.plist` is sniffed** — a `.xml` starting with
+  `{` is a broken XML document and gets the error banner (decision-8). So
+  `file.kind` alone no longer tells you which view is on screen.
+- **An XML parse failure may legitimately carry no line number.** The DOM reports
+  a failure as a `<parsererror>` element and offers no API for its position; the
+  position exists only inside the message text, so `xmlErrorInfo` reads it back
+  out and is allowed to fail, and the banner then appears without a location and
+  flags nothing. The error document is recognized by namespace, not by element
+  name — a valid document may contain a `parsererror` element of its own. All
+  three WebViews use libxml2 today and so share one wording; that is not a
+  contract, and TASK-7's cross-WebView pass is where it gets checked. Do not add
+  an XML parser dependency to obtain a position (decision-8).
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 
@@ -315,7 +351,8 @@ hold rather than as an exhaustive style guide.
 - Frontend: `pnpm lint` (Biome), `pnpm build` (tsc + vite) and `pnpm test`
   (Vitest). Unit tests live next to the code as `src/**/*.test.ts` and cover the
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
-  `config-parse`, `frontmatter`, `title`, `path`, `delimited`, and `custom-emoji`
+  `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`, and
+  `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument

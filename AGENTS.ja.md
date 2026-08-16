@@ -41,6 +41,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
+  XmlView/XmlTree（xml/plist/xsd/xsl）、ErrorBanner（構文エラー表示の共通部品）、
   MermaidView、
   MediaView（画像/PDF/動画を asset protocol 経由で表示）、Outline、Toolbar、
   OpenWith、ThemePicker、SettingsModal、icons（Lucide の SVG をインライン化・
@@ -49,12 +50,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
   `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、
   `delimited`（CSV/TSV パーサ + 表ビューの上限）、
+  `xml-tree`（XML DOM → 上限付きツリーモデル + parsererror 文言の解析）、
+  `clip`（値の切り詰め・共通）、
   `custom-emoji`（ユーザーの絵文字フォルダ →
   ショートコード表）、`scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
-  `markdown`、`config`、`source`、`table`。
+  `markdown`、`config`、`source`、`table`、`xml`。
 
 **バックエンド (`src-tauri/src/`)**
 - `commands.rs` — `read_dir_tree` / `read_file` / `path_exists` / `allow_media_dir`
@@ -288,6 +291,33 @@ Comments と Functions の規約は機械的に検査されない。コメント
   よって告知の行数・列数は上限に依存せず、病的なファイルでも描かないフィールドの分は確保しない。
   `clippedCells` だけは例外で、パーサが保持したセルを数えるので、画面に見えるより多くを
   報告しうる（他の 2 案がどちらも劣る理由は decision-7）。
+- **`XmlView` は WebView の `DOMParser` で解析し、それに触れる唯一の場所である。**
+  その下はすべて `DomNodeLike`（`lib/xml-tree` が読む DOM ノードの構造的部分集合。
+  実際の `Document` がそのまま満たし、単体テストはオブジェクトリテラルで書ける）を
+  受け取る。この分割があるから変換と上限を jsdom なしの Node で検証できる。
+  ツリーの上限は `XML_MAX_NODES`（20,000）・`XML_MAX_ATTRIBUTES`（64）・
+  `XML_MAX_VALUE_CHARS`（500）。**属性はノード予算を 1 消費し、かつ 1 要素あたりでも切る** —
+  縛るものが違うためで、予算は「多数の要素に散った 100 万個」を、要素ごとの上限は
+  「1 行に載る 2 万個」を止める（属性はインラインに出るのでその行は折り返さない）。
+  64 は実測値（走査した 826,427 要素のうち最大は 14。decision-8）。
+  予算を超えたノードは数えるだけで組み立てない。
+  走査が再帰でなく反復なのは、入れ子の深さを決めるのが文書の側だからである。
+  空白だけのテキストノードは落とし、CDATA は中身によらず残す。行の外枠（`cfg-*`）と
+  `lib/config-tree` の開示定数は config ツリーと意図的に共有している。
+- **`.plist` だけはビューを中身で決める。** property list の形式は XML・バイナリ・OpenStep で、
+  さらに `plutil -convert json` が吐いた JSON も同じ拡張子で置かれる。バイナリは `read_file` の
+  magic 判定が答えるので、残る 2 つのテキスト形式を `lib/file` の `isJsonPlist` が分ける —
+  最初の非空白文字が `{` か `[` なら `ConfigView`、それ以外は `XmlView`。**中身を見るのは `.plist` だけ**で、
+  `{` で始まる `.xml` は壊れた XML としてエラーバナーを出す（decision-8）。
+  よって **`file.kind` だけでは画面に出ているビューが決まらない**。
+- **XML の構文エラーは行番号を伴わないことが正当にありうる。** DOM は失敗を
+  `<parsererror>` 要素として返すだけで、位置を得る API は無い。位置はメッセージ文中に
+  しか存在しないので、`xmlErrorInfo` がそれを読み戻し、読めないことを許容する。
+  読めなければバナーは位置なしで出し、行の強調も行わない。エラー文書の判定は要素名
+  ではなく名前空間で行う — 正しい文書が自前の `parsererror` 要素を含みうるためである。
+  3 つの WebView は現状いずれも libxml2 を使うので文言は 1 種類だが、それは契約では
+  なく、確認は TASK-7 の WebView 横断検証で行う。位置を得るために XML パーサ依存を
+  足さないこと（decision-8）。
 - 独自 Rust コマンドと core イベントは capabilities の許可不要。plugin/core API のみが
   ゲートされる（`src-tauri/capabilities/default.json` 参照）。
 
@@ -296,7 +326,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
 - フロント: `pnpm lint`（Biome）・`pnpm build`（tsc + vite）・`pnpm test`（Vitest）。
   ユニットテストはコードと同じ場所に `src/**/*.test.ts` として置き、純ロジックの
   モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
-  `frontmatter`・`title`・`path`・`delimited`・`custom-emoji`＝Tauri 層をモック）をカバーする。
+  `frontmatter`・`title`・`path`・`delimited`・`xml-tree`・`custom-emoji`＝Tauri 層を
+  モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
   タイムアウトを上げる — `it` ごとの第 3 引数では持たない（フォーマッタが 3 引数の呼び出しを
   複数行に展開する）し、`vitest.config.ts` にも置かない（他のスイートで固まったテストは
