@@ -38,6 +38,9 @@ export function kindFromName(name: string): FileKind | null {
       return 'diff';
     case 'sql':
       return 'sql';
+    case 'html':
+    case 'htm':
+      return 'html';
     case 'png':
     case 'jpg':
     case 'jpeg':
