@@ -1,10 +1,10 @@
 ---
 id: TASK-2
 title: Add an HTML source view
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-08-16 07:45'
+updated_date: '2026-08-16 08:10'
 labels:
   - feature
 milestone: m-0
@@ -44,4 +44,6 @@ Icon: the FileKindIcon default (FileTextIcon) is left alone, on TASK-1's rule th
 Sample files for the visual check are in _sandbox/samples/ (gitignored): index.html, legacy.htm and cp932.html, with CHECKLIST.md saying what each shows. The repository carries no html file, so opening the repo root shows nothing to check.
 
 AC #1 is recorded as met on static grounds, not on an observation: the tree half is pinned by the file_kind unit test, and the highlighted-open half is determinable without running the app -- html is in lib/shiki's LANGS, ViewerBody passes file.kind through as lang, and SourceView's only fallback for a grammar it lacks is plain text. On-screen confirmation under pnpm tauri dev is still outstanding; record it here when it happens, the way TASK-1 did.
+
+Confirmed by eye on 2026-08-16, after PR #27 merged: html and htm appear in the tree and open highlighted in the source view under pnpm tauri dev, showing the markup as text rather than rendering it. AC #1 therefore rests on observation as well as on the static grounds above.
 <!-- SECTION:NOTES:END -->
