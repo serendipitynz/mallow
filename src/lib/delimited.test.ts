@@ -101,6 +101,17 @@ describe('parseDelimited', () => {
     expect(table.clippedCells).toBe(1);
   });
 
+  it('does not clip in the middle of a surrogate pair', () => {
+    // 'x' takes index 0, so each emoji occupies an odd/even unit pair and the
+    // cap lands on the high half of one — cutting there would leave a lone
+    // surrogate, drawn as U+FFFD next to the ellipsis.
+    const table = csv(`x${'😀'.repeat(600)}`);
+    const cell = table.rows[0][0];
+    expect(cell.endsWith('😀…')).toBe(true);
+    expect(cell).not.toMatch(/[\uD800-\uDBFF]…$/);
+    expect(cell.length).toBe(TABLE_MAX_CELL_CHARS);
+  });
+
   it('leaves a cell exactly at the cap alone', () => {
     const table = csv('x'.repeat(TABLE_MAX_CELL_CHARS));
     expect(table.rows[0][0].length).toBe(TABLE_MAX_CELL_CHARS);
