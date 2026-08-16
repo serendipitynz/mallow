@@ -7,6 +7,8 @@
  * clean and nothing here looks for one.
  */
 
+import { clipToChars } from './clip';
+
 /** Records rendered at most, whatever the row width: this is what bounds `<tr>`. */
 export const TABLE_MAX_ROWS = 5_000;
 /** Fields rendered at most per record: this is what bounds a row's width. */
@@ -118,18 +120,6 @@ function readField(text: string, start: number, delimiter: string, keep: boolean
 }
 
 /**
- * The cap counts UTF-16 code units, so cutting at it can land between the halves
- * of a surrogate pair and leave a lone surrogate the engine draws as U+FFFD —
- * right where the ellipsis is meant to be the only mark. Backing off one unit
- * drops the whole character instead.
- */
-function clipValue(value: string): string {
-  const last = value.charCodeAt(TABLE_MAX_CELL_CHARS - 1);
-  const isHighSurrogate = last >= 0xd800 && last <= 0xdbff;
-  return `${value.slice(0, isHighSurrogate ? TABLE_MAX_CELL_CHARS - 1 : TABLE_MAX_CELL_CHARS)}…`;
-}
-
-/**
  * RFC 4180 quoting, with CRLF / LF / CR all accepted as record separators and
  * ragged records left ragged. Records past the caps are counted but not built,
  * so `rowCount` / `columnCount` describe the file while `rows` describes what
@@ -157,7 +147,7 @@ export function parseDelimited(text: string, delimiter: string): DelimitedTable 
     fields += 1;
     if (keep) {
       if (field.value.length > TABLE_MAX_CELL_CHARS) {
-        row.push(clipValue(field.value));
+        row.push(clipToChars(field.value, TABLE_MAX_CELL_CHARS));
         clippedCells += 1;
       } else {
         row.push(field.value);
