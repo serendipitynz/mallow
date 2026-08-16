@@ -11,6 +11,7 @@ export type FileKind =
   | 'diff'
   | 'sql'
   | 'html'
+  | 'csv'
   | 'image'
   | 'pdf'
   | 'video';

@@ -41,6 +41,9 @@ export function kindFromName(name: string): FileKind | null {
     case 'html':
     case 'htm':
       return 'html';
+    case 'csv':
+    case 'tsv':
+      return 'csv';
     case 'png':
     case 'jpg':
     case 'jpeg':
