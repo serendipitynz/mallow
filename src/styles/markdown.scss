@@ -17,6 +17,12 @@
   padding: 0 32px 80px;
 }
 
+// A document opened straight from the tree has no bar to own the top spacing,
+// so it re-adds it — the same adjustment `.raw-view` makes for the same reason.
+.doc--no-bar {
+  padding-top: $doc-pad-top;
+}
+
 .doc__bar {
   display: flex;
   justify-content: flex-end;

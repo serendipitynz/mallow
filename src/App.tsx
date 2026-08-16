@@ -147,8 +147,9 @@ export default function App() {
         startWatch(s.lastFolder).catch((e) => console.error('Failed to start watch', e));
         if (s.lastFile && isInside(s.lastFolder, s.lastFile) && (await pathExists(s.lastFile))) {
           await expandPaths(ancestorDirs(s.lastFolder, s.lastFile));
-          if (!disposed) {
-            setSelected(fileEntryFromPath(s.lastFile));
+          const restored = fileEntryFromPath(s.lastFile);
+          if (!disposed && restored) {
+            setSelected(restored);
           }
         }
       }

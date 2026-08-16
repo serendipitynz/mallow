@@ -9,15 +9,21 @@ Every task that adds a viewable file kind touches the same seven places. Scope
 limits on which kinds get added are in decision-2.
 
 1. **[src-tauri/src/commands.rs](../../src-tauri/src/commands.rs)** — `file_kind`,
-   plus its three unit tests. A file with no dot in its name is rejected here by
-   design.
+   plus the unit tests that pin the mapping. A file with no dot in its name is
+   rejected here by design.
 2. **[src/lib/file.ts](../../src/lib/file.ts)** — `kindFromName`. **This
-   duplicates the Rust mapping and must stay in sync.** Its `default` branch
-   currently falls back to `'markdown'`.
+   duplicates the Rust mapping and must stay in sync.** It mirrors `file_kind`'s
+   `None` as `null` for an unmapped extension, so `fileEntryFromPath` returns
+   `FileEntry | null` and its caller has to handle "no kind" — a new entry here
+   is therefore always a `case`, never a change to the `default` branch.
 3. **[src/lib/types.ts](../../src/lib/types.ts)** — the `FileKind` union.
 4. **[src/components/Viewer.tsx](../../src/components/Viewer.tsx)** — the switch
    in `ViewerBody`. Note `isMediaKind` above it: media kinds skip the text read
    entirely, so a new kind that reads bytes rather than text belongs there instead.
+   A kind whose name is also a Shiki grammar id needs no kind→lang table: the
+   `text` / `ini` / `diff` / `sql` case passes `file.kind` through as `lang`.
+   `.doc` has no top padding of its own, so a view rendered without a `.doc__bar`
+   adds `doc--no-bar` to get the same top spacing.
 5. **[src/components/FileTree.tsx](../../src/components/FileTree.tsx)** —
    `FileKindIcon`. Optional rather than required: its `default` branch already
    returns `FileTextIcon`, so a new kind without an entry shows a text icon
@@ -27,6 +33,15 @@ limits on which kinds get added are in decision-2.
    and `en` dictionaries.
 7. **[src-tauri/tauri.conf.json](../../src-tauri/tauri.conf.json)** — the CSP,
    only when a kind actually requires it. None of the currently planned tasks do.
+
+**The user-facing format list in `README.md` / `README.ja.md` is deliberately not
+one of the seven.** It is batched into a documentation task that runs once the
+wave of kinds is in (TASK-6 for the current one) rather than edited per kind, so
+that the list is written from the finished set instead of accumulating a bullet
+per PR. The obligation is real either way: a kind must not reach a *release*
+undocumented, which is why that task is scheduled before the version is cut. If
+a wave ever has no such task, the README moves into this list rather than being
+dropped.
 
 Verify with `pnpm build`, `pnpm test`, and `cargo check` / `cargo test` inside
 `src-tauri/`. Unit tests live next to the code and run under a Node environment,

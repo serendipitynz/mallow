@@ -75,6 +75,15 @@ fn file_kind(name: &str) -> Option<String> {
             "json" | "jsonc" | "json5" | "jsonl" | "ndjson" => "json",
             "yaml" | "yml" => "yaml",
             "toml" => "toml",
+            "txt" | "text" | "log" => "text",
+            // `conf` and `cfg` are best-effort: neither names a format, and the
+            // INI grammar mis-colours the ones that are not key/value under a
+            // section header (nginx, Apache, ssh_config). Accepted because the
+            // source view shows the text in full either way — only the colours
+            // mislead — and being absent from the tree serves those files worse.
+            "ini" | "conf" | "cfg" | "properties" | "editorconfig" => "ini",
+            "diff" | "patch" => "diff",
+            "sql" => "sql",
             "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" => "image",
             // HEIC/HEIF only decode in WKWebView (macOS).
             "heic" | "heif" if cfg!(target_os = "macos") => "image",
@@ -208,6 +217,23 @@ mod tests {
         assert_eq!(file_kind("Cargo.toml").as_deref(), Some("toml"));
         // Extension matching is case-insensitive.
         assert_eq!(file_kind("DATA.JSON").as_deref(), Some("json"));
+    }
+
+    #[test]
+    fn file_kind_maps_source_view_extensions() {
+        assert_eq!(file_kind("notes.txt").as_deref(), Some("text"));
+        assert_eq!(file_kind("readme.text").as_deref(), Some("text"));
+        assert_eq!(file_kind("server.LOG").as_deref(), Some("text"));
+        assert_eq!(file_kind("app.ini").as_deref(), Some("ini"));
+        assert_eq!(file_kind("nginx.conf").as_deref(), Some("ini"));
+        assert_eq!(file_kind("tool.cfg").as_deref(), Some("ini"));
+        assert_eq!(file_kind("gradle.properties").as_deref(), Some("ini"));
+        // A dotfile is in scope exactly when its trailing segment is mapped
+        // (decision-2): `.editorconfig` is, `.gitignore` is not.
+        assert_eq!(file_kind(".editorconfig").as_deref(), Some("ini"));
+        assert_eq!(file_kind("fix.diff").as_deref(), Some("diff"));
+        assert_eq!(file_kind("fix.patch").as_deref(), Some("diff"));
+        assert_eq!(file_kind("schema.sql").as_deref(), Some("sql"));
     }
 
     #[test]
