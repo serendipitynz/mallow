@@ -76,6 +76,24 @@ export function kindFromName(name: string): FileKind | null {
   }
 }
 
+/**
+ * Whether a `.plist` holds JSON rather than XML.
+ *
+ * A property list is XML, binary or OpenStep, and `plutil -convert json` writes
+ * a fourth thing people do keep under this extension — all four share it, so this
+ * is the one kind whose view cannot be chosen from the name alone. Only `.plist`
+ * is sniffed: a `.xml` beginning with `{` is a broken XML document and should say
+ * so rather than quietly open as something else. A binary plist never reaches
+ * here, because `read_file` names it from its magic before any decode.
+ */
+export function isJsonPlist(name: string, text: string): boolean {
+  if (!name.toLowerCase().endsWith('.plist')) {
+    return false;
+  }
+  const first = text.trimStart()[0];
+  return first === '{' || first === '[';
+}
+
 /** Null for a path whose extension `file_kind` does not map — see `kindFromName`. */
 export function fileEntryFromPath(path: string): FileEntry | null {
   const name = basename(path);
