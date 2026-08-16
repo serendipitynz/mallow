@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { isJsonPlist } from '../lib/file';
 import { useT } from '../lib/i18n';
 import { type ReadError, readErrorMessage } from '../lib/read-error';
 import { readFile, setWindowTitle } from '../lib/tauri';
@@ -10,6 +11,7 @@ import { MediaView } from './MediaView';
 import { MermaidView } from './MermaidView';
 import { SourceView } from './SourceView';
 import { TableView } from './TableView';
+import { XmlView } from './XmlView';
 
 interface ViewerProps {
   file: FileEntry | null;
@@ -130,6 +132,14 @@ function ViewerBody({ file, content }: { file: FileEntry; content: string }) {
       return <ConfigView source={content} file={file} />;
     case 'csv':
       return <TableView source={content} file={file} />;
+    // A `.plist` carries either markup or JSON under one extension, so this kind
+    // is the one whose view is settled by the text rather than by the name.
+    case 'xml':
+      return isJsonPlist(file.name, content) ? (
+        <ConfigView source={content} file={file} />
+      ) : (
+        <XmlView source={content} />
+      );
     // The kind name doubles as the Shiki grammar id, so no kind→lang table is
     // needed: ini, diff, sql and html are in `lib/shiki`'s LANGS, and `text` is
     // what SourceView already falls back to for a grammar it has not loaded.
