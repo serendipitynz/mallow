@@ -62,17 +62,18 @@
   tbody tr:hover td {
     background: var(--color-hover-bg);
   }
-}
 
-// Row numbers, for the same reason the source view keeps line numbers: the
-// larger the file the more a reader needs a position. Numbered from the first
-// data record, so they count records rather than lines — a quoted field may
-// hold newlines of its own.
-.tbl__num {
-  min-width: 3ch;
-  color: $faint;
-  font-family: $font-mono;
-  font-variant-numeric: tabular-nums;
-  text-align: right !important;
-  user-select: none;
+  // Row numbers, for the same reason the source view keeps line numbers: the
+  // larger the file the more a reader needs a position. Numbered from the first
+  // data record, so they count records rather than lines — a quoted field may
+  // hold newlines of its own. Nested so it outranks the `th, td` rule above on
+  // specificity alone; the alignment needs no `!important`.
+  .tbl__num {
+    min-width: 3ch;
+    color: $faint;
+    font-family: $font-mono;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    user-select: none;
+  }
 }
