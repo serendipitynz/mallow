@@ -1,10 +1,10 @@
 ---
 id: TASK-1
 title: 'Support txt, ini, diff and sql files with a source view'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-07-30 08:55'
-updated_date: '2026-08-14 05:03'
+updated_date: '2026-08-16 03:23'
 labels:
   - feature
 milestone: m-0
@@ -27,11 +27,11 @@ Gotcha: the default branch of kindFromName in src/lib/file.ts currently returns 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Files with each listed extension appear in the file tree
-- [ ] #2 Each opens in the line-numbered source view, highlighted where a grammar exists
-- [ ] #3 The file_kind unit tests in commands.rs cover the new extensions
-- [ ] #4 kindFromName mirrors file_kind and its default-branch choice is commented
-- [ ] #5 pnpm build, pnpm test and cargo test all pass
-- [ ] #6 A non-UTF-8 log or txt file reports the cause by name rather than a raw decoding error
-- [ ] #7 cargo check and cargo test pass
+- [x] #1 Files with each listed extension appear in the file tree
+- [x] #2 Each opens in the line-numbered source view, highlighted where a grammar exists
+- [x] #3 The file_kind unit tests in commands.rs cover the new extensions
+- [x] #4 kindFromName mirrors file_kind and its default-branch choice is commented
+- [x] #5 pnpm build, pnpm test and cargo test all pass
+- [x] #6 A non-UTF-8 log or txt file reports the cause by name rather than a raw decoding error
+- [x] #7 cargo check and cargo test pass
 <!-- AC:END -->
