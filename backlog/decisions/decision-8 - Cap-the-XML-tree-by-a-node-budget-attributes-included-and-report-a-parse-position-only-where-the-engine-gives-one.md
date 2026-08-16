@@ -79,7 +79,12 @@ Two mechanisms, doing two different jobs, and they are not alternatives:
   but allocates nothing, so `nodeCount` describes the document while the model
   describes the render — the same split decision-7 made for `rowCount`. The
   difference is reported as **omitted nodes**: the count of nodes the document
-  holds that the tree does not show.
+  holds that the tree does not show. Where the budget runs out *inside* an
+  element, that element records it (`omittedChildren`) and its row ends in an
+  ellipsis rather than being drawn as `<name/>` — a self-closing tag asserts the
+  document holds nothing there, which is a different claim from "not all of it is
+  shown", and only one of the two is true. The same mark, for the same reason, as
+  the one the attribute cap leaves.
 - **Incremental reveal** (`lib/config-tree`'s `BRANCH_INITIAL` / `BRANCH_STEP`)
   decides how much of a *built* branch mounts at once. It is reused verbatim, and
   so is `initialBranchOpen`, which keeps "expand all" from opening deeper than

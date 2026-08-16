@@ -76,11 +76,31 @@ describe('buildXmlTree', () => {
     );
 
     expect(tree.nodes).toHaveLength(1);
+    // The CDATA keeps its whitespace where the text node loses its indentation:
+    // writing one is a statement that the text is the document's own.
     expect(elementAt(tree.nodes, 0).children).toEqual([
       { type: 'comment', text: 'why' },
-      { type: 'cdata', text: '' },
+      { type: 'cdata', text: '  \n  ' },
       { type: 'text', text: 'kept' },
     ]);
+  });
+
+  it('records on the parent that the budget cut its children off', () => {
+    // The budget runs out inside the first branch, so the second is reached with
+    // nothing left to build: it must not come back looking like an empty element.
+    const first = el(
+      'first',
+      {},
+      Array.from({ length: XML_MAX_NODES }, (_, i) => el(`a${i}`)),
+    );
+    const tree = buildXmlTree(doc([el('root', {}, [first, el('second', {}, [el('b')])])]));
+
+    const root = elementAt(tree.nodes, 0);
+    expect(root.omittedChildren).toBe(1);
+    expect(root.children.map((c) => (c.type === 'element' ? c.name : c.type))).toEqual(['first']);
+    const built = elementAt(root.children, 0);
+    expect(built.children.length).toBeGreaterThan(0);
+    expect(built.omittedChildren).toBe(XML_MAX_NODES - built.children.length);
   });
 
   it('counts every node but builds no more than the cap', () => {

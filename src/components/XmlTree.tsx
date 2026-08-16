@@ -16,6 +16,18 @@ function indent(depth: number): CSSProperties {
   return { '--cfg-indent': `${8 + depth * 14}px` } as CSSProperties;
 }
 
+/**
+ * The value as a double-quoted attribute would carry it. The document may have
+ * written it in single quotes, and then its own double quotes are legal inside —
+ * printed as they are, `a='say "hi"'` comes back as `a="say "hi""`, which is not
+ * a start tag anyone could have written.
+ */
+function attributeValue(value: string): string {
+  // `replace` with a global regexp rather than `replaceAll`, which this project's
+  // ES2020 lib target does not have.
+  return `"${value.replace(/"/g, '&quot;')}"`;
+}
+
 /** `<name attr="value">`, or `<name attr="value"/>` for an element with nothing in it. */
 function StartTag({ node, close }: { node: XmlElement; close: '>' | '/>' }) {
   return (
@@ -28,7 +40,7 @@ function StartTag({ node, close }: { node: XmlElement; close: '>' | '/>' }) {
         <span key={attr.name}>
           <span className="xml-attr-name"> {attr.name}</span>
           <span className="xml-punct">=</span>
-          <span className="xml-attr-value">{`"${attr.value}"`}</span>
+          <span className="xml-attr-value">{attributeValue(attr.value)}</span>
         </span>
       ))}
       {node.omittedAttributes > 0 && <span className="xml-punct"> …</span>}
@@ -97,8 +109,17 @@ function ElementNode({ node, depth, forceOpen }: { node: XmlElement; depth: numb
   const children = node.children;
   const hidden = children.length - visibleCount;
 
+  // `<name/>` says the document holds nothing here, which is a different claim
+  // from "what it holds is past the node budget" — so an element the budget
+  // emptied is drawn open, with the ellipsis standing for what is not built.
   if (children.length === 0) {
-    return (
+    return node.omittedChildren > 0 ? (
+      <LeafRow depth={depth}>
+        <StartTag node={node} close=">" />
+        <span className="xml-punct">…</span>
+        <EndTag name={node.name} />
+      </LeafRow>
+    ) : (
       <LeafRow depth={depth}>
         <StartTag node={node} close="/>" />
       </LeafRow>
@@ -121,6 +142,7 @@ function ElementNode({ node, depth, forceOpen }: { node: XmlElement; depth: numb
         {!open && (
           <>
             <span className="cfg-preview"> {t('items', { n: children.length })} </span>
+            {node.omittedChildren > 0 && <span className="xml-punct">… </span>}
             <EndTag name={node.name} />
           </>
         )}
@@ -143,6 +165,11 @@ function ElementNode({ node, depth, forceOpen }: { node: XmlElement; depth: numb
               <span className="cfg-chevron is-leaf" aria-hidden="true" />
               <span className="cfg-more-label">{t('showMore', { n: hidden })}</span>
             </button>
+          )}
+          {node.omittedChildren > 0 && (
+            <LeafRow depth={depth + 1}>
+              <span className="xml-punct">…</span>
+            </LeafRow>
           )}
           <LeafRow depth={depth}>
             <EndTag name={node.name} />

@@ -75,6 +75,9 @@ export type XmlNode =
        *  row can mark that it was cut without the reader consulting the notice. */
       omittedAttributes: number;
       children: XmlNode[];
+      /** Children the node budget ran out before: the same mark, for the case
+       *  where an element that has content would otherwise be drawn as empty. */
+      omittedChildren: number;
     }
   | { type: 'text' | 'cdata' | 'comment'; text: string }
   | { type: 'instruction'; target: string; text: string };
@@ -125,6 +128,9 @@ interface Frame {
   node: DomNodeLike;
   /** Where a built node is appended, or null inside a subtree past the cap. */
   out: XmlNode[] | null;
+  /** The built element this node hangs under, so a child the cap drops can be
+   *  recorded on the parent that will be drawn without it. Null at top level. */
+  parent: XmlElement | null;
 }
 
 /**
@@ -142,11 +148,11 @@ export function buildXmlTree(root: DomNodeLike): XmlTree {
   let clippedValues = 0;
   const stack: Frame[] = [];
 
-  function pushChildren(node: DomNodeLike, out: XmlNode[] | null): void {
+  function pushChildren(node: DomNodeLike, out: XmlNode[] | null, parent: XmlElement | null): void {
     const children = node.childNodes;
     // Reversed, so the stack pops them back in document order.
     for (let i = children.length - 1; i >= 0; i--) {
-      stack.push({ node: children[i], out });
+      stack.push({ node: children[i], out, parent });
     }
   }
 
@@ -177,9 +183,9 @@ export function buildXmlTree(root: DomNodeLike): XmlTree {
     return kept;
   }
 
-  pushChildren(root, nodes);
+  pushChildren(root, nodes, null);
   while (stack.length > 0) {
-    const { node, out } = stack.pop() as Frame;
+    const { node, out, parent } = stack.pop() as Frame;
     const type = nodeTypeOf(node);
     if (type === null) {
       continue;
@@ -191,7 +197,14 @@ export function buildXmlTree(root: DomNodeLike): XmlTree {
     if (out === null || built >= XML_MAX_NODES) {
       if (type === 'element') {
         nodeCount += node.attributes?.length ?? 0;
-        pushChildren(node, null);
+        pushChildren(node, null, null);
+      }
+      // A parent that was built is about to be drawn without this child, so it
+      // has to be able to say so: an element drawn as `<name/>` asserts the
+      // document holds nothing there, which is a different claim from "not all
+      // of it is shown".
+      if (parent !== null) {
+        parent.omittedChildren += 1;
       }
       continue;
     }
@@ -205,11 +218,17 @@ export function buildXmlTree(root: DomNodeLike): XmlTree {
         attributes,
         omittedAttributes: (node.attributes?.length ?? 0) - attributes.length,
         children: [],
+        omittedChildren: 0,
       };
       out.push(element);
-      pushChildren(node, element.children);
+      pushChildren(node, element.children, element);
     } else if (type === 'instruction') {
       out.push({ type, target: node.nodeName, text: clip((node.nodeValue ?? '').trim()) });
+    } else if (type === 'cdata') {
+      // Not trimmed, unlike a text node: a CDATA section is written to say that
+      // its text is the document's rather than the serializer's, whitespace
+      // included, so trimming it would drop what writing one asserts.
+      out.push({ type, text: clip(node.nodeValue ?? '') });
     } else {
       // Trimmed at the ends only: what the ends carry is the indentation that
       // put the node on its own line, and the rest is the document's own text.
