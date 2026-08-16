@@ -14,6 +14,12 @@
 }
 
 // ---- Syntax-highlighted source view with line numbers -----------------------
+.src-view {
+  // Shared by the number column and the flagged-line band of the unhighlighted
+  // path, which positions itself at a multiple of it (13px * 1.6).
+  --src-line-height: 20.8px;
+}
+
 .src-view pre.shiki {
   margin: 0;
   padding: 12px 0;
@@ -60,5 +66,66 @@
 }
 
 .src-view .line.src-error-line {
+  background: rgb(207 34 46 / 14%);
+}
+
+// ---- Unhighlighted path (over the caps in lib/source-cap) -------------------
+.src-notice {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-attention-fg);
+  background: var(--color-attention-bg);
+  border: 1px solid var(--color-attention-border);
+  border-radius: 8px;
+}
+
+.src-plain {
+  display: flex;
+  overflow-x: auto;
+  padding: 12px 0;
+  font-family: $font-mono;
+  font-size: 13px;
+  line-height: var(--src-line-height);
+  color: $ink;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 8px;
+}
+
+// Same geometry as the `.line::before` counter of the highlighted path, so the
+// two views place their numbers identically. Sticky keeps them in place while
+// the text scrolls sideways under them.
+.src-plain__gutter {
+  position: sticky;
+  left: 0;
+  flex: none;
+  width: 3.5em;
+  margin: 0;
+  padding-right: 0.9em;
+  text-align: right;
+  color: $faint;
+  background: $surface;
+  border-right: 1px solid $border;
+  user-select: none;
+}
+
+.src-plain__body {
+  position: relative;
+  flex: 1 0 auto;
+  padding-left: 1em;
+}
+
+.src-plain__code {
+  margin: 0;
+  padding-right: 16px;
+}
+
+.src-plain__flag {
+  position: absolute;
+  top: calc((var(--flagged-line) - 1) * var(--src-line-height));
+  right: 0;
+  left: 0;
+  height: var(--src-line-height);
   background: rgb(207 34 46 / 14%);
 }
