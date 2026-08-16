@@ -18,6 +18,15 @@ function errorLineTransformer(line: number): ShikiTransformer {
   };
 }
 
+/**
+ * Digits the number column has to fit, for both paths. Floored at 4 so ordinary
+ * documents keep the width the view has always had, and grown past it because
+ * the unhighlighted path begins at 10,000 lines and a 10 MiB log reaches seven.
+ */
+function gutterDigits(lineCount: number): string {
+  return String(Math.max(4, String(lineCount).length));
+}
+
 interface SourceViewProps {
   source: string;
   /** Shiki grammar id; falls back to plain text when not loaded. */
@@ -38,6 +47,7 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
   // Trim trailing newlines so there is no spurious empty final line number.
   const code = useMemo(() => source.replace(/\n+$/, ''), [source]);
   const skipReason = useMemo(() => highlightSkipReason(code), [code]);
+  const lineCount = useMemo(() => countLines(code), [code]);
 
   useEffect(() => {
     if (skipReason !== null) {
@@ -61,21 +71,22 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
     };
   }, [code, lang, errorLine, skipReason]);
 
-  // Scroll the flagged line into view once it is in the DOM. Both paths put it
-  // there, so this waits on whichever one rendered it.
-  const flagRendered = skipReason !== null || html !== '';
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: `html` and `code` are not read in the
+     body — they are the re-run triggers. The flagged line only exists after the path that owns it
+     has put it in the DOM, and a live reload can move it (a config edit that shifts the parse
+     error): dropping them, as the rule suggests, would leave the view scrolled to the old line. */
   useEffect(() => {
-    if (errorLine === undefined || !flagRendered) {
+    if (errorLine === undefined) {
       return;
     }
     hostRef.current?.querySelector('.src-error-line')?.scrollIntoView({ block: 'center' });
-  }, [flagRendered, errorLine]);
+  }, [html, code, errorLine]);
 
   return (
-    <div className="src-view" ref={hostRef}>
+    <div className="src-view" ref={hostRef} style={{ '--src-gutter-digits': gutterDigits(lineCount) } as CSSProperties}>
       {skipReason !== null && <p className="src-notice">{t('highlightSkipped')}</p>}
       {skipReason !== null ? (
-        <PlainSource code={code} errorLine={errorLine} />
+        <PlainSource code={code} lineCount={lineCount} errorLine={errorLine} />
       ) : (
         /* biome-ignore lint/security/noDangerouslySetInnerHtml: the HTML here is Shiki's own output
            for the file's text, not the file's text. Shiki escapes what it highlights, so the document
@@ -92,8 +103,7 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
  * document costs a constant number of DOM nodes however long it is. Lines do not
  * wrap here: a wrapped line would slip out of step with the number column.
  */
-function PlainSource({ code, errorLine }: { code: string; errorLine?: number }) {
-  const lineCount = useMemo(() => countLines(code), [code]);
+function PlainSource({ code, lineCount, errorLine }: { code: string; lineCount: number; errorLine?: number }) {
   const numbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1).join('\n'), [lineCount]);
   const flagged = errorLine !== undefined && errorLine <= lineCount ? errorLine : undefined;
 

@@ -18,6 +18,11 @@
   // Shared by the number column and the flagged-line band of the unhighlighted
   // path, which positions itself at a multiple of it (13px * 1.6).
   --src-line-height: 20.8px;
+  // Both paths size their number column from the document's own line count,
+  // which `SourceView` sets as `--src-gutter-digits`: a 10 MiB log reaches seven
+  // digits, and a fixed width would paint them over the separator rule. `1ch` is
+  // the digit advance of the actual mono stack, so this needs no font constant.
+  --src-gutter-width: calc(var(--src-gutter-digits, 4) * 1ch + 0.9em);
 }
 
 .src-view pre.shiki {
@@ -56,7 +61,7 @@
   counter-increment: line;
   content: counter(line);
   display: inline-block;
-  width: 3.5em;
+  width: var(--src-gutter-width);
   margin-right: 1em;
   padding-right: 0.9em;
   text-align: right;
@@ -100,7 +105,7 @@
   position: sticky;
   left: 0;
   flex: none;
-  width: 3.5em;
+  width: var(--src-gutter-width);
   margin: 0;
   padding-right: 0.9em;
   text-align: right;

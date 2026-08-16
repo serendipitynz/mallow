@@ -8,7 +8,7 @@ describe('countLines', () => {
     expect(countLines('a\nb')).toBe(2);
   });
 
-  it('counts a trailing newline as ending its line, not starting one', () => {
+  it('counts the empty line a trailing newline opens', () => {
     expect(countLines('a\n')).toBe(2);
     expect(countLines('a\nb\n')).toBe(3);
   });
