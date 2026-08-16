@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { FileTreeState } from '../hooks/useFileTree';
 import { useT } from '../lib/i18n';
 import type { FileEntry, FileKind } from '../lib/types';
-import { ChevronRight, FileChartIcon, FileConfigIcon, FileTextIcon, FolderIcon } from './icons';
+import { ChevronRight, FileChartIcon, FileConfigIcon, FileTextIcon, FolderIcon, TableIcon } from './icons';
 
 const INDENT_STEP = 14;
 const BASE_INDENT = 8;
@@ -20,6 +20,10 @@ function FileKindIcon({ kind }: { kind: FileKind }) {
     case 'yaml':
     case 'toml':
       return <FileConfigIcon />;
+    // Marked apart from the plain-text kinds for the same reason the config
+    // kinds are: it opens in a structured view rather than as text.
+    case 'csv':
+      return <TableIcon />;
     default:
       return <FileTextIcon />;
   }

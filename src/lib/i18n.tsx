@@ -68,6 +68,12 @@ const ja: Dict = {
   items: '{n} 個',
   keys: '{n} キー',
   showMore: 'さらに表示（残り {n} 件）',
+  // table view
+  table: '表',
+  rowNumber: '行番号',
+  tableTruncatedRows: '{n} 行を省略しています。',
+  tableTruncatedColumns: '{n} 列を省略しています。',
+  tableTruncatedHint: '全文はソース表示で確認できます。',
   // settings modal
   explorerPosition: 'エクスプローラの位置',
   left: '左',
@@ -132,6 +138,12 @@ const en: Dict = {
   items: '{n} items',
   keys: '{n} keys',
   showMore: 'Show more ({n} remaining)',
+  // table view
+  table: 'Table',
+  rowNumber: 'Row number',
+  tableTruncatedRows: '{n} rows are not shown.',
+  tableTruncatedColumns: '{n} columns are not shown.',
+  tableTruncatedHint: 'The full text is in the source view.',
   // settings modal
   explorerPosition: 'Explorer position',
   left: 'Left',
