@@ -85,6 +85,7 @@ fn file_kind(name: &str) -> Option<String> {
             "diff" | "patch" => "diff",
             "sql" => "sql",
             "html" | "htm" => "html",
+            "csv" | "tsv" => "csv",
             "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" => "image",
             // HEIC/HEIF only decode in WKWebView (macOS).
             "heic" | "heif" if cfg!(target_os = "macos") => "image",
@@ -237,6 +238,15 @@ mod tests {
         assert_eq!(file_kind("schema.sql").as_deref(), Some("sql"));
         assert_eq!(file_kind("index.html").as_deref(), Some("html"));
         assert_eq!(file_kind("index.HTM").as_deref(), Some("html"));
+    }
+
+    #[test]
+    fn file_kind_maps_table_extensions() {
+        // Both delimiters share one kind; which one a file uses is read off the
+        // extension again on the frontend (`delimiterFor`).
+        assert_eq!(file_kind("sales.csv").as_deref(), Some("csv"));
+        assert_eq!(file_kind("sales.tsv").as_deref(), Some("csv"));
+        assert_eq!(file_kind("SALES.CSV").as_deref(), Some("csv"));
     }
 
     #[test]
