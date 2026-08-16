@@ -40,18 +40,19 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - `hooks/useFileTree.ts` — centralized lazy file-tree state (expanded set, children
   map, `refresh`, `expandPaths`). The tree components are controlled by this.
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
-  ConfigView/ConfigTree, SourceView (shared, line-numbered), MermaidView,
+  ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
+  MermaidView,
   MediaView (image/pdf/video via the asset protocol), Outline, Toolbar, OpenWith,
   ThemePicker, SettingsModal, icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
-  caps), `custom-emoji` (user emoji folder →
+  caps), `delimited` (CSV/TSV parser + table caps), `custom-emoji` (user emoji folder →
   shortcode table), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
-  `markdown`, `config`, `source`.
+  `markdown`, `config`, `source`, `table`.
 
 **Backend (`src-tauri/src/`)**
 - `commands.rs` — `read_dir_tree`, `read_file`, `path_exists`, `allow_media_dir`
@@ -288,6 +289,17 @@ hold rather than as an exhaustive style guide.
   text, never computed from the declared `--src-line-height`** — WebKit lays
   each line box out at an integer height, so the declared 20.8px is used as 20px
   and a computed position drifts a line every 25.
+- **`TableView` is capped by three constants, and unlike `SourceView` it does
+  withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100) and
+  `TABLE_MAX_CELLS` (20,000) live in `lib/delimited`; three are needed because
+  the first two multiply — 5,000 records of 100 fields satisfies both and is half
+  a million DOM cells (decision-7). `tableExtent` applies them together, so the
+  row count falls as the table widens. There is deliberately **no "show more"**:
+  the source half of the toggle already reaches the whole document at any size,
+  which is also what the notice above the table says. `parseDelimited` counts
+  every record and field but builds only what can be rendered, so the reported
+  counts do not depend on the caps and a pathological file costs no allocation
+  per unrendered field.
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 
@@ -296,8 +308,8 @@ hold rather than as an exhaustive style guide.
 - Frontend: `pnpm lint` (Biome), `pnpm build` (tsc + vite) and `pnpm test`
   (Vitest). Unit tests live next to the code as `src/**/*.test.ts` and cover the
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
-  `config-parse`, `frontmatter`, `title`, `path`, and `custom-emoji` with the
-  Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
+  `config-parse`, `frontmatter`, `title`, `path`, `delimited`, and `custom-emoji`
+  with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
   call across lines) and not `vitest.config.ts` (a hung test in any other suite

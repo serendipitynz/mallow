@@ -40,19 +40,21 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `hooks/useFileTree.ts` — ファイルツリーの集中管理（展開集合・子マップ・`refresh`・
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
-  ConfigView/ConfigTree、SourceView（共通・行番号付き）、MermaidView、
+  ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
+  MermaidView、
   MediaView（画像/PDF/動画を asset protocol 経由で表示）、Outline、Toolbar、
   OpenWith、ThemePicker、SettingsModal、icons（Lucide の SVG をインライン化・
   ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
   `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、
+  `delimited`（CSV/TSV パーサ + 表ビューの上限）、
   `custom-emoji`（ユーザーの絵文字フォルダ →
   ショートコード表）、`scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
-  `markdown`、`config`、`source`。
+  `markdown`、`config`、`source`、`table`。
 
 **バックエンド (`src-tauri/src/`)**
 - `commands.rs` — `read_dir_tree` / `read_file` / `path_exists` / `allow_media_dir`
@@ -273,6 +275,14 @@ Comments と Functions の規約は機械的に検査されない。コメント
   テキストから測った行送りで決める。宣言値の `--src-line-height` から計算してはいけない** —
   WebKit は行ボックスの高さを整数に丸めるので、宣言した 20.8px は 20px として使われ、
   計算で置いた帯は 25 行ごとに 1 行ずれる。
+- **`TableView` の上限は定数 3 本で、`SourceView` と違って内容そのものを落とす。**
+  `TABLE_MAX_ROWS`（5,000）・`TABLE_MAX_COLUMNS`（100）・`TABLE_MAX_CELLS`（20,000）が
+  `lib/delimited` にある。3 本要るのは前の 2 本が掛け合わさるため — 100 列 5,000 行は
+  両方を満たしたうえで DOM セル 50 万個になる（decision-7）。`tableExtent` が 3 本を
+  まとめて適用するので、表が横に広いほど行数は下がる。**「さらに表示」は意図的に持たない** —
+  切替のソース側が文書全体に大きさによらず届くためで、表の上の告知もそう述べる。
+  `parseDelimited` は全レコード・全フィールドを数えるが、描けるぶんしか組み立てない。
+  よって告知の数は上限に依存せず、病的なファイルでも描かないフィールドの分は確保しない。
 - 独自 Rust コマンドと core イベントは capabilities の許可不要。plugin/core API のみが
   ゲートされる（`src-tauri/capabilities/default.json` 参照）。
 
@@ -281,7 +291,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
 - フロント: `pnpm lint`（Biome）・`pnpm build`（tsc + vite）・`pnpm test`（Vitest）。
   ユニットテストはコードと同じ場所に `src/**/*.test.ts` として置き、純ロジックの
   モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
-  `frontmatter`・`title`・`path`・`custom-emoji`＝Tauri 層をモック）をカバーする。
+  `frontmatter`・`title`・`path`・`delimited`・`custom-emoji`＝Tauri 層をモック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
   タイムアウトを上げる — `it` ごとの第 3 引数では持たない（フォーマッタが 3 引数の呼び出しを
   複数行に展開する）し、`vitest.config.ts` にも置かない（他のスイートで固まったテストは

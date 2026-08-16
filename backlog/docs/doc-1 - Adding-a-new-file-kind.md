@@ -22,14 +22,17 @@ limits on which kinds get added are in decision-2.
    entirely, so a new kind that reads bytes rather than text belongs there instead.
    A kind whose name is also a Shiki grammar id needs no kind→lang table: the
    `text` / `ini` / `diff` / `sql` / `html` case passes `file.kind` through as
-   `lang`.
+   `lang`. A kind with a view of its own gets its own `case` there instead, as
+   `csv` does.
    `.doc` has no top padding of its own, so a view rendered without a `.doc__bar`
    adds `doc--no-bar` to get the same top spacing.
 5. **[src/components/FileTree.tsx](../../src/components/FileTree.tsx)** —
    `FileKindIcon`. Optional rather than required: its `default` branch already
    returns `FileTextIcon`, so a new kind without an entry shows a text icon
    instead of breaking. Decide whether it deserves its own icon; if it does, copy
-   Lucide path data inline rather than adding `lucide-react`.
+   Lucide path data inline rather than adding `lucide-react`. What the existing
+   entries mark is a *structured* view — the config kinds and `csv` have one, the
+   kinds that open as text do not.
 6. **[src/lib/i18n.tsx](../../src/lib/i18n.tsx)** — new keys in **both** the `ja`
    and `en` dictionaries.
 7. **[src-tauri/tauri.conf.json](../../src-tauri/tauri.conf.json)** — the CSP,
@@ -86,5 +89,6 @@ Two constraints apply to every text-reading kind, both from
   never the content, and says so in the UI (decision-6) — so a kind routed to
   `SourceView` needs no size check of its own, and any view may name it as its
   fallback. Every *other* way of expanding a document into DOM still needs its own
-  ceiling: the config tree has one, and the CSV table and HTML renderer must get
-  theirs.
+  ceiling: the config tree has one, the CSV table has one (decision-7), and the
+  HTML renderer must get its own. A view that caps by truncating also owes the
+  reader a line saying what was left out and where the rest is.
