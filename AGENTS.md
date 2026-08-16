@@ -303,8 +303,10 @@ hold rather than as an exhaustive style guide.
   the source half of the toggle already reaches the whole document at any size,
   which is also what the notice above the table says. `parseDelimited` counts
   every record and field but builds only what can be rendered, so the reported
-  counts do not depend on the caps and a pathological file costs no allocation
-  per unrendered field.
+  row and column counts do not depend on the caps and a pathological file costs
+  no allocation per unrendered field. `clippedCells` is the exception and counts
+  what the parser kept, so it can name more clipped cells than are on screen
+  (decision-7 says why neither alternative is better).
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 

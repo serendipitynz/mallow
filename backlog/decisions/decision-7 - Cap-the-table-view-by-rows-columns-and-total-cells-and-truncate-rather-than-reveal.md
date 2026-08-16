@@ -77,9 +77,18 @@ pays the same total cost as showing the whole file and still stops short of it,
 while the toggle reaches all of it in one click.
 
 Records past the caps are counted but never built. `parseDelimited` returns the
-file's true `rowCount` and `columnCount` alongside the rows it kept, so the
-counts the UI reports do not depend on what was rendered, and a pathological file
+file's true `rowCount` and `columnCount` alongside the rows it kept, so **those
+two** counts describe the file rather than the render, and a pathological file
 costs no allocation per unrendered field.
+
+`clippedCells` is on a third footing and deliberately so: it counts the cells the
+parser *kept and clipped*, which is neither the file's total nor the rendered
+one. Counting it over the file would mean building the values the caps exist to
+avoid building, and counting it over the render would mean recognising a clipped
+value again downstream from its text, which no marker can do reliably. The
+consequence is that a file whose stored-but-unrendered rows hold long fields can
+report more clipped cells than are visible — a number that over-reports rather
+than one that hides anything.
 
 ### What was left out is stated above the table
 
