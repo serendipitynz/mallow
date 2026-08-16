@@ -71,6 +71,16 @@ the notice. The clip is `lib/clip`'s `clipToChars`, shared with the table rather
 than reimplemented — its one subtlety (never cut between the halves of a surrogate
 pair) is a rule that should exist once.
 
+**What the caps do not reach is the parse itself.** All three bound the model
+built *from* the DOM, and `parseFromString` has already built the DOM before any
+of them applies — so the one input they say nothing about is a document that
+amplifies inside that call, an internal-subset entity nested into itself being
+the standard shape. What bounds that is the engine's own entity-expansion limit,
+which every current WebView has and none of them documents as a contract. It is
+recorded here as a known edge rather than guarded: a guard on the DOCTYPE
+internal subset costs a parse of its own on every document, and TASK-7's
+cross-WebView pass is where the assumption gets checked rather than assumed.
+
 ### Over the budget the tree omits; incremental reveal is for what is under it
 
 Two mechanisms, doing two different jobs, and they are not alternatives:
