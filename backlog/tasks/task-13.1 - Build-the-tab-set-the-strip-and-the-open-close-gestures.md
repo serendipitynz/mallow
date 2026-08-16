@@ -27,7 +27,7 @@ Deriving it strands the two other things that hang off `selected` today, and bot
 - `selectFile` also writes `saveSetting('lastFile', …)` (`:48`). A derived value cannot carry a write, and the tab set is what needs persisting anyway - TASK-13.4 owns that. Until it lands, keep persisting the active tab's path where this window already persists it, which depends on the landing order: `lastFile` while that key still exists, or `report_window_content(folder, activePath)` once TASK-12.7 has replaced it (that task deletes the key, so writing to it would be writing to nothing). This is the one point where TASK-13.1 meets TASK-12.
 - `openFolder` clears the selection (`:54`). Its successor is the folder rule below, not a `setSelected(null)` equivalent.
 
-A tab holds the whole `FileEntry`, not just the path: `Viewer` routes on `kind` (`src/components/Viewer.tsx:113-130`) and the label needs `name`. `fileEntryFromPath` (`src/lib/file.ts`) already synthesizes one from a bare path, which is what TASK-13.4's restore path needs.
+A tab holds the whole `FileEntry`, not just the path: `Viewer` routes on `kind` (`ViewerBody`) and the label needs `name`. `fileEntryFromPath` (`src/lib/file.ts`) already synthesizes one from a bare path, which is what TASK-13.4's restore path needs — but since TASK-1 it returns `FileEntry | null`, mirroring the backend's refusal to map an unknown extension, so a caller has to decide what an unrestorable tab becomes.
 
 Keep the derivation honest about what stays single: `Explorer`'s `selectedPath` prop highlights exactly one row and should keep highlighting only the active tab, as VS Code does. Do not turn it into a set.
 
