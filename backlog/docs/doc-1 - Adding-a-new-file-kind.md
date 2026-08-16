@@ -64,6 +64,11 @@ Two constraints apply to every text-reading kind, both from
 - The UTF-8 BOM is stripped in `read_file`, so a new parser must not strip it
   again.
 - The 10 MiB cap bounds bytes, not work. A file well inside it can still stall the
-  WebView once it is highlighted or expanded into DOM, which is why the source
-  view is capped (TASK-9) and the CSV table and HTML renderer have their own
-  ceilings.
+  WebView once it is highlighted or expanded into DOM. The source view is bounded
+  for you: above the caps in
+  [src/lib/source-cap.ts](../../src/lib/source-cap.ts) it drops the highlighting,
+  never the content, and says so in the UI (decision-6) — so a kind routed to
+  `SourceView` needs no size check of its own, and any view may name it as its
+  fallback. Every *other* way of expanding a document into DOM still needs its own
+  ceiling: the config tree has one, and the CSV table and HTML renderer must get
+  theirs.

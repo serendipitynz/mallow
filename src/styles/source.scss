@@ -14,6 +14,19 @@
 }
 
 // ---- Syntax-highlighted source view with line numbers -----------------------
+.src-view {
+  // The unhighlighted path's line height, kept equal to the highlighted path's
+  // (13px * 1.6) so both place their line numbers alike. Nothing may compute a
+  // position from it: layout rounds it, so the flagged-line band measures the
+  // rendered text instead (see `.src-plain__flag`).
+  --src-line-height: 20.8px;
+  // Both paths size their number column from the document's own line count,
+  // which `SourceView` sets as `--src-gutter-digits`: a 10 MiB log reaches seven
+  // digits, and a fixed width would paint them over the separator rule. `1ch` is
+  // the digit advance of the actual mono stack, so this needs no font constant.
+  --src-gutter-width: calc(var(--src-gutter-digits, 4) * 1ch + 0.9em);
+}
+
 .src-view pre.shiki {
   margin: 0;
   padding: 12px 0;
@@ -50,7 +63,7 @@
   counter-increment: line;
   content: counter(line);
   display: inline-block;
-  width: 3.5em;
+  width: var(--src-gutter-width);
   margin-right: 1em;
   padding-right: 0.9em;
   text-align: right;
@@ -60,5 +73,67 @@
 }
 
 .src-view .line.src-error-line {
+  background: rgb(207 34 46 / 14%);
+}
+
+// ---- Unhighlighted path (over the caps in lib/source-cap) -------------------
+.src-notice {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--color-attention-fg);
+  background: var(--color-attention-bg);
+  border: 1px solid var(--color-attention-border);
+  border-radius: 8px;
+}
+
+.src-plain {
+  display: flex;
+  overflow-x: auto;
+  padding: 12px 0;
+  font-family: $font-mono;
+  font-size: 13px;
+  line-height: var(--src-line-height);
+  color: $ink;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 8px;
+}
+
+// Same geometry as the `.line::before` counter of the highlighted path, so the
+// two views place their numbers identically. Sticky keeps them in place while
+// the text scrolls sideways under them.
+.src-plain__gutter {
+  position: sticky;
+  left: 0;
+  flex: none;
+  width: var(--src-gutter-width);
+  margin: 0;
+  padding-right: 0.9em;
+  text-align: right;
+  color: $faint;
+  background: $surface;
+  border-right: 1px solid $border;
+  user-select: none;
+}
+
+.src-plain__body {
+  position: relative;
+  flex: 1 0 auto;
+  padding-left: 1em;
+}
+
+.src-plain__code {
+  margin: 0;
+  padding-right: 16px;
+}
+
+// `top` and `height` are set by SourceView from the measured line height — a
+// value computed from `--src-line-height` would drift, since layout rounds it.
+.src-plain__flag {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 0;
   background: rgb(207 34 46 / 14%);
 }

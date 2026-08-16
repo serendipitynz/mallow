@@ -1,10 +1,10 @@
 ---
 id: TASK-10
 title: Return a typed read error from read_file
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 10:27'
-updated_date: '2026-08-15 22:36'
+updated_date: '2026-08-15 23:29'
 labels:
   - feature
 milestone: m-0
