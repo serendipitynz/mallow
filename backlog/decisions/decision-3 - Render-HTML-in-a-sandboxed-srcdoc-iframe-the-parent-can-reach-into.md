@@ -232,10 +232,11 @@ app-origin external script, permitted by `script-src 'self'`.
   `read_file` cap bounds bytes, not element count; hundreds of thousands of nodes
   or heavy SVG filters fit well inside it, and the rendered view is the default.
   Fall back to the source view above a render threshold, the same way TASK-3 caps
-  the CSV table — **but the source view is not currently a safe floor.**
-  `SourceView.tsx:29-39` highlights the whole file unconditionally, so escaping a
-  9 MiB document into it trades one stall for a worse one. TASK-9 bounds the
-  source view first.
+  the CSV table. When this was written the source view was not a safe floor —
+  it highlighted the whole file unconditionally, so escaping a 9 MiB document
+  into it traded one stall for a worse one. **TASK-9 closed that (decision-6):
+  above its caps the source view drops the highlighting rather than the
+  document, so it is now a floor a fallback can land on.**
 - **The frame's canvas is light under every app theme, declared from the parent
   side.** css-color-adjust-1 says the embedding element's used colour scheme
   becomes the embedded document's *preferred* scheme, and that when the two used

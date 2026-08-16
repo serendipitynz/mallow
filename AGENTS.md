@@ -45,7 +45,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   ThemePicker, SettingsModal, icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
-  enhancements), `frontmatter`, `config-parse`, `custom-emoji` (user emoji folder →
+  enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
+  caps), `custom-emoji` (user emoji folder →
   shortcode table), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
@@ -268,8 +269,22 @@ hold rather than as an exhaustive style guide.
   Tauri window title, so this needs the `core:window:allow-set-title` capability.
 - Shiki dual theme: light is inlined, dark emitted as `--shiki-dark` and swapped
   under `on-dark`. Code token colors stay github-light/dark regardless of palette.
-- `SourceView` line numbers: Shiki emits `<span class="line">`; CSS uses
-  `code { display: grid }` + `.line::before { counter }`.
+- **`SourceView` is capped, and that cap is what makes it a safe fallback.**
+  Above `HIGHLIGHT_MAX_BYTES` (256 KiB of UTF-8) or `HIGHLIGHT_MAX_LINES`
+  (10,000) — both in `lib/source-cap` — Shiki is not called at all, because its
+  cost is linear in the input and it emits roughly 14× the input in HTML, all on
+  the main thread. Dropping the grammar to `text` is NOT a substitute: it still
+  emits a span per line. **What is given up is the highlighting, never the
+  content**, so a caller needs no size check of its own before rendering
+  `SourceView` (decision-6). A notice (`highlightSkipped`) says the highlighting
+  was skipped, so a monochrome document does not read as a rendering fault.
+- `SourceView` line numbers: in the highlighted path Shiki emits
+  `<span class="line">` and CSS uses `code { display: grid }` +
+  `.line::before { counter }`. Above the caps there are no per-line elements, so
+  the numbers are one more text node beside the text — which is why that path
+  does not wrap (a wrapped line would slip out of step with the number column)
+  and why its parse-error flag is a band positioned at a multiple of
+  `--src-line-height` rather than a class on a line.
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 

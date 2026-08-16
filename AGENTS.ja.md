@@ -46,7 +46,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
-  `frontmatter`、`config-parse`、`custom-emoji`（ユーザーの絵文字フォルダ →
+  `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、
+  `custom-emoji`（ユーザーの絵文字フォルダ →
   ショートコード表）、`scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
@@ -256,8 +257,19 @@ Comments と Functions の規約は機械的に検査されない。コメント
   タイトルは変わらないため `core:window:allow-set-title` 権限が必要。
 - Shiki のデュアルテーマ: light はインライン、dark は `--shiki-dark` として出力し
   `on-dark` で差し替え。コードのトークン色はパレットに関わらず github-light/dark のまま。
-- `SourceView` の行番号: Shiki は `<span class="line">` を出力するので、CSS は
-  `code { display: grid }` + `.line::before { counter }` を使用。
+- **`SourceView` には上限があり、それがあるからこそ退避先として使える。**
+  `HIGHLIGHT_MAX_BYTES`（UTF-8 で 256 KiB）または `HIGHLIGHT_MAX_LINES`（10,000）を
+  超えたら — どちらも `lib/source-cap` — Shiki をそもそも呼ばない。Shiki のコストは
+  入力に比例し、出力 HTML は入力の約 14 倍になり、そのすべてがメインスレッドに乗るため。
+  文法を `text` に落とすのは代替にならない（行ごとの span は出続ける）。
+  **諦めるのは強調表示であって内容ではない**ので、呼び出し側が `SourceView` を出す前に
+  自前でサイズを見る必要はない（decision-6）。強調表示を省いたことは告知
+  （`highlightSkipped`）で述べる — 色の無い表示が描画不具合と読まれないようにするため。
+- `SourceView` の行番号: 強調表示する経路では Shiki が `<span class="line">` を出力するので、
+  CSS は `code { display: grid }` + `.line::before { counter }` を使用。上限を超えた経路には
+  行ごとの要素が無いため、行番号は本文の隣に置くもう 1 個のテキストノードになる。
+  折り返しを無効にしているのはこのため（折り返すと行番号の列と段がずれる）で、
+  構文エラーの目印も行への class ではなく `--src-line-height` の倍数に置く帯になる。
 - 独自 Rust コマンドと core イベントは capabilities の許可不要。plugin/core API のみが
   ゲートされる（`src-tauri/capabilities/default.json` 参照）。
 
