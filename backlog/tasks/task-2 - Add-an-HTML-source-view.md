@@ -4,7 +4,7 @@ title: Add an HTML source view
 status: In Review
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-08-16 07:37'
+updated_date: '2026-08-16 07:45'
 labels:
   - feature
 milestone: m-0
@@ -42,4 +42,6 @@ AC #4 needed no new code. The typed ReadError of decision-5 is chosen in read_fi
 Icon: the FileKindIcon default (FileTextIcon) is left alone, on TASK-1's rule that FileConfigIcon marks kinds with a tree view. Whether a rendered html view deserves an icon of its own is that task's call.
 
 Sample files for the visual check are in _sandbox/samples/ (gitignored): index.html, legacy.htm and cp932.html, with CHECKLIST.md saying what each shows. The repository carries no html file, so opening the repo root shows nothing to check.
+
+AC #1 is recorded as met on static grounds, not on an observation: the tree half is pinned by the file_kind unit test, and the highlighted-open half is determinable without running the app -- html is in lib/shiki's LANGS, ViewerBody passes file.kind through as lang, and SourceView's only fallback for a grammar it lacks is plain text. On-screen confirmation under pnpm tauri dev is still outstanding; record it here when it happens, the way TASK-1 did.
 <!-- SECTION:NOTES:END -->
