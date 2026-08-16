@@ -128,12 +128,16 @@ function ViewerBody({ file, content }: { file: FileEntry; content: string }) {
     case 'toml':
       return <ConfigView source={content} file={file} />;
     // The kind name doubles as the Shiki grammar id, so no kind→lang table is
-    // needed: ini, diff and sql are in `lib/shiki`'s LANGS, and `text` is what
-    // SourceView already falls back to for a grammar it has not loaded.
+    // needed: ini, diff, sql and html are in `lib/shiki`'s LANGS, and `text` is
+    // what SourceView already falls back to for a grammar it has not loaded.
+    // html is source-only here on purpose — decision-3 makes the rendered view
+    // the default mode and this view the other half of its toggle, so shipping
+    // the source first is what makes the file openable before that lands.
     case 'text':
     case 'ini':
     case 'diff':
     case 'sql':
+    case 'html':
       return (
         <div className="doc-scroll">
           <div className="doc doc--no-bar">
