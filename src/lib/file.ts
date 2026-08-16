@@ -44,6 +44,11 @@ export function kindFromName(name: string): FileKind | null {
     case 'csv':
     case 'tsv':
       return 'csv';
+    case 'xml':
+    case 'plist':
+    case 'xsd':
+    case 'xsl':
+      return 'xml';
     case 'png':
     case 'jpg':
     case 'jpeg':

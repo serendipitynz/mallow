@@ -26,6 +26,14 @@ describe('kindFromName', () => {
     expect(kindFromName('index.HTM')).toBe('html');
   });
 
+  it('maps the xml extensions, leaving svg an image', () => {
+    expect(kindFromName('pom.xml')).toBe('xml');
+    expect(kindFromName('Info.plist')).toBe('xml');
+    expect(kindFromName('schema.xsd')).toBe('xml');
+    expect(kindFromName('transform.XSL')).toBe('xml');
+    expect(kindFromName('logo.svg')).toBe('image');
+  });
+
   it('maps media extensions', () => {
     expect(kindFromName('photo.PNG')).toBe('image');
     expect(kindFromName('pic.jpeg')).toBe('image');
