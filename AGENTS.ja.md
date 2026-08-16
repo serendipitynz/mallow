@@ -269,7 +269,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   CSS は `code { display: grid }` + `.line::before { counter }` を使用。上限を超えた経路には
   行ごとの要素が無いため、行番号は本文の隣に置くもう 1 個のテキストノードになる。
   折り返しを無効にしているのはこのため（折り返すと行番号の列と段がずれる）で、
-  構文エラーの目印も行への class ではなく `--src-line-height` の倍数に置く帯になる。
+  構文エラーの目印も行への class ではなく 1 枚の帯になる。**この帯の位置は描画済みの
+  テキストから測った行送りで決める。宣言値の `--src-line-height` から計算してはいけない** —
+  WebKit は行ボックスの高さを整数に丸めるので、宣言した 20.8px は 20px として使われ、
+  計算で置いた帯は 25 行ごとに 1 行ずれる。
 - 独自 Rust コマンドと core イベントは capabilities の許可不要。plugin/core API のみが
   ゲートされる（`src-tauri/capabilities/default.json` 参照）。
 

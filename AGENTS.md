@@ -283,8 +283,11 @@ hold rather than as an exhaustive style guide.
   `.line::before { counter }`. Above the caps there are no per-line elements, so
   the numbers are one more text node beside the text — which is why that path
   does not wrap (a wrapped line would slip out of step with the number column)
-  and why its parse-error flag is a band positioned at a multiple of
-  `--src-line-height` rather than a class on a line.
+  and why its parse-error flag is one positioned band rather than a class on a
+  line. **That band is placed from the line height measured on the rendered
+  text, never computed from the declared `--src-line-height`** — WebKit lays
+  each line box out at an integer height, so the declared 20.8px is used as 20px
+  and a computed position drifts a line every 25.
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 

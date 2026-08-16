@@ -15,8 +15,10 @@
 
 // ---- Syntax-highlighted source view with line numbers -----------------------
 .src-view {
-  // Shared by the number column and the flagged-line band of the unhighlighted
-  // path, which positions itself at a multiple of it (13px * 1.6).
+  // The unhighlighted path's line height, kept equal to the highlighted path's
+  // (13px * 1.6) so both place their line numbers alike. Nothing may compute a
+  // position from it: layout rounds it, so the flagged-line band measures the
+  // rendered text instead (see `.src-plain__flag`).
   --src-line-height: 20.8px;
   // Both paths size their number column from the document's own line count,
   // which `SourceView` sets as `--src-gutter-digits`: a 10 MiB log reaches seven

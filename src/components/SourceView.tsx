@@ -44,8 +44,10 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
   const t = useT();
   const [html, setHtml] = useState('');
   const hostRef = useRef<HTMLDivElement>(null);
-  // Trim trailing newlines so there is no spurious empty final line number.
-  const code = useMemo(() => source.replace(/\n+$/, ''), [source]);
+  // Trim trailing newlines so there is no spurious empty final line number. The
+  // CR is in the class because a CRLF file would otherwise end on a lone CR,
+  // which `countLines` does not count but an engine that breaks on it would show.
+  const code = useMemo(() => source.replace(/[\r\n]+$/, ''), [source]);
   const skipReason = useMemo(() => highlightSkipReason(code), [code]);
   const lineCount = useMemo(() => countLines(code), [code]);
 
