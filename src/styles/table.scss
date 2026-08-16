@@ -1,0 +1,79 @@
+@use './vars' as *;
+
+// ---- CSV / TSV table view ---------------------------------------------------
+// The table is not wrapped in a scroller of its own: a nested one would have to
+// be given a height before a sticky header could work inside it, and `.doc-scroll`
+// already scrolls both axes. So a wide table overflows `.doc` and is reached by
+// scrolling the document sideways, and the header sticks against `.doc-scroll`
+// the same way `.doc-outline` does.
+.tbl-doc {
+  max-width: none;
+}
+
+.tbl-notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: $ink;
+  background: var(--color-attention-bg);
+  border: 1px solid $border;
+  border-radius: 8px;
+}
+
+.tbl-empty {
+  margin: 0;
+  color: $faint;
+  font-size: 14px;
+}
+
+.tbl {
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.5;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 8px;
+
+  th,
+  td {
+    // Cells hold data, not prose: keep the author's spacing and line breaks, but
+    // let a long value wrap rather than force the whole table wider than the
+    // window for one outlier.
+    max-width: 40ch;
+    padding: 4px 10px;
+    text-align: left;
+    vertical-align: top;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    border: 1px solid $border;
+  }
+
+  thead th {
+    position: sticky;
+    top: $doc-bar-height;
+    z-index: 1;
+    font-weight: 600;
+    background: var(--color-hover-bg);
+    // The collapsed border is painted by the cell it belongs to, which scrolls
+    // away with the body; this keeps a rule under the pinned header row.
+    box-shadow: inset 0 -1px 0 $border;
+  }
+
+  tbody tr:hover td {
+    background: var(--color-hover-bg);
+  }
+
+  // Row numbers, for the same reason the source view keeps line numbers: the
+  // larger the file the more a reader needs a position. Numbered from the first
+  // data record, so they count records rather than lines — a quoted field may
+  // hold newlines of its own. Nested so it outranks the `th, td` rule above on
+  // specificity alone; the alignment needs no `!important`.
+  .tbl__num {
+    min-width: 3ch;
+    color: $faint;
+    font-family: $font-mono;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    user-select: none;
+  }
+}

@@ -231,8 +231,12 @@ app-origin external script, permitted by `script-src 'self'`.
 - **The rendered view needs a complexity ceiling of its own.** The 10 MiB
   `read_file` cap bounds bytes, not element count; hundreds of thousands of nodes
   or heavy SVG filters fit well inside it, and the rendered view is the default.
-  Fall back to the source view above a render threshold, the same way TASK-3 caps
-  the CSV table. When this was written the source view was not a safe floor —
+  Fall back to the source view above a render threshold. TASK-3 has since capped
+  the CSV table (decision-7), but **not by falling back**: it truncates the table
+  and leaves the source view one toggle away, which works there because a
+  truncated table is still a table. A truncated rendering is not a rendering, so
+  the ceiling here still has to switch views. When this was written the source
+  view was not a safe floor —
   it highlighted the whole file unconditionally, so escaping a 9 MiB document
   into it traded one stall for a worse one. **TASK-9 closed that (decision-6):
   above its caps the source view drops the highlighting rather than the
