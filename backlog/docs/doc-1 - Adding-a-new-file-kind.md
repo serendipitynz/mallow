@@ -34,6 +34,15 @@ limits on which kinds get added are in decision-2.
 7. **[src-tauri/tauri.conf.json](../../src-tauri/tauri.conf.json)** — the CSP,
    only when a kind actually requires it. None of the currently planned tasks do.
 
+**The user-facing format list in `README.md` / `README.ja.md` is deliberately not
+one of the seven.** It is batched into a documentation task that runs once the
+wave of kinds is in (TASK-6 for the current one) rather than edited per kind, so
+that the list is written from the finished set instead of accumulating a bullet
+per PR. The obligation is real either way: a kind must not reach a *release*
+undocumented, which is why that task is scheduled before the version is cut. If
+a wave ever has no such task, the README moves into this list rather than being
+dropped.
+
 Verify with `pnpm build`, `pnpm test`, and `cargo check` / `cargo test` inside
 `src-tauri/`. Unit tests live next to the code and run under a Node environment,
 so browser APIs (`DOMParser`, `document`) are unavailable in tests — keep those

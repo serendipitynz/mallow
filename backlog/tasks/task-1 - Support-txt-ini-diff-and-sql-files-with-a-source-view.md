@@ -4,7 +4,7 @@ title: 'Support txt, ini, diff and sql files with a source view'
 status: In Review
 assignee: []
 created_date: '2026-07-30 08:55'
-updated_date: '2026-08-16 03:23'
+updated_date: '2026-08-16 03:32'
 labels:
   - feature
 milestone: m-0
@@ -35,3 +35,13 @@ Gotcha: the default branch of kindFromName in src/lib/file.ts currently returns 
 - [x] #6 A non-UTF-8 log or txt file reports the cause by name rather than a raw decoding error
 - [x] #7 cargo check and cargo test pass
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+AC #1 and #2 are checked on the mechanism, not by eye. The mapping (file_kind, kindFromName) and the routing (ViewerBody) are unit-tested, and Shiki was measured against the bundled LANGS: ini/diff/sql resolve to real grammars and colour tokens, text resolves to the plain path and still emits one .line per line so the numbers work. What is unverified is the on-screen result — the implementing environment cannot take a screenshot. Confirm under `pnpm tauri dev` that a .txt/.log, .ini/.conf, .diff and .sql file each appear in the tree and open line-numbered.
+
+conf and cfg map to the INI grammar as a best-effort choice; the reasoning is in the comment beside that arm in commands.rs.
+
+The user-facing format list (README.md / README.ja.md) is TASK-6's, not this task's — see the note under the numbered list in doc-1.
+<!-- SECTION:NOTES:END -->

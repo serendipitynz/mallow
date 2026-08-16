@@ -76,6 +76,11 @@ fn file_kind(name: &str) -> Option<String> {
             "yaml" | "yml" => "yaml",
             "toml" => "toml",
             "txt" | "text" | "log" => "text",
+            // `conf` and `cfg` are best-effort: neither names a format, and the
+            // INI grammar mis-colours the ones that are not key/value under a
+            // section header (nginx, Apache, ssh_config). Accepted because the
+            // source view shows the text in full either way — only the colours
+            // mislead — and being absent from the tree serves those files worse.
             "ini" | "conf" | "cfg" | "properties" | "editorconfig" => "ini",
             "diff" | "patch" => "diff",
             "sql" => "sql",
