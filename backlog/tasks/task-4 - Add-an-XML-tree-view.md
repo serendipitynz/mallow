@@ -1,10 +1,10 @@
 ---
 id: TASK-4
 title: Add an XML tree view
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-08-16 22:14'
+updated_date: '2026-08-16 22:43'
 labels:
   - feature
 milestone: m-0
