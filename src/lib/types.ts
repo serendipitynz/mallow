@@ -10,6 +10,7 @@ export type FileKind =
   | 'ini'
   | 'diff'
   | 'sql'
+  | 'html'
   | 'image'
   | 'pdf'
   | 'video';

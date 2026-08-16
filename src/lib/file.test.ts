@@ -22,6 +22,8 @@ describe('kindFromName', () => {
     expect(kindFromName('fix.diff')).toBe('diff');
     expect(kindFromName('fix.patch')).toBe('diff');
     expect(kindFromName('schema.sql')).toBe('sql');
+    expect(kindFromName('index.html')).toBe('html');
+    expect(kindFromName('index.HTM')).toBe('html');
   });
 
   it('maps media extensions', () => {
