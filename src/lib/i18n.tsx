@@ -73,6 +73,7 @@ const ja: Dict = {
   rowNumber: '行番号',
   tableTruncatedRows: '{n} 行を省略しています。',
   tableTruncatedColumns: '{n} 列を省略しています。',
+  tableClippedCells: '{n} 個のセルは先頭 {chars} 文字までを表示しています。',
   tableTruncatedHint: '全文はソース表示で確認できます。',
   // settings modal
   explorerPosition: 'エクスプローラの位置',
@@ -143,6 +144,7 @@ const en: Dict = {
   rowNumber: 'Row number',
   tableTruncatedRows: '{n} rows are not shown.',
   tableTruncatedColumns: '{n} columns are not shown.',
+  tableClippedCells: '{n} cells show only their first {chars} characters.',
   tableTruncatedHint: 'The full text is in the source view.',
   // settings modal
   explorerPosition: 'Explorer position',

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { delimiterFor, parseDelimited, tableExtent } from '../lib/delimited';
+import { delimiterFor, parseDelimited, TABLE_MAX_CELL_CHARS, tableExtent } from '../lib/delimited';
 import { useT } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, TableIcon } from './icons';
@@ -28,6 +28,9 @@ export function TableView({ source, file }: TableViewProps) {
   }
   if (table.columnCount > extent.columns) {
     notice.push(t('tableTruncatedColumns', { n: table.columnCount - extent.columns }));
+  }
+  if (table.clippedCells > 0) {
+    notice.push(t('tableClippedCells', { n: table.clippedCells, chars: TABLE_MAX_CELL_CHARS }));
   }
   if (notice.length > 0) {
     notice.push(t('tableTruncatedHint'));
@@ -66,11 +69,9 @@ export function TableView({ source, file }: TableViewProps) {
 
         {mode === 'table' ? (
           <>
-            {notice.length > 0 && (
-              <p className="tbl-notice" role="status">
-                {notice.join(' ')}
-              </p>
-            )}
+            {/* A plain <p>, like `SourceView`'s own notice: the text is computed
+                once per mount, so a live region would have nothing to announce. */}
+            {notice.length > 0 && <p className="tbl-notice">{notice.join(' ')}</p>}
             <Table rows={table.rows} extent={extent} emptyLabel={t('empty')} rowNumberLabel={t('rowNumber')} />
           </>
         ) : (

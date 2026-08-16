@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   delimiterFor,
   parseDelimited,
+  TABLE_MAX_CELL_CHARS,
   TABLE_MAX_CELLS,
   TABLE_MAX_COLUMNS,
   TABLE_MAX_ROWS,
@@ -32,7 +33,7 @@ describe('parseDelimited', () => {
   });
 
   it('reports an empty file as no records at all', () => {
-    expect(csv('')).toEqual({ rows: [], rowCount: 0, columnCount: 0 });
+    expect(csv('')).toEqual({ rows: [], rowCount: 0, columnCount: 0, clippedCells: 0 });
   });
 
   it('does not open a record after a trailing newline', () => {
@@ -81,6 +82,31 @@ describe('parseDelimited', () => {
     expect(csv('a,"b,c').rows).toEqual([['a', 'b,c']]);
   });
 
+  it('clips a cell that would render more text than the per-cell cap', () => {
+    const long = 'x'.repeat(TABLE_MAX_CELL_CHARS * 3);
+    const table = csv(`a,${long}`);
+    expect(table.rows[0][1]).toBe(`${'x'.repeat(TABLE_MAX_CELL_CHARS)}…`);
+    expect(table.clippedCells).toBe(1);
+    // The record itself is unaffected: clipping is about what one cell renders.
+    expect(table.columnCount).toBe(2);
+  });
+
+  it('clips an unterminated quote that swallows the rest of the file', () => {
+    // The shape that passes every other cap: one record, one field, no notice
+    // unless the clip is counted.
+    const table = csv(`"${'y'.repeat(TABLE_MAX_CELL_CHARS * 100)}`);
+    expect(table.rowCount).toBe(1);
+    expect(table.columnCount).toBe(1);
+    expect(table.rows[0][0].length).toBe(TABLE_MAX_CELL_CHARS + 1);
+    expect(table.clippedCells).toBe(1);
+  });
+
+  it('leaves a cell exactly at the cap alone', () => {
+    const table = csv('x'.repeat(TABLE_MAX_CELL_CHARS));
+    expect(table.rows[0][0].length).toBe(TABLE_MAX_CELL_CHARS);
+    expect(table.clippedCells).toBe(0);
+  });
+
   it('takes characters trailing a closing quote literally', () => {
     expect(csv('"a"b,c').rows).toEqual([['ab', 'c']]);
   });
@@ -121,17 +147,17 @@ describe('tableExtent', () => {
   });
 
   it('caps the rows of a narrow file at the row cap', () => {
-    const table = { rows: [], rowCount: TABLE_MAX_ROWS * 2, columnCount: 2 };
+    const table = { rows: [], rowCount: TABLE_MAX_ROWS * 2, columnCount: 2, clippedCells: 0 };
     expect(tableExtent(table).rows).toBe(TABLE_MAX_ROWS);
   });
 
   it('caps the columns of a wide file at the column cap', () => {
-    const table = { rows: [], rowCount: 3, columnCount: TABLE_MAX_COLUMNS * 100 };
+    const table = { rows: [], rowCount: 3, columnCount: TABLE_MAX_COLUMNS * 100, clippedCells: 0 };
     expect(tableExtent(table)).toEqual({ rows: 3, columns: TABLE_MAX_COLUMNS });
   });
 
   it('lowers the row count as the table widens, so cells stay within the budget', () => {
-    const table = { rows: [], rowCount: TABLE_MAX_ROWS, columnCount: TABLE_MAX_COLUMNS };
+    const table = { rows: [], rowCount: TABLE_MAX_ROWS, columnCount: TABLE_MAX_COLUMNS, clippedCells: 0 };
     const extent = tableExtent(table);
     expect(extent.rows).toBeLessThan(TABLE_MAX_ROWS);
     expect(extent.rows * extent.columns).toBeLessThanOrEqual(TABLE_MAX_CELLS);
@@ -139,7 +165,7 @@ describe('tableExtent', () => {
 
   it('never exceeds the cell budget, at any shape', () => {
     for (const columnCount of [1, 2, 7, 40, 99, 100, 1000, 5_000_000]) {
-      const extent = tableExtent({ rows: [], rowCount: 10_000_000, columnCount });
+      const extent = tableExtent({ rows: [], rowCount: 10_000_000, columnCount, clippedCells: 0 });
       expect(extent.rows * extent.columns).toBeLessThanOrEqual(TABLE_MAX_CELLS);
       expect(extent.rows).toBeLessThanOrEqual(TABLE_MAX_ROWS);
       expect(extent.columns).toBeLessThanOrEqual(TABLE_MAX_COLUMNS);

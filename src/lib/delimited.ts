@@ -17,6 +17,14 @@ export const TABLE_MAX_COLUMNS = 100;
  * (decision-7). It lowers the row count as the table gets wider.
  */
 export const TABLE_MAX_CELLS = 20_000;
+/**
+ * Characters one cell renders at most. The three caps above bound how many cells
+ * exist, not how much text any one of them holds: a field is allowed to run to
+ * the end of the file (an unterminated quote does exactly that), which would put
+ * megabytes into a single wrapping cell whose intrinsic width the engine has to
+ * measure. A clipped value keeps its ellipsis, so the cell says so on its own.
+ */
+export const TABLE_MAX_CELL_CHARS = 500;
 
 export type Delimiter = ',' | '\t';
 
@@ -33,6 +41,8 @@ export interface DelimitedTable {
   rowCount: number;
   /** Fields in the widest record, before any cap. */
   columnCount: number;
+  /** Kept cells whose value was clipped to {@link TABLE_MAX_CELL_CHARS}. */
+  clippedCells: number;
 }
 
 /** How much of a {@link DelimitedTable} the view may render. */
@@ -117,9 +127,10 @@ export function parseDelimited(text: string, delimiter: string): DelimitedTable 
   const rows: string[][] = [];
   let rowCount = 0;
   let columnCount = 0;
+  let clippedCells = 0;
   const n = text.length;
   if (n === 0) {
-    return { rows, rowCount, columnCount };
+    return { rows, rowCount, columnCount, clippedCells };
   }
 
   let i = 0;
@@ -133,7 +144,12 @@ export function parseDelimited(text: string, delimiter: string): DelimitedTable 
     const field = readField(text, i, delimiter, keep);
     fields += 1;
     if (keep) {
-      row.push(field.value);
+      if (field.value.length > TABLE_MAX_CELL_CHARS) {
+        row.push(`${field.value.slice(0, TABLE_MAX_CELL_CHARS)}…`);
+        clippedCells += 1;
+      } else {
+        row.push(field.value);
+      }
       storedCells += 1;
     }
     i = field.end;
@@ -170,5 +186,5 @@ export function parseDelimited(text: string, delimiter: string): DelimitedTable 
     storeRow = rows.length < TABLE_MAX_ROWS && storedCells < TABLE_MAX_CELLS;
   }
 
-  return { rows, rowCount, columnCount };
+  return { rows, rowCount, columnCount, clippedCells };
 }
