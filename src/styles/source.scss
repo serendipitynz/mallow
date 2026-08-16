@@ -126,11 +126,12 @@
   padding-right: 16px;
 }
 
+// `top` and `height` are set by SourceView from the measured line height — a
+// value computed from `--src-line-height` would drift, since layout rounds it.
 .src-plain__flag {
   position: absolute;
-  top: calc((var(--flagged-line) - 1) * var(--src-line-height));
   right: 0;
   left: 0;
-  height: var(--src-line-height);
+  height: 0;
   background: rgb(207 34 46 / 14%);
 }

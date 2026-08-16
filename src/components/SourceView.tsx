@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ShikiTransformer } from 'shiki';
 import { useT } from '../lib/i18n';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from '../lib/shiki';
@@ -106,6 +106,31 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
 function PlainSource({ code, lineCount, errorLine }: { code: string; lineCount: number; errorLine?: number }) {
   const numbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1).join('\n'), [lineCount]);
   const flagged = errorLine !== undefined && errorLine <= lineCount ? errorLine : undefined;
+  const codeRef = useRef<HTMLPreElement>(null);
+  const flagRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Place the band from the line height layout actually used, not from the
+   * declared one: WebKit lays each line box out at an integer height, so the
+   * 20.8px this view declares is used as 20px and a band computed from 20.8
+   * drifts a line every 25 — 720 lines off by line 18,000. Measured against the
+   * text itself, the two cannot disagree. In a layout effect and through the
+   * ref rather than state, so the band is in place before paint and before the
+   * parent's scroll effect looks for it.
+   */
+  useLayoutEffect(() => {
+    const codeEl = codeRef.current;
+    const flagEl = flagRef.current;
+    if (!codeEl || !flagEl || flagged === undefined) {
+      return;
+    }
+    const lineHeight = codeEl.getBoundingClientRect().height / lineCount;
+    if (lineHeight <= 0) {
+      return;
+    }
+    flagEl.style.top = `${(flagged - 1) * lineHeight}px`;
+    flagEl.style.height = `${lineHeight}px`;
+  }, [flagged, lineCount]);
 
   return (
     <div className="src-plain">
@@ -115,13 +140,10 @@ function PlainSource({ code, lineCount, errorLine }: { code: string; lineCount: 
       <div className="src-plain__body">
         {/* Every line has the same height here, so the flag is one positioned band
             rather than a class on a per-line element that this path does not emit. */}
-        {flagged !== undefined && (
-          <div
-            className="src-plain__flag src-error-line"
-            style={{ '--flagged-line': String(flagged) } as CSSProperties}
-          />
-        )}
-        <pre className="src-plain__code">{code}</pre>
+        {flagged !== undefined && <div ref={flagRef} className="src-plain__flag src-error-line" />}
+        <pre className="src-plain__code" ref={codeRef}>
+          {code}
+        </pre>
       </div>
     </div>
   );
