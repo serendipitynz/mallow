@@ -186,6 +186,14 @@ Comments と Functions の規約は機械的に検査されない。コメント
 
 ## 実装メモ / 注意点
 
+- **拡張子→種別の対応表は 2 箇所に書かれており、両方を同時に動かす必要がある。**
+  `commands.rs` の `file_kind` はそもそもツリーに出るかどうかを決め、`lib/file.ts` の
+  `kindFromName` はそれを写して、セッション復元が裸のパスから `FileEntry` を組み立て
+  られるようにする。片方だけに種別を足すのは中途半端な実装ではなく壊れた状態で、
+  Rust 側だけならファイルは一覧に出るのに開けず、TypeScript 側だけなら復元が
+  ツリーに出せない文書を選ぶ。TS 側が Rust の `None` を `null` として写しているのは
+  このためで、追加は必ず `case` であって `default` 分岐の変更ではない。
+  種別が触る 7 箇所は doc-1 にあり、この 2 つはその最初の 2 箇所。
 - **ファイル読み取りの失敗は素の文字列にならない。** `read_file` は
   `Result<String, ReadError>` を返す。`ReadError` は serde のタグ付き列挙型で、
   `kind` は `invalidUtf8` / `binary` / `tooLarge` / `io` の 4 値（decision-5）。
@@ -216,6 +224,17 @@ Comments と Functions の規約は機械的に検査されない。コメント
   mermaid が inline `style` 属性を出力するため `'unsafe-inline'` を維持する。`eval` /
   `new Function` を要する、またはリモート資産を取得する依存を追加する場合は CSP の見直しが
   必要。
+- **`pnpm tauri dev` のデスクトップ実行には CSP が一切無く、開発中はこの第二層が
+  丸ごと存在しない。** `set_csp` は Tauri が資産を配る経路でしか走らず、dev の WebView は
+  Vite の `devUrl` を直接読み込み、`index.html` は CSP の `<meta>` を持たず、`devCsp` も
+  未設定。壊れているのではなく最初から無いという点が厄介で、目に見える失敗より悪い —
+  CSP に依存した境界は dev では正常に見え、ビルド済みアプリで破れる。**封じ込めが CSP に
+  依存するものは `pnpm tauri build` で確認する**（またはその回だけ `devCsp` を設定する）。
+  すぐ隣にもう 1 つ罠がある: `style-src` の `'unsafe-inline'` は、そのディレクティブに
+  nonce か hash が入った時点で効かなくなり、tauri-codegen は `index.html` に見つけた
+  inline `<style>` の hash を追加する。つまり `index.html` に inline `<style>` を置くと
+  Shiki・mermaid・すべての inline `style` 属性が一度に壊れる。これは `index.html` に
+  対する恒常的な制約として扱う。
 - **メディア（画像/PDF/動画）** は `MediaView` が Tauri の asset protocol
   （`convertFileSrc` → `asset:` URL）でディスクから直接描画する。バイトは JS を通らない
   ため、`read_file` の 10 MiB テキスト上限は適用されず、`Viewer` はメディア種別ではテキスト

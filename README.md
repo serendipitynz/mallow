@@ -23,6 +23,26 @@ videos are shown too, rendered by the OS-native WebView.
 - **Config files** (json / jsonc / json5 / jsonl / ndjson / yaml / yml / toml)
   - Collapsible tree (expand/collapse all, tree/source toggle)
   - On a syntax error, switches to the source view and highlights the offending line
+- **CSV / TSV** (csv / tsv)
+  - Shown as a table (table/source toggle); the first record is the header row
+  - A large file has only part of it put in the table, with a line above saying
+    what was left out — the source toggle still shows the whole document, so
+    nothing the file holds is out of reach once it opens
+- **XML** (xml / xsd / xsl, and `.plist`)
+  - Collapsible tree (expand/collapse all, tree/source toggle)
+  - On a syntax error, switches to the source view and highlights the offending
+    line where the parser reports one
+  - A `.plist` is examined to tell its XML and JSON forms apart, so a plist
+    converted with `plutil -convert json` opens as a config tree instead
+- **Plain-text files** (txt / text / log, ini / conf / cfg / properties /
+  editorconfig, diff / patch, sql): shown as source with line numbers, and with
+  syntax highlighting where a grammar applies — plain text has none, and every
+  source view drops the highlighting (never the text) once a file passes a size
+  threshold, saying so above the document. These sit apart from **Config files**
+  above because the split is about which files get a structured view, not about
+  which files are configuration.
+- **HTML files (source view)** (html / htm): shown as source, not rendered —
+  rendering a document is not implemented yet.
 - **Standalone mermaid files** (.mmd / .mermaid)
 - **Images, PDFs, and videos** (png / jpg / jpeg / gif / webp / svg, pdf,
   webm / mp4 / mov — plus heic/heif on macOS): rendered by the OS-native WebView
@@ -112,7 +132,7 @@ src/                Frontend (React + TS)
   components/        Explorer / Viewer / MarkdownView / ConfigView / SourceView / ...
   lib/              markdown, shiki, mermaid, config-parse, frontmatter, watch, settings, theme ...
   hooks/useFileTree  Centralized file-tree state (lazy load, refresh, expansion)
-  styles/           SCSS (_vars / global / app / markdown / config / source)
+  styles/           SCSS (_vars / global / app / markdown / config / source / table / xml)
 src-tauri/          Rust backend
   src/commands.rs   read_dir_tree / read_file / path_exists / allow_media_dir (std::fs)
   src/watch.rs      Recursive file watching via notify (emits the fs:change event)

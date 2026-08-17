@@ -194,6 +194,15 @@ hold rather than as an exhaustive style guide.
 
 ## Implementation notes / gotchas
 
+- **The extension→kind mapping is written twice and both copies have to move.**
+  `file_kind` in `commands.rs` decides which files appear in the tree at all;
+  `kindFromName` in `lib/file.ts` mirrors it so a restored session can synthesize
+  a `FileEntry` from a bare path. Adding a kind to one alone is not a partial
+  feature but a broken state: only in Rust and the file lists but will not open,
+  only in TypeScript and session restore selects a file the tree cannot show. The
+  TS side mirrors Rust's `None` as `null` for that reason, which is why a new
+  entry is always a `case` and never a change to the `default` branch. doc-1
+  lists the seven places a kind touches; these are the first two.
 - **Reading a file cannot fail with a bare string.** `read_file` returns
   `Result<String, ReadError>`, a serde-tagged enum whose `kind` is `invalidUtf8`,
   `binary`, `tooLarge` or `io` (decision-5). `readFile` in `lib/tauri.ts`
@@ -225,6 +234,18 @@ hold rather than as an exhaustive style guide.
   `'unsafe-inline'` because Shiki/mermaid emit inline `style` attributes. If you add
   a dep that needs `eval`/`new Function` or fetches remote assets, the CSP must be
   revisited.
+- **There is no CSP at all under `pnpm tauri dev` on desktop, so that second layer
+  is absent for the whole of development.** `set_csp` runs only where Tauri serves
+  the assets; the dev webview loads the Vite `devUrl` directly, `index.html`
+  carries no CSP `<meta>`, and `devCsp` is unset. Nothing about it is broken —
+  it simply is not there, which is worse than a visible failure: a boundary that
+  leans on the CSP looks fine in dev and gives way in a built app. **Anything whose
+  containment depends on the CSP has to be checked against `pnpm tauri build`**
+  (or with `devCsp` set for the occasion). A second trap sits next to it:
+  `style-src`'s `'unsafe-inline'` stops applying the moment that directive gains a
+  nonce or hash, and tauri-codegen adds a hash for any inline `<style>` it finds in
+  `index.html` — so putting one there would break Shiki, mermaid and every inline
+  `style` attribute at once. Treat that as a standing constraint on `index.html`.
 - **Media (image/pdf/video)** is rendered by `MediaView` straight from disk via
   the Tauri asset protocol (`convertFileSrc` → `asset:` URL); no bytes pass through
   JS, so the 10 MiB `read_file` text cap does not apply and `Viewer` skips the text
