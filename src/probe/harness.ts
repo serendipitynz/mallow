@@ -26,6 +26,7 @@ import {
   DATA_STYLESHEET,
   formFixture,
   MARKER_SRC,
+  manualClickFixture,
   metaRefreshFixture,
   networkFixture,
   plainLinkFixture,
@@ -780,6 +781,91 @@ async function runRenderFixtures(unstyledHost: HTMLElement, colorSchemeHost: HTM
       ),
     ],
   };
+}
+
+/** What reached the parent from a real click inside the frame, counted per
+ *  attachment point. decision-3 puts link interception on a listener the parent
+ *  adds to `contentDocument`; if that listener never runs, the mechanism has to
+ *  change, and the alternatives worth knowing about are the same listener in the
+ *  capture phase, on the frame's `Window`, or on the element itself. */
+export interface ClickCounts {
+  documentBubble: number;
+  documentCapture: number;
+  windowBubble: number;
+  elementBubble: number;
+  documentMousedown: number;
+  customEvent: number;
+  navigatedAway: boolean;
+}
+
+const NO_CLICKS: ClickCounts = {
+  documentBubble: 0,
+  documentCapture: 0,
+  windowBubble: 0,
+  elementBubble: 0,
+  documentMousedown: 0,
+  customEvent: 0,
+  navigatedAway: false,
+};
+
+/** Mount the by-hand click fixture and report every delivery as it happens.
+ *  Returns a teardown. The custom-event counter is dispatched immediately: it
+ *  separates "this document runs no listeners at all" from "clicks specifically
+ *  do not arrive", which are different problems with different fixes. */
+export async function armClickProbe(host: HTMLElement, onUpdate: (counts: ClickCounts) => void): Promise<() => void> {
+  const frame = mountFrame(host, manualClickFixture());
+  const doc = await waitForFixture(frame);
+  const counts: ClickCounts = { ...NO_CLICKS };
+  const publish = (): void => {
+    counts.navigatedAway = !stillOnFixture(frame);
+    onUpdate({ ...counts });
+  };
+
+  const bump = (key: keyof Omit<ClickCounts, 'navigatedAway'>) => (event: Event) => {
+    counts[key] += 1;
+    event.preventDefault();
+    publish();
+  };
+  const onDocumentBubble = bump('documentBubble');
+  const onDocumentCapture = bump('documentCapture');
+  const onWindowBubble = bump('windowBubble');
+  const onElementBubble = bump('elementBubble');
+  const onMousedown = bump('documentMousedown');
+  const onCustom = bump('customEvent');
+
+  doc.addEventListener('click', onDocumentBubble);
+  doc.addEventListener('click', onDocumentCapture, true);
+  doc.addEventListener('mousedown', onMousedown);
+  doc.addEventListener('probe-ping', onCustom);
+  frame.contentWindow?.addEventListener('click', onWindowBubble);
+  doc.getElementById('manual-link')?.addEventListener('click', onElementBubble);
+  doc.getElementById('manual-button')?.addEventListener('click', onElementBubble);
+
+  doc.dispatchEvent(new (doc.defaultView ?? window).Event('probe-ping', { cancelable: true }));
+  publish();
+
+  return () => {
+    doc.removeEventListener('click', onDocumentBubble);
+    doc.removeEventListener('click', onDocumentCapture, true);
+    doc.removeEventListener('mousedown', onMousedown);
+    doc.removeEventListener('probe-ping', onCustom);
+  };
+}
+
+/** Reproduce what `Outline` does when a heading is chosen: make the target
+ *  focusable and focus it. The keyboard-scrolling question (AC #12) is only
+ *  meaningful once focus is actually inside the frame, and clicking a plain
+ *  heading does not put it there. */
+export function focusHeadingInFrame(host: HTMLElement): string {
+  const frame = host.querySelector('iframe');
+  const target = frame?.contentDocument?.getElementById('deep-target');
+  if (target === undefined || target === null) {
+    return 'no heading found — run the checks first';
+  }
+  target.setAttribute('tabindex', '-1');
+  target.focus();
+  const active = frame?.contentDocument?.activeElement;
+  return `focused ${target.id}; the frame document's activeElement is now ${active?.tagName ?? 'unknown'}#${active?.id ?? ''}`;
 }
 
 /** AC #16's asset-protocol half. Split out because it needs a file the user

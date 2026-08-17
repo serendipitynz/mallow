@@ -6,7 +6,7 @@
  *  the positive controls, the WebView version, and which layer each verdict is
  *  evidence for — has to survive a copy and paste. */
 
-import type { Check, Environment } from './harness';
+import type { Check, ClickCounts, Environment } from './harness';
 
 export interface Manual {
   platform: string;
@@ -66,7 +66,23 @@ function colorsBlock(label: string, colors: Environment['unstyled']): string {
   ].join('\n');
 }
 
-export function buildReport(env: Environment, checks: Check[], manual: Manual): string {
+function clicksBlock(clicks: ClickCounts | null): string {
+  if (clicks === null) {
+    return '- real mouse click inside the frame: not run';
+  }
+  return [
+    '- real mouse click inside the frame, counted per attachment point:',
+    `  - listener on contentDocument, bubble phase: ${clicks.documentBubble}`,
+    `  - listener on contentDocument, capture phase: ${clicks.documentCapture}`,
+    `  - listener on contentWindow: ${clicks.windowBubble}`,
+    `  - listener on the element itself: ${clicks.elementBubble}`,
+    `  - mousedown on contentDocument: ${clicks.documentMousedown}`,
+    `  - custom event dispatched by the parent into contentDocument: ${clicks.customEvent}`,
+    `  - the frame navigated away despite preventDefault: ${clicks.navigatedAway}`,
+  ].join('\n');
+}
+
+export function buildReport(env: Environment, checks: Check[], manual: Manual, clicks: ClickCounts | null): string {
   const counts = {
     pass: checks.filter((c) => c.verdict === 'pass').length,
     fail: checks.filter((c) => c.verdict === 'fail').length,
@@ -109,6 +125,7 @@ export function buildReport(env: Environment, checks: Check[], manual: Manual): 
     '',
     '### Input (recorded by hand)',
     '',
+    clicksBlock(clicks),
     `- wheel scrolling chains from the frame to the parent scroller: ${manual.wheelChains || '(not recorded)'}`,
     `- keyboard scrolling reaches the parent scroller with focus inside the frame: ${manual.keyboardScrolls || '(not recorded)'}`,
     `- \`scrollIntoView\` inside the frame moved the parent scroller: ${String(env.scrollIntoViewMovedParent)}`,

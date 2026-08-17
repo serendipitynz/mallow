@@ -116,6 +116,12 @@
   max-width: 60em;
 }
 
+.probe-counters {
+  margin: 8px 0;
+  padding-left: 20px;
+  font: 12px/1.6 ui-monospace, monospace;
+}
+
 // The frame carries the light canvas and background decision-3 specifies on the
 // iframe ELEMENT rather than inside the document, which is the arrangement AC #11
 // is measuring.

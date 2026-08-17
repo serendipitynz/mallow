@@ -153,6 +153,20 @@ export function plainLinkFixture(): string {
   return page('', `<a id="plain-link" href="${BLOCKED_ORIGIN}/plain">plain link, no target</a>`);
 }
 
+/** Targets for a REAL mouse click (AC #10). Synthetic clicks driven from the
+ *  parent are delivered on WebView2 and on neither WebKit engine, and a
+ *  synthetic click is not what decision-3's link interception has to survive —
+ *  a user's click is. This fixture exists to be clicked by hand. */
+export function manualClickFixture(): string {
+  return page(
+    '<style>body { font: 14px system-ui, sans-serif; } a, button { font-size: 15px; padding: 6px; }</style>',
+    [
+      `<p><a id="manual-link" href="${BLOCKED_ORIGIN}/manual">click this link</a></p>`,
+      '<p><button id="manual-button" type="button">click this button</button></p>',
+    ].join(''),
+  );
+}
+
 /** A document taller than any viewport, for the parent-side reach-in checks
  *  (AC #6, #12, #13). Heights are declared so the measured `scrollHeight` has
  *  something to be compared against.

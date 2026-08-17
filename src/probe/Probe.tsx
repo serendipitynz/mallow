@@ -9,7 +9,16 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { THEMES, type ThemeId } from '../lib/theme';
 import { TOP_NAV_QUERY } from './fixtures';
-import { type Check, type Hosts, type RunResult, run, runAssetImageCheck } from './harness';
+import {
+  armClickProbe,
+  type Check,
+  type ClickCounts,
+  focusHeadingInFrame,
+  type Hosts,
+  type RunResult,
+  run,
+  runAssetImageCheck,
+} from './harness';
 import { buildReport, guessWebViewVersion, type Manual } from './report';
 import './probe.scss';
 
@@ -45,6 +54,8 @@ export default function Probe() {
   const [assetCheck, setAssetCheck] = useState<Check | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState<Manual>(EMPTY_MANUAL);
+  const [clicks, setClicks] = useState<ClickCounts | null>(null);
+  const [focusNote, setFocusNote] = useState<string>('');
 
   const scriptsRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<HTMLDivElement>(null);
@@ -56,6 +67,7 @@ export default function Probe() {
   const unstyledRef = useRef<HTMLDivElement>(null);
   const colorSchemeRef = useRef<HTMLDivElement>(null);
   const assetRef = useRef<HTMLDivElement>(null);
+  const manualClickRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Applied straight to the attribute rather than through `setTheme`, which
@@ -103,14 +115,22 @@ export default function Probe() {
     }
   }, []);
 
+  const onArmClicks = useCallback(async () => {
+    try {
+      await armClickProbe(manualClickRef.current as HTMLElement, setClicks);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
   const checks = useMemo(
     () => (result === null ? [] : assetCheck === null ? result.checks : [...result.checks, assetCheck]),
     [result, assetCheck],
   );
 
   const report = useMemo(
-    () => (result === null ? '' : buildReport(result.env, checks, manual)),
-    [result, checks, manual],
+    () => (result === null ? '' : buildReport(result.env, checks, manual, clicks)),
+    [result, checks, manual, clicks],
   );
 
   useEffect(() => {
@@ -280,6 +300,44 @@ export default function Probe() {
       </section>
 
       <section className="probe-manual">
+        <h2>Click the frame yourself</h2>
+        <p className="probe-note">
+          A synthetic click is not what decision-3&apos;s link interception has to survive — a user&apos;s click is, and
+          the two are not delivered alike. Press <strong>Arm</strong>, then click the link and the button inside the
+          frame with the mouse. The counters update live; every listener calls <code>preventDefault</code>, so the frame
+          should stay put. If they all stay at 0 while the custom-event counter is 1, clicks specifically are not
+          arriving; if the custom event is 0 too, this document runs no parent-registered listener at all.
+        </p>
+        <div className="probe-controls">
+          <button type="button" onClick={onArmClicks}>
+            Arm the click test
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFocusNote(focusHeadingInFrame(tallRef.current as HTMLElement));
+            }}
+            disabled={result === null}
+          >
+            Focus a heading inside the tall frame
+          </button>
+        </div>
+        {clicks !== null && (
+          <ul className="probe-counters">
+            <li>listener on contentDocument, bubble: {clicks.documentBubble}</li>
+            <li>listener on contentDocument, capture: {clicks.documentCapture}</li>
+            <li>listener on contentWindow: {clicks.windowBubble}</li>
+            <li>listener on the element itself: {clicks.elementBubble}</li>
+            <li>mousedown on contentDocument: {clicks.documentMousedown}</li>
+            <li>custom event dispatched by the parent: {clicks.customEvent}</li>
+            <li>frame navigated away despite preventDefault: {String(clicks.navigatedAway)}</li>
+          </ul>
+        )}
+        {focusNote !== '' && <p className="probe-note">{focusNote}</p>}
+        <Host hostRef={manualClickRef} />
+      </section>
+
+      <section className="probe-manual">
         <h2>Recorded by hand</h2>
         <div className="probe-grid">
           {field('platform', 'platform (macOS / Windows / Linux)')}
@@ -287,7 +345,11 @@ export default function Probe() {
           {field('webviewVersion', 'WebView version (AC #9)')}
           {field('runMode', 'run mode (tauri build / tauri build --debug / other)')}
           {field('wheelChains', 'wheel scrolling chains to the parent (AC #12)', YES_NO)}
-          {field('keyboardScrolls', 'keyboard scrolling reaches the parent (AC #12)', YES_NO)}
+          {field(
+            'keyboardScrolls',
+            'keyboard scrolling reaches the parent AFTER pressing the focus button (AC #12)',
+            YES_NO,
+          )}
           {field('unstyledCanvas', 'unstyled document canvas colour (AC #11)', CANVAS)}
           {field('unstyledReadable', 'unstyled document text readable (AC #11)', YES_NO)}
           {field('colorSchemeCanvas', 'color-scheme document canvas colour (AC #11)', CANVAS)}
