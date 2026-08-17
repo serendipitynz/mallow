@@ -7,7 +7,13 @@
   font: 13px/1.5 system-ui, sans-serif;
   color: var(--color-ink);
   background: var(--color-bg);
-  min-height: 100vh;
+
+  // The app shell puts `overflow: hidden` on `body` so the window cannot
+  // rubber-band, and `height: 100%` on `#root`. A probe page taller than the
+  // window would simply be unreachable below the fold, so it carries its own
+  // scroller rather than relying on the document's.
+  height: 100%;
+  overflow: auto;
 
   h1 {
     font-size: 18px;

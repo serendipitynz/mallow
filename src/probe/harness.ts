@@ -22,6 +22,8 @@ import {
   assetImageFixture,
   BLOCKED_ORIGIN,
   colorSchemeFixture,
+  DATA_IMAGE,
+  DATA_STYLESHEET,
   formFixture,
   MARKER_SRC,
   metaRefreshFixture,
@@ -217,6 +219,59 @@ function colorsOf(doc: Document): FrameColors {
   };
 }
 
+/** A click event built in the frame's own realm. Constructing it in the parent's
+ *  realm and dispatching it into another document is legal but not identical,
+ *  and this probe cannot afford the difference: an event the engine declines to
+ *  deliver would make every "nothing ran" result vacuous. */
+function frameClickEvent(doc: Document): MouseEvent {
+  const view = doc.defaultView;
+  const ctor = view === null ? MouseEvent : view.MouseEvent;
+  return new ctor('click', { bubbles: true, cancelable: true });
+}
+
+interface ClickDispatch {
+  viaClickMethod: boolean;
+  viaDispatchEvent: boolean;
+  worked: boolean;
+}
+
+/** Positive control for the click-driven checks. `HTMLElement.click()` and a
+ *  constructed `MouseEvent` are counted separately because they are different
+ *  mechanisms, and an engine that delivers one but not the other would otherwise
+ *  read as "the frame is contained". */
+function measureClickDispatch(doc: Document): ClickDispatch {
+  const control = doc.getElementById('click-control');
+  if (control === null) {
+    return { viaClickMethod: false, viaDispatchEvent: false, worked: false };
+  }
+  let seen = 0;
+  const onClick = (): void => {
+    seen += 1;
+  };
+  doc.addEventListener('click', onClick);
+  control.click();
+  const viaClickMethod = seen > 0;
+  seen = 0;
+  control.dispatchEvent(frameClickEvent(doc));
+  const viaDispatchEvent = seen > 0;
+  doc.removeEventListener('click', onClick);
+  return { viaClickMethod, viaDispatchEvent, worked: viaClickMethod || viaDispatchEvent };
+}
+
+/** Drive a click through whichever mechanism the control showed works. */
+function clickIn(doc: Document, id: string, dispatch: ClickDispatch): void {
+  const element = doc.getElementById(id);
+  if (element === null) {
+    return;
+  }
+  if (dispatch.viaClickMethod || !dispatch.viaDispatchEvent) {
+    element.click();
+  }
+  if (dispatch.viaDispatchEvent) {
+    element.dispatchEvent(frameClickEvent(doc));
+  }
+}
+
 /** AC #14. The sandbox probe is only meaningful once the same script is known
  *  to run when the parent loads it — otherwise a 404 reads as containment. */
 async function runMarkerInParent(): Promise<boolean> {
@@ -253,8 +308,9 @@ async function runScriptsFixture(host: HTMLElement, cspPresent: boolean, markerC
   const doc = await waitForFixture(frame);
   const win = frame.contentWindow;
 
-  doc.getElementById('onclick-probe')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-  (doc.getElementById('jsurl-probe') as HTMLAnchorElement | null)?.click();
+  const dispatch = measureClickDispatch(doc);
+  clickIn(doc, 'onclick-probe', dispatch);
+  clickIn(doc, 'jsurl-probe', dispatch);
   await sleep(400);
 
   const markerRan = (win?.__mallowProbeMark ?? 0) > 0;
@@ -263,7 +319,19 @@ async function runScriptsFixture(host: HTMLElement, cspPresent: boolean, markerC
   const styled = doc.getElementById('styled');
   const styledColor = styled === null ? '' : (doc.defaultView ?? window).getComputedStyle(styled).color;
 
+  const clickNote = `click dispatch control: HTMLElement.click() delivered ${dispatch.viaClickMethod}, dispatchEvent delivered ${dispatch.viaDispatchEvent}`;
+
   return [
+    check(
+      'control.click-dispatch',
+      [3, 10],
+      'control',
+      'A click driven from the parent actually reaches the frame document',
+      expect(dispatch.worked),
+      dispatch.worked
+        ? clickNote
+        : `${clickNote} — no click reaches the frame at all, so every "nothing ran when clicked" result below is vacuous rather than evidence of containment`,
+    ),
     check(
       'sandbox.external-script',
       [1],
@@ -287,16 +355,16 @@ async function runScriptsFixture(host: HTMLElement, cspPresent: boolean, markerC
       [3],
       cspPresent ? 'both' : 'sandbox',
       'on-click content attribute does not run when clicked',
-      expect(win?.__probeOnclick !== true),
-      `window.__probeOnclick: ${String(win?.__probeOnclick)} after dispatching a click`,
+      dispatch.worked ? expect(win?.__probeOnclick !== true) : 'inconclusive',
+      `window.__probeOnclick: ${String(win?.__probeOnclick)} after dispatching a click. ${clickNote}`,
     ),
     check(
       'sandbox.javascript-url',
       [3],
       cspPresent ? 'both' : 'sandbox',
       'javascript: link is inert when clicked',
-      expect(win?.__probeJsUrl !== true && stillOnFixture(frame)),
-      `window.__probeJsUrl: ${String(win?.__probeJsUrl)}; fixture still loaded: ${stillOnFixture(frame)}`,
+      dispatch.worked ? expect(win?.__probeJsUrl !== true && stillOnFixture(frame)) : 'inconclusive',
+      `window.__probeJsUrl: ${String(win?.__probeJsUrl)}; fixture still loaded: ${stillOnFixture(frame)}. ${clickNote}`,
     ),
     check(
       'sandbox.nested-iframe',
@@ -317,10 +385,18 @@ async function runScriptsFixture(host: HTMLElement, cspPresent: boolean, markerC
   ];
 }
 
-async function runNetworkFixture(
-  host: HTMLElement,
-  cspPresent: boolean,
-): Promise<{ checks: Check[]; frameCsp: string | null }> {
+/** Whether the frame's document is under the policy, judged by what the policy
+ *  DOES rather than by what it reports. `blocked` = inherited. */
+type Inheritance = 'blocked' | 'applied' | 'unknown';
+
+interface NetworkOutcome {
+  checks: Check[];
+  frameCsp: string | null;
+  inheritance: Inheritance;
+  reportsViolations: boolean;
+}
+
+async function runNetworkFixture(host: HTMLElement, cspPresent: boolean): Promise<NetworkOutcome> {
   const frame = mountFrame(host, networkFixture());
   const doc = await waitForFixture(frame);
   const collector = collectViolations(doc);
@@ -340,6 +416,15 @@ async function runNetworkFixture(
   image.src = REMOTE_IMAGE;
   doc.body.appendChild(image);
 
+  const dataSheet = doc.createElement('link');
+  dataSheet.rel = 'stylesheet';
+  dataSheet.href = DATA_STYLESHEET;
+  doc.head.appendChild(dataSheet);
+
+  const dataImage = doc.createElement('img');
+  dataImage.src = DATA_IMAGE;
+  doc.body.appendChild(dataImage);
+
   // A font is only fetched once something uses it, which is why the authored
   // @font-face is the one blocked shape whose violation can still be caught.
   try {
@@ -355,43 +440,95 @@ async function runNetworkFixture(
   const fontHit = violationFor(collector.events, 'authored.woff2');
   const imageHit = violationFor(collector.events, 'raw.githubusercontent.com');
   const frameCsp = collector.events[0]?.originalPolicy ?? null;
+  const reportsViolations = collector.events.length > 0;
 
   const remoteImg = doc.getElementById('remote-img') as HTMLImageElement | null;
   const authoredImageLoaded = (remoteImg?.naturalWidth ?? 0) > 0;
   const injectedImageLoaded = image.naturalWidth > 0;
 
-  const cspVerdict = (hit: SecurityPolicyViolationEvent | undefined): Verdict =>
-    cspPresent ? expect(hit !== undefined) : 'inconclusive';
-  const noCspNote = 'no CSP was present on this run, so the CSP layer was not measured';
+  const target = doc.getElementById('csp-effect-target');
+  const targetColor = target === null ? '' : (doc.defaultView ?? window).getComputedStyle(target).color;
+  const dataSheetApplied = targetColor === 'rgb(255, 0, 0)';
+  const dataImageLoaded = dataImage.naturalWidth > 0;
+  const inheritance: Inheritance = !dataImageLoaded ? 'unknown' : dataSheetApplied ? 'applied' : 'blocked';
+
+  const effectNote = `data: stylesheet applied: ${dataSheetApplied} (computed colour ${targetColor || 'unreadable'}; red means it applied, blue means the policy refused it); data: image control loaded: ${dataImageLoaded}`;
+
+  // A missing violation has two causes that look identical from the event side:
+  // the policy was never inherited, or this engine does not report violations in
+  // a srcdoc document. The effect probe is what separates them, so a silent
+  // engine yields "inconclusive" rather than a false failure.
+  const remoteVerdict = (hit: SecurityPolicyViolationEvent | undefined): Verdict => {
+    if (!cspPresent) {
+      return 'inconclusive';
+    }
+    if (hit !== undefined) {
+      return 'pass';
+    }
+    return inheritance === 'applied' ? 'fail' : 'inconclusive';
+  };
+  const remoteNote = (hit: SecurityPolicyViolationEvent | undefined): string => {
+    if (!cspPresent) {
+      return 'no CSP was present on this run, so the CSP layer was not measured';
+    }
+    if (hit !== undefined) {
+      return describeViolation(hit);
+    }
+    if (inheritance === 'blocked') {
+      return `no securitypolicyviolation reported, but the effect probe shows the policy IS in force inside the frame — this engine does not report violations there. ${effectNote}`;
+    }
+    if (inheritance === 'applied') {
+      return `no securitypolicyviolation reported, and the effect probe shows the policy is NOT in force inside the frame. ${effectNote}`;
+    }
+    return `no securitypolicyviolation reported, and the effect probe was itself inconclusive. ${effectNote}`;
+  };
 
   return {
     frameCsp,
+    inheritance,
+    reportsViolations,
     checks: [
+      check(
+        'csp.inheritance-by-effect',
+        [2, 15],
+        'csp',
+        'The srcdoc document is under the parent CSP, measured by what the policy does',
+        inheritance === 'blocked' ? 'pass' : inheritance === 'applied' ? 'fail' : 'inconclusive',
+        `${effectNote}. style-src is 'self' 'unsafe-inline' with no data:, so an inherited policy must refuse the stylesheet; img-src lists data: explicitly, so the image must load. Neither touches the network, which is why this stands where the violation events are silent.`,
+      ),
+      check(
+        'csp.violation-reporting',
+        [15],
+        'control',
+        'This engine reports securitypolicyviolation inside a srcdoc frame',
+        expect(reportsViolations),
+        reportsViolations
+          ? `${collector.events.length} violation(s) reported inside the frame`
+          : 'no violations reported inside the frame. This is about the REPORTING, not the policy — read csp.inheritance-by-effect for whether the policy is there.',
+      ),
       check(
         'csp.remote-stylesheet',
         [2],
         'csp',
         'A remote stylesheet is refused by the inherited CSP',
-        cspVerdict(cssHit),
-        cspPresent ? describeViolation(cssHit) : noCspNote,
+        remoteVerdict(cssHit),
+        remoteNote(cssHit),
       ),
       check(
         'csp.remote-script',
         [2],
         'csp',
         'A remote script is refused by the inherited CSP',
-        cspVerdict(jsHit),
-        cspPresent ? describeViolation(jsHit) : noCspNote,
+        remoteVerdict(jsHit),
+        remoteNote(jsHit),
       ),
       check(
         'csp.remote-font',
         [2],
         'csp',
         'A remote font declared by the document itself is refused by the inherited CSP',
-        cspVerdict(fontHit),
-        cspPresent
-          ? `${describeViolation(fontHit)}. Authored in the fixture's own markup, so this is the document inheriting the policy rather than a parent-injected node.`
-          : noCspNote,
+        remoteVerdict(fontHit),
+        `${remoteNote(fontHit)} Authored in the fixture's own markup, so this is the document inheriting the policy rather than a parent-injected node.`,
       ),
       check(
         'csp.remote-image',
@@ -481,13 +618,14 @@ async function runPlainLinkFixture(host: HTMLElement): Promise<Check[]> {
   const frame = mountFrame(host, plainLinkFixture());
   const doc = await waitForFixture(frame);
 
+  const dispatch = measureClickDispatch(doc);
   let intercepted = 0;
   const onClick = (event: Event): void => {
     intercepted += 1;
     event.preventDefault();
   };
   doc.addEventListener('click', onClick);
-  (doc.getElementById('plain-link') as HTMLAnchorElement | null)?.click();
+  clickIn(doc, 'plain-link', dispatch);
   await sleep(800);
   const survivedWithHandler = stillOnFixture(frame);
   doc.removeEventListener('click', onClick);
@@ -496,7 +634,7 @@ async function runPlainLinkFixture(host: HTMLElement): Promise<Check[]> {
   // intercepting. Recorded because TASK-5.2 needs to know whether interception
   // is the only thing standing between a click and a navigation.
   const collector = collectViolations(doc);
-  (doc.getElementById('plain-link') as HTMLAnchorElement | null)?.click();
+  clickIn(doc, 'plain-link', dispatch);
   await sleep(1000);
   collector.stop();
   const survivedWithout = stillOnFixture(frame);
@@ -508,8 +646,8 @@ async function runPlainLinkFixture(host: HTMLElement): Promise<Check[]> {
       [10],
       'parent',
       'A plain link with no target does not navigate the frame once the parent intercepts clicks',
-      expect(intercepted > 0 && survivedWithHandler),
-      `the parent's listener saw ${intercepted} click(s) (0 would mean the click never happened, not that it was contained); fixture still loaded: ${survivedWithHandler}`,
+      dispatch.worked ? expect(intercepted > 0 && survivedWithHandler) : 'inconclusive',
+      `the parent's listener saw ${intercepted} click(s) on the link; fixture still loaded: ${survivedWithHandler}. Click dispatch control on this fixture: HTMLElement.click() delivered ${dispatch.viaClickMethod}, dispatchEvent delivered ${dispatch.viaDispatchEvent}. 0 intercepted clicks with a working control means the LINK specifically swallowed it, which would be a real defect for TASK-5.2; 0 with a failed control means only that the probe could not reach the frame.`,
     ),
     check(
       'nav.plain-link-uncontrolled',
@@ -728,14 +866,18 @@ export async function run(hosts: Hosts): Promise<RunResult> {
     checks.push(...network.checks);
     checks.push(
       check(
-        'csp.inheritance',
+        'csp.inherited-policy-text',
         [2, 15],
         'csp',
-        'The srcdoc document inherits the parent CSP',
-        parent.present ? expect(frameCsp !== null && frameCsp === parent.policy) : 'inconclusive',
-        parent.present
-          ? `policy reported inside the frame: ${frameCsp ?? 'none reported'}. Identical to the app document's: ${String(frameCsp === parent.policy)}.`
-          : 'no CSP on this run',
+        'The policy reported inside the frame is the app document’s own',
+        !parent.present || !network.reportsViolations
+          ? 'inconclusive'
+          : expect(frameCsp !== null && frameCsp === parent.policy),
+        !parent.present
+          ? 'no CSP on this run'
+          : network.reportsViolations
+            ? `policy reported inside the frame: ${frameCsp ?? 'none reported'}. Identical to the app document's: ${String(frameCsp === parent.policy)}.`
+            : 'this engine reports no violations inside the frame, so no policy text is available from there. Whether the policy is in force is answered by csp.inheritance-by-effect, not here.',
       ),
     );
 

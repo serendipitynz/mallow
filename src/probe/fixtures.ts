@@ -51,8 +51,13 @@ function attr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Every fixture ends with two markers. `alive` is how the harness recognises
+ *  the fixture document; `click-control` is the positive control for clicks
+ *  driven from the parent, without which every "nothing ran when clicked"
+ *  result would pass vacuously on an engine that does not deliver them. */
 function page(head: string, body: string): string {
-  return `${DOCTYPE}<html><head><meta charset="utf-8">${head}</head><body>${body}<p id="alive">alive</p></body></html>`;
+  const markers = '<p id="alive">alive</p><span id="click-control"></span>';
+  return `${DOCTYPE}<html><head><meta charset="utf-8">${head}</head><body>${body}${markers}</body></html>`;
 }
 
 /** Script execution, every shape at once. The app-origin external script is the
@@ -89,11 +94,30 @@ export function networkFixture(): string {
       `<script id="authored-js" src="${BLOCKED_ORIGIN}/authored.js"></script>`,
       '<style>',
       `@font-face { font-family: 'ProbeAuthoredFont'; src: url('${BLOCKED_ORIGIN}/authored.woff2') format('woff2'); }`,
+      // Blue unless the data: stylesheet the harness injects overrides it to red.
+      '#csp-effect-target { color: rgb(0, 0, 255); }',
       '</style>',
     ].join(''),
-    `<img id="remote-img" src="${REMOTE_IMAGE}" alt="remote image (must load)" width="32" height="32">`,
+    [
+      `<img id="remote-img" src="${REMOTE_IMAGE}" alt="remote image (must load)" width="32" height="32">`,
+      '<p id="csp-effect-target">CSP inheritance, measured by effect</p>',
+    ].join(''),
   );
 }
+
+/** A stylesheet as a `data:` URL. `style-src` is `'self' 'unsafe-inline'` with no
+ *  `data:`, so an inherited policy refuses it and the rule never applies.
+ *
+ *  This exists because a violation that is never reported and a policy that was
+ *  never inherited look identical from the event side, and separating them is
+ *  the whole of decision-3's second premise. It touches no network, so unlike
+ *  the `probe.invalid` references its silence is meaningful. */
+export const DATA_STYLESHEET = 'data:text/css,%23csp-effect-target%7Bcolor%3Argb(255%2C0%2C0)%7D';
+
+/** A 1×1 transparent GIF. `img-src` lists `data:` explicitly, so this must load —
+ *  it is the control that `data:` subresources work in this engine at all, which
+ *  is what makes the stylesheet's silence attributable to the CSP. */
+export const DATA_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 /** Form submission, both the form's own action and a button's `formaction`
  *  (AC #4). `allow-forms` is absent, so neither may leave the fixture. */
