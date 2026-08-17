@@ -23,6 +23,21 @@ OS ネイティブの WebView で表示できます。
 - **設定ファイル**（json / jsonc / json5 / jsonl / ndjson / yaml / yml / toml）
   - 折りたたみ階層ツリー（すべて展開／折りたたみ、ツリー／ソース表示の切替）
   - 構文エラー時はソース表示にして該当行をハイライト
+- **CSV / TSV**（csv / tsv）
+  - 表形式で表示（表／ソース表示の切替）。先頭レコードは見出し行
+  - 大きなファイルは一部だけを表に出し、何を出していないかを表の上に 1 行で表示。
+    文書全体は大きさによらずソース表示側で読めます
+- **XML**（xml / xsd / xsl、および `.plist`）
+  - 折りたたみ階層ツリー（すべて展開／折りたたみ、ツリー／ソース表示の切替）
+  - 構文エラー時はソース表示にし、パーサが位置を報告した場合は該当行をハイライト
+  - `.plist` は中身を見て XML 形式と JSON 形式を判断するため、`plutil -convert json`
+    で変換したものは設定ファイルのツリーとして開きます
+- **プレーンテキスト系ファイル**（txt / text / log、ini / conf / cfg / properties /
+  editorconfig、diff / patch、sql）: 行番号とシンタックスハイライト付きのソース表示。
+  上の**設定ファイル**と別項目なのは、構造化した表示を持つかどうかで分かれているためで、
+  設定ファイルかどうかで分かれているのではありません。
+- **HTML ファイル（ソース表示）**（html / htm）: ソースとして表示します。
+  レンダリング表示は未実装です。
 - **mermaid 単体ファイル**（.mmd / .mermaid）の表示
 - **画像・PDF・動画**（png / jpg / jpeg / gif / webp / svg、pdf、webm / mp4 / mov、
   加えて macOS では heic/heif）: Tauri の asset protocol 経由で OS ネイティブの
@@ -110,7 +125,7 @@ src/                フロントエンド（React + TS）
   components/        Explorer / Viewer / MarkdownView / ConfigView / SourceView / ...
   lib/              markdown・shiki・mermaid・config-parse・frontmatter・watch・settings・theme ...
   hooks/useFileTree ファイルツリーの集中管理（遅延読み込み・更新・展開復元）
-  styles/           SCSS（_vars / global / app / markdown / config / source）
+  styles/           SCSS（_vars / global / app / markdown / config / source / table / xml）
 src-tauri/          Rust バックエンド
   src/commands.rs   read_dir_tree / read_file / path_exists / allow_media_dir（std::fs）
   src/watch.rs      notify による再帰ファイル監視（fs:change イベント）
