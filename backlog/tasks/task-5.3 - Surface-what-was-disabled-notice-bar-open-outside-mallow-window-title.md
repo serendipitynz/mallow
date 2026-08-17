@@ -4,9 +4,10 @@ title: 'Surface what was disabled: notice bar, open outside mallow, window title
 status: To Do
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-07-31 09:34'
+updated_date: '2026-08-17 05:56'
 labels:
   - feature
+milestone: m-1
 dependencies:
   - TASK-5.1
 parent_task_id: TASK-5

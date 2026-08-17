@@ -4,9 +4,10 @@ title: Render HTML documents in a sandboxed srcdoc iframe
 status: To Do
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-07-30 10:45'
+updated_date: '2026-08-17 05:55'
 labels:
   - feature
+milestone: m-1
 dependencies:
   - TASK-2
   - TASK-7

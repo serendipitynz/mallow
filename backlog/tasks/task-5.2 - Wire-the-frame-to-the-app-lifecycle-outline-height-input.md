@@ -4,9 +4,10 @@ title: 'Wire the frame to the app: lifecycle, outline, height, input'
 status: To Do
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-07-31 09:40'
+updated_date: '2026-08-17 05:56'
 labels:
   - feature
+milestone: m-1
 dependencies:
   - TASK-5.1
   - TASK-7

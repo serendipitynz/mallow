@@ -4,9 +4,10 @@ title: Document the HTML rendered view and its untrusted-input boundary
 status: To Do
 assignee: []
 created_date: '2026-08-17 03:09'
-updated_date: '2026-08-17 03:09'
+updated_date: '2026-08-17 05:56'
 labels:
   - documentation
+milestone: m-1
 dependencies:
   - TASK-5
   - TASK-7
