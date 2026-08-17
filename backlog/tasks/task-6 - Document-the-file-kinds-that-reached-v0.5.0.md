@@ -1,10 +1,10 @@
 ---
 id: TASK-6
 title: Document the file kinds that reached v0.5.0
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-08-17 03:16'
+updated_date: '2026-08-17 03:51'
 labels:
   - documentation
 milestone: m-0
