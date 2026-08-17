@@ -56,6 +56,9 @@ export default function Probe() {
   const [manual, setManual] = useState<Manual>(EMPTY_MANUAL);
   const [clicks, setClicks] = useState<ClickCounts | null>(null);
   const [focusNote, setFocusNote] = useState<string>('');
+  // Shown live beside the tall frame so the two hand-recorded scroll answers are
+  // a reading rather than a judgement: "yes" is this number changing.
+  const [scrollTop, setScrollTop] = useState(0);
 
   const scriptsRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<HTMLDivElement>(null);
@@ -252,11 +255,22 @@ export default function Probe() {
       <section className="probe-frames">
         <h2>Fixtures</h2>
         <p className="probe-note">
-          Scroll the wheel over the tall document and check whether this page scrolls (AC #12). Then click a heading
-          inside it to move focus there and press PageDown / ArrowDown, and check whether this page scrolls.
+          AC #12 asks two questions about the box below, and the readout is the answer to both — &quot;yes&quot; means
+          that number changes, nothing else. <strong>Wheel:</strong> put the pointer inside the box and turn the wheel.
+          <strong> Keyboard:</strong> press <em>Focus a heading inside the tall frame</em> further down (that is what
+          puts focus inside the frame — clicking a heading does not), then press PageDown or ArrowDown without touching
+          anything else.
         </p>
-        <h3>Tall document (wheel + keyboard + scroll measurement)</h3>
-        <div className="probe-scroller" ref={scrollerRef}>
+        <h3>
+          Tall document — parent scroller scrollTop: <code>{scrollTop}</code>
+        </h3>
+        <div
+          className="probe-scroller"
+          ref={scrollerRef}
+          onScroll={(e) => {
+            setScrollTop(Math.round(e.currentTarget.scrollTop));
+          }}
+        >
           <Host hostRef={tallRef} />
         </div>
         <div className="probe-grid">
@@ -344,12 +358,8 @@ export default function Probe() {
           {field('osVersion', 'OS version')}
           {field('webviewVersion', 'WebView version (AC #9)')}
           {field('runMode', 'run mode (tauri build / tauri build --debug / other)')}
-          {field('wheelChains', 'wheel scrolling chains to the parent (AC #12)', YES_NO)}
-          {field(
-            'keyboardScrolls',
-            'keyboard scrolling reaches the parent AFTER pressing the focus button (AC #12)',
-            YES_NO,
-          )}
+          {field('wheelChains', 'AC #12 wheel: scrollTop changed while the wheel turned over the frame', YES_NO)}
+          {field('keyboardScrolls', 'AC #12 keyboard: scrollTop changed on PageDown after the focus button', YES_NO)}
           {field('unstyledCanvas', 'unstyled document canvas colour (AC #11)', CANVAS)}
           {field('unstyledReadable', 'unstyled document text readable (AC #11)', YES_NO)}
           {field('colorSchemeCanvas', 'color-scheme document canvas colour (AC #11)', CANVAS)}
