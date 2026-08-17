@@ -37,21 +37,54 @@ A `--debug` build is enough. It is not a dev build — `tauri build` enables
 `custom-protocol`, so Tauri serves the assets and the CSP is applied exactly as
 in a release build — and it compiles faster and keeps devtools available.
 
+macOS / Linux (bash, zsh):
+
 ```sh
 MALLOW_PROBE=1 pnpm tauri build --debug --no-bundle
+```
+
+Windows (PowerShell). It has no `VAR=value command` prefix form, so the variable
+is set as its own statement — which means it stays set for the rest of the
+session and the next ordinary build in that window would silently be a probe
+build. Remove it when you are done:
+
+```powershell
+$env:MALLOW_PROBE = "1"
+pnpm tauri build --debug --no-bundle
+Remove-Item Env:MALLOW_PROBE
+```
+
+Windows (cmd.exe) has the same stickiness, and `set` leaves no way to unset
+other than an empty assignment:
+
+```bat
+set MALLOW_PROBE=1
+pnpm tauri build --debug --no-bundle
+set MALLOW_PROBE=
 ```
 
 The binary lands in `src-tauri/target/debug/mallow` (`mallow.exe` on Windows).
 Run it directly; the probe replaces the whole window.
 
-If `pnpm <script>` aborts in your shell with
-`ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY`, run the two halves by hand:
+If `pnpm <script>` aborts with `ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY` —
+a stale project-local store, not a repository problem — run the halves by hand
+instead. On PowerShell the `--config` argument needs doubled inner quotes,
+because PowerShell strips one layer before the CLI sees it:
 
 ```sh
 MALLOW_PROBE=1 ./node_modules/.bin/tsc
 MALLOW_PROBE=1 ./node_modules/.bin/vite build
 node node_modules/@tauri-apps/cli/tauri.js build --debug --no-bundle \
   --config '{"build":{"beforeBuildCommand":""}}'
+```
+
+```powershell
+$env:MALLOW_PROBE = "1"
+./node_modules/.bin/tsc
+./node_modules/.bin/vite build
+node node_modules/@tauri-apps/cli/tauri.js build --debug --no-bundle `
+  --config '{""build"":{""beforeBuildCommand"":""""}}'
+Remove-Item Env:MALLOW_PROBE
 ```
 
 Afterwards, rebuild the frontend without `MALLOW_PROBE` so `dist/` holds the app
