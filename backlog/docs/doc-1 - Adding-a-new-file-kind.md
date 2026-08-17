@@ -44,7 +44,8 @@ limits on which kinds get added are in decision-2.
 
 **The user-facing format list in `README.md` / `README.ja.md` is deliberately not
 one of the seven.** It is batched into a documentation task that runs once the
-wave of kinds is in (TASK-6 for the current one) rather than edited per kind, so
+wave of kinds is in (TASK-6 for the current one, TASK-19 for the HTML rendered
+view once it lands) rather than edited per kind, so
 that the list is written from the finished set instead of accumulating a bullet
 per PR. The obligation is real either way: a kind must not reach a *release*
 undocumented, which is why that task is scheduled before the version is cut. If

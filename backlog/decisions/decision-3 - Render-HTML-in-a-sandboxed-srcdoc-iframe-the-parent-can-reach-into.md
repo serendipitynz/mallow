@@ -50,7 +50,7 @@ the existing `read_file` path, adjust the markup, and hand the result to `srcdoc
 Script execution is then blocked by the sandbox flags and, for most shapes, by the
 parent CSP that a `srcdoc` document inherits (`script-src` has no
 `'unsafe-inline'`). The two layers are not equally broad, and the difference
-matters when TASK-6 writes this up as a security contract:
+matters when TASK-19 writes this up as a security contract:
 
 | shape | stopped by |
 |---|---|
