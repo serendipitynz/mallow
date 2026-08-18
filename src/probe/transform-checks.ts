@@ -75,19 +75,21 @@ async function render(host: HTMLElement, html: string): Promise<Document> {
  *  attributes in an order no template would produce. */
 const MESSY = `<!doctype html>
 <html><head><TITLE>Messy</TITLE><BASE
-   HREF="https://example.com/"><style>#alive { color: rgb(0, 128, 0) }</style></head>
+   HREF="https://example.com/"><style>#alive { color: rgb(0, 128, 0) }</style>
+  <link rel="stylesheet" href="site.css"></head>
 <body>
+  <p id="alive">alive</p>
   <IMG
      srcset="img/a,1.png 1x,   img/b,2.png 2x" ALT=none src=img/logo.png>
   <picture><source srcset='../shared/wide.png 640w' src="clip.mp4"></picture>
-  <video POSTER=poster.png src="clip.mp4"><audio src="tone.mp3">
   <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" >
   <img src="https://example.com/remote.png">
   <img src="//cdn.example.com/proto.png"><img src="blob:1234"><img src=""><img src="#frag">
   <img src="/absolute.png">
   <iframe src="nested.html"></iframe>
   <a href="https://example.com/">out</a>
-  <p id="alive">alive</p>
+  <script src="app.js"></script>
+  <video POSTER=poster.png src="clip.mp4"><audio src="tone.mp3">
 </body></html>`;
 
 function hasTag(html: string, tag: string): boolean {
@@ -168,6 +170,17 @@ export async function runTransformChecks(host: HTMLElement): Promise<TransformCh
       rewrittenByMistake.length === 0
         ? `all six survived, empty src kept=${emptyKept}`
         : `changed: ${rewrittenByMistake.join(' ')} (empty src kept=${emptyKept})`,
+    ),
+  );
+
+  const { counts } = messy;
+  checks.push(
+    check(
+      'counts',
+      [9],
+      'what TASK-5.3 has to report is counted: a relative stylesheet and script count as lost, a rewritten image does not',
+      counts.unresolvedLocalRefs === 3 && counts.externalRefs === 1 && counts.links === 1 && counts.scripts === 1,
+      `unresolvedLocalRefs=${counts.unresolvedLocalRefs} (want 3: site.css, app.js, /absolute.png) externalRefs=${counts.externalRefs} (want 1) links=${counts.links} (want 1) scripts=${counts.scripts} (want 1)`,
     ),
   );
 
