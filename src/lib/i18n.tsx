@@ -60,6 +60,7 @@ const ja: Dict = {
   // html view
   rendered: '描画',
   htmlRenderSkipped: '要素数またはテキスト量が上限を超えているため、描画せずソースを表示しています。',
+  htmlTooTall: '描画したときの高さが上限を超えているため、描画せずソースを表示しています。',
   // config view
   expandAll: 'すべて展開',
   collapseAll: 'すべて折りたたみ',
@@ -139,6 +140,7 @@ const en: Dict = {
   rendered: 'Rendered',
   htmlRenderSkipped:
     'This document has more elements or text than the rendered view builds, so its source is shown instead.',
+  htmlTooTall: 'Rendered, this document is taller than the frame is allowed to grow, so its source is shown instead.',
   // config view
   expandAll: 'Expand all',
   collapseAll: 'Collapse all',
