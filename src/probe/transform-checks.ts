@@ -81,7 +81,7 @@ const MESSY = `<!doctype html>
   <p id="alive">alive</p>
   <IMG
      srcset="img/a,1.png 1x,   img/b,2.png 2x" ALT=none src=img/logo.png>
-  <picture><source srcset='../shared/wide.png 640w' src="clip.mp4"></picture>
+  <picture><source srcset='../shared/wide.png 640w' src="clip-source.mp4"></picture>
   <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" >
   <img src="https://example.com/remote.png">
   <img src="//cdn.example.com/proto.png"><img src="blob:1234"><img src=""><img src="#frag">
@@ -89,7 +89,7 @@ const MESSY = `<!doctype html>
   <iframe src="nested.html"></iframe>
   <a href="https://example.com/">out</a>
   <script src="app.js"></script>
-  <video POSTER=poster.png src="clip.mp4"><audio src="tone.mp3">
+  <video POSTER=poster.png src="clip-video.mp4"><audio src="tone.mp3">
 </body></html>`;
 
 function hasTag(html: string, tag: string): boolean {
@@ -121,22 +121,34 @@ export async function runTransformChecks(host: HTMLElement): Promise<TransformCh
     ),
   );
 
+  // One entry per attribute AC #6 lists, so a rewrite that stopped working on
+  // exactly one of them cannot hide behind the others.
   const rewritten = [
-    assetUrlFor('logo.png'),
-    assetUrlFor('img/a,1.png'),
-    assetUrlFor('img/b,2.png'),
-    assetUrlFor('poster.png'),
-    assetUrlFor('tone.mp3'),
-    convertFileSrc('/probe/shared/wide.png'),
+    assetUrlFor('img/logo.png'), // img src
+    assetUrlFor('img/a,1.png'), // img srcset
+    assetUrlFor('img/b,2.png'), // img srcset, second candidate
+    convertFileSrc('/probe/shared/wide.png'), // source srcset
+    assetUrlFor('clip-source.mp4'), // source src
+    assetUrlFor('clip-video.mp4'), // video src
+    assetUrlFor('poster.png'), // video poster
+    assetUrlFor('tone.mp3'), // audio src
   ];
   const missing = rewritten.filter((url) => !html.includes(url));
+  // The converse of the above: a path still present as written is one this
+  // transform walked past, which "the asset URL is in there somewhere" cannot
+  // catch on its own.
+  const leftAsWritten = ['"img/logo.png"', '"clip-source.mp4"', '"clip-video.mp4"', '"poster.png"'].filter((raw) =>
+    html.includes(raw),
+  );
   checks.push(
     check(
       'rewrites',
       [6, 8],
       'every rewritten attribute survived the engine, including a srcset with commas in its paths',
-      missing.length === 0,
-      missing.length === 0 ? `${rewritten.length} references rewritten` : `not found: ${missing.join(' ')}`,
+      missing.length === 0 && leftAsWritten.length === 0,
+      missing.length === 0 && leftAsWritten.length === 0
+        ? `${rewritten.length} references rewritten, none left as written`
+        : `not found: ${missing.join(' ')} | still as written: ${leftAsWritten.join(' ')}`,
     ),
   );
   checks.push(
