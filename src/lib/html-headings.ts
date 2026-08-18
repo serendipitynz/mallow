@@ -44,16 +44,22 @@ function uniqueSlug(base: string, taken: Set<string>): string {
  * Give every heading an id the outline can resolve, and return the outline.
  *
  * `takenIds` is every id already in the document, not just the headings' — a
- * generated slug that collided with one would address the other element, and the
- * outline would jump somewhere else entirely.
+ * generated slug that collided with one would address that other element, and
+ * the outline would jump somewhere else entirely.
  *
- * A heading whose own id repeats one an earlier heading already claimed is
- * re-assigned rather than left: an id that is not the first of its name
+ * `ownsId` answers whether the element is the document's **first** holder of its
+ * own id, which only the DOM knows and which is the whole of what this needs
+ * from it. A heading that is not gets a fresh slug, as does one repeating an id
+ * an earlier heading already claimed: an id that is not the first of its name
  * addresses nothing, since `getElementById` and the document's own fragment
- * links both resolve to the first. So re-slugging it breaks no link that
- * worked, while leaving it would point two outline entries at one target.
+ * links both resolve to the first. So re-slugging one breaks no link that
+ * worked, while leaving it would point an outline entry at some other element.
  */
-export function assignHeadingIds(elements: ArrayLike<HeadingElementLike>, takenIds: Iterable<string>): Heading[] {
+export function assignHeadingIds(
+  elements: ArrayLike<HeadingElementLike>,
+  takenIds: Iterable<string>,
+  ownsId: (element: HeadingElementLike) => boolean,
+): Heading[] {
   const taken = new Set(takenIds);
   const claimed = new Set<string>();
   const headings: Heading[] = [];
@@ -62,7 +68,7 @@ export function assignHeadingIds(elements: ArrayLike<HeadingElementLike>, takenI
     const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim();
     const depth = Number.parseInt(element.tagName.slice(1), 10);
     let slug = element.id;
-    if (slug === '' || claimed.has(slug)) {
+    if (slug === '' || claimed.has(slug) || !ownsId(element)) {
       slug = uniqueSlug(slugify(text), taken);
       element.setAttribute('id', slug);
     }

@@ -171,11 +171,27 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
   const hasOutline = headings.length > 1;
   const showOutline = showRendered && hasOutline && outlineOpen;
 
-  const measure = useCallback(() => {
+  /**
+   * Size the frame to its document.
+   *
+   * `force` is for a cause that can make the document *shorter* — a mutation, a
+   * width change. The cheap check below cannot see a shrink, because a document
+   * shorter than its frame reports the frame's height back.
+   */
+  const measure = useCallback((force: boolean) => {
     const frame = frameRef.current;
     const frameDocument = frame?.contentDocument;
     const scroller = scrollRef.current;
     if (!frame || !frameDocument || !scroller) {
+      return;
+    }
+    /* A document already at its own height says so without being touched, and
+       leaving it alone then is not an optimisation. The rest of this function
+       writes `scroller.scrollTop`, and per CSSOM-View an instant scroll aborts a
+       smooth one in progress — so a measurement landing during an outline jump
+       or a fragment-link scroll would stop it a few percent in. The observers
+       and the polls all fire during exactly those animations. */
+    if (!force && frameDocument.documentElement.scrollHeight === appliedHeight.current) {
       return;
     }
     /* Read at a fixed reference height, never at the height last applied. The
@@ -197,37 +213,55 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     const scrollTop = scroller.scrollTop;
     frame.style.height = `${scroller.clientHeight}px`;
     const height = frameDocument.documentElement.scrollHeight;
-    if (height > MAX_FRAME_HEIGHT_PX) {
-      setTooTall(true);
-      return;
-    }
-    // Settled, or out of budget: put back what was applied and stop. Exhausting
-    // the budget leaves the last applied height rather than reverting, so nothing
-    // the reader could see is clipped; a width change refills it, which is what
-    // keeps a resized document from being stuck with a stale height.
+    // Settled, or out of budget: put back what was applied. Exhausting the budget
+    // leaves the last applied height rather than reverting, so nothing the reader
+    // could see is clipped; a width change refills it, which is what keeps a
+    // resized document from being stuck with a stale height.
     const settled = height === appliedHeight.current || passes.current >= MAX_MEASUREMENT_PASSES;
-    if (settled) {
+    if (height > MAX_FRAME_HEIGHT_PX) {
+      // This exit is no different from the others while the frame is still on
+      // screen: `setTooTall` swaps it out on the next render, not now.
+      setTooTall(true);
+      frame.style.height = `${appliedHeight.current ?? height}px`;
+    } else if (settled) {
       frame.style.height = `${appliedHeight.current ?? height}px`;
     } else {
       passes.current += 1;
       appliedHeight.current = height;
       frame.style.height = `${height}px`;
     }
-    scroller.scrollTop = scrollTop;
+    // Only when the reference height actually clamped it. Writing back an
+    // unchanged offset would still be an instant scroll, and so would still abort
+    // an animation the early return above is there to protect.
+    if (scroller.scrollTop !== scrollTop) {
+      scroller.scrollTop = scrollTop;
+    }
   }, []);
 
-  /** Measure on the next frame, once per frame. Called from the observers, whose
-   *  callbacks must not themselves change layout — a `ResizeObserver` that
-   *  resizes what it observes reports an undelivered-notification loop. */
-  const scheduleMeasure = useCallback(() => {
-    if (pendingMeasure.current !== 0) {
-      return;
-    }
-    pendingMeasure.current = requestAnimationFrame(() => {
-      pendingMeasure.current = 0;
-      measure();
-    });
-  }, [measure]);
+  /**
+   * Measure on the next frame, once per frame. Called from the observers, whose
+   * callbacks must not themselves change layout — a `ResizeObserver` that resizes
+   * what it observes reports an undelivered-notification loop.
+   *
+   * The budget is spent here rather than only inside `measure`, which is what
+   * makes {@link MAX_MEASUREMENT_PASSES} bound the *work* and not just the
+   * height: a document animating a box's height reports through the
+   * `ResizeObserver` every frame and never stops, and measuring it every frame
+   * would cost two layouts of the frame's document each time, forever. A width
+   * change or a mutation refills the budget, so this is not a one-way door.
+   */
+  const scheduleMeasure = useCallback(
+    (force: boolean) => {
+      if (pendingMeasure.current !== 0 || passes.current >= MAX_MEASUREMENT_PASSES) {
+        return;
+      }
+      pendingMeasure.current = requestAnimationFrame(() => {
+        pendingMeasure.current = 0;
+        measure(force);
+      });
+    },
+    [measure],
+  );
 
   /**
    * Everything the parent puts inside the frame's document, in the order
@@ -248,7 +282,12 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
 
     const elements = Array.from(frameDocument.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6'));
     const takenIds = Array.from(frameDocument.querySelectorAll('[id]'), (element) => element.id);
-    const nextHeadings = assignHeadingIds(elements, takenIds);
+    // An id is the heading's to keep only when the heading is the document's
+    // first holder of it. The DOM answers that; `lib/html-headings` stays free of
+    // it, which is what keeps the rest of the rule testable under Node.
+    const nextHeadings = assignHeadingIds(elements, takenIds, (element) =>
+      element.id === '' ? false : frameDocument.getElementById(element.id) === (element as unknown as Element),
+    );
     // The landing offset is declared once, in `html.scss` on the frame element,
     // and copied onto each heading here: the parent's stylesheets do not reach
     // into the frame's document, and `Outline` reads it back off the heading, so
@@ -256,6 +295,14 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     const landing = getComputedStyle(frame).scrollMarginTop;
     for (const element of elements) {
       element.style.scrollMarginTop = landing;
+      // Assigned here rather than left to `Outline`'s `go`, which sets it on the
+      // heading it jumps to. That write is an attribute mutation inside the
+      // frame, so it woke the `MutationObserver` below and the measurement it
+      // scheduled cancelled the very jump that caused it — on the first click of
+      // each heading, and only the first.
+      if (!element.hasAttribute('tabindex')) {
+        element.setAttribute('tabindex', '-1');
+      }
     }
     setHeadings(nextHeadings);
 
@@ -275,8 +322,14 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
         // fragment navigation has nothing to scroll and the parent does it —
         // through the one boundary-crossing mechanism TASK-8 named.
         const target = fragmentTarget(frameDocument, href);
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        target?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+        if (target) {
+          // The same landing offset the headings were given. A fragment addresses
+          // whatever the document chose — a footnote `<li>`, a `<dt>`, a bare
+          // `<a name>` — and a target without it lands under the pinned bar.
+          target.style.scrollMarginTop = landing;
+          const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+        }
         return;
       }
       if (/^https?:\/\//i.test(href)) {
@@ -291,20 +344,22 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     // Late layout is observed, never listened for: a `load` listener on an image
     // inside the frame fired on none of the three WebViews, while both observers
     // reported on all three (decision-9).
-    const resizes = new ResizeObserver(scheduleMeasure);
+    const resizes = new ResizeObserver(() => scheduleMeasure(false));
     resizes.observe(frameDocument.documentElement);
     const mutations = new MutationObserver(() => {
       // A mutation is an external cause rather than the sizing loop feeding
-      // itself, so it refills the budget.
+      // itself, so it refills the budget — and it is the one cause that can make
+      // the document shorter (a `<details>` closing), which is what `force` is
+      // for.
       passes.current = 0;
-      scheduleMeasure();
+      scheduleMeasure(true);
     });
     mutations.observe(frameDocument, { subtree: true, childList: true, attributes: true });
     // Polling is the backstop, not the mechanism (decision-9). A fixed short
     // schedule rather than a standing interval: it exists for a late change that
     // moves no box either observer watches, and those all land while the document
     // is settling.
-    const polls = [250, 750, 2000].map((delay) => window.setTimeout(scheduleMeasure, delay));
+    const polls = [250, 750, 2000].map((delay) => window.setTimeout(() => scheduleMeasure(false), delay));
 
     disposeFrame.current = () => {
       frameDocument.removeEventListener('click', onClick);
@@ -317,20 +372,32 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
 
     const restore = anchor.current;
     restoreScrollAnchor(scrollRef.current, restore, frameRoot);
-    measure();
+    measure(true);
     // The restore above runs in the order decision-3 sets out, before the height
     // is known; once it is, the scroller's own extent has changed, so it is
     // repeated against the settled layout.
     requestAnimationFrame(() => {
-      measure();
+      measure(true);
       restoreScrollAnchor(scrollRef.current, restore, frameRoot);
     });
   }, [frameRoot, measure, scheduleMeasure]);
 
+  // The wiring belongs to the frame element, not to whatever load comes next.
+  // Switching to the source view, or crossing the height ceiling, removes the
+  // iframe with no load ever following, which would otherwise leave the previous
+  // document's observers and its pending polls alive with nothing to measure.
   useEffect(() => {
+    if (!showRendered) {
+      return;
+    }
     return () => {
       disposeFrame.current?.();
       disposeFrame.current = null;
+    };
+  }, [showRendered]);
+
+  useEffect(() => {
+    return () => {
       if (pendingMeasure.current !== 0) {
         cancelAnimationFrame(pendingMeasure.current);
       }
@@ -369,7 +436,7 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
       // rather than spent down over a session — decision-3 names exhausting it
       // here as what leaves the height stale.
       passes.current = 0;
-      scheduleMeasure();
+      scheduleMeasure(true);
     });
     observer.observe(frame);
     return () => observer.disconnect();

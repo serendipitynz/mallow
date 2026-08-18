@@ -348,13 +348,25 @@ hold rather than as an exhaustive style guide.
   between them — which makes the result a function of the document, the frame's
   width and that reference alone. `MAX_MEASUREMENT_PASSES` and
   `MAX_FRAME_HEIGHT_PX` remain as backstops for what that does not make
-  idempotent, not as the mechanism. Two things travel with it: the scroller's
-  `scrollTop` is saved and put back on **every** path out of `measure`, because
-  shrinking the frame shortens the scroller and clamps the offset there and then,
-  and the taller height applied after does not put it back; and the pass budget is
-  refilled by a width change or a mutation, which are external causes rather than
-  the loop feeding itself. Exceeding the maximum height sends the document to the
-  capped source view — **the frame never gets a scrollbar of its own**, which
+  idempotent, not as the mechanism — and the pass budget is spent in
+  `scheduleMeasure`, not only inside `measure`, which is what makes it bound the
+  *work*: a document animating a box's height reports through the
+  `ResizeObserver` every frame and never stops, and each measurement costs two
+  layouts of the frame's document. A width change or a mutation refills the
+  budget, so neither cap is a one-way door.
+  **Every write in `measure` is conditional, and that is a correctness
+  requirement rather than an optimisation.** Writing `scroller.scrollTop` is an
+  instant scroll, and per CSSOM-View an instant scroll aborts a smooth one in
+  progress — so a measurement landing during an outline jump or a fragment-link
+  scroll stops it a few percent in, which reads as "the outline does nothing".
+  Hence the early return when the document already reports the applied height,
+  and hence the offset being written back only when the reference height actually
+  clamped it. For the same reason the frame's headings get their `tabindex="-1"`
+  at load: `Outline`'s `go` otherwise sets it on the heading it jumps to, and
+  inside the frame that attribute write wakes the `MutationObserver`, so the jump
+  scheduled the measurement that cancelled it — on the first click of each
+  heading and only the first. Exceeding the maximum height sends the document to
+  the capped source view — **the frame never gets a scrollbar of its own**, which
   decision-3, decision-9 and TASK-8 all rest on.
 - **Everything the parent puts inside the frame is lost on every `srcdoc` swap,
   and the click handler is a capability rather than a given.** `contentDocument`
