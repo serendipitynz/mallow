@@ -74,8 +74,10 @@ export function Outline({ headings, scrollRef, root = appDocumentRoot }: Outline
     // parent `scrollTop` computed from `offsetFromContainerTop`. TASK-7 measured both
     // working from inside a srcdoc frame on all three WebViews, so decision-9 left the
     // choice here. This one is chosen because it honours the heading's own
-    // `scroll-margin-top` (`styles/markdown.scss`); reproducing that on the parent side
-    // would mean reading it back out of the computed style at every jump.
+    // `scroll-margin-top`; reproducing that on the parent side would mean reading it
+    // back out of the computed style at every jump. Only the markdown view declares one
+    // today (under `.markdown-body`), and a rendered document brings its own or none —
+    // the point is that whatever the heading declares is what applies.
     el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     if (!el.hasAttribute('tabindex')) {
       el.setAttribute('tabindex', '-1');

@@ -377,7 +377,8 @@ hold rather than as an exhaustive style guide.
   (Vitest). Unit tests live next to the code as `src/**/*.test.ts` and cover the
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
-  `heading`, and `custom-emoji`
+  `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
+  and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
