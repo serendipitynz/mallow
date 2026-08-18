@@ -53,8 +53,11 @@ parent-registered listener at all**. Reach-in is unaffected and works everywhere
 
 ## Decision
 
-**Links inside a rendered document are inert wherever the frame runs no
-parent-registered listener, and that is accepted rather than worked around.**
+**An `http(s)` link inside a rendered document is inert wherever the frame runs
+no parent-registered listener, and that is accepted rather than worked around.**
+That is the measured half. What a `#` link does there was not measured and is
+left open for TASK-5.2 to observe — the Consequences say why the obvious answer
+is not yet an answer.
 
 Where listeners do run — WebView2 today — decision-3's interception is
 implemented as written: fragment links are `preventDefault`-ed and scrolled by

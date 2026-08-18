@@ -22,10 +22,10 @@ frontend. The desktop dev webview loads the Vite `devUrl` directly
 the main document and no CSP header is ever produced. `index.html` carries no
 CSP `<meta>` either.
 
-So the only run mode that measures anything is a build. TASK-7's own description
-offers `devCsp` as an alternative; it is wrong on desktop, and a run that took it
-would report every CSP check as failing and every sandbox-only check as passing —
-the both-layers-conflated result the task exists to avoid.
+So the only run mode that measures anything is a build. TASK-7's description
+used to offer `devCsp` as an alternative and no longer does: a run that took it
+would have reported every CSP check as failing and every sandbox-only check as
+passing — the both-layers-conflated result the task exists to avoid.
 
 The probe refuses to let that happen quietly: it provokes one violation in the
 app document before anything else, and if none is reported it says on screen and
@@ -99,12 +99,20 @@ again.
 3. Press **Pick a local image** and choose any image on disk — `src-tauri/icons/32x32.png`
    in this checkout will do. This is the `asset:` half of AC #16; it needs a file
    outside the bundle, so it cannot be automated away.
-4. Fill in the **Recorded by hand** fields. Four of them cannot be measured from
+4. Press **Arm the click test**, then click the link and the button inside that
+   frame with the mouse. A synthetic click is not what link interception has to
+   survive; the counters say which attachment points, if any, heard a real one.
+5. Press **Arm the late-layout test**, wait for the image to load, then open the
+   `<details>` inside that frame. This is how TASK-5.2 learns which mechanism can
+   tell it the frame got taller.
+6. Fill in the **Recorded by hand** fields. Four of them cannot be measured from
    script:
-   - **wheel scrolling** (AC #12) — put the pointer over the tall document and
-     scroll. Does the page behind it move?
-   - **keyboard scrolling** (AC #12) — click a heading inside the tall document
-     so focus lands there, then press PageDown / ArrowDown. Does the page move?
+   - **wheel scrolling** (AC #12) — put the pointer inside the tall document's box
+     and turn the wheel. Does the `scrollTop` readout beside its heading change?
+     That number is the whole criterion.
+   - **keyboard scrolling** (AC #12) — press **Focus a heading inside the tall
+     frame** first: that is what puts focus inside the frame, and clicking a
+     heading does not. Then press PageDown / ArrowDown and watch the same readout.
    - **canvas colour and contrast** (AC #11) — for the unstyled document and for
      the `color-scheme` one: is the paper white or the app's dark surface, and is
      the text readable?
@@ -113,7 +121,7 @@ again.
      both report a frozen `AppleWebKit/605.1.15`: on macOS record the OS version
      instead, and on Linux get the real one from the package manager
      (`pkg-config --modversion webkit2gtk-4.1`, or `apt list --installed | grep webkit2gtk`).
-5. Copy the report out of the box at the bottom and send it back. One report per
+7. Copy the report out of the box at the bottom and send it back. One report per
    platform.
 
 ## What "the run was valid" means
@@ -130,6 +138,12 @@ Two positive controls have to pass, and the report says so in its first line:
 - **a CSP is in force** (AC #15). Read off a real violation rather than from
   `tauri.conf.json`, because what ships is not what is configured: the sha256 of
   `index.html`'s inline bootstrap script is added to `script-src` at build time.
+- **a click driven from the parent reaches the frame**, and **something the frame
+  is asked to activate actually activates**. These are two different controls, and
+  both are needed because most of the blocked-item checks pass by absence. The
+  first is a control element the harness clicks; the second is a `<details>` it
+  opens, which is UA behaviour with no script involved. Where either fails, the
+  checks resting on it report `inconclusive` rather than passing.
 
 Blocked remote subresources are likewise judged by whether a
 `securitypolicyviolation` was reported, not by whether they loaded. They point at
