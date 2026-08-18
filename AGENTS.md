@@ -361,11 +361,14 @@ hold rather than as an exhaustive style guide.
   scroll stops it a few percent in, which reads as "the outline does nothing".
   Hence the early return when the document already reports the applied height,
   and hence the offset being written back only when the reference height actually
-  clamped it. For the same reason the frame's headings get their `tabindex="-1"`
-  at load: `Outline`'s `go` otherwise sets it on the heading it jumps to, and
-  inside the frame that attribute write wakes the `MutationObserver`, so the jump
-  scheduled the measurement that cancelled it — on the first click of each
-  heading and only the first. Exceeding the maximum height sends the document to
+  clamped it. **The general rule that follows is that every parent-side write
+  into the frame happens at load, never in a handler**: each one is an attribute
+  mutation the `MutationObserver` reports, so a write made while preparing a jump
+  schedules the measurement that cancels that jump — on its first use and only
+  the first, which is what makes it hard to catch. Both the landing offset (on
+  everything a fragment can address, not the headings alone) and `tabindex="-1"`
+  are assigned in the load pass for that reason; left to `Outline`'s `go`, the
+  `tabindex` write is exactly that sequence. Exceeding the maximum height sends the document to
   the capped source view — **the frame never gets a scrollbar of its own**, which
   decision-3, decision-9 and TASK-8 all rest on.
 - **Everything the parent puts inside the frame is lost on every `srcdoc` swap,

@@ -288,18 +288,28 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     const nextHeadings = assignHeadingIds(elements, takenIds, (element) =>
       element.id === '' ? false : frameDocument.getElementById(element.id) === (element as unknown as Element),
     );
-    // The landing offset is declared once, in `html.scss` on the frame element,
-    // and copied onto each heading here: the parent's stylesheets do not reach
-    // into the frame's document, and `Outline` reads it back off the heading, so
-    // the jump and the scroll spy cannot disagree (TASK-20).
+    /* The landing offset is declared once, in `html.scss` on the frame element,
+       and copied in here: the parent's stylesheets do not reach into the frame's
+       document, and `Outline` reads it back off the heading, so the jump and the
+       scroll spy cannot disagree (TASK-20).
+
+       Onto everything a fragment can address rather than the headings alone —
+       `scrollIntoView` honours the target's own margin, and a footnote `<li>` or
+       an `<a name>` anchor would otherwise land under the pinned bar. After
+       `assignHeadingIds`, so the ids it just wrote are matched too.
+
+       **Every parent-side write into the frame belongs here, not in a handler.**
+       Each one is an attribute mutation the `MutationObserver` below reports, and
+       the measurement that schedules writes `scroller.scrollTop`, which aborts a
+       smooth scroll in progress — so a write made while preparing a jump cancels
+       that jump, on its first use and only the first. `tabindex` is here for the
+       same reason: `Outline`'s `go` sets it on the heading it jumps to, and left
+       to it, that is exactly the sequence. */
     const landing = getComputedStyle(frame).scrollMarginTop;
-    for (const element of elements) {
+    for (const element of frameDocument.querySelectorAll<HTMLElement>('[id], [name]')) {
       element.style.scrollMarginTop = landing;
-      // Assigned here rather than left to `Outline`'s `go`, which sets it on the
-      // heading it jumps to. That write is an attribute mutation inside the
-      // frame, so it woke the `MutationObserver` below and the measurement it
-      // scheduled cancelled the very jump that caused it — on the first click of
-      // each heading, and only the first.
+    }
+    for (const element of elements) {
       if (!element.hasAttribute('tabindex')) {
         element.setAttribute('tabindex', '-1');
       }
@@ -323,10 +333,8 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
         // through the one boundary-crossing mechanism TASK-8 named.
         const target = fragmentTarget(frameDocument, href);
         if (target) {
-          // The same landing offset the headings were given. A fragment addresses
-          // whatever the document chose — a footnote `<li>`, a `<dt>`, a bare
-          // `<a name>` — and a target without it lands under the pinned bar.
-          target.style.scrollMarginTop = landing;
+          // Nothing is written into the frame here; the target already carries its
+          // landing offset from load. See the loop above for why that matters.
           const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
         }
@@ -355,10 +363,18 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
       scheduleMeasure(true);
     });
     mutations.observe(frameDocument, { subtree: true, childList: true, attributes: true });
-    // Polling is the backstop, not the mechanism (decision-9). A fixed short
-    // schedule rather than a standing interval: it exists for a late change that
-    // moves no box either observer watches, and those all land while the document
-    // is settling.
+    /* Polling is the backstop, not the mechanism (decision-9). A fixed short
+       schedule rather than a standing interval: it exists for a late change that
+       moves no box either observer watches, and those all land while the document
+       is settling.
+
+       It backs up growth only. A poll passes `force: false` like the observer
+       does, so it cannot see the document get *shorter* — a shrink now reaches
+       the height through a mutation or a width change alone. That is deliberate:
+       forcing these three would put three chances per load to abort an outline
+       jump made in the first two seconds, which is the failure the conditional
+       writes exist to remove, and what a missed shrink costs is trailing blank
+       canvas rather than anything the reader cannot get to. */
     const polls = [250, 750, 2000].map((delay) => window.setTimeout(() => scheduleMeasure(false), delay));
 
     disposeFrame.current = () => {
