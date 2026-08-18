@@ -339,6 +339,7 @@ async function runScriptsFixture(host: HTMLElement, cspPresent: boolean, markerC
   const win = frame.contentWindow;
 
   const dispatch = measureClickDispatch(doc);
+  const activates = measureActivation(doc);
   clickIn(doc, 'onclick-probe', dispatch);
   clickIn(doc, 'jsurl-probe', dispatch);
   await sleep(400);
@@ -349,18 +350,18 @@ async function runScriptsFixture(host: HTMLElement, cspPresent: boolean, markerC
   const styled = doc.getElementById('styled');
   const styledColor = styled === null ? '' : (doc.defaultView ?? window).getComputedStyle(styled).color;
 
-  const clickNote = `click dispatch control: HTMLElement.click() delivered ${dispatch.viaClickMethod}, dispatchEvent delivered ${dispatch.viaDispatchEvent}`;
+  const clickNote = `listener control: HTMLElement.click() was heard ${dispatch.viaClickMethod}, dispatchEvent was heard ${dispatch.viaDispatchEvent}; activation control on the same document: ${activates}`;
 
   return [
     check(
-      'control.click-dispatch',
+      'control.listener-invocation',
       [3, 10],
       'control',
-      'A click driven from the parent actually reaches the frame document',
+      'A click driven from the parent reaches a listener the parent registered on the frame document',
       expect(dispatch.worked),
       dispatch.worked
         ? clickNote
-        : `${clickNote} — no LISTENER hears a click here, so every "nothing ran when clicked" result below is vacuous rather than evidence of containment. This says nothing about whether the click activates: that is the activation control, and on both WebKit engines it does.`,
+        : `${clickNote} — no listener hears a click here, so every "nothing ran when clicked" result below is vacuous rather than evidence of containment. Whether the click ARRIVES is a separate question, answered by the activation control on this same line: ${activates ? 'it does, and activation is intact' : 'it did not activate anything either'}.`,
     ),
     check(
       'sandbox.external-script',
@@ -680,7 +681,7 @@ async function runPlainLinkFixture(host: HTMLElement): Promise<Check[]> {
       'parent',
       'A plain link with no target does not navigate the frame once the parent intercepts clicks',
       dispatch.worked ? expect(intercepted > 0 && survivedWithHandler) : 'inconclusive',
-      `the parent's listener saw ${intercepted} click(s) on the link; fixture still loaded: ${survivedWithHandler}. Click dispatch control on this fixture: HTMLElement.click() delivered ${dispatch.viaClickMethod}, dispatchEvent delivered ${dispatch.viaDispatchEvent}. 0 intercepted clicks with a working control means the LINK specifically swallowed it, which would be a real defect for TASK-5.2; 0 with a failed control means only that the probe could not reach the frame.`,
+      `the parent's listener saw ${intercepted} click(s) on the link; fixture still loaded: ${survivedWithHandler}. Listener control on this fixture: HTMLElement.click() was heard ${dispatch.viaClickMethod}, dispatchEvent was heard ${dispatch.viaDispatchEvent}; activation control: ${activates}. 0 intercepted clicks with a working listener control means the LINK specifically swallowed it, which would be a real defect for TASK-5.2; 0 with a failed one means only that no listener here hears a click — which says nothing about whether the click arrived.`,
     ),
     check(
       'nav.plain-link-uncontrolled',

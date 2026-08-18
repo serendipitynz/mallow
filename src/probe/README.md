@@ -138,12 +138,18 @@ Two positive controls have to pass, and the report says so in its first line:
 - **a CSP is in force** (AC #15). Read off a real violation rather than from
   `tauri.conf.json`, because what ships is not what is configured: the sha256 of
   `index.html`'s inline bootstrap script is added to `script-src` at build time.
-- **a click driven from the parent reaches the frame**, and **something the frame
-  is asked to activate actually activates**. These are two different controls, and
-  both are needed because most of the blocked-item checks pass by absence. The
-  first is a control element the harness clicks; the second is a `<details>` it
-  opens, which is UA behaviour with no script involved. Where either fails, the
-  checks resting on it report `inconclusive` rather than passing.
+- **a click driven from the parent reaches a listener the parent registered**,
+  and separately **something the frame is asked to activate actually activates**.
+  Two controls, because most of the blocked-item checks pass by absence and the
+  two failures are not the same failure. The first clicks a control element and
+  asks whether any listener heard it; the second clicks a `<summary>` and reads
+  `details.open` back, which is UA behaviour with no script involved. Where either
+  fails, the checks resting on that one report `inconclusive` rather than passing.
+
+  They can disagree, and where they do the report says so rather than collapsing
+  them: a click that no listener hears may still have arrived and activated. Read
+  the two values on the run in front of you; neither is a property of a platform
+  that can be assumed from a previous run.
 
 Blocked remote subresources are likewise judged by whether a
 `securitypolicyviolation` was reported, not by whether they loaded. They point at
