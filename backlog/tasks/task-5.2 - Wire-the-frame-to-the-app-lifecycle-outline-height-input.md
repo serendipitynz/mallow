@@ -4,7 +4,7 @@ title: 'Wire the frame to the app: lifecycle, outline, height, input'
 status: To Do
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-08-17 05:56'
+updated_date: '2026-08-18 01:18'
 labels:
   - feature
 milestone: m-1
@@ -36,12 +36,12 @@ Part 2 of 3 for TASK-5 (see decision-3). Makes the frame behave like part of the
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ids, listeners and the measured height are all re-established after the frame reloads, and scroll position is preserved across a live reload
+- [ ] #1 Ids, the measured height and any parent-side wiring are all re-established after the frame reloads, and scroll position is preserved across a live reload
 - [ ] #2 Headings that already carry an id keep it, generated slugs do not collide, and the document's own fragment links still resolve
 - [ ] #3 The outline lists the document's headings, clicking one scrolls to it, and the active-heading highlight tracks the parent scroller
 - [ ] #4 Frame height converges on a document whose body depends on viewport height, within a bounded number of measurements and a maximum height
-- [ ] #5 Height is re-measured after images and details elements change the layout
-- [ ] #6 Fragment links scroll the parent scroller; http(s) links open the OS browser and never navigate the app WebView; every other scheme is inert
+- [ ] #5 Height is re-measured after images and details elements change the layout, driven by an observer rather than by a listener inside the frame (decision-9)
+- [ ] #6 Where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser and never navigate the app WebView, and every other scheme is inert. Where it does not, every link is inert and that is detected at runtime rather than assumed from the platform (decision-9)
 - [ ] #7 After clicking an outline entry, arrow keys, Space, PageDown, Home and End still scroll the document
 - [ ] #8 pnpm build and pnpm test pass
 - [ ] #9 Height is re-measured when the frame's width changes: window resize, Explorer splitter drag, and outline open/close

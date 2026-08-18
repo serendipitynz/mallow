@@ -4,7 +4,7 @@ title: 'Surface what was disabled: notice bar, open outside mallow, window title
 status: To Do
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-08-17 05:56'
+updated_date: '2026-08-18 01:18'
 labels:
   - feature
 milestone: m-1
@@ -27,7 +27,7 @@ Part 3 of 3 for TASK-5 (see decision-3). Makes the limits visible instead of loo
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The notice bar reports counts for inert scripts, external references and unrewritable local stylesheet or font references
+- [ ] #1 The notice bar reports counts for inert scripts, external references and unrewritable local stylesheet or font references, and says when links are inert because this frame runs no parent-registered listeners (decision-9)
 - [ ] #2 The open-outside-mallow action works on a file in a folder the user picked anywhere on disk, not only under the home directory
 - [ ] #3 The action's label matches what it actually does
 - [ ] #4 The window title follows the document's title element when present and falls back to the file name, with a single writer
