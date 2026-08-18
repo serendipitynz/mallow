@@ -1,10 +1,15 @@
-# TASK-7 probe — how to run it
+# The probe — how to run it
 
-A measuring instrument for TASK-7, not part of mallow. It builds only when
-`MALLOW_PROBE=1` is set, and the ordinary build does not contain a byte of it.
+A measuring instrument, not part of mallow. It builds only when `MALLOW_PROBE=1`
+is set, and the ordinary build does not contain a byte of it.
 
-It answers whether the two behaviours decision-3 rests on actually hold on this
-project's three WebViews:
+It was built for TASK-7 and grew a second section for TASK-5.1, whose transform
+has to be exercised on a real engine (see **The transform section** below). The
+two are kept apart on screen and in the report, because their `#N` are different
+tasks' acceptance criteria.
+
+TASK-7's part answers whether the two behaviours decision-3 rests on actually
+hold on this project's three WebViews:
 
 1. an iframe carrying a `srcdoc` document with `sandbox="allow-same-origin"` and
    deliberately **no** `allow-scripts` stays same-origin with the parent, so the
@@ -121,7 +126,9 @@ again.
      both report a frozen `AppleWebKit/605.1.15`: on macOS record the OS version
      instead, and on Linux get the real one from the package manager
      (`pkg-config --modversion webkit2gtk-4.1`, or `apt list --installed | grep webkit2gtk`).
-7. Copy the report out of the box at the bottom and send it back. One report per
+7. Press **Run the transform checks** in the TASK-5.1 section. It needs no
+   interaction and takes no time; its verdicts go into their own table.
+8. Copy the report out of the box at the bottom and send it back. One report per
    platform.
 
 ## What "the run was valid" means
@@ -158,3 +165,25 @@ true with no CSP at all, and only the violation event distinguishes the two. The
 one remote reference that must **load** is an image, and it does need the
 network; its CSP verdict and its load verdict are reported separately so an
 offline machine cannot be mistaken for a CSP failure.
+
+## The transform section (TASK-5.1)
+
+`lib/html-doc`'s pure halves — the URL rules, the `srcset` split, the counting —
+are unit-tested under Node. Two things about the transform are properties of the
+*engine* and cannot be established there, which is what this section measures:
+
+- how the engine normalises markup a regex gets wrong — uppercase tags, a newline
+  inside a tag, unquoted attribute values, `srcset` paths containing commas —
+  before the transform ever sees the document;
+- whether removing `<base>` and nested frames from a live document actually
+  leaves them out of both the serialized string **and** the document the engine
+  rebuilds from it.
+
+It also renders one transformed document into a frame with the app's sandbox
+flags and reads back `compatMode` and a computed colour, which is the check that
+the doctype survived and that a document's own `<style>` applies inside the
+frame.
+
+Unlike TASK-7's checks, none of these depend on the CSP, so they mean the same
+thing in any run mode. Everything else in this file still applies: the run that
+is worth recording is a built one.

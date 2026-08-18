@@ -6,9 +6,9 @@ import { countLines, highlightSkipReason } from '../lib/source-cap';
 
 /** Shared syntax-highlighted source view with line numbers. Used as one mode of
  *  the markdown viewer (preview/source), the config viewer (tree/source), the
- *  table viewer (table/source) and the xml viewer (tree/source), and as the whole
- *  view for the kinds that have no second mode (text/ini/diff/sql, and html until
- *  its rendered view gives it one). */
+ *  table viewer (table/source), the xml viewer (tree/source) and the html viewer
+ *  (rendered/source), and as the whole view for the kinds that have no second
+ *  mode (text/ini/diff/sql). */
 
 function errorLineTransformer(line: number): ShikiTransformer {
   return {

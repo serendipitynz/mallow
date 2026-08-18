@@ -22,6 +22,7 @@ import {
   runAssetImageCheck,
 } from './harness';
 import { buildReport, guessWebViewVersion, type Manual } from './report';
+import { runTransformChecks, type TransformCheck } from './transform-checks';
 import './probe.scss';
 
 const YES_NO = ['(not recorded)', 'yes', 'no', 'partly — see notes'];
@@ -59,6 +60,7 @@ export default function Probe() {
   const [clicks, setClicks] = useState<ClickCounts | null>(null);
   const [late, setLate] = useState<LateLayout | null>(null);
   const [focusNote, setFocusNote] = useState<string>('');
+  const [transformChecks, setTransformChecks] = useState<TransformCheck[] | null>(null);
   // Shown live beside the tall frame so the two hand-recorded scroll answers are
   // a reading rather than a judgement: "yes" is this number changing.
   const [scrollTop, setScrollTop] = useState(0);
@@ -75,6 +77,7 @@ export default function Probe() {
   const assetRef = useRef<HTMLDivElement>(null);
   const manualClickRef = useRef<HTMLDivElement>(null);
   const lateLayoutRef = useRef<HTMLDivElement>(null);
+  const transformRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Applied straight to the attribute rather than through `setTheme`, which
@@ -138,14 +141,22 @@ export default function Probe() {
     }
   }, []);
 
+  const onRunTransform = useCallback(async () => {
+    try {
+      setTransformChecks(await runTransformChecks(transformRef.current as HTMLElement));
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
   const checks = useMemo(
     () => (result === null ? [] : assetCheck === null ? result.checks : [...result.checks, assetCheck]),
     [result, assetCheck],
   );
 
   const report = useMemo(
-    () => (result === null ? '' : buildReport(result.env, checks, manual, clicks, late)),
-    [result, checks, manual, clicks, late],
+    () => (result === null ? '' : buildReport(result.env, checks, manual, clicks, late, transformChecks)),
+    [result, checks, manual, clicks, late, transformChecks],
   );
 
   useEffect(() => {
@@ -392,6 +403,46 @@ export default function Probe() {
           </ul>
         )}
         <Host hostRef={lateLayoutRef} />
+      </section>
+
+      <section className="probe-manual">
+        <h2>TASK-5.1 — markup transform</h2>
+        <p className="probe-note">
+          This one needs no interaction: it runs mallow&apos;s own transform over markup a regex would get wrong
+          (uppercase tags, a newline inside a tag, unquoted attributes, a <code>srcset</code> whose paths contain
+          commas) and checks what this engine made of it. The AC numbers in its table are{' '}
+          <strong>TASK-5.1&apos;s</strong>, not TASK-7&apos;s.
+        </p>
+        <div className="probe-controls">
+          <button type="button" onClick={onRunTransform}>
+            Run the transform checks
+          </button>
+        </div>
+        {transformChecks !== null && (
+          <table className="probe-table">
+            <thead>
+              <tr>
+                <th>verdict</th>
+                <th>AC</th>
+                <th>check</th>
+                <th>observation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transformChecks.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <span className={`probe-verdict probe-verdict--${c.verdict}`}>{c.verdict}</span>
+                  </td>
+                  <td>{c.ac.map((n) => `#${n}`).join(', ')}</td>
+                  <td>{c.title}</td>
+                  <td className="probe-detail">{c.detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <Host hostRef={transformRef} />
       </section>
 
       <section className="probe-manual">

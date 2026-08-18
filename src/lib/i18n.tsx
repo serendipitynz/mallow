@@ -57,6 +57,9 @@ const ja: Dict = {
   renderError: 'レンダリングエラー: {message}',
   // source view
   highlightSkipped: 'ファイルが大きいため、強調表示を省いて表示しています。',
+  // html view
+  rendered: '描画',
+  htmlRenderSkipped: '要素数またはテキスト量が上限を超えているため、描画せずソースを表示しています。',
   // config view
   expandAll: 'すべて展開',
   collapseAll: 'すべて折りたたみ',
@@ -132,6 +135,10 @@ const en: Dict = {
   renderError: 'Render error: {message}',
   // source view
   highlightSkipped: 'This file is large, so it is shown without syntax highlighting.',
+  // html view
+  rendered: 'Rendered',
+  htmlRenderSkipped:
+    'This document has more elements or text than the rendered view builds, so its source is shown instead.',
   // config view
   expandAll: 'Expand all',
   collapseAll: 'Collapse all',

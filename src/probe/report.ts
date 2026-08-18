@@ -7,6 +7,7 @@
  *  evidence for — has to survive a copy and paste. */
 
 import type { Check, ClickCounts, Environment, LateLayout } from './harness';
+import type { TransformCheck } from './transform-checks';
 
 export interface Manual {
   platform: string;
@@ -99,12 +100,34 @@ function lateLayoutBlock(late: LateLayout | null): string {
   ].join('\n');
 }
 
+/** TASK-5.1's section, kept out of the table above because its `#N` are that
+ *  task's acceptance criteria and not TASK-7's — one table carrying two
+ *  numbering schemes is a record nobody can read back. */
+function transformBlock(checks: TransformCheck[] | null): string {
+  if (checks === null || checks.length === 0) {
+    return ['### TASK-5.1 — markup transform on this engine', '', 'not run', ''].join('\n');
+  }
+  const rows = checks.map(
+    (c) =>
+      `| ${c.verdict === 'pass' ? 'PASS' : 'FAIL'} | ${c.ac.map((n) => `#${n}`).join(', ')} | ${c.title} | ${c.detail.replace(/\|/g, '\\|')} |`,
+  );
+  return [
+    '### TASK-5.1 — markup transform on this engine',
+    '',
+    `AC numbers in this table are **TASK-5.1's**. ${checks.filter((c) => c.verdict === 'pass').length} pass / ${checks.filter((c) => c.verdict === 'fail').length} fail`,
+    '',
+    ['| verdict | AC | check | observation |', '|---|---|---|---|', ...rows].join('\n'),
+    '',
+  ].join('\n');
+}
+
 export function buildReport(
   env: Environment,
   checks: Check[],
   manual: Manual,
   clicks: ClickCounts | null,
   late: LateLayout | null,
+  transformChecks: TransformCheck[] | null,
 ): string {
   const counts = {
     pass: checks.filter((c) => c.verdict === 'pass').length,
@@ -158,6 +181,7 @@ export function buildReport(
     `- wheel scrolling chains from the frame to the parent scroller: ${manual.wheelChains || '(not recorded)'}`,
     `- keyboard scrolling reaches the parent scroller with focus inside the frame: ${manual.keyboardScrolls || '(not recorded)'}`,
     '',
+    transformBlock(transformChecks),
     '### Notes',
     '',
     manual.notes || '(none)',
