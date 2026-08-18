@@ -1,3 +1,5 @@
+@use './vars' as *;
+
 // ---- HTML rendered view ------------------------------------------------------
 .html-frame {
   display: block;
@@ -16,4 +18,16 @@
   // "author styles win" stays true inside the canvas.
   color-scheme: light;
   background: #fff;
+  // The frame sits in the same grid cell of `.doc__body` the markdown article
+  // does, so the outline gets its column.
+  grid-area: main;
+  min-width: 0;
+  // Where a jump lands a heading *inside* the frame. The pinned `.doc__bar`
+  // overlays the frame's top edge, and the parent's stylesheets do not reach into
+  // the frame's document — so this cannot be declared on the heading the way
+  // `markdown.scss` declares it. It is declared here and copied onto each heading
+  // as an inline style once the document loads, which keeps the landing one value
+  // in CSS: `Outline` reads it back off the heading, so the spy and the jump
+  // cannot drift apart (TASK-20).
+  scroll-margin-top: calc(var(--doc-bar-height, #{$doc-bar-height}) + 1.5rem);
 }

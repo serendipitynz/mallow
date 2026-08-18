@@ -333,7 +333,67 @@ hold rather than as an exhaustive style guide.
   clicked about half the time. **A viewer that mounts `.markdown-body` without
   publishing the property takes the 62px fallback silently** (`MermaidView` today;
   the Config/Table/Xml bars publish nothing), which is harmless only for as long
-  as nothing there has headings.
+  as nothing there has headings. **`HtmlView` is the other case, not that one**:
+  its headings sit in the frame's own document, which `markdown.scss` cannot
+  reach, so the value is declared as `scroll-margin-top` on `.html-frame` in
+  `html.scss` and copied onto each heading as an inline style at load. It is
+  still one value in CSS, and `Outline` still reads it back off the heading.
+- **The rendered HTML frame's height is read at the height currently applied,
+  and that is what makes the converged value a fixed point.** The frame's height
+  *is* its document's viewport, so a height measured anywhere else is a height
+  the document is not laid out at: apply it and `90vh` inside resolves against a
+  viewport the document never gets, the content ends up taller than the box
+  holding it, and **the frame becomes the second scroll region decision-3,
+  decision-9 and TASK-8 all forbid** — `scrollIntoView` then scrolls inside the
+  frame and the parent does not move. TASK-5.2 shipped a reference-height variant
+  first, on the reasoning that it removed the feedback loop; it removed the
+  convergence instead, and only the visual round caught it. decision-3 specifies
+  this loop, divergence included; `MAX_MEASUREMENT_PASSES` and
+  `MAX_FRAME_HEIGHT_PX` are what bound it, and the `ResizeObserver` is what
+  drives it — applying a height changes the viewport, which the observer reports,
+  which measures again.
+  **Converging writes nothing**, which is not an optimisation: per CSSOM-View an
+  instant scroll aborts a smooth one, so a measurement landing during an outline
+  jump would stop it a few percent in, and the observers and polls fire during
+  exactly those. **A shrink is invisible from a tall frame** — `scrollHeight` is
+  floored by the frame's own height — so a cause that can shorten the document (a
+  mutation, a width change) asks for a *restart*, which re-seeds the frame at the
+  reader's viewport and carries the reader across on the heading anchor rather
+  than on a `scrollTop` belonging to the height being recomputed. The polls do
+  not restart, so a shrink they alone would catch is not caught; that trade is
+  written beside them.
+  **Every parent-side write into the frame belongs to the load pass, never to a
+  handler** — the landing offset and `tabindex` both — because each is an
+  attribute mutation the `MutationObserver` reports, and a mutation now asks for
+  a restart: a write made while preparing a jump would re-seed the frame and
+  throw the reader to the top as well as killing the jump.
+- **A `srcdoc` document's base URL is the *parent's*, so `#section` inside the
+  frame is not a same-document link — and `frame-src 'self'` lets it load.** The
+  frame navigates to the app's own URL, the shell renders blank because its
+  scripts are refused, and the reader has no way back inside the view. So does a
+  relative or root-absolute path. `http(s)` links are the ones `frame-src` really
+  does stop, which is why they were inert and these were not; **"the CSP holds the
+  frame in place" is only true of destinations `frame-src` does not carry, and any
+  argument leaning on it has to name the destination first.** Where the frame runs
+  no parent-registered listener nothing can `preventDefault` this, so `HtmlView`
+  neutralizes those links at load with `pointer-events: none` — the click never
+  reaches the anchor while `:link` still matches, so the document keeps its own
+  styling (decision-10). `lib/html-doc`'s `navigatesAppOrigin` is the predicate.
+- **Everything the parent puts inside the frame is lost on every `srcdoc` swap,
+  and the click handler is a capability rather than a given.** `contentDocument`
+  is `about:blank` until the iframe **element**'s `load` (which does fire on all
+  three WebViews), and each swap builds a fresh document, so `HtmlView` re-runs
+  heading ids → parent-side wiring → scroll anchor → height on every load, in that
+  order. Whether a listener the parent registers on that document is ever invoked
+  is settled by one synchronous dispatch per document — it runs on WebView2 and on
+  neither WebKit engine (decision-9) — and never by branching on a platform name.
+  Late layout is **observed**, never listened for: a `load` listener on an image
+  inside the frame fired on none of the three, while a `ResizeObserver` on the
+  frame's `documentElement` and a `MutationObserver` on its document reported on
+  all three; polling is the backstop. The scroll anchor is captured on every
+  parent scroll rather than just before a reload, because a `srcdoc` swap replaces
+  the document asynchronously and there is no moment the parent can rely on where
+  the new markup is committed and the old document is still readable.
 - **`TableView` is capped by four constants, and unlike `SourceView` it does
   withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100),
   `TABLE_MAX_CELLS` (20,000) and `TABLE_MAX_CELL_CHARS` (500) live in

@@ -177,6 +177,31 @@ export function classifyRef(value: string): RefKind {
 }
 
 /**
+ * Whether following this href would navigate the frame to a URL in the app's own
+ * origin.
+ *
+ * **A bare fragment is one of them**, which is the part that surprises. A
+ * `srcdoc` document's base URL is the *parent's* document URL, so `#section`
+ * resolves to the app's own URL plus a fragment — a different document, not a
+ * same-document link — and `frame-src 'self'` permits loading it. So does a
+ * relative or root-absolute path. What follows is the app shell rendered inside
+ * the sandboxed frame with its scripts refused, which is a blank page the reader
+ * has no way back from (decision-10).
+ *
+ * An explicit scheme is excluded because it resolves somewhere else and the CSP
+ * is what answers for it: `http(s)` is not in `frame-src` and does not load,
+ * which is the inertness decision-9 accepted. A protocol-relative `//host/x`
+ * inherits `tauri:` but not the host, so it is not `'self'` either.
+ */
+export function navigatesAppOrigin(value: string): boolean {
+  const ref = value.trim();
+  if (ref.startsWith('//')) {
+    return false;
+  }
+  return !SCHEME.test(ref);
+}
+
+/**
  * Split a `srcset` into its candidates.
  *
  * The list is comma-separated, but a comma may also sit inside a URL — and a

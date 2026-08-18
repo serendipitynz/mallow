@@ -3,6 +3,7 @@ import {
   classifyRef,
   countDocument,
   type DocNodeLike,
+  navigatesAppOrigin,
   parseSrcset,
   RENDER_MAX_ELEMENTS,
   RENDER_MAX_TEXT_CHARS,
@@ -168,5 +169,34 @@ describe('renderSkipReason', () => {
   it('catches a document that is small by one measure and huge by the other', () => {
     expect(renderSkipReason({ elements: 16, textChars: 2_000_000 })).toBe('text');
     expect(renderSkipReason({ elements: 200_000, textChars: 1_000 })).toBe('elements');
+  });
+});
+
+describe('navigatesAppOrigin', () => {
+  it('answers true for what resolves against the parent document URL', () => {
+    // A srcdoc document's base URL is the parent's, so none of these is a
+    // same-document link: each loads the app's own URL into the frame.
+    for (const href of ['#section', '#', '', 'other.html', './a/b.html', '../up.html', '/root.png']) {
+      expect(navigatesAppOrigin(href)).toBe(true);
+    }
+  });
+
+  it('answers false where the scheme decides instead, and the CSP answers for it', () => {
+    for (const href of [
+      'https://example.com/',
+      'http://example.com/',
+      'mailto:a@b.c',
+      'javascript:void 0',
+      'data:text/html,x',
+      'asset://x',
+      '//example.com/x',
+    ]) {
+      expect(navigatesAppOrigin(href)).toBe(false);
+    }
+  });
+
+  it('ignores surrounding whitespace, as the parser does', () => {
+    expect(navigatesAppOrigin('  #top  ')).toBe(true);
+    expect(navigatesAppOrigin('  https://example.com/  ')).toBe(false);
   });
 });

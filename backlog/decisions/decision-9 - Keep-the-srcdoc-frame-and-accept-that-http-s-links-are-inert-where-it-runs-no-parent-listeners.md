@@ -64,9 +64,12 @@ than settled.
 
 **An `http(s)` link inside a rendered document is inert wherever the frame runs
 no parent-registered listener, and that is accepted rather than worked around.**
-That is the measured half. What a `#` link does there was not measured and is
+That is the measured half. What a `#` link does there was not measured and was
 left open for TASK-5.2 to observe — the Consequences say why the obvious answer
-is not yet an answer.
+is not yet an answer. **TASK-5.2 observed it and the answer is no: the frame
+navigates, because a `srcdoc` document's base URL is the parent's. decision-10
+supersedes the Consequences paragraph below on that point and says what is done
+about it.**
 
 Where listeners do run — WebView2 today — decision-3's interception is
 implemented as written: fragment links are `preventDefault`-ed and scrolled by
@@ -79,7 +82,10 @@ documentation says so (TASK-19).
 
 **This costs no containment.** An intercepted click was never what stopped the
 frame going anywhere — `frame-src` is, and it does: with interception removed,
-the frame did not navigate on either WebKit engine. What is lost is a feature.
+the frame did not navigate on either WebKit engine. **True of `http(s)`
+destinations only** — `frame-src` carries `'self'`, so a link resolving to the
+app's own URL does navigate (decision-10). Containment is unaffected either way,
+since nothing in the loaded shell runs. What is lost is a feature.
 The escape hatch is the one decision-3 already requires: open the file outside
 mallow.
 
@@ -157,6 +163,11 @@ accident.
   is the arrangement TASK-5.2 builds rather than something TASK-7 observed.
   **TASK-5.2 has to observe what a real click on a `#` link does before writing
   it down as inert**, and TASK-19 must not describe it as measured until then.
+  **Superseded by decision-10**: it was observed, it is not inert, and it is not
+  merely "does something" either — the frame navigates to the app's own URL and
+  goes blank. The reasoning above is kept because it was right about why the
+  inference could not stand; it was wrong only about which way the observation
+  would fall.
 
   The outline is unaffected either way: it is driven from the parent and uses
   reach-in, so it works everywhere. A document's own table of contents may not
