@@ -4,7 +4,7 @@ title: 'Build the frame: markup transform, sandbox, base style, toggle'
 status: In Review
 assignee: []
 created_date: '2026-07-30 10:25'
-updated_date: '2026-08-18 11:17'
+updated_date: '2026-08-18 11:30'
 labels:
   - feature
 milestone: m-1
@@ -44,11 +44,11 @@ Verify in a built app, not only in pnpm tauri dev: there is no CSP under dev on 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 A self-contained HTML file with an inline style element renders with its styling applied
-- [ ] #2 An inline script does not execute, and neither does an on-star attribute, a javascript: URL, a form submission, nor a meta refresh - checked in a built app, where the CSP actually exists
+- [x] #2 An inline script does not execute, and neither does an on-star attribute, a javascript: URL, a form submission, nor a meta refresh - checked in a built app, where the CSP actually exists
 - [x] #3 A nested iframe or frame element is removed from the document, and a base element is ignored
 - [x] #4 The frame's canvas is light under every theme, and a document that declares color-scheme support with a text colour but no background stays readable
 - [x] #5 The rendered document is in standards mode (compatMode is CSS1Compat), so the doctype survived the transform
-- [ ] #6 Local media loads through every rewritten attribute: img src, img srcset, source src, source srcset, video src, video poster
+- [x] #6 Local media loads through every rewritten attribute: img src, img srcset, source src, source srcset, video src, video poster
 - [x] #7 A document whose images are data: URIs renders unchanged, and unit tests pin data:, http(s), protocol-relative, blob:, empty and fragment-only values as untouched
 - [x] #8 srcset values with descriptors and with commas inside paths survive the rewrite, covered by unit tests
 - [x] #9 The transform returns the documented contract, including the title, so no consumer parses the document again
@@ -58,5 +58,17 @@ Verify in a built app, not only in pnpm tauri dev: there is no CSP under dev on 
 - [x] #13 The CSP in tauri.conf.json is unchanged
 - [x] #14 pnpm build and pnpm test pass
 - [x] #15 The URL-resolution, srcset-splitting and counting helpers are unit-tested as pure functions under Node
-- [ ] #16 The complete parse-mutate-serialize transform is exercised in a DOM-capable environment - a browser or built-WebView fixture, or a deliberately adopted DOM test environment - since browser normalization of malformed markup and the actual base/frame removal cannot be observed from pure helpers
+- [x] #16 The complete parse-mutate-serialize transform is exercised in a DOM-capable environment - a browser or built-WebView fixture, or a deliberately adopted DOM test environment - since browser normalization of malformed markup and the actual base/frame removal cannot be observed from pure helpers
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Visual round, 2026-08-18, macOS (WKWebView), on a built app - there is no CSP under 'pnpm tauri dev' on desktop, so the containment criteria could not have been answered there.
+
+Probe ('MALLOW_PROBE=1 pnpm tauri build --debug --no-bundle', then the TASK-5.1 - markup transform section): 10 of 10 checks pass. Notably 'rewrites' reports 8 references rewritten with none left as written, which covers every attribute AC #6 names; 'counts' reports unresolvedLocalRefs 3 / externalRefs 1 / links 1 / scripts 1 against the fixture; compatMode is CSS1Compat; a 30,004-element document is neither serialized nor rendered.
+
+The first probe run reported 'rewrites' as FAIL, and the transform was not what was wrong: the fixture writes src=img/logo.png while the expectation asked for /probe/docs/logo.png. Fixed in fc2afbd, which also added the converse assertion - a local path still present as written now fails the check, since 'the asset URL is in there somewhere' passes vacuously when an attribute is walked past.
+
+In the app, over _sandbox/samples/: rendered.html shows its own styling and loads img src, both srcset candidates, picture > source and the video poster; the data: image renders and /absolute.png stays broken by design. rendered-inert.html leaves the window title unchanged (inline script), the background unpainted (on* attribute), the page where it was (meta refresh), shows no nested frame, and renders the relative image the removed <base> would have redirected; the javascript: link and the form's submit button were both pressed and did nothing. rendered-colorscheme.html keeps a white canvas with readable dark text under a dark palette. rendered-huge.html (36,006 elements) falls back to the source view with its notice.
+<!-- SECTION:NOTES:END -->
