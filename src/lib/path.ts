@@ -87,9 +87,18 @@ export function resolvePath(dir: string, ref: string): string {
   if (rest.length === 0) {
     return base;
   }
-  // `join` reads the separator style off `dir`, which an empty `dir` cannot
-  // supply — and prefixing one there would turn a relative result absolute.
-  return base === '' ? rest.join('/') : join(base, ...rest);
+  // The separator is read off the original `dir`, not off what `..` left of it:
+  // a climb that reaches a bare drive letter leaves `C:`, which carries no
+  // separator to infer from, and joining with `/` there would emit `C:/x.png`
+  // where every other path in the app is backslash-style. An empty `dir` is the
+  // one case with nothing to prefix — a separator there would turn a relative
+  // result absolute.
+  const sep = separatorOf(dir);
+  const tail = rest.join(sep);
+  if (base === '' || base.endsWith('/') || base.endsWith('\\')) {
+    return `${base}${tail}`;
+  }
+  return `${base}${sep}${tail}`;
 }
 
 /** Append child components to a directory path, keeping the input's separator

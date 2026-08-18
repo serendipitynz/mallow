@@ -146,4 +146,11 @@ describe('resolvePath', () => {
   it('keeps the Windows separator style', () => {
     expect(resolvePath('C:\\Users\\me\\docs', '../img/logo.png')).toBe('C:\\Users\\me\\img\\logo.png');
   });
+
+  // A climb that reaches the drive root leaves `C:`, which carries no separator
+  // of its own — the style has to come from the input, not from what is left of it.
+  it('keeps the Windows separator style at the drive root', () => {
+    expect(resolvePath('C:\\docs', '../img/logo.png')).toBe('C:\\img\\logo.png');
+    expect(resolvePath('C:\\', 'img/logo.png')).toBe('C:\\img\\logo.png');
+  });
 });
