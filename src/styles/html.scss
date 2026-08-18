@@ -1,0 +1,19 @@
+// ---- HTML rendered view ------------------------------------------------------
+.html-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  // Height until the frame's own content has been measured on load. The frame is
+  // sized to its content from there on, so the app's scroller stays the only one.
+  height: 60vh;
+  // The frame's canvas is light under every app palette, declared on the iframe
+  // ELEMENT rather than baked into the document (decision-3). The embedding
+  // element's used colour scheme becomes the embedded document's preferred one,
+  // so this also settles what `prefers-color-scheme` evaluates to inside; and it
+  // survives a palette-only theme switch, which a style inside `srcdoc` would
+  // not, since `onThemeChange` only fires when the resolved light/dark mode
+  // changes. It cannot conflict with the document's author styles either, so
+  // "author styles win" stays true inside the canvas.
+  color-scheme: light;
+  background: #fff;
+}

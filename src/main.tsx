@@ -6,6 +6,7 @@ import './styles/app.scss';
 import './styles/markdown.scss';
 import './styles/config.scss';
 import './styles/source.scss';
+import './styles/html.scss';
 import './styles/table.scss';
 import './styles/xml.scss';
 
