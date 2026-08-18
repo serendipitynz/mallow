@@ -93,8 +93,9 @@
     line-height: 1.3;
     // Clear the pinned `.doc__bar`, which otherwise covers the heading a jump lands
     // on. `--doc-bar-height` is measured by `MarkdownView`; the SCSS constant is the
-    // fallback for the paint before that runs. The 1.5rem matches `SPY_OFFSET_REM`,
-    // so a heading jumped to is exactly the one the spy marks current.
+    // fallback for the paint before that runs. This declaration is the only place the
+    // landing is stated — `Outline` reads it back off the heading rather than keeping
+    // an offset of its own, so the scroll spy marks the heading a jump arrives at.
     scroll-margin-top: calc(var(--doc-bar-height, #{$doc-bar-height}) + 1.5rem);
   }
 
