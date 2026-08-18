@@ -25,5 +25,8 @@ If it is real, the fix is a second grant beside the recursive one rather than a 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The failure is reproduced on macOS or Linux before anything is changed: an image inside a dot-prefixed directory under the opened folder, opened from the tree, does not render,Media inside a dot-prefixed directory under the opened folder renders, on every platform,The widening is scoped to the folder the user opened, and is stated in AGENTS.md and AGENTS.ja.md beside the existing allow_media_dir note,cargo check and cargo test pass
+- [ ] #1 The failure is reproduced on macOS or Linux before anything is changed: an image inside a dot-prefixed directory under the opened folder, opened from the tree, does not render
+- [ ] #2 Media inside a dot-prefixed directory under the opened folder renders, on every platform
+- [ ] #3 The widening is scoped to the folder the user opened, and is stated in AGENTS.md and AGENTS.ja.md beside the existing allow_media_dir note
+- [ ] #4 cargo check and cargo test pass
 <!-- AC:END -->
