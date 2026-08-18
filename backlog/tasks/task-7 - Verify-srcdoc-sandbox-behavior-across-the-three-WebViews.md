@@ -4,7 +4,7 @@ title: Verify srcdoc sandbox behavior across the three WebViews
 status: In Review
 assignee: []
 created_date: '2026-07-30 09:26'
-updated_date: '2026-08-18 01:20'
+updated_date: '2026-08-18 02:09'
 labels:
   - feature
 milestone: m-1
@@ -35,13 +35,13 @@ Record the outcome as a comment on this task, including each platform's WebView 
 - [x] #1 The sandbox layer is verified independently: an app-origin external script, which script-src 'self' would permit, does not execute inside the frame
 - [x] #2 The CSP layer is verified independently: the inherited policy is shown to be in force inside the frame by an effect that needs no network, remote stylesheet, remote font and remote script are refused wherever the engine reports refusals, and a remote image loads
 - [x] #3 No inline script and no on-star handler runs, and a javascript: link is inert - exercised directly where a click can be delivered to the frame, and otherwise following from the app-origin script's non-execution
-- [x] #4 The form does not submit, the meta refresh does not navigate, and target=_top cannot navigate the app away
+- [ ] #4 The form does not submit, the meta refresh does not navigate, and target=_top cannot navigate the app away
 - [x] #5 A nested iframe inherits the sandbox flags, so no script runs inside it either
 - [x] #6 The parent can read contentDocument, scroll it via scrollIntoView on an element inside it, and measure its scrollHeight
 - [x] #7 All of the above are checked on macOS, and on Windows and Linux, or the divergence is recorded per platform
 - [x] #8 Findings are recorded on the task and decision-3 is confirmed or reopened
 - [x] #9 The WebView version is recorded per platform, since the behavior under test is version-dependent
-- [x] #10 It is recorded per platform whether a plain link with no target navigates the frame away, both with and without parent click interception
+- [ ] #10 It is recorded per platform whether a plain link with no target navigates the frame away, both with and without parent click interception
 - [x] #11 A fully unstyled document and a document declaring color-scheme support are both rendered, and their canvas colour and text contrast are recorded per platform under a dark palette
 - [x] #12 Wheel scrolling chains from the frame to the parent scroller, and it is recorded whether keyboard scrolling does, measured with focus actually inside the frame
 - [x] #13 It is recorded whether scrollIntoView on an element inside the frame scrolls the parent, since TASK-8 picks its mechanism from that answer
@@ -119,5 +119,18 @@ Recorded because a later re-run on a new WebView version would repeat them.
 **decision-3's Prerequisite is satisfied and the decision does not reopen**: the two behaviours it names — same-origin access under `sandbox="allow-same-origin"`, and CSP inheritance into `srcdoc` — both hold on WKWebView, WebView2 and WebKitGTK. The srcdoc-iframe approach stands.
 
 Three mechanisms in its Decision and Consequences sections are contradicted by measurement and are amended by decision-9: link interception is available only where the frame's document runs parent-registered listeners (WebView2 today), keyboard forwarding is not required, and late layout is observed rather than listened for. No platform is excluded and no unverified pass is left standing (AC #17).
+---
+
+created: 2026-08-18 02:09
+---
+Follow-up from the PR #31 review: two of the criteria above were ticked on evidence that does not carry, and they are unticked again until one more pass closes them.
+
+**AC #4 (form, meta refresh, target=_top) and AC #10 (plain link without interception) were exercised with a synthetic `.click()`, and on both WebKit engines nothing a click drives reaches the frame.** That was established for listeners in the third round, and the same doubt applies here for a different reason: a form submitting and a link navigating are activation behaviour, not listener behaviour, so they can be live while every listener is dead — and equally they can be dead, in which case "the form did not submit" records only that the probe never made it submit. The meta-refresh half of #4 is unaffected, since it needs no activation at all.
+
+WebView2 has the answer either way: the plain link DID navigate the frame away there without interception, so activation occurred and the form and top-navigation results on that platform are real.
+
+The probe now carries an activation control alongside the click control: a `<details>` the harness clicks synchronously and reads back, chosen because opening it is UA behaviour with no script involved and the outcome is a readable attribute rather than an event. The three checks that rest on activation report `inconclusive` when it fails instead of passing. Closing #4 and #10 on WKWebView and WebKitGTK needs one more run of `Run all checks` on those two platforms — it changes nothing else in the record.
+
+A related limit, now stated in decision-9 rather than implied: **only external links were clicked, never a `#` one.** That fragment links are inert on WebKit is an inference from the listener result plus a frame sized to its own content having no viewport to scroll — and that arrangement is what TASK-5.2 builds, not something measured here. TASK-5.2 observes it before anything writes it down as fact.
 ---
 <!-- COMMENTS:END -->

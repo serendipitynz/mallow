@@ -59,10 +59,11 @@ parent-registered listener, and that is accepted rather than worked around.**
 Where listeners do run — WebView2 today — decision-3's interception is
 implemented as written: fragment links are `preventDefault`-ed and scrolled by
 the parent, `http(s)` links go to the OS browser, every other scheme is inert.
-Where they do not, every link is inert. The behaviour is therefore
-platform-dependent, and that difference is itself part of the contract: the
-notice bar says so (TASK-5.3) and the user-facing documentation says so
-(TASK-19).
+Where they do not, an `http(s)` link is inert; what a `#` link does there is
+inferred rather than measured and is TASK-5.2's to settle (see the Consequences).
+The behaviour is therefore platform-dependent, and that difference is itself part
+of the contract: the notice bar says so (TASK-5.3) and the user-facing
+documentation says so (TASK-19).
 
 **This costs no containment.** An intercepted click was never what stopped the
 frame going anywhere — `frame-src` is, and it does: with interception removed,
@@ -135,9 +136,17 @@ accident.
   cheapest honest probe is the one TASK-7 used — dispatch an event into the
   frame's document from the parent and see whether the listener runs — which
   costs one synchronous dispatch per document.
-- **Fragment links inside a rendered document are inert on WebKit, but the
-  outline is not.** Outline navigation is driven from the parent and uses
-  reach-in, so it works everywhere. A document's own table of contents will not
+- **Fragment links are expected to be inert there too, but that is inference, not
+  measurement.** TASK-7 clicked external links, not `#` ones. The inference is
+  that the parent cannot hear the click and a frame sized to its own content has
+  no viewport for native fragment navigation to scroll — but "no viewport to
+  scroll" is the arrangement TASK-5.2 builds, not something TASK-7 observed, and
+  a frame at its natural size would behave differently. **TASK-5.2 has to observe
+  what a real click on a `#` link does before writing it down as inert**, and
+  TASK-19 must not describe it as measured until then.
+
+  The outline is unaffected either way: it is driven from the parent and uses
+  reach-in, so it works everywhere. A document's own table of contents may not
   work on WebKit while the outline sitting beside it does; TASK-19 has to say so
   rather than let it read as a bug.
 - **"The parent can reach into the frame" and "the parent can hear from the
