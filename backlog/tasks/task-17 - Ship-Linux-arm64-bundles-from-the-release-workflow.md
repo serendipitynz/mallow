@@ -1,10 +1,10 @@
 ---
 id: TASK-17
 title: Ship Linux arm64 bundles from the release workflow
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-14 04:27'
-updated_date: '2026-08-15 21:33'
+updated_date: '2026-08-17 05:14'
 labels:
   - chore
 milestone: m-0
@@ -72,7 +72,7 @@ CI going green proves the bundle was produced, not that it starts. The AppImage 
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 A release run (tag push or manual dispatch) put the arm64 assets on the draft alongside the existing x86_64, Windows and macOS ones
-- [ ] #2 An arm64 bundle was installed and launched on a real arm64 Linux (the owner's VM) - CI green is not the check
-- [ ] #3 The macOS and Windows jobs are unchanged in behaviour (notarization still runs); the x86_64 Linux job still produces deb, rpm and AppImage, differing only by the glibc floor this task deliberately raised from 2.35 to 2.39 by moving it to 24.04
+- [x] #1 A release run (tag push or manual dispatch) put the arm64 assets on the draft alongside the existing x86_64, Windows and macOS ones
+- [x] #2 An arm64 bundle was installed and launched on a real arm64 Linux (the owner's VM) - CI green is not the check
+- [x] #3 The macOS and Windows jobs are unchanged in behaviour (notarization still runs); the x86_64 Linux job still produces deb, rpm and AppImage, differing only by the glibc floor this task deliberately raised from 2.35 to 2.39 by moving it to 24.04
 <!-- DOD:END -->

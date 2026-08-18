@@ -4,9 +4,10 @@ title: Let Outline and scroll anchoring resolve headings outside the main docume
 status: To Do
 assignee: []
 created_date: '2026-07-30 09:26'
-updated_date: '2026-07-30 10:46'
+updated_date: '2026-08-17 05:55'
 labels:
   - feature
+milestone: m-1
 dependencies:
   - TASK-7
 priority: high

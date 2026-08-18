@@ -1,0 +1,199 @@
+// Styling for the TASK-7 probe screen. It reuses the app's palette variables so
+// the rendering checks (AC #11) are measured against a real mallow surface
+// rather than against an approximation of one.
+
+.probe {
+  padding: 16px 20px 64px;
+  font: 13px/1.5 system-ui, sans-serif;
+  color: var(--color-ink);
+  background: var(--color-bg);
+
+  // The app shell puts `overflow: hidden` on `body` so the window cannot
+  // rubber-band, and `height: 100%` on `#root`. A probe page taller than the
+  // window would simply be unreachable below the fold, so it carries its own
+  // scroller rather than relying on the document's.
+  height: 100%;
+  overflow: auto;
+
+  h1 {
+    font-size: 18px;
+    margin: 0 0 8px;
+  }
+
+  h2 {
+    font-size: 15px;
+    margin: 24px 0 8px;
+  }
+
+  h3 {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-muted);
+    margin: 12px 0 4px;
+  }
+}
+
+.probe-header {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 12px;
+}
+
+.probe-controls {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+
+  button {
+    padding: 6px 12px;
+    border: 1px solid var(--color-control-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}
+
+.probe-banner {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--color-danger);
+  background: var(--color-surface);
+  color: var(--color-danger);
+
+  &--fail {
+    font-weight: 600;
+  }
+}
+
+.probe-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+
+  th,
+  td {
+    border: 1px solid var(--color-border);
+    padding: 4px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background: var(--color-surface);
+  }
+}
+
+.probe-detail {
+  color: var(--color-muted);
+  max-width: 46em;
+}
+
+.probe-verdict {
+  font-weight: 600;
+
+  &--pass {
+    color: var(--color-success);
+  }
+
+  &--fail {
+    color: var(--color-danger);
+  }
+
+  &--inconclusive {
+    color: var(--color-orange);
+  }
+}
+
+.probe-note {
+  color: var(--color-muted);
+  max-width: 60em;
+}
+
+.probe-counters {
+  margin: 8px 0;
+  padding-left: 20px;
+  font: 12px/1.6 ui-monospace, monospace;
+}
+
+// The frame carries the light canvas and background decision-3 specifies on the
+// iframe ELEMENT rather than inside the document, which is the arrangement AC #11
+// is measuring.
+.probe-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  color-scheme: light;
+  background: #ffffff;
+}
+
+.probe-host {
+  border: 1px dashed var(--color-border-strong);
+  min-height: 40px;
+}
+
+.probe-scroller {
+  height: 320px;
+  overflow: auto;
+  border: 1px solid var(--color-border-strong);
+}
+
+.probe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.probe-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  span {
+    color: var(--color-muted);
+    font-size: 11px;
+  }
+
+  input,
+  select,
+  textarea {
+    padding: 4px 6px;
+    border: 1px solid var(--color-control-border);
+    border-radius: 4px;
+    background: var(--color-surface-raised);
+    color: var(--color-ink);
+    font: inherit;
+  }
+
+  &--wide {
+    margin-top: 12px;
+  }
+}
+
+.probe-report {
+  textarea {
+    width: 100%;
+    font: 12px/1.4 ui-monospace, monospace;
+    padding: 8px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 6px;
+    background: var(--color-surface-raised);
+    color: var(--color-ink);
+  }
+
+  button {
+    margin-top: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--color-control-border);
+    border-radius: 6px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+}

@@ -70,8 +70,12 @@ Two further caveats about the CSP layer, both easy to trip over:
   webview loads the Vite `devUrl` directly because `PROXY_DEV_SERVER` is
   `cfg!(all(dev, mobile))` (`manager/webview.rs:43`), `index.html` carries no CSP
   `<meta>`, and `app.security.devCsp` is unset. So during development the sandbox
-  is the *only* layer, and anything about CSP behavior must be checked against a
-  built app (or with `devCsp` set for the occasion).
+  is the *only* layer, and anything about CSP behavior has to be checked against a
+  built app. **Setting `devCsp` does not rescue it** — TASK-7 established this:
+  `AppManager::csp` is the only reader of that field and it is reached only from
+  `get_asset`, which a desktop dev run never enters for the main document, so the
+  value is read and then never applied. `tauri build --debug` is enough and is not
+  a dev build.
 - **`style-src`'s `'unsafe-inline'` is one inline `<style>` away from being
   ignored.** CSP disables `'unsafe-inline'` as soon as a nonce or hash source is
   present in that directive, and tauri-codegen adds a hash for inline styles it
@@ -179,6 +183,11 @@ The two behaviors this rests on — same-origin access under
 but have not been observed on WKWebView, WebView2, and WebKitGTK in this project.
 TASK-7 confirms them first. If either fails on a platform, this decision reopens
 rather than being worked around.
+
+**Both were confirmed on all three (TASK-7, 2026-08-18), so this decision stands.
+But three of its mechanisms did not survive the same measurement and are amended
+by decision-9: link interception, keyboard forwarding, and how late layout is
+noticed. Read decision-9 before implementing any of the three.**
 
 The two layers must be probed **independently**, which constrains how TASK-7 is
 written: an inline script proves nothing by itself, because a broken sandbox with

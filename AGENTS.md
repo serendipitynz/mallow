@@ -240,8 +240,11 @@ hold rather than as an exhaustive style guide.
   carries no CSP `<meta>`, and `devCsp` is unset. Nothing about it is broken —
   it simply is not there, which is worse than a visible failure: a boundary that
   leans on the CSP looks fine in dev and gives way in a built app. **Anything whose
-  containment depends on the CSP has to be checked against `pnpm tauri build`**
-  (or with `devCsp` set for the occasion). A second trap sits next to it:
+  containment depends on the CSP has to be checked against `pnpm tauri build`** —
+  `--debug --no-bundle` is enough and is not a dev build. **Setting `devCsp` does
+  not give dev a CSP** (TASK-7 established this): `AppManager::csp` is its only
+  reader and is reached only from `get_asset`, which a desktop dev run never
+  enters for the main document. A second trap sits next to it:
   `style-src`'s `'unsafe-inline'` stops applying the moment that directive gains a
   nonce or hash, and tauri-codegen adds a hash for any inline `<style>` it finds in
   `index.html` — so putting one there would break Shiki, mermaid and every inline
