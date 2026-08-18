@@ -53,7 +53,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `xml-tree`（XML DOM → 上限付きツリーモデル + parsererror 文言の解析）、
   `clip`（値の切り詰め・共通）、
   `custom-emoji`（ユーザーの絵文字フォルダ →
-  ショートコード表）、`scroll`（スクロール位置保持）、`watch`、
+  ショートコード表）、`heading`（`Heading` 型・注入する lookup root・純関数の座標変換）、
+  `scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
@@ -348,7 +349,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
 - フロント: `pnpm lint`（Biome）・`pnpm build`（tsc + vite）・`pnpm test`（Vitest）。
   ユニットテストはコードと同じ場所に `src/**/*.test.ts` として置き、純ロジックの
   モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
-  `frontmatter`・`title`・`path`・`delimited`・`xml-tree`・`custom-emoji`＝Tauri 層を
+  `frontmatter`・`title`・`path`・`delimited`・`xml-tree`・`heading`・`custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
   タイムアウトを上げる — `it` ごとの第 3 引数では持たない（フォーマッタが 3 引数の呼び出しを

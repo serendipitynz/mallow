@@ -51,7 +51,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   caps), `delimited` (CSV/TSV parser + table caps), `xml-tree` (XML DOM → bounded
   tree model + parse-error text), `clip` (shared value clip), `custom-emoji` (user
   emoji folder →
-  shortcode table), `scroll` (anchor preservation), `watch`, `settings`
+  shortcode table), `heading` (the `Heading` type, the injected lookup root and the
+  pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
@@ -375,8 +376,8 @@ hold rather than as an exhaustive style guide.
 - Frontend: `pnpm lint` (Biome), `pnpm build` (tsc + vite) and `pnpm test`
   (Vitest). Unit tests live next to the code as `src/**/*.test.ts` and cover the
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
-  `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`, and
-  `custom-emoji`
+  `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
+  `heading`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
