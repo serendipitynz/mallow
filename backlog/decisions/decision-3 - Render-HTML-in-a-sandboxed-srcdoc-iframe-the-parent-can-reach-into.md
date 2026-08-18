@@ -180,6 +180,11 @@ but have not been observed on WKWebView, WebView2, and WebKitGTK in this project
 TASK-7 confirms them first. If either fails on a platform, this decision reopens
 rather than being worked around.
 
+**Both were confirmed on all three (TASK-7, 2026-08-18), so this decision stands.
+But three of its mechanisms did not survive the same measurement and are amended
+by decision-9: link interception, keyboard forwarding, and how late layout is
+noticed. Read decision-9 before implementing any of the three.**
+
 The two layers must be probed **independently**, which constrains how TASK-7 is
 written: an inline script proves nothing by itself, because a broken sandbox with
 an intact CSP would still refuse it and the test would pass while the layer under
