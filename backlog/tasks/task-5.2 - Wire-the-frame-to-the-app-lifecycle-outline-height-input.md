@@ -1,10 +1,10 @@
 ---
 id: TASK-5.2
 title: 'Wire the frame to the app: lifecycle, outline, height, input'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-08-18 01:18'
+updated_date: '2026-08-18 20:56'
 labels:
   - feature
 milestone: m-1
@@ -43,8 +43,27 @@ Part 2 of 3 for TASK-5 (see decision-3). Makes the frame behave like part of the
 - [ ] #5 Height is re-measured after images and details elements change the layout, driven by an observer rather than by a listener inside the frame (decision-9)
 - [ ] #6 Where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser and never navigate the app WebView, and every other scheme is inert. Where it does not, an http(s) link is inert, what a '#' link does is observed rather than assumed, and the platform difference is detected at runtime rather than read off a platform name (decision-9)
 - [ ] #7 After clicking an outline entry, arrow keys, Space, PageDown, Home and End still scroll the document
-- [ ] #8 pnpm build and pnpm test pass
+- [x] #8 pnpm build and pnpm test pass
 - [ ] #9 Height is re-measured when the frame's width changes: window resize, Explorer splitter drag, and outline open/close
 - [ ] #10 The measurement-pass cap resets on a width change rather than exhausting itself and leaving the height stale
 - [ ] #11 Content taller than the maximum frame height falls back to the capped source view, and the frame never becomes a second scroll region
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The two values decision-3 left open were settled by running this component's own sizing loop over an HTML corpus, at the width the frame is given beside an open outline (828px) and against a reference height of 800px. 3,268 `.html` / `.htm` files on one working machine were scanned and 2,929 answered; the 339 that did not are documents whose load never completed inside the harness's window, so they are reported rather than counted as zero.
+
+- **MAX_FRAME_HEIGHT_PX = 2,000,000.** Median 1,437px, 99th percentile 13,731px, 99.9th 82,877px, tallest 525,753px (an evaluation report of one long `<pre>`). The cap clears the tallest by nearly 4× and nothing in the corpus falls back. The margin is wide on purpose, and in the opposite direction to the render ceiling's: a document sent to the source view loses its rendering, while a tall frame costs the parent scroller an extent and no extra layout, since the document is laid out in full whatever height the frame carries.
+- **MAX_MEASUREMENT_PASSES = 32.** 2,838 documents settled in one pass and 85 in two. Six never settled inside the scan's own 12-pass ceiling: they crept upward as their remaining subresources arrived, by 417px between the first two passes and by 4px between the eleventh and twelfth. That shape is geometric rather than runaway, which is what puts this at 32 rather than at the 12 the scan used.
+
+**The sizing loop is not the one decision-3 describes, and the caps are backstops rather than the mechanism.** decision-3 treats the height as a feedback loop to be bounded. `measure` writes the app scroller's own `clientHeight` onto the frame first, reads `scrollHeight` there, and only then applies - both writes in one task, so no paint falls between them. The frame's height *is* its document's viewport, so reading at the applied height is what made `body { min-height: 200vh }` double every pass; reading at a fixed reference makes the result a function of the document, the frame's width and that reference, so the loop settles instead of merely being bounded. Nothing in decision-3's contract changes: the parent still measures and applies, the frame still has no scroller of its own, both caps are still present, and exceeding the maximum still sends the document to the capped source view.
+
+Two consequences of that mechanism are load-bearing and easy to lose. The scroller's `scrollTop` is saved and put back on every path out of `measure`, because shrinking the frame shortens the scroller and clamps the offset there and then, and the taller height applied afterwards does not put it back. And the pass budget is refilled by a width change or a mutation, which are external causes rather than the loop feeding itself, so the budget is only ever spent on resize-driven measurements.
+
+**The scroll anchor is captured on every parent scroll, not just before a reload.** A `srcdoc` swap replaces the frame's document asynchronously, so there is no moment the parent can rely on across three WebViews where the new markup is committed and the old document is still readable.
+
+**A heading inside the frame takes its landing offset from an inline style the parent copies onto it**, because the parent's stylesheets do not reach into the frame's document. The value is still declared once in CSS - `scroll-margin-top` on `.html-frame` in `html.scss`, read back with `getComputedStyle` at load - so `Outline` keeps reading it off the heading and the jump and the spy cannot drift apart (TASK-20).
+
+**What is not observed yet.** Everything above is measured in Chromium (the corpus scan) or established by TASK-7 (the listener boundary, the observers, `scrollIntoView`). What a real click on a `#` link does inside the frame where no parent-registered listener runs is still unmeasured, exactly as decision-9 requires; `_sandbox/samples/rendered-outline.html` exists to be clicked. Nothing in the notice bar or the documentation may describe it until then, which is TASK-5.3's and TASK-19's constraint rather than this task's.
+<!-- SECTION:NOTES:END -->
