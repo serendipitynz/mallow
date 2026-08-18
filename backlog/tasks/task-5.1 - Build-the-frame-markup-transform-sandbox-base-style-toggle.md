@@ -1,10 +1,10 @@
 ---
 id: TASK-5.1
 title: 'Build the frame: markup transform, sandbox, base style, toggle'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-07-30 10:25'
-updated_date: '2026-08-17 05:56'
+updated_date: '2026-08-18 10:36'
 labels:
   - feature
 milestone: m-1
@@ -50,13 +50,13 @@ Verify in a built app, not only in pnpm tauri dev: there is no CSP under dev on 
 - [ ] #5 The rendered document is in standards mode (compatMode is CSS1Compat), so the doctype survived the transform
 - [ ] #6 Local media loads through every rewritten attribute: img src, img srcset, source src, source srcset, video src, video poster
 - [ ] #7 A document whose images are data: URIs renders unchanged, and unit tests pin data:, http(s), protocol-relative, blob:, empty and fragment-only values as untouched
-- [ ] #8 srcset values with descriptors and with commas inside paths survive the rewrite, covered by unit tests
-- [ ] #9 The transform returns the documented contract, including the title, so no consumer parses the document again
-- [ ] #10 The dirname helper in lib/path.ts has unit tests covering document-absolute paths, '..' above the opened folder and dot-prefixed directories
+- [x] #8 srcset values with descriptors and with commas inside paths survive the rewrite, covered by unit tests
+- [x] #9 The transform returns the documented contract, including the title, so no consumer parses the document again
+- [x] #10 The path helpers the rewriting introduced have unit tests: dirname and resolvePath in lib/path.ts for '..' above the opened folder and for dot-prefixed directories, and classifyRef in lib/html-doc.ts for document-absolute paths - which are answered there rather than in lib/path because the decision is what to do with a URL, not how to join a path
 - [ ] #11 A document above the render complexity threshold falls back to the capped source view instead of stalling the WebView
 - [ ] #12 The rendered/source toggle is present and the rendered view is the default
-- [ ] #13 The CSP in tauri.conf.json is unchanged
-- [ ] #14 pnpm build and pnpm test pass
-- [ ] #15 The URL-resolution, srcset-splitting and counting helpers are unit-tested as pure functions under Node
+- [x] #13 The CSP in tauri.conf.json is unchanged
+- [x] #14 pnpm build and pnpm test pass
+- [x] #15 The URL-resolution, srcset-splitting and counting helpers are unit-tested as pure functions under Node
 - [ ] #16 The complete parse-mutate-serialize transform is exercised in a DOM-capable environment - a browser or built-WebView fixture, or a deliberately adopted DOM test environment - since browser normalization of malformed markup and the actual base/frame removal cannot be observed from pure helpers
 <!-- AC:END -->
