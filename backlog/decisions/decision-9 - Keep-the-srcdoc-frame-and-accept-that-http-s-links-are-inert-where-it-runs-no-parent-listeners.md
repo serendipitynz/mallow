@@ -51,6 +51,15 @@ all non-zero on WebView2**. The custom event is what makes the reading general:
 clicks are not being lost, **a document with scripting disabled runs no
 parent-registered listener at all**. Reach-in is unaffected and works everywhere.
 
+**The click still arrives and still activates.** A separate control — a
+`<details>` the parent clicks and reads back, which the UA opens with no script
+involved — reports true on all three. So the boundary is narrower and sharper
+than "clicks do not reach the frame": activation behaviour is intact everywhere,
+and only listener invocation is absent. That is what makes the form and
+top-navigation results real containment on WebKit rather than a probe that never
+pressed anything, and it is why the fragment-link question below is open rather
+than settled.
+
 ## Decision
 
 **An `http(s)` link inside a rendered document is inert wherever the frame runs
@@ -139,14 +148,15 @@ accident.
   cheapest honest probe is the one TASK-7 used — dispatch an event into the
   frame's document from the parent and see whether the listener runs — which
   costs one synchronous dispatch per document.
-- **Fragment links are expected to be inert there too, but that is inference, not
-  measurement.** TASK-7 clicked external links, not `#` ones. The inference is
-  that the parent cannot hear the click and a frame sized to its own content has
-  no viewport for native fragment navigation to scroll — but "no viewport to
-  scroll" is the arrangement TASK-5.2 builds, not something TASK-7 observed, and
-  a frame at its natural size would behave differently. **TASK-5.2 has to observe
-  what a real click on a `#` link does before writing it down as inert**, and
-  TASK-19 must not describe it as measured until then.
+- **Fragment links are expected to be inert there too, but that is inference, and
+  the activation result argues against it.** TASK-7 clicked external links, not
+  `#` ones. The inference was that the parent cannot hear the click and a frame
+  sized to its own content has no viewport for native fragment navigation to
+  scroll — but activation is intact on every platform, so the UA may well perform
+  that navigation whether or not a listener hears it, and "no viewport to scroll"
+  is the arrangement TASK-5.2 builds rather than something TASK-7 observed.
+  **TASK-5.2 has to observe what a real click on a `#` link does before writing
+  it down as inert**, and TASK-19 must not describe it as measured until then.
 
   The outline is unaffected either way: it is driven from the parent and uses
   reach-in, so it works everywhere. A document's own table of contents may not

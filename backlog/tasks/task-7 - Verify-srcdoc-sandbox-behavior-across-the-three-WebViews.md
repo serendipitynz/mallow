@@ -4,7 +4,7 @@ title: Verify srcdoc sandbox behavior across the three WebViews
 status: In Review
 assignee: []
 created_date: '2026-07-30 09:26'
-updated_date: '2026-08-18 02:09'
+updated_date: '2026-08-18 02:58'
 labels:
   - feature
 milestone: m-1
@@ -35,13 +35,13 @@ Record the outcome as a comment on this task, including each platform's WebView 
 - [x] #1 The sandbox layer is verified independently: an app-origin external script, which script-src 'self' would permit, does not execute inside the frame
 - [x] #2 The CSP layer is verified independently: the inherited policy is shown to be in force inside the frame by an effect that needs no network, remote stylesheet, remote font and remote script are refused wherever the engine reports refusals, and a remote image loads
 - [x] #3 No inline script and no on-star handler runs, and a javascript: link is inert - exercised directly where a click can be delivered to the frame, and otherwise following from the app-origin script's non-execution
-- [ ] #4 The form does not submit, the meta refresh does not navigate, and target=_top cannot navigate the app away
+- [x] #4 The form does not submit, the meta refresh does not navigate, and target=_top cannot navigate the app away
 - [x] #5 A nested iframe inherits the sandbox flags, so no script runs inside it either
 - [x] #6 The parent can read contentDocument, scroll it via scrollIntoView on an element inside it, and measure its scrollHeight
 - [x] #7 All of the above are checked on macOS, and on Windows and Linux, or the divergence is recorded per platform
 - [x] #8 Findings are recorded on the task and decision-3 is confirmed or reopened
 - [x] #9 The WebView version is recorded per platform, since the behavior under test is version-dependent
-- [ ] #10 It is recorded per platform whether a plain link with no target navigates the frame away, both with and without parent click interception
+- [x] #10 It is recorded per platform whether a plain link with no target navigates the frame away, both with and without parent click interception
 - [x] #11 A fully unstyled document and a document declaring color-scheme support are both rendered, and their canvas colour and text contrast are recorded per platform under a dark palette
 - [x] #12 Wheel scrolling chains from the frame to the parent scroller, and it is recorded whether keyboard scrolling does, measured with focus actually inside the frame
 - [x] #13 It is recorded whether scrollIntoView on an element inside the frame scrolls the parent, since TASK-8 picks its mechanism from that answer
@@ -132,5 +132,20 @@ WebView2 has the answer either way: the plain link DID navigate the frame away t
 The probe now carries an activation control alongside the click control: a `<details>` the harness clicks synchronously and reads back, chosen because opening it is UA behaviour with no script involved and the outcome is a readable attribute rather than an event. The three checks that rest on activation report `inconclusive` when it fails instead of passing. Closing #4 and #10 on WKWebView and WebKitGTK needs one more run of `Run all checks` on those two platforms — it changes nothing else in the record.
 
 A related limit, now stated in decision-9 rather than implied: **only external links were clicked, never a `#` one.** That fragment links are inert on WebKit is an inference from the listener result plus a frame sized to its own content having no viewport to scroll — and that arrangement is what TASK-5.2 builds, not something measured here. TASK-5.2 observes it before anything writes it down as fact.
+---
+
+created: 2026-08-18 02:58
+---
+Fourth pass on WKWebView and WebKitGTK, with the activation control the PR review asked for. **AC #4 and AC #10 are closed, and the earlier reading of the click result was too broad.**
+
+`Activation control: true` on both WebKit engines. So a click driven from the parent *does* activate what it hits there — the `<details>` the harness clicks opens — and the three checks that rest on activation pass on their own terms:
+
+- `sandbox.form-submit` — PASS on both. Neither the form's `action` nor a button's `formaction` submits, and no CSP violation was reported, so the submission was stopped before it became a navigation: the sandbox, `allow-forms` being absent.
+- `sandbox.top-navigation` — PASS on both. The probe page was not reloaded and no query flag appeared.
+- `nav.plain-link-uncontrolled` — PASS on both: with no interception at all, the frame stayed on the fixture. Windows is the divergence here and remains so — there the same click DID take the frame away, which is what made interception load-bearing on that platform.
+
+**The correction: it was never true that "no click reaches the frame".** Rounds 2 and 3 established that no parent-registered listener runs; this round shows the click still arrives and still activates. The boundary is narrower and sharper than the earlier wording, and it cuts two ways. It is what makes the form and top-navigation results real containment rather than a probe that never pressed anything. It also weakens the inference about fragment links rather than supporting it: if activation is intact, the UA may perform native fragment navigation whether or not a listener hears the click, so TASK-5.2 must observe a real `#` click before anything records it as inert. decision-9 has been corrected on both points.
+
+All seventeen criteria are now met on all three platforms.
 ---
 <!-- COMMENTS:END -->

@@ -360,7 +360,7 @@ async function runScriptsFixture(host: HTMLElement, cspPresent: boolean, markerC
       expect(dispatch.worked),
       dispatch.worked
         ? clickNote
-        : `${clickNote} — no click reaches the frame at all, so every "nothing ran when clicked" result below is vacuous rather than evidence of containment`,
+        : `${clickNote} — no LISTENER hears a click here, so every "nothing ran when clicked" result below is vacuous rather than evidence of containment. This says nothing about whether the click activates: that is the activation control, and on both WebKit engines it does.`,
     ),
     check(
       'sandbox.external-script',
