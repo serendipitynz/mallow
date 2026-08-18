@@ -24,7 +24,11 @@ export function Outline({ headings, scrollRef, root = appDocumentRoot }: Outline
       return;
     }
 
-    const offset = SPY_OFFSET_REM * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+    // Read once per effect run, not per frame: `getComputedStyle` forces a style
+    // resolution, and the bar's height changes only with the content that also
+    // re-runs this effect.
+    const barHeight = parseFloat(getComputedStyle(container).getPropertyValue('--doc-bar-height')) || 0;
+    const offset = barHeight + SPY_OFFSET_REM * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
 
     const update = () => {
       const containerTop = container.getBoundingClientRect().top;

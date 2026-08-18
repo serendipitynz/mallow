@@ -1,5 +1,5 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
@@ -34,6 +34,7 @@ export function MarkdownView({ source }: { source: string }) {
   const [outlineOpen, setOutlineOpen] = useState<boolean>(readOutlineOpen);
   const [mode, setMode] = useState<'preview' | 'source'>('preview');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLDivElement>(null);
   // Scroll position captured before a live re-render, restored after it mounts.
   const pendingRestore = useRef<ScrollAnchor>(null);
@@ -116,6 +117,21 @@ export function MarkdownView({ source }: { source: string }) {
     };
   }, [result, mode]);
 
+  // The bar is pinned over the top of the scroll container, so a heading must clear
+  // it to be visible. Two things need that height and they are in different
+  // languages — `scroll-margin-top` for the jump, the scroll spy for the highlight —
+  // so it is published on the scroll container for both. Measured rather than taken
+  // from `$doc-bar-height`, whose comment calls its 42px an approximation of this
+  // row; the SCSS constant stays as the fallback for the paint before this runs.
+  useLayoutEffect(() => {
+    const scroller = scrollRef.current;
+    const bar = barRef.current;
+    if (!scroller || !bar) {
+      return;
+    }
+    scroller.style.setProperty('--doc-bar-height', `${bar.getBoundingClientRect().height}px`);
+  });
+
   const headings = result?.headings ?? [];
   const hasOutline = headings.length > 1;
   const showOutline = mode === 'preview' && hasOutline && outlineOpen;
@@ -131,7 +147,7 @@ export function MarkdownView({ source }: { source: string }) {
   return (
     <div className="doc-scroll" ref={scrollRef}>
       <div className={`doc${showOutline ? '' : ' is-outline-closed'}`}>
-        <div className="doc__bar">
+        <div className="doc__bar" ref={barRef}>
           {mode === 'preview' && hasOutline && (
             <button
               type="button"
