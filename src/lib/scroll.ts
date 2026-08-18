@@ -1,5 +1,5 @@
 /** Scroll-position preservation across a live re-render of a markdown document. */
-import type { Heading } from './markdown';
+import { appDocumentRoot, findHeading, type Heading, type HeadingRoot, offsetFromContainerTop } from './heading';
 
 export type ScrollAnchor = { slug: string; offset: number } | { ratio: number } | null;
 
@@ -7,17 +7,22 @@ export type ScrollAnchor = { slug: string; offset: number } | { ratio: number } 
  * Record where the document is scrolled, preferring the topmost heading still in
  * view (robust to content inserted above) and falling back to a scroll ratio.
  */
-export function captureScrollAnchor(container: HTMLElement | null, headings: Heading[]): ScrollAnchor {
+export function captureScrollAnchor(
+  container: HTMLElement | null,
+  headings: Heading[],
+  root: HeadingRoot = appDocumentRoot,
+): ScrollAnchor {
   if (!container) {
     return null;
   }
   const top = container.getBoundingClientRect().top;
+  const frameOffset = root.frameOffset();
   for (const h of headings) {
-    const el = document.getElementById(h.slug);
+    const el = findHeading(root, h.slug);
     if (!el) {
       continue;
     }
-    const rel = el.getBoundingClientRect().top - top;
+    const rel = offsetFromContainerTop(el.getBoundingClientRect().top, frameOffset, top);
     if (rel >= -1) {
       return { slug: h.slug, offset: rel };
     }
@@ -27,15 +32,21 @@ export function captureScrollAnchor(container: HTMLElement | null, headings: Hea
 }
 
 /** Restore a previously captured scroll position after the new content mounts. */
-export function restoreScrollAnchor(container: HTMLElement | null, anchor: ScrollAnchor): void {
+export function restoreScrollAnchor(
+  container: HTMLElement | null,
+  anchor: ScrollAnchor,
+  root: HeadingRoot = appDocumentRoot,
+): void {
   if (!container || !anchor) {
     return;
   }
   if ('slug' in anchor) {
-    const el = document.getElementById(anchor.slug);
+    const el = findHeading(root, anchor.slug);
     if (el) {
       const top = container.getBoundingClientRect().top;
-      const cur = el.getBoundingClientRect().top - top;
+      // `frameOffset` is read again here, not carried over from the capture: what
+      // moved in between may be the frame itself rather than the content in it.
+      const cur = offsetFromContainerTop(el.getBoundingClientRect().top, root.frameOffset(), top);
       container.scrollTop += cur - anchor.offset;
       return;
     }

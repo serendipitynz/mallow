@@ -51,7 +51,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   caps), `delimited` (CSV/TSV parser + table caps), `xml-tree` (XML DOM → bounded
   tree model + parse-error text), `clip` (shared value clip), `custom-emoji` (user
   emoji folder →
-  shortcode table), `scroll` (anchor preservation), `watch`, `settings`
+  shortcode table), `heading` (the `Heading` type, the injected lookup root and the
+  pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
@@ -316,6 +317,23 @@ hold rather than as an exhaustive style guide.
   text, never computed from the declared `--src-line-height`** — WebKit lays
   each line box out at an integer height, so the declared 20.8px is used as 20px
   and a computed position drifts a line every 25.
+- **The heading jump and the outline's scroll spy are one number crossing from
+  TypeScript into CSS and back, and all three files have to hold.** `.doc__bar` is
+  pinned over the top of the scroll container, so a heading must clear it to be
+  visible at all. `MarkdownView` measures the rendered bar and publishes it as
+  `--doc-bar-height` **on the same element `Outline` is given as its scroller** —
+  measured, not taken from `$doc-bar-height`, whose 42px its own comment calls an
+  approximation of the toggle row (the same rule as the `SourceView` band above).
+  `markdown.scss` turns it into the headings' `scroll-margin-top`, which is what
+  `scrollIntoView` and a document's own `#` links honour, and `Outline` reads that
+  computed `scroll-margin-top` back off a heading rather than recomputing it — so
+  there is one value, and the SCSS fallback covers the spy too. The comparison
+  carries `LANDING_SLACK_PX`: the scroller's offset is an integer while heading
+  positions are fractional, so an exact test highlights the entry above the one
+  clicked about half the time. **A viewer that mounts `.markdown-body` without
+  publishing the property takes the 62px fallback silently** (`MermaidView` today;
+  the Config/Table/Xml bars publish nothing), which is harmless only for as long
+  as nothing there has headings.
 - **`TableView` is capped by four constants, and unlike `SourceView` it does
   withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100),
   `TABLE_MAX_CELLS` (20,000) and `TABLE_MAX_CELL_CHARS` (500) live in
@@ -375,8 +393,9 @@ hold rather than as an exhaustive style guide.
 - Frontend: `pnpm lint` (Biome), `pnpm build` (tsc + vite) and `pnpm test`
   (Vitest). Unit tests live next to the code as `src/**/*.test.ts` and cover the
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
-  `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`, and
-  `custom-emoji`
+  `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
+  `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
+  and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument

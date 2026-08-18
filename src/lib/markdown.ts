@@ -12,13 +12,8 @@ import builtinEmojiDefs from 'markdown-it-emoji/lib/data/full.mjs';
 import githubAlerts from 'markdown-it-github-alerts';
 import type { BundledLanguage } from 'shiki';
 import { extractFrontMatter, renderFrontMatterTable } from './frontmatter';
+import type { Heading } from './heading';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from './shiki';
-
-export interface Heading {
-  depth: number;
-  slug: string;
-  text: string;
-}
 
 export interface RenderResult {
   html: string;

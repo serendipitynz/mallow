@@ -1,10 +1,10 @@
 ---
 id: TASK-8
 title: Let Outline and scroll anchoring resolve headings outside the main document
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-07-30 09:26'
-updated_date: '2026-08-17 05:55'
+updated_date: '2026-08-18 04:42'
 labels:
   - feature
 milestone: m-1
@@ -36,10 +36,10 @@ While doing it: the Heading type lives in lib/markdown. Generalising these modul
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Outline resolves and scrolls to headings through an injected lookup root
-- [ ] #2 MarkdownView keeps its current behavior with no call-site change beyond passing the default
-- [ ] #3 pnpm build and pnpm test pass
-- [ ] #4 The Heading type dependency is either moved out of lib/markdown or its staying is justified in a comment
-- [ ] #5 The scroll mechanism is named explicitly and matches what TASK-7 recorded
-- [ ] #6 The coordinate conversion is a pure function with unit tests over a given frame offset; observing it against a real iframe belongs to TASK-5.2
+- [x] #1 Outline resolves and scrolls to headings through an injected lookup root
+- [x] #2 MarkdownView keeps its current behavior with no call-site change beyond passing the default
+- [x] #3 pnpm build and pnpm test pass
+- [x] #4 The Heading type dependency is either moved out of lib/markdown or its staying is justified in a comment
+- [x] #5 The scroll mechanism is named explicitly and matches what TASK-7 recorded
+- [x] #6 The coordinate conversion is a pure function with unit tests over a given frame offset; observing it against a real iframe belongs to TASK-5.2
 <!-- AC:END -->
