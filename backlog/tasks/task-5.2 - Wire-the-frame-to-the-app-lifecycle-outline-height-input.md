@@ -1,10 +1,10 @@
 ---
 id: TASK-5.2
 title: 'Wire the frame to the app: lifecycle, outline, height, input'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-08-18 22:12'
+updated_date: '2026-08-18 23:48'
 labels:
   - feature
 milestone: m-1
@@ -36,17 +36,17 @@ Part 2 of 3 for TASK-5 (see decision-3). Makes the frame behave like part of the
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ids, the measured height and any parent-side wiring are all re-established after the frame reloads, and scroll position is preserved across a live reload
-- [ ] #2 Headings that already carry an id keep it, generated slugs do not collide, and the document's own fragment links still resolve
-- [ ] #3 The outline lists the document's headings, clicking one scrolls to it, and the active-heading highlight tracks the parent scroller
-- [ ] #4 Frame height converges on a document whose body depends on viewport height, within a bounded number of measurements and a maximum height
-- [ ] #5 Height is re-measured after images and details elements change the layout, driven by an observer rather than by a listener inside the frame (decision-9)
+- [x] #1 Ids, the measured height and any parent-side wiring are all re-established after the frame reloads, and scroll position is preserved across a live reload
+- [x] #2 Headings that already carry an id keep it, generated slugs do not collide, and the document's own fragment links still resolve
+- [x] #3 The outline lists the document's headings, clicking one scrolls to it, and the active-heading highlight tracks the parent scroller
+- [x] #4 Frame height converges on a document whose body depends on viewport height, within a bounded number of measurements and a maximum height
+- [x] #5 Height is re-measured after images and details elements change the layout, driven by an observer rather than by a listener inside the frame (decision-9)
 - [ ] #6 Where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser and never navigate the app WebView, and every other scheme is inert. Where it does not, an http(s) link is inert, what a '#' link does is observed rather than assumed, and the platform difference is detected at runtime rather than read off a platform name (decision-9)
-- [ ] #7 After clicking an outline entry, arrow keys, Space, PageDown, Home and End still scroll the document
+- [x] #7 After clicking an outline entry, arrow keys, Space, PageDown, Home and End still scroll the document
 - [x] #8 pnpm build and pnpm test pass
-- [ ] #9 Height is re-measured when the frame's width changes: window resize, Explorer splitter drag, and outline open/close
-- [ ] #10 The measurement-pass cap resets on a width change rather than exhausting itself and leaving the height stale
-- [ ] #11 Content taller than the maximum frame height falls back to the capped source view, and the frame never becomes a second scroll region
+- [x] #9 Height is re-measured when the frame's width changes: window resize, Explorer splitter drag, and outline open/close
+- [x] #10 The measurement-pass cap resets on a width change rather than exhausting itself and leaving the height stale
+- [x] #11 Content taller than the maximum frame height falls back to the capped source view, and the frame never becomes a second scroll region
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -74,7 +74,17 @@ Both were re-measured with the corrected loop; the values from the first round w
 - **A heading inside the frame takes its landing offset from an inline style the parent copies onto it** — the parent's stylesheets do not reach into the frame's document. The value is still declared once in CSS (`scroll-margin-top` on `.html-frame`), so `Outline` reads it back off the heading and the jump and the spy cannot drift apart (TASK-20).
 - **Heading id ownership is a DOM fact and arrives as a predicate.** An existing id is the heading's to keep only when the heading is the document's first holder of it; otherwise `getElementById` answers some other element and the outline jumps there. `lib/html-headings` stays free of the DOM, which is what keeps the rest of the rule testable under Node.
 
-## Still not observed
+## The visual rounds
 
-The corrected loop and the link neutralization have had no visual round yet. Every criterion but #8 is still open.
+Two, both on macOS (WKWebView) in a built app - `pnpm tauri build --debug --no-bundle`, because there is no CSP under `pnpm tauri dev` on desktop and the link behaviour leans on it.
+
+The first sent the task back with the two findings above. The second closed ten of the eleven criteria.
+
+**AC #6 is left unticked on purpose, and it is the only one.** Its second half - an `http(s)` link inert, a `#` link observed rather than assumed, and the platform difference detected at runtime - is fully observed: that is what the first visual round measured and what decision-10 records. Its **first** half is not, and cannot be here: "where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser" describes WebView2, and no Windows machine was in either round. The interception code is decision-9's as written and unobserved. **TASK-5.3 needs Windows anyway** - its notice bar has to say a different thing on each side of that boundary - so the check belongs in that round.
+
+The second round also found that `rendered-outline.html` itself fell to the source view: it stacked six `90vh` boxes, so `f(H) = 5.4H + c` has no fixed point and the height ceiling caught it. That is the specified behaviour, not a defect, and the fixture was split - `rendered-outline.html` now carries exactly one `50vh` box, which converges, and `rendered-diverges.html` is the fallback case.
+
+## Known, accepted, and worth revisiting
+
+**A document stacking two or more viewport-height sections has no fixed point and goes to the source view.** `f(H) = n x 0.9H + c` diverges for n >= 2, so the height ceiling catches it. In the measured corpus that is 4 documents in 2,757 (0.15%), which is decision-3's "pathological growth" as intended - but full-screen hero sections are a common way to build a page, and the corpus is one machine's saved documents rather than the open web. **`MAX_FRAME_HEIGHT_PX` may need relaxing** (2026-08-19, user: accepted for now). Raising it does not make a divergent document converge; it only moves where the fallback happens, so the real question is whether the single-scroller contract should hold for that shape at all - which is decision-3, decision-9 and TASK-8 opened together, not a constant.
 <!-- SECTION:NOTES:END -->
