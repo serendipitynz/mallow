@@ -57,9 +57,14 @@ every app-origin link in the document at load, by setting `pointer-events: none`
 on the anchor.** Where listeners do run, decision-9's interception is unchanged
 and nothing is neutralized.
 
-`pointer-events` rather than removing the `href`: the click never reaches the
-anchor, so nothing activates, while `:link` still matches and the document keeps
-the styling its author gave it. A link that looks like a link and does nothing is
+`pointer-events: none` **and** `tabindex="-1"`, rather than removing the `href`:
+the click never reaches the anchor and the keyboard cannot reach it either, while
+`:link` still matches and the document keeps the styling its author gave it.
+Both are needed and neither is redundant — `pointer-events` suppresses
+hit-testing and nothing else, so without the second a reader who tabs to the link
+and presses Enter gets the navigation this decision exists to remove. It applies
+to `<area href>` as well as `<a href>`, for the same reason and by the same
+resolution rule. A link that looks like a link and does nothing is
 what decision-9 already accepted for `http(s)`; this puts app-origin links in the
 same state rather than inventing a second one.
 
@@ -109,5 +114,11 @@ and nothing in it runs. What is fixed is a usability failure, not a hole.
   offered here as a third option.
 - **The probe in `src/probe/` should gain this case.** TASK-7 clicked external
   links only, which is exactly why this reached a user rather than a fixture. A
-  `#` link and a relative link, clicked for real, belong beside the checks that
-  are already there.
+  `#` link and a relative link, clicked for real — and a link reached by keyboard
+  and activated with Enter, since that path is neutralized by a different
+  mechanism than the click — belong beside the checks that are already there.
+- **A `<meta http-equiv="refresh">` resolves against the same base URL and is not
+  neutralized here, because it does not need to be**: TASK-5.1's visual round
+  watched `rendered-inert.html` and the frame stayed where it was. That is one
+  engine's answer, so the probe should carry it rather than this decision
+  asserting it for all three.

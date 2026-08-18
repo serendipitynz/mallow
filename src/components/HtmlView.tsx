@@ -161,6 +161,8 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
   const anchor = useRef<ScrollAnchor>(null);
   /** Where the reader was when a restart shrank the frame under them. */
   const pendingRestore = useRef<ScrollAnchor>(null);
+  /** Tallest height this convergence has measured; see the budget branch. */
+  const tallestHeight = useRef<number | null>(null);
   // Read by the scroll listener, which is bound once and must not be re-bound per
   // heading change.
   const headingsRef = useRef<Heading[]>(headings);
@@ -220,24 +222,53 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
         // in `vh` then starts from the viewport its author meant, and one that
         // converges reaches the same fixed point from either seed.
         frame.style.height = `${scroller.clientHeight}px`;
-        // Shrinking the frame shortens the scroller, which clamps the offset
-        // there and then. The heading anchor is what carries the reader back
-        // across the convergence — a saved `scrollTop` would not, because the
-        // height it belonged to is the one being recomputed.
-        pendingRestore.current = anchor.current;
+        tallestHeight.current = null;
+        /* Shrinking the frame shortens the scroller, which clamps the offset
+           there and then. The heading anchor is what carries the reader back
+           across the convergence — a saved `scrollTop` would not, because the
+           height it belonged to is the one being recomputed.
+
+           Kept, not overwritten, when one is already held: the clamp queues a
+           `scroll` event, so by the next restart `anchor.current` describes the
+           clamped position rather than the reader's. A splitter drag is a burst
+           of restarts, and overwriting would walk the anchor to the top of the
+           document one frame at a time. Convergence is what clears it. */
+        pendingRestore.current ??= anchor.current;
       }
       const height = frameDocument.documentElement.scrollHeight;
-      /* Converged, out of budget, or over the ceiling — and in all three the
-         frame keeps the height it has. Nothing is written on the way out, which
-         is not an optimisation: per CSSOM-View an instant scroll aborts a smooth
-         one, so a measurement landing during an outline jump would stop it a few
-         percent in, and the observers and polls fire during exactly those. */
-      if (height === appliedHeight.current || passes.current >= MAX_MEASUREMENT_PASSES) {
+      const settle = () => {
         const restore = pendingRestore.current;
         if (restore) {
           pendingRestore.current = null;
           restoreScrollAnchor(scroller, restore, frameRoot);
         }
+      };
+      /* Converged: the document reports, at the height it has, that height.
+         Nothing is written, which is not an optimisation — per CSSOM-View an
+         instant scroll aborts a smooth one, so a measurement landing during an
+         outline jump would stop it a few percent in, and the observers and polls
+         fire during exactly those. */
+      if (height === appliedHeight.current) {
+        settle();
+        return;
+      }
+      if (passes.current >= MAX_MEASUREMENT_PASSES) {
+        /* Out of budget on a document with no fixed point — the oscillating case
+           {@link MAX_MEASUREMENT_PASSES} describes. Settle on the tallest height
+           seen rather than on whichever the last pass happened to apply, because
+           the two costs are not alike: too tall is a gap under the document, too
+           short is content the reader cannot reach, since a frame shorter than
+           its own content is the second scroll region AC #11 forbids. */
+        const tallest = Math.max(tallestHeight.current ?? height, height);
+        if (tallest > MAX_FRAME_HEIGHT_PX) {
+          setTooTall(true);
+          return;
+        }
+        if (tallest !== appliedHeight.current) {
+          appliedHeight.current = tallest;
+          frame.style.height = `${tallest}px`;
+        }
+        settle();
         return;
       }
       if (height > MAX_FRAME_HEIGHT_PX) {
@@ -246,6 +277,7 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
       }
       passes.current += 1;
       appliedHeight.current = height;
+      tallestHeight.current = Math.max(tallestHeight.current ?? height, height);
       frame.style.height = `${height}px`;
     },
     [frameRoot],
@@ -377,9 +409,16 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
          document keeps the styling its author gave it. An `http(s)` link is left
          alone — it is already inert because `frame-src` does not carry it, which
          is the inertness decision-9 accepted. */
-      for (const link of frameDocument.querySelectorAll<HTMLElement>('a[href]')) {
+      for (const link of frameDocument.querySelectorAll<HTMLElement>('a[href], area[href]')) {
         if (navigatesAppOrigin(link.getAttribute('href') ?? '')) {
           link.style.pointerEvents = 'none';
+          // `pointer-events` suppresses hit-testing and nothing else: the anchor
+          // stays in the tab order and Enter still activates it, which on this
+          // branch nothing can `preventDefault`. Taking it out of the tab order
+          // is what closes the keyboard path. Overwriting a `tabindex` the
+          // document set changes an order that only reaches a link which no
+          // longer does anything.
+          link.setAttribute('tabindex', '-1');
         }
       }
     }
@@ -421,16 +460,12 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
       }
     };
 
-    const restore = anchor.current;
-    restoreScrollAnchor(scrollRef.current, restore, frameRoot);
+    // The order decision-3 sets out ends here, but the height does not: `measure`
+    // takes the first step of a convergence the `ResizeObserver` finishes, so the
+    // anchor it carries in `pendingRestore` is what lands the reader once the
+    // layout settles. A second restore here would only run mid-convergence.
+    restoreScrollAnchor(scrollRef.current, anchor.current, frameRoot);
     measure(true);
-    // The restore above runs in the order decision-3 sets out, before the height
-    // is known; once it is, the scroller's own extent has changed, so it is
-    // repeated against the settled layout.
-    requestAnimationFrame(() => {
-      measure(true);
-      restoreScrollAnchor(scrollRef.current, restore, frameRoot);
-    });
   }, [frameRoot, measure, scheduleMeasure]);
 
   // The wiring belongs to the frame element, not to whatever load comes next.

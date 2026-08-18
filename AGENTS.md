@@ -362,6 +362,11 @@ hold rather than as an exhaustive style guide.
   than on a `scrollTop` belonging to the height being recomputed. The polls do
   not restart, so a shrink they alone would catch is not caught; that trade is
   written beside them.
+  **Every parent-side write into the frame belongs to the load pass, never to a
+  handler** — the landing offset and `tabindex` both — because each is an
+  attribute mutation the `MutationObserver` reports, and a mutation now asks for
+  a restart: a write made while preparing a jump would re-seed the frame and
+  throw the reader to the top as well as killing the jump.
 - **A `srcdoc` document's base URL is the *parent's*, so `#section` inside the
   frame is not a same-document link — and `frame-src 'self'` lets it load.** The
   frame navigates to the app's own URL, the shell renders blank because its
