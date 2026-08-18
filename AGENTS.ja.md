@@ -301,6 +301,20 @@ Comments と Functions の規約は機械的に検査されない。コメント
   テキストから測った行送りで決める。宣言値の `--src-line-height` から計算してはいけない** —
   WebKit は行ボックスの高さを整数に丸めるので、宣言した 20.8px は 20px として使われ、
   計算で置いた帯は 25 行ごとに 1 行ずれる。
+- **見出しのジャンプとアウトラインのスクロールスパイは、TypeScript から CSS へ渡って
+  戻ってくる 1 個の値で、3 ファイルすべてが揃っていないと壊れる。** `.doc__bar` は
+  スクロール容器の上端に固定されるので、見出しはこれを越えないとそもそも見えない。
+  `MarkdownView` が描画済みのバーを実測し、**`Outline` にスクローラとして渡すのと同じ要素**へ
+  `--doc-bar-height` として publish する — `$doc-bar-height` から取らないのは、その 42px を
+  コメント自身がトグル行の概算と呼んでいるため（上の `SourceView` の帯と同じ規則）。
+  `markdown.scss` がそれを見出しの `scroll-margin-top` にし、`scrollIntoView` も文書自身の
+  `#` リンクもこれを尊重する。`Outline` は計算し直さず、その computed な
+  `scroll-margin-top` を見出しから読み戻す — 値は 1 個で、SCSS のフォールバックが
+  スパイ側にも効く。比較には `LANDING_SLACK_PX` が入る: スクローラのオフセットは整数、
+  見出しの位置は小数なので、厳密比較だと**クリックした 1 つ上の項目**が半分くらいの確率で
+  ハイライトされる。**property を publish せずに `.markdown-body` をマウントするビューは
+  黙って 62px のフォールバックを使う**（今日は `MermaidView`。Config・Table・Xml のバーは
+  publish しない）。そこに見出しが無いあいだだけ無害。
 - **`TableView` の上限は定数 4 本で、`SourceView` と違って内容そのものを落とす。**
   `TABLE_MAX_ROWS`（5,000）・`TABLE_MAX_COLUMNS`（100）・`TABLE_MAX_CELLS`（20,000）・
   `TABLE_MAX_CELL_CHARS`（500）が `lib/delimited` にある。4 本要るのは、前の 2 本が

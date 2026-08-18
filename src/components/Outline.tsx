@@ -10,7 +10,25 @@ interface OutlineProps {
   root?: HeadingRoot;
 }
 
-const SPY_OFFSET_REM = 1.5;
+/**
+ * The scroller stores its offset as an integer while heading positions are
+ * fractional, so a jump can settle a fraction of a pixel short of the very
+ * threshold it was computed from. Without this slack the outline would then
+ * highlight the entry above the one just clicked, on roughly half of them.
+ * It is not a tunable — do not tighten it back.
+ */
+const LANDING_SLACK_PX = 1;
+
+/**
+ * Where a jump puts a heading, measured off the heading itself rather than
+ * recomputed: `scroll-margin-top` already resolves the bar height `MarkdownView`
+ * publishes plus the gap, fallback included, so the spy and the jump cannot drift
+ * apart. A heading with none — a document that is not mallow's markdown — answers
+ * 0, which is also where its jump lands.
+ */
+function landingOffset(el: HTMLElement): number {
+  return parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+}
 
 export function Outline({ headings, scrollRef, root = appDocumentRoot }: OutlineProps) {
   const t = useT();
@@ -24,18 +42,23 @@ export function Outline({ headings, scrollRef, root = appDocumentRoot }: Outline
       return;
     }
 
-    const offset = SPY_OFFSET_REM * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
-
     const update = () => {
       const containerTop = container.getBoundingClientRect().top;
       const frameOffset = root.frameOffset();
+      // Taken from the first heading that resolves, not cached across runs: under a
+      // root whose document is replaced (a frame) there may be none to read yet.
+      let threshold: number | null = null;
       let current = headings[0]?.slug ?? null;
       for (const h of headings) {
         const el = findHeading(root, h.slug);
         if (!el) {
           continue;
         }
-        if (offsetFromContainerTop(el.getBoundingClientRect().top, frameOffset, containerTop) - offset <= 0) {
+        if (threshold === null) {
+          threshold = landingOffset(el);
+        }
+        const top = offsetFromContainerTop(el.getBoundingClientRect().top, frameOffset, containerTop);
+        if (top - threshold <= LANDING_SLACK_PX) {
           current = h.slug;
         } else {
           break;
