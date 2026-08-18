@@ -11,10 +11,12 @@ import { THEMES, type ThemeId } from '../lib/theme';
 import { TOP_NAV_QUERY } from './fixtures';
 import {
   armClickProbe,
+  armLateLayoutProbe,
   type Check,
   type ClickCounts,
   focusHeadingInFrame,
   type Hosts,
+  type LateLayout,
   type RunResult,
   run,
   runAssetImageCheck,
@@ -55,6 +57,7 @@ export default function Probe() {
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState<Manual>(EMPTY_MANUAL);
   const [clicks, setClicks] = useState<ClickCounts | null>(null);
+  const [late, setLate] = useState<LateLayout | null>(null);
   const [focusNote, setFocusNote] = useState<string>('');
   // Shown live beside the tall frame so the two hand-recorded scroll answers are
   // a reading rather than a judgement: "yes" is this number changing.
@@ -71,6 +74,7 @@ export default function Probe() {
   const colorSchemeRef = useRef<HTMLDivElement>(null);
   const assetRef = useRef<HTMLDivElement>(null);
   const manualClickRef = useRef<HTMLDivElement>(null);
+  const lateLayoutRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Applied straight to the attribute rather than through `setTheme`, which
@@ -126,14 +130,22 @@ export default function Probe() {
     }
   }, []);
 
+  const onArmLateLayout = useCallback(async () => {
+    try {
+      await armLateLayoutProbe(lateLayoutRef.current as HTMLElement, Date.now(), setLate);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
   const checks = useMemo(
     () => (result === null ? [] : assetCheck === null ? result.checks : [...result.checks, assetCheck]),
     [result, assetCheck],
   );
 
   const report = useMemo(
-    () => (result === null ? '' : buildReport(result.env, checks, manual, clicks)),
-    [result, checks, manual, clicks],
+    () => (result === null ? '' : buildReport(result.env, checks, manual, clicks, late)),
+    [result, checks, manual, clicks, late],
   );
 
   useEffect(() => {
@@ -349,6 +361,37 @@ export default function Probe() {
         )}
         {focusNote !== '' && <p className="probe-note">{focusNote}</p>}
         <Host hostRef={manualClickRef} />
+      </section>
+
+      <section className="probe-manual">
+        <h2>Late layout</h2>
+        <p className="probe-note">
+          TASK-5.2 has to re-measure the frame when it gets taller on its own, and decision-3 plans to hear about that
+          through listeners — which is exactly what does not work here. Press <strong>Arm</strong>: an image with no
+          intrinsic size loads late and reflows the document, and every candidate mechanism is wired before it arrives.
+          Then <strong>open the &lt;details&gt;</strong> inside the frame by clicking its summary — that is the one late
+          change a document with no scripting can still make by itself, and the same mechanisms have to report it.
+        </p>
+        <div className="probe-controls">
+          <button type="button" onClick={onArmLateLayout}>
+            Arm the late-layout test
+          </button>
+        </div>
+        {late !== null && (
+          <ul className="probe-counters">
+            <li>load event on the iframe element (app document): {String(late.iframeElementLoadFired)}</li>
+            <li>
+              height before / now: {late.heightBefore} / {late.heightNow}
+            </li>
+            <li>the late image loaded: {String(late.imageLoaded)}</li>
+            <li>load listener on the img inside the frame: {String(late.imageLoadListenerFired)}</li>
+            <li>ResizeObserver callbacks: {late.resizeObserverCalls} (1 = only the initial one)</li>
+            <li>MutationObserver callbacks: {late.mutationObserverCalls}</li>
+            <li>polling saw the height change: {String(late.pollSawChange)}</li>
+            <li>&lt;details&gt; open: {String(late.detailsOpen)}</li>
+          </ul>
+        )}
+        <Host hostRef={lateLayoutRef} />
       </section>
 
       <section className="probe-manual">

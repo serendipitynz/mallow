@@ -25,6 +25,7 @@ import {
   DATA_IMAGE,
   DATA_STYLESHEET,
   formFixture,
+  lateLayoutFixture,
   MARKER_SRC,
   manualClickFixture,
   metaRefreshFixture,
@@ -120,11 +121,18 @@ function expect(condition: boolean): Verdict {
   return condition ? 'pass' : 'fail';
 }
 
-function mountFrame(host: HTMLElement, srcdoc: string): HTMLIFrameElement {
+function mountFrame(host: HTMLElement, srcdoc: string, onLoad?: () => void): HTMLIFrameElement {
   host.replaceChildren();
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', SANDBOX);
   frame.className = 'probe-frame';
+  if (onLoad !== undefined) {
+    // The listener sits on the iframe ELEMENT, which lives in the app document —
+    // a different question from a listener inside the frame, and the one
+    // decision-3's whole lifecycle ("contentDocument is about:blank until load")
+    // depends on.
+    frame.addEventListener('load', onLoad);
+  }
   // srcdoc is assigned while detached so the fixture is the frame's first real
   // navigation; the load event alone cannot distinguish it from about:blank.
   frame.srcdoc = srcdoc;
@@ -850,6 +858,98 @@ export async function armClickProbe(host: HTMLElement, onUpdate: (counts: ClickC
     doc.removeEventListener('mousedown', onMousedown);
     doc.removeEventListener('probe-ping', onCustom);
   };
+}
+
+/** How the parent can learn that the frame's height changed. decision-3 plans to
+ *  hear about late layout through listeners, so on WebKit it would never hear at
+ *  all — TASK-5.2 needs to know which of the alternatives survive, whichever way
+ *  the link question is settled. */
+export interface LateLayout {
+  iframeElementLoadFired: boolean;
+  imageLoaded: boolean;
+  imageLoadListenerFired: boolean;
+  /** Total callbacks, including the one `observe()` delivers immediately. Only a
+   *  count above 1 is evidence that a real change was reported. */
+  resizeObserverCalls: number;
+  mutationObserverCalls: number;
+  pollSawChange: boolean;
+  heightBefore: number;
+  heightNow: number;
+  detailsOpen: boolean;
+}
+
+const NO_LATE_LAYOUT: LateLayout = {
+  iframeElementLoadFired: false,
+  imageLoaded: false,
+  imageLoadListenerFired: false,
+  resizeObserverCalls: 0,
+  mutationObserverCalls: 0,
+  pollSawChange: false,
+  heightBefore: 0,
+  heightNow: 0,
+  detailsOpen: false,
+};
+
+/** Mount the late-layout fixture, wire every candidate mechanism, and keep them
+ *  attached so a `<details>` opened by hand is measured by the same set.
+ *  `cacheBuster` is passed in rather than read from the clock here so the
+ *  fixture module stays a pure function of its inputs. */
+export async function armLateLayoutProbe(
+  host: HTMLElement,
+  cacheBuster: number,
+  onUpdate: (state: LateLayout) => void,
+): Promise<void> {
+  const state: LateLayout = { ...NO_LATE_LAYOUT };
+  const frame = mountFrame(host, lateLayoutFixture(cacheBuster), () => {
+    state.iframeElementLoadFired = true;
+    onUpdate({ ...state });
+  });
+  const doc = await waitForFixture(frame);
+
+  const heightOf = (): number => doc.documentElement.scrollHeight;
+  state.heightBefore = heightOf();
+  state.heightNow = state.heightBefore;
+  const publish = (): void => {
+    state.heightNow = heightOf();
+    state.detailsOpen = (doc.getElementById('late-details') as HTMLDetailsElement | null)?.open === true;
+    onUpdate({ ...state });
+  };
+
+  const resize = new ResizeObserver(() => {
+    state.resizeObserverCalls += 1;
+    publish();
+  });
+  resize.observe(doc.documentElement);
+
+  const mutation = new MutationObserver(() => {
+    state.mutationObserverCalls += 1;
+    publish();
+  });
+  mutation.observe(doc, { subtree: true, childList: true, attributes: true });
+
+  const image = doc.getElementById('late-img') as HTMLImageElement | null;
+  image?.addEventListener('load', () => {
+    state.imageLoadListenerFired = true;
+    publish();
+  });
+
+  // Polling is the mechanism that cannot fail, and therefore the baseline: if
+  // the height never changes here either, the image simply did not arrive and
+  // the observers had nothing to report.
+  const deadline = Date.now() + 8000;
+  while (Date.now() < deadline) {
+    await sleep(120);
+    if (heightOf() !== state.heightBefore) {
+      state.pollSawChange = true;
+    }
+    state.imageLoaded = (image?.naturalWidth ?? 0) > 0;
+    publish();
+    if (state.imageLoaded && state.pollSawChange) {
+      break;
+    }
+  }
+  // The observers are left attached on purpose: the `<details>` half is opened
+  // by hand afterwards, and it is the same set that has to report it.
 }
 
 /** Reproduce what `Outline` does when a heading is chosen: make the target

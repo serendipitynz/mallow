@@ -6,7 +6,7 @@
  *  the positive controls, the WebView version, and which layer each verdict is
  *  evidence for — has to survive a copy and paste. */
 
-import type { Check, ClickCounts, Environment } from './harness';
+import type { Check, ClickCounts, Environment, LateLayout } from './harness';
 
 export interface Manual {
   platform: string;
@@ -82,7 +82,30 @@ function clicksBlock(clicks: ClickCounts | null): string {
   ].join('\n');
 }
 
-export function buildReport(env: Environment, checks: Check[], manual: Manual, clicks: ClickCounts | null): string {
+function lateLayoutBlock(late: LateLayout | null): string {
+  if (late === null) {
+    return '- late layout (height re-measurement for TASK-5.2): not run';
+  }
+  return [
+    '- late layout, i.e. how the parent can learn the frame got taller:',
+    `  - load event on the iframe ELEMENT (app document): ${late.iframeElementLoadFired}`,
+    `  - height before / now: ${late.heightBefore}px / ${late.heightNow}px`,
+    `  - the late image loaded: ${late.imageLoaded} (if false, nothing below had a change to report)`,
+    `  - load listener on the <img> INSIDE the frame: ${late.imageLoadListenerFired}`,
+    `  - ResizeObserver callbacks on the frame's documentElement: ${late.resizeObserverCalls} (1 is the initial one observe() always delivers; above 1 means it reported a real change)`,
+    `  - MutationObserver callbacks on the frame's document: ${late.mutationObserverCalls}`,
+    `  - polling saw the height change: ${late.pollSawChange}`,
+    `  - <details> was opened by hand: ${late.detailsOpen}`,
+  ].join('\n');
+}
+
+export function buildReport(
+  env: Environment,
+  checks: Check[],
+  manual: Manual,
+  clicks: ClickCounts | null,
+  late: LateLayout | null,
+): string {
   const counts = {
     pass: checks.filter((c) => c.verdict === 'pass').length,
     fail: checks.filter((c) => c.verdict === 'fail').length,
@@ -128,6 +151,7 @@ export function buildReport(env: Environment, checks: Check[], manual: Manual, c
     `- \`scrollIntoView\` inside the frame moved the parent scroller: ${String(env.scrollIntoViewMovedParent)}`,
     `- parent-side rect conversion + \`scrollTop\` landed the target: ${String(env.parentSideScrollWorks)}`,
     clicksBlock(clicks),
+    lateLayoutBlock(late),
     '',
     '### Input, recorded by hand',
     '',

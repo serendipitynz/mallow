@@ -167,6 +167,26 @@ export function manualClickFixture(): string {
   );
 }
 
+/** Late layout. decision-3 requires the parent to re-measure the frame's height
+ *  after an image finishes loading or a `<details>` opens, and plans to hear
+ *  about both through listeners — which are dead on WebKit. This fixture is what
+ *  the surviving mechanisms are measured against.
+ *
+ *  The image is deliberately given no intrinsic size and a cache-busting query,
+ *  so it reflows the document after first layout rather than before the observers
+ *  are attached. `<details>` is here because it is the one late change a
+ *  scripting-disabled document can still make on its own: opening it is UA
+ *  behaviour, not script. */
+export function lateLayoutFixture(cacheBuster: number): string {
+  return page(
+    '<style>body { font: 14px system-ui, sans-serif; } summary { cursor: pointer; font-size: 15px; padding: 6px; } .tall { height: 240px; background: #eeffee; }</style>',
+    [
+      `<p><img id="late-img" src="${REMOTE_IMAGE}?probe=${cacheBuster}" alt="late image"></p>`,
+      '<details id="late-details"><summary>open me — this changes the height</summary><p class="tall">late layout</p></details>',
+    ].join(''),
+  );
+}
+
 /** A document taller than any viewport, for the parent-side reach-in checks
  *  (AC #6, #12, #13). Heights are declared so the measured `scrollHeight` has
  *  something to be compared against.
