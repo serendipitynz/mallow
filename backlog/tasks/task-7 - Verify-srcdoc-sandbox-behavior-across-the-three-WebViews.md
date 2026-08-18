@@ -1,10 +1,10 @@
 ---
 id: TASK-7
 title: Verify srcdoc sandbox behavior across the three WebViews
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 09:26'
-updated_date: '2026-08-18 02:58'
+updated_date: '2026-08-18 03:25'
 labels:
   - feature
 milestone: m-1
