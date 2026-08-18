@@ -333,7 +333,44 @@ hold rather than as an exhaustive style guide.
   clicked about half the time. **A viewer that mounts `.markdown-body` without
   publishing the property takes the 62px fallback silently** (`MermaidView` today;
   the Config/Table/Xml bars publish nothing), which is harmless only for as long
-  as nothing there has headings.
+  as nothing there has headings. **`HtmlView` is the other case, not that one**:
+  its headings sit in the frame's own document, which `markdown.scss` cannot
+  reach, so the value is declared as `scroll-margin-top` on `.html-frame` in
+  `html.scss` and copied onto each heading as an inline style at load. It is
+  still one value in CSS, and `Outline` still reads it back off the heading.
+- **The rendered HTML frame is measured at a reference height, never at the
+  height it was last given — that is what makes the sizing settle rather than
+  merely stay bounded.** The frame's height *is* its document's viewport, so
+  reading `scrollHeight` at the applied height feeds the measurement back into
+  itself and `body { min-height: 200vh }` doubles on every pass (decision-3 names
+  the loop). `HtmlView`'s `measure` writes the app scroller's own `clientHeight`
+  first, reads there, then applies — both writes in one task, so no paint falls
+  between them — which makes the result a function of the document, the frame's
+  width and that reference alone. `MAX_MEASUREMENT_PASSES` and
+  `MAX_FRAME_HEIGHT_PX` remain as backstops for what that does not make
+  idempotent, not as the mechanism. Two things travel with it: the scroller's
+  `scrollTop` is saved and put back on **every** path out of `measure`, because
+  shrinking the frame shortens the scroller and clamps the offset there and then,
+  and the taller height applied after does not put it back; and the pass budget is
+  refilled by a width change or a mutation, which are external causes rather than
+  the loop feeding itself. Exceeding the maximum height sends the document to the
+  capped source view — **the frame never gets a scrollbar of its own**, which
+  decision-3, decision-9 and TASK-8 all rest on.
+- **Everything the parent puts inside the frame is lost on every `srcdoc` swap,
+  and the click handler is a capability rather than a given.** `contentDocument`
+  is `about:blank` until the iframe **element**'s `load` (which does fire on all
+  three WebViews), and each swap builds a fresh document, so `HtmlView` re-runs
+  heading ids → parent-side wiring → scroll anchor → height on every load, in that
+  order. Whether a listener the parent registers on that document is ever invoked
+  is settled by one synchronous dispatch per document — it runs on WebView2 and on
+  neither WebKit engine (decision-9) — and never by branching on a platform name.
+  Late layout is **observed**, never listened for: a `load` listener on an image
+  inside the frame fired on none of the three, while a `ResizeObserver` on the
+  frame's `documentElement` and a `MutationObserver` on its document reported on
+  all three; polling is the backstop. The scroll anchor is captured on every
+  parent scroll rather than just before a reload, because a `srcdoc` swap replaces
+  the document asynchronously and there is no moment the parent can rely on where
+  the new markup is committed and the old document is still readable.
 - **`TableView` is capped by four constants, and unlike `SourceView` it does
   withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100),
   `TABLE_MAX_CELLS` (20,000) and `TABLE_MAX_CELL_CHARS` (500) live in
