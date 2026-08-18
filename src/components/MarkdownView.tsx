@@ -4,28 +4,11 @@ import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { renderMermaid } from '../lib/mermaid';
+import { readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
 import { SourceView } from './SourceView';
-
-const OUTLINE_KEY = 'doc-outline:open';
-
-function readOutlineOpen(): boolean {
-  try {
-    return localStorage.getItem(OUTLINE_KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-
-function writeOutlineOpen(open: boolean): void {
-  try {
-    localStorage.setItem(OUTLINE_KEY, open ? '1' : '0');
-  } catch {
-    // Non-fatal: the toggle still works for this view.
-  }
-}
 
 export function MarkdownView({ source }: { source: string }) {
   const t = useT();
