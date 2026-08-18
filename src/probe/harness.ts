@@ -267,6 +267,27 @@ function measureClickDispatch(doc: Document): ClickDispatch {
   return { viaClickMethod, viaDispatchEvent, worked: viaClickMethod || viaDispatchEvent };
 }
 
+/** Positive control for the checks that rest on activation rather than on a
+ *  listener: a form submitting, a link navigating. Those are UA behaviour, which
+ *  a document with no scripting still performs, so they can be live while every
+ *  listener is dead — and equally they can be dead while the check reads as
+ *  containment. Opening `<details>` is the cheapest activation to ask for: no
+ *  script, and the outcome is a readable attribute rather than an event.
+ *
+ *  The element is closed again afterwards so the control leaves no trace in a
+ *  fixture that is also being looked at. */
+function measureActivation(doc: Document): boolean {
+  const details = doc.getElementById('activation-control') as HTMLDetailsElement | null;
+  const summary = doc.getElementById('activation-summary');
+  if (details === null || summary === null) {
+    return false;
+  }
+  summary.click();
+  const activated = details.open;
+  details.open = false;
+  return activated;
+}
+
 /** Drive a click through whichever mechanism the control showed works. */
 function clickIn(doc: Document, id: string, dispatch: ClickDispatch): void {
   const element = doc.getElementById(id);
@@ -554,6 +575,7 @@ async function runNetworkFixture(host: HTMLElement, cspPresent: boolean): Promis
 async function runFormFixture(host: HTMLElement): Promise<Check[]> {
   const frame = mountFrame(host, formFixture());
   const doc = await waitForFixture(frame);
+  const activates = measureActivation(doc);
   const collector = collectViolations(doc);
 
   (doc.getElementById('submit-plain') as HTMLButtonElement | null)?.click();
@@ -573,8 +595,8 @@ async function runFormFixture(host: HTMLElement): Promise<Check[]> {
       [4],
       hit === undefined ? 'sandbox' : 'csp',
       'Neither the form action nor a button formaction submits',
-      expect(afterPlain && afterFormaction),
-      `fixture still loaded after the plain submit: ${afterPlain}, after the formaction submit: ${afterFormaction}. Layer: ${hit === undefined ? 'no CSP violation was reported, so the submission was stopped before it became a navigation — the sandbox (allow-forms is absent)' : describeViolation(hit)}`,
+      activates ? expect(afterPlain && afterFormaction) : 'inconclusive',
+      `fixture still loaded after the plain submit: ${afterPlain}, after the formaction submit: ${afterFormaction}. Layer: ${hit === undefined ? 'no CSP violation was reported, so the submission was stopped before it became a navigation — the sandbox (allow-forms is absent)' : describeViolation(hit)}. Activation control: ${activates}${activates ? '' : ' — a click driven from the parent activates nothing in this document, so a form that did not submit is not evidence that submission is blocked'}`,
     ),
   ];
 }
@@ -603,6 +625,7 @@ async function runMetaRefreshFixture(host: HTMLElement): Promise<Check[]> {
 async function runTopNavFixture(host: HTMLElement): Promise<Check[]> {
   const frame = mountFrame(host, topNavFixture());
   const doc = await waitForFixture(frame);
+  const activates = measureActivation(doc);
   (doc.getElementById('top-link') as HTMLAnchorElement | null)?.click();
   await sleep(1200);
   // Reaching this line at all is most of the answer: the link targets the app's
@@ -615,9 +638,9 @@ async function runTopNavFixture(host: HTMLElement): Promise<Check[]> {
       [4],
       'sandbox',
       'target="_top" cannot navigate the app away',
-      expect(survived),
+      survived ? (activates ? 'pass' : 'inconclusive') : 'fail',
       survived
-        ? 'the probe page was not reloaded and no query flag is present'
+        ? `the probe page was not reloaded and no query flag is present. Activation control: ${activates}${activates ? '' : ' — nothing this document was asked to activate did, so a link that did not navigate is not evidence that top navigation is blocked'}`
         : `the app navigated to ${window.location.href}: allow-top-navigation is absent, so this is a sandbox failure`,
     ),
   ];
@@ -628,6 +651,7 @@ async function runPlainLinkFixture(host: HTMLElement): Promise<Check[]> {
   const doc = await waitForFixture(frame);
 
   const dispatch = measureClickDispatch(doc);
+  const activates = measureActivation(doc);
   let intercepted = 0;
   const onClick = (event: Event): void => {
     intercepted += 1;
@@ -663,8 +687,8 @@ async function runPlainLinkFixture(host: HTMLElement): Promise<Check[]> {
       [10],
       hit === undefined ? 'sandbox' : 'csp',
       'Informational: what a plain link does with NO parent interception',
-      survivedWithout ? 'pass' : 'fail',
-      `fixture still loaded without interception: ${survivedWithout}. ${hit === undefined ? 'no CSP violation reported' : describeViolation(hit)}. A false here is not a defect — it records that interception is load-bearing for TASK-5.2.`,
+      survivedWithout ? (activates ? 'pass' : 'inconclusive') : 'fail',
+      `fixture still loaded without interception: ${survivedWithout}. ${hit === undefined ? 'no CSP violation reported' : describeViolation(hit)}. Activation control: ${activates}${activates ? '' : ' — the click activated nothing, so this records only that the probe could not make the link navigate'}. A false here is not a defect: it records that interception is load-bearing for TASK-5.2.`,
     ),
   ];
 }

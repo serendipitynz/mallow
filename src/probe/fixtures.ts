@@ -51,12 +51,27 @@ function attr(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/** Every fixture ends with two markers. `alive` is how the harness recognises
- *  the fixture document; `click-control` is the positive control for clicks
- *  driven from the parent, without which every "nothing ran when clicked"
- *  result would pass vacuously on an engine that does not deliver them. */
+/** Every fixture ends with three markers.
+ *
+ *  `alive` is how the harness recognises the fixture document.
+ *
+ *  `click-control` is the positive control for clicks driven from the parent,
+ *  without which every "nothing ran when clicked" result would pass vacuously on
+ *  an engine that does not deliver them.
+ *
+ *  `activation-control` is the positive control for the checks that do not
+ *  depend on a listener at all — a form submitting, a link navigating — because
+ *  those are activation behaviour, which a document with no scripting still
+ *  performs. Its absence would be a second way to pass vacuously, and a
+ *  different one: a click that reaches no listener may still activate. Opening
+ *  `<details>` is the cheapest activation this document can be asked for, since
+ *  the UA does it with no script and the result is a readable attribute. */
 function page(head: string, body: string): string {
-  const markers = '<p id="alive">alive</p><span id="click-control"></span>';
+  const markers = [
+    '<p id="alive">alive</p>',
+    '<span id="click-control"></span>',
+    '<details id="activation-control"><summary id="activation-summary">activation control</summary></details>',
+  ].join('');
   return `${DOCTYPE}<html><head><meta charset="utf-8">${head}</head><body>${body}${markers}</body></html>`;
 }
 
