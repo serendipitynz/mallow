@@ -41,8 +41,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   map, `refresh`, `expandPaths`). The tree components are controlled by this.
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
-  XmlView/XmlTree (xml/plist/xsd/xsl), ErrorBanner (shared syntax-error banner),
-  MermaidView,
+  XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
+  toggle), ErrorBanner (shared syntax-error banner), MermaidView,
   MediaView (image/pdf/video via the asset protocol), Outline, Toolbar, OpenWith,
   ThemePicker, SettingsModal, icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
@@ -56,7 +56,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
-  `markdown`, `config`, `source`, `table`, `xml`.
+  `markdown`, `config`, `source`, `html`, `table`, `xml`.
 
 **Backend (`src-tauri/src/`)**
 - `commands.rs` — `read_dir_tree`, `read_file`, `path_exists`, `allow_media_dir`

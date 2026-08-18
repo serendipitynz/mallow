@@ -21,9 +21,11 @@ limits on which kinds get added are in decision-2.
    in `ViewerBody`. Note `isMediaKind` above it: media kinds skip the text read
    entirely, so a new kind that reads bytes rather than text belongs there instead.
    A kind whose name is also a Shiki grammar id needs no kind→lang table: the
-   `text` / `ini` / `diff` / `sql` / `html` case passes `file.kind` through as
-   `lang`. A kind with a view of its own gets its own `case` there instead, as
-   `csv` does.
+   `text` / `ini` / `diff` / `sql` case passes `file.kind` through as `lang`. A
+   kind with a view of its own gets its own `case` there instead, as `csv` and
+   `html` do — `html` sat in the pass-through group until its rendered view
+   landed (TASK-5.1), which is the shape a kind takes when a later task gives it
+   a view.
    `.doc` has no top padding of its own, so a view rendered without a `.doc__bar`
    adds `doc--no-bar` to get the same top spacing.
    **A `case` here may branch on the text as well as the kind.** `xml` does, for
@@ -69,7 +71,10 @@ A corollary worth stating: when a kind's safety depends on how a real DOM behave
 over strings cannot establish it. Either put the containment somewhere structural
 that needs no such test (see decision-3, where sandbox flags and the inherited CSP
 replace an allowlist), or plan a browser-environment check — do not let a passing
-Node-only test read as evidence the boundary holds.
+Node-only test read as evidence the boundary holds. `src/probe/transform-checks.ts`
+is the worked example of that second half: the HTML transform's engine-dependent
+behaviour is measured in a built app, beside the pure tests rather than in place
+of them.
 
 If a new kind adds a syntax-highlighted source view, check whether its grammar is
 already in the `LANGS` list in [src/lib/shiki.ts](../../src/lib/shiki.ts);
@@ -95,7 +100,10 @@ Two constraints apply to every text-reading kind, both from
   `SourceView` needs no size check of its own, and any view may name it as its
   fallback. Every *other* way of expanding a document into DOM still needs its own
   ceiling: the config tree has one, the CSV table has one (decision-7), the XML
-  tree has one (decision-8), and the HTML renderer must get its own. A view that
+  tree has one (decision-8), and the HTML rendered view has one in
+  [src/lib/html-doc.ts](../../src/lib/html-doc.ts) — an element count and a
+  rendered-text length, which send the document to the source view rather than
+  truncating it, because a truncated rendering is not a rendering. A view that
   caps by truncating also owes the reader a line saying what was left out and
   where the rest is.
 

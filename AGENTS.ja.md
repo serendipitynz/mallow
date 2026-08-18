@@ -41,8 +41,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
-  XmlView/XmlTree（xml/plist/xsd/xsl）、ErrorBanner（構文エラー表示の共通部品）、
-  MermaidView、
+  XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
+  ソース切替）、ErrorBanner（構文エラー表示の共通部品）、MermaidView、
   MediaView（画像/PDF/動画を asset protocol 経由で表示）、Outline、Toolbar、
   OpenWith、ThemePicker、SettingsModal、icons（Lucide の SVG をインライン化・
   ランタイム依存なし）。
@@ -51,6 +51,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、
   `delimited`（CSV/TSV パーサ + 表ビューの上限）、
   `xml-tree`（XML DOM → 上限付きツリーモデル + parsererror 文言の解析）、
+  `html-doc`（HTML の markup 変換 + 描画上限）、
   `clip`（値の切り詰め・共通）、
   `custom-emoji`（ユーザーの絵文字フォルダ →
   ショートコード表）、`heading`（`Heading` 型・注入する lookup root・純関数の座標変換）、
@@ -58,7 +59,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
-  `markdown`、`config`、`source`、`table`、`xml`。
+  `markdown`、`config`、`source`、`html`、`table`、`xml`。
 
 **バックエンド (`src-tauri/src/`)**
 - `commands.rs` — `read_dir_tree` / `read_file` / `path_exists` / `allow_media_dir`
@@ -313,8 +314,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   スパイ側にも効く。比較には `LANDING_SLACK_PX` が入る: スクローラのオフセットは整数、
   見出しの位置は小数なので、厳密比較だと**クリックした 1 つ上の項目**が半分くらいの確率で
   ハイライトされる。**property を publish せずに `.markdown-body` をマウントするビューは
-  黙って 62px のフォールバックを使う**（今日は `MermaidView`。Config・Table・Xml のバーは
-  publish しない）。そこに見出しが無いあいだだけ無害。
+  黙って 62px のフォールバックを使う**（今日は `MermaidView`。Config・Table・Xml・Html の
+  バーは publish しない）。そこに見出しが無いあいだだけ無害。`HtmlView` は同じ事例ではなく
+  別の事例で、見出しはフレーム自身の文書の中にあり `markdown.scss` はそこへ届かない —
+  答えを出すのは TASK-5.2。
 - **`TableView` の上限は定数 4 本で、`SourceView` と違って内容そのものを落とす。**
   `TABLE_MAX_ROWS`（5,000）・`TABLE_MAX_COLUMNS`（100）・`TABLE_MAX_CELLS`（20,000）・
   `TABLE_MAX_CELL_CHARS`（500）が `lib/delimited` にある。4 本要るのは、前の 2 本が
