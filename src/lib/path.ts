@@ -37,6 +37,61 @@ export function basename(path: string): string {
   return segs.length > 0 ? segs[segs.length - 1] : path;
 }
 
+/** The directory a path sits in, following Node's `path.dirname` for the cases
+ *  that have an obvious answer: a trailing separator is ignored, a bare name has
+ *  no directory (`''`), and a path directly under a root keeps that root. */
+export function dirname(path: string): string {
+  const trimmed = path.replace(/[/\\]+$/, '');
+  const cut = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('\\'));
+  if (cut < 0) {
+    return '';
+  }
+  // `/x` → `/`, not `''`: dropping the separator would turn an absolute path
+  // into a relative one.
+  return cut === 0 ? trimmed.slice(0, 1) : trimmed.slice(0, cut);
+}
+
+/** Resolve a `/`-separated relative reference (as written inside a document)
+ *  against a directory path, normalising `.` and `..`.
+ *
+ *  `..` is applied by trimming `dir`'s own string rather than by rebuilding it
+ *  from components, so a drive letter or a UNC prefix survives. Climbing past
+ *  the root stops there, and climbing above the folder the user opened is
+ *  deliberately not special-cased: the asset-protocol grant is what decides
+ *  whether the result can be read, and widening that is not this function's to
+ *  do. */
+export function resolvePath(dir: string, ref: string): string {
+  let base = dir.replace(/[/\\]+$/, '');
+  const rest: string[] = [];
+  for (const part of ref.split('/')) {
+    if (part === '' || part === '.') {
+      continue;
+    }
+    if (part !== '..') {
+      rest.push(part);
+      continue;
+    }
+    if (rest.length > 0) {
+      rest.pop();
+      continue;
+    }
+    const cut = Math.max(base.lastIndexOf('/'), base.lastIndexOf('\\'));
+    if (cut > 0) {
+      base = base.slice(0, cut);
+    } else if (cut === 0) {
+      // A component directly under the root: climbing leaves the root itself,
+      // and climbing again stays there rather than eating the separator.
+      base = base.slice(0, 1);
+    }
+  }
+  if (rest.length === 0) {
+    return base;
+  }
+  // `join` reads the separator style off `dir`, which an empty `dir` cannot
+  // supply — and prefixing one there would turn a relative result absolute.
+  return base === '' ? rest.join('/') : join(base, ...rest);
+}
+
 /** Append child components to a directory path, keeping the input's separator
  *  style so the result lines up with the paths Rust hands back. */
 export function join(dir: string, ...parts: string[]): string {

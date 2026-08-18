@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ancestorDirs, basename, isInside, join } from './path';
+import { ancestorDirs, basename, dirname, isInside, join, resolvePath } from './path';
 
 describe('join', () => {
   it('appends components with the input separator', () => {
@@ -92,5 +92,58 @@ describe('ancestorDirs', () => {
 
   it('returns an empty array when the file is not inside the root', () => {
     expect(ancestorDirs('/Users/me/docs', '/etc/hosts')).toEqual([]);
+  });
+});
+
+describe('dirname', () => {
+  it('drops the last component of either separator style', () => {
+    expect(dirname('/Users/me/docs/README.md')).toBe('/Users/me/docs');
+    expect(dirname('C:\\Users\\me\\docs\\README.md')).toBe('C:\\Users\\me\\docs');
+  });
+
+  it('ignores a trailing separator', () => {
+    expect(dirname('/Users/me/docs/')).toBe('/Users/me');
+  });
+
+  it('keeps the root separator for a file directly under it', () => {
+    expect(dirname('/README.md')).toBe('/');
+  });
+
+  it('has no directory for a bare name', () => {
+    expect(dirname('README.md')).toBe('');
+  });
+});
+
+describe('resolvePath', () => {
+  it('appends a document-relative reference', () => {
+    expect(resolvePath('/Users/me/docs', 'img/logo.png')).toBe('/Users/me/docs/img/logo.png');
+    expect(resolvePath('/Users/me/docs', './img/logo.png')).toBe('/Users/me/docs/img/logo.png');
+  });
+
+  it('climbs with ..', () => {
+    expect(resolvePath('/Users/me/docs', '../assets/logo.png')).toBe('/Users/me/assets/logo.png');
+    expect(resolvePath('/Users/me/docs', 'img/../logo.png')).toBe('/Users/me/docs/logo.png');
+  });
+
+  // Climbing above the folder the user opened is resolved like any other path:
+  // the asset-protocol grant decides whether it can be read, and this function
+  // does not widen it.
+  it('resolves a climb above the opened folder rather than clamping it', () => {
+    expect(resolvePath('/Users/me/docs', '../../etc/hosts')).toBe('/Users/etc/hosts');
+  });
+
+  it('stops climbing at the root', () => {
+    expect(resolvePath('/docs', '../../../logo.png')).toBe('/logo.png');
+  });
+
+  // The asset scope sets require_literal_leading_dot on unix, so a `**` grant
+  // does not match these — the path is still resolved, and the reference simply
+  // does not load. Nothing here treats a leading dot specially.
+  it('keeps a dot-prefixed directory as written', () => {
+    expect(resolvePath('/Users/me/docs', './.assets/logo.png')).toBe('/Users/me/docs/.assets/logo.png');
+  });
+
+  it('keeps the Windows separator style', () => {
+    expect(resolvePath('C:\\Users\\me\\docs', '../img/logo.png')).toBe('C:\\Users\\me\\img\\logo.png');
   });
 });
