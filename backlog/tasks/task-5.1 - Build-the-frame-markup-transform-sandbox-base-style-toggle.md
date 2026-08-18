@@ -4,7 +4,7 @@ title: 'Build the frame: markup transform, sandbox, base style, toggle'
 status: In Review
 assignee: []
 created_date: '2026-07-30 10:25'
-updated_date: '2026-08-18 10:36'
+updated_date: '2026-08-18 11:17'
 labels:
   - feature
 milestone: m-1
@@ -43,18 +43,18 @@ Verify in a built app, not only in pnpm tauri dev: there is no CSP under dev on 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A self-contained HTML file with an inline style element renders with its styling applied
+- [x] #1 A self-contained HTML file with an inline style element renders with its styling applied
 - [ ] #2 An inline script does not execute, and neither does an on-star attribute, a javascript: URL, a form submission, nor a meta refresh - checked in a built app, where the CSP actually exists
-- [ ] #3 A nested iframe or frame element is removed from the document, and a base element is ignored
-- [ ] #4 The frame's canvas is light under every theme, and a document that declares color-scheme support with a text colour but no background stays readable
-- [ ] #5 The rendered document is in standards mode (compatMode is CSS1Compat), so the doctype survived the transform
+- [x] #3 A nested iframe or frame element is removed from the document, and a base element is ignored
+- [x] #4 The frame's canvas is light under every theme, and a document that declares color-scheme support with a text colour but no background stays readable
+- [x] #5 The rendered document is in standards mode (compatMode is CSS1Compat), so the doctype survived the transform
 - [ ] #6 Local media loads through every rewritten attribute: img src, img srcset, source src, source srcset, video src, video poster
-- [ ] #7 A document whose images are data: URIs renders unchanged, and unit tests pin data:, http(s), protocol-relative, blob:, empty and fragment-only values as untouched
+- [x] #7 A document whose images are data: URIs renders unchanged, and unit tests pin data:, http(s), protocol-relative, blob:, empty and fragment-only values as untouched
 - [x] #8 srcset values with descriptors and with commas inside paths survive the rewrite, covered by unit tests
 - [x] #9 The transform returns the documented contract, including the title, so no consumer parses the document again
 - [x] #10 The path helpers the rewriting introduced have unit tests: dirname and resolvePath in lib/path.ts for '..' above the opened folder and for dot-prefixed directories, and classifyRef in lib/html-doc.ts for document-absolute paths - which are answered there rather than in lib/path because the decision is what to do with a URL, not how to join a path
-- [ ] #11 A document above the render complexity threshold falls back to the capped source view instead of stalling the WebView
-- [ ] #12 The rendered/source toggle is present and the rendered view is the default
+- [x] #11 A document above the render complexity threshold falls back to the capped source view instead of stalling the WebView
+- [x] #12 The rendered/source toggle is present and the rendered view is the default
 - [x] #13 The CSP in tauri.conf.json is unchanged
 - [x] #14 pnpm build and pnpm test pass
 - [x] #15 The URL-resolution, srcset-splitting and counting helpers are unit-tested as pure functions under Node
