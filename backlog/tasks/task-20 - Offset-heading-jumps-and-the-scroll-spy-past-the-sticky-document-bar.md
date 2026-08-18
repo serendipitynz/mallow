@@ -1,10 +1,10 @@
 ---
 id: TASK-20
 title: Offset heading jumps and the scroll spy past the sticky document bar
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-18 06:46'
-updated_date: '2026-08-18 06:50'
+updated_date: '2026-08-18 09:45'
 labels:
   - bug
 milestone: m-1
@@ -34,9 +34,9 @@ Out of scope: the other three views' bars. None of them has headings, a scroll s
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An Outline click leaves the target heading fully visible below the document bar, not behind it
-- [ ] #2 An in-document fragment link (a Markdown [x](#slug)) lands in the same place as an Outline click
-- [ ] #3 The scroll spy marks a heading current only once it has cleared the bar, so the jumped-to heading is current on arrival
+- [x] #1 An Outline click leaves the target heading fully visible below the document bar, not behind it
+- [x] #2 An in-document fragment link (a Markdown [x](#slug)) lands in the same place as an Outline click
+- [x] #3 The scroll spy marks a heading current only once it has cleared the bar, so the jumped-to heading is current on arrival
 - [x] #4 The inset comes from the rendered bar, not from a CSS value copied into TypeScript, and one source feeds both the jump and the spy
 - [x] #5 A view with no bar is unaffected, and pnpm build, pnpm test and pnpm lint pass
 <!-- AC:END -->

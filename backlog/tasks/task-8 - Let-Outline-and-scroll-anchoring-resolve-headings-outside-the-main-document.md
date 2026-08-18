@@ -1,10 +1,10 @@
 ---
 id: TASK-8
 title: Let Outline and scroll anchoring resolve headings outside the main document
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 09:26'
-updated_date: '2026-08-18 04:42'
+updated_date: '2026-08-18 09:44'
 labels:
   - feature
 milestone: m-1
