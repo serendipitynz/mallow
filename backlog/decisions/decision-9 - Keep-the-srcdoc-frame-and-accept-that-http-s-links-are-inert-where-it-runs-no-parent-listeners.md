@@ -1,7 +1,7 @@
 ---
 id: decision-9
 title: >-
-  Keep the srcdoc frame and accept that links are inert where the frame runs no
+  Keep the srcdoc frame and accept that http(s) links are inert where it runs no
   parent listeners
 date: '2026-08-18 01:16'
 status: accepted
