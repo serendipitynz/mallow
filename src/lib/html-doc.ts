@@ -58,12 +58,18 @@ export interface HtmlCounts {
    *  parent-registered listener — a platform difference decision-9 requires the
    *  notice bar to state, which is why they are counted here and not in TASK-5.3. */
   links: number;
-  /** References to `http(s)` URLs: remote images, stylesheets, scripts, fonts. */
+  /** References to `http(s)` URLs: remote images, stylesheets and scripts. */
   externalRefs: number;
-  /** References to local files this transform deliberately did not rewrite —
-   *  stylesheets and fonts (rewriting them would need a CSP change decision-3
-   *  rules out) and document-absolute paths. Counted so the notice bar can say
-   *  the document is unstyled on purpose rather than by a fault in mallow. */
+  /** References to local files this transform deliberately did not rewrite — a
+   *  relative stylesheet or script, and a document-absolute path anywhere.
+   *  Rewriting a stylesheet would need `asset:` in `style-src`, a CSP change
+   *  decision-3 rules out. Counted so the notice bar can say the document is
+   *  unstyled on purpose rather than by a fault in mallow.
+   *
+   *  **Fonts are not in this count.** A web font is reached through `url()`
+   *  inside CSS, and no CSS is parsed here — so a document whose fonts do not
+   *  load is covered by the stylesheet that would have named them, and not
+   *  otherwise. */
   unresolvedLocalRefs: number;
   /** Nested `<iframe>` / `<frame>` elements removed. */
   removedFrames: number;
@@ -268,11 +274,9 @@ const REWRITTEN: { selector: string; attributes: string[] }[] = [
   { selector: 'audio', attributes: ['src'] },
 ];
 
-/** `rel` values whose `<link>` fetches something the frame would need: the two
- *  this transform cannot rewrite (a stylesheet, and the fonts it would pull) and
- *  the ones that fetch on their own. `rel="canonical"` and friends are not
- *  counted, because nothing is fetched for them and a count that included them
- *  would overstate what the document lost. */
+/** `rel` values whose `<link>` fetches something. `rel="canonical"` and friends
+ *  are not counted, because nothing is fetched for them and a count that
+ *  included them would overstate what the document lost. */
 const FETCHING_REL = new Set(['stylesheet', 'preload', 'prefetch', 'icon', 'apple-touch-icon', 'manifest']);
 
 function emptyCounts(): HtmlCounts {
@@ -343,7 +347,7 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
           element.setAttribute(name, rewriteSrcsetValue(value, resolver, counts));
           continue;
         }
-        tally(value, counts);
+        tallyRewritable(value, counts);
         const rewritten = rewriteRef(value, resolver);
         if (rewritten !== null) {
           element.setAttribute(name, rewritten);
@@ -355,11 +359,11 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
   for (const link of doc.querySelectorAll('link[href]')) {
     const rels = (link.getAttribute('rel') ?? '').toLowerCase().split(/\s+/);
     if (rels.some((rel) => FETCHING_REL.has(rel))) {
-      tally(link.getAttribute('href') ?? '', counts);
+      tallyUnrewritten(link.getAttribute('href') ?? '', counts);
     }
   }
   for (const script of doc.querySelectorAll('script[src]')) {
-    tally(script.getAttribute('src') ?? '', counts);
+    tallyUnrewritten(script.getAttribute('src') ?? '', counts);
   }
 
   return {
@@ -373,7 +377,9 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
   };
 }
 
-function tally(value: string, counts: HtmlCounts): void {
+/** Count a reference on an attribute this transform *does* rewrite, so a local
+ *  one resolves and is nothing the reader lost. */
+function tallyRewritable(value: string, counts: HtmlCounts): void {
   const kind = classifyRef(value);
   if (kind === 'external') {
     counts.externalRefs += 1;
@@ -382,10 +388,23 @@ function tally(value: string, counts: HtmlCounts): void {
   }
 }
 
+/** Count a reference on an attribute this transform leaves as written. Here a
+ *  local path is exactly what goes missing — inside `srcdoc` it resolves against
+ *  the app's own URL and 404s — so it counts alongside the document-absolute
+ *  case, where the rewritten set counts only the latter. */
+function tallyUnrewritten(value: string, counts: HtmlCounts): void {
+  const kind = classifyRef(value);
+  if (kind === 'external') {
+    counts.externalRefs += 1;
+  } else if (kind === 'local' || kind === 'unresolvable') {
+    counts.unresolvedLocalRefs += 1;
+  }
+}
+
 function rewriteSrcsetValue(value: string, resolver: RefResolver, counts: HtmlCounts): string {
   return serializeSrcset(
     parseSrcset(value).map((candidate) => {
-      tally(candidate.url, counts);
+      tallyRewritable(candidate.url, counts);
       return { url: rewriteRef(candidate.url, resolver) ?? candidate.url, descriptor: candidate.descriptor };
     }),
   );
