@@ -213,13 +213,16 @@ app-origin external script, permitted by `script-src 'self'`.
   solved by DOMPurify either, which does not sanitize CSS contents. It matches
   the existing exposure from remote images in Markdown; tightening it means
   removing `https:`/`http:` from `img-src`, which is a separate decision.
-- `Outline` and `lib/scroll` resolve headings with `document.getElementById`
-  (`Outline.tsx:29,57`, `scroll.ts:14,27`), which does not cross the frame
-  boundary — and swapping in a lookup root is not enough on its own. The scroll
-  spy compares `getBoundingClientRect()` values (`Outline.tsx:26-31`), and rects
-  taken inside the frame are relative to the frame's viewport, not the parent's.
-  Both the root and the coordinate conversion are TASK-8, shared with any future
-  viewer whose content is not in the app document.
+- `Outline` and `lib/scroll` resolved headings with `document.getElementById`,
+  which does not cross the frame boundary — and swapping in a lookup root is not
+  enough on its own, because the scroll spy compares `getBoundingClientRect()`
+  values and rects taken inside the frame are relative to the frame's viewport,
+  not the parent's. **TASK-8 has since built both.** `lib/heading` holds
+  `HeadingRoot` — the node ids are resolved against, paired with the
+  `frameOffset` its coordinate space starts at — and the pure
+  `offsetFromContainerTop`; `Outline` and `lib/scroll` take one, defaulting to
+  the app document. A viewer whose content is not in the app document passes its
+  own.
 - The frame does not size itself to its content, so the parent measures
   `scrollHeight` and applies it, keeping the app's own scroller (and with it
   scroll-anchor preservation) in charge. **That is a feedback loop**: a document
@@ -277,7 +280,7 @@ app-origin external script, permitted by `script-src 'self'`.
   click listener, anchor restore, and height measurement all have to re-run in
   that order after each load — a detail that fails half-visibly if left implicit.
 - **Keyboard scrolling has to be forwarded.** A frame sized to its own content has
-  no scrollable viewport, so once focus moves inside it — which `Outline.tsx:61-62`
+  no scrollable viewport, so once focus moves inside it — which `Outline`'s `go`
   does deliberately, setting `tabindex="-1"` and calling `focus()` on the target
   heading — arrow keys, Space, PageDown, Home and End reach a document that cannot
   scroll, and the app's scroller stays put. Wheel events chain to the parent;
@@ -286,10 +289,11 @@ app-origin external script, permitted by `script-src 'self'`.
   regresses exactly where the goal was to match Markdown.
 - **One mechanism for crossing the boundary, chosen once.** Whether
   `scrollIntoView` on an element inside the frame scrolls the *parent* is what
-  TASK-7 AC #6 measures. This decision assumes it does not and specifies
-  parent-side scrolling; TASK-8 must name the mechanism it implements rather than
-  leaving `Outline`'s current `el.scrollIntoView({ block: 'start' })`
-  (`Outline.tsx:60`) to decide by accident.
+  TASK-7 AC #13 measured. This decision assumes it does not and specifies
+  parent-side scrolling; both in fact work (decision-9), and TASK-8 has named
+  `scrollIntoView` as the one implemented, because it is the one that honours the
+  heading's own `scroll-margin-top`. The reason sits at the call site in
+  `Outline`'s `go` rather than being left to whatever the WebView does.
 - Heading ids must be added only where the element has none. Overwriting an
   existing id breaks the document's own fragment links.
 - The document does not inherit mallow's theme. For a document that ships its own
