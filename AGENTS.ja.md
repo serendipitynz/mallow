@@ -229,7 +229,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   Vite の `devUrl` を直接読み込み、`index.html` は CSP の `<meta>` を持たず、`devCsp` も
   未設定。壊れているのではなく最初から無いという点が厄介で、目に見える失敗より悪い —
   CSP に依存した境界は dev では正常に見え、ビルド済みアプリで破れる。**封じ込めが CSP に
-  依存するものは `pnpm tauri build` で確認する**（またはその回だけ `devCsp` を設定する）。
+  依存するものは `pnpm tauri build` で確認する** — `--debug --no-bundle` で足り、これは
+  dev ビルドではない。**`devCsp` を設定しても dev に CSP は付かない**（TASK-7 で確定）:
+  この値を読むのは `AppManager::csp` だけで、そこへ入る経路は `get_asset` しかなく、
+  デスクトップの dev 実行は主文書でそこを通らない。
   すぐ隣にもう 1 つ罠がある: `style-src` の `'unsafe-inline'` は、そのディレクティブに
   nonce か hash が入った時点で効かなくなり、tauri-codegen は `index.html` に見つけた
   inline `<style>` の hash を追加する。つまり `index.html` に inline `<style>` を置くと

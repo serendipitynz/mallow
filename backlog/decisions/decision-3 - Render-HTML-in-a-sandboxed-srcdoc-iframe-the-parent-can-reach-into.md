@@ -70,8 +70,12 @@ Two further caveats about the CSP layer, both easy to trip over:
   webview loads the Vite `devUrl` directly because `PROXY_DEV_SERVER` is
   `cfg!(all(dev, mobile))` (`manager/webview.rs:43`), `index.html` carries no CSP
   `<meta>`, and `app.security.devCsp` is unset. So during development the sandbox
-  is the *only* layer, and anything about CSP behavior must be checked against a
-  built app (or with `devCsp` set for the occasion).
+  is the *only* layer, and anything about CSP behavior has to be checked against a
+  built app. **Setting `devCsp` does not rescue it** — TASK-7 established this:
+  `AppManager::csp` is the only reader of that field and it is reached only from
+  `get_asset`, which a desktop dev run never enters for the main document, so the
+  value is read and then never applied. `tauri build --debug` is enough and is not
+  a dev build.
 - **`style-src`'s `'unsafe-inline'` is one inline `<style>` away from being
   ignored.** CSP disables `'unsafe-inline'` as soon as a nonce or hash source is
   present in that directive, and tauri-codegen adds a hash for inline styles it
