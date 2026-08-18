@@ -338,39 +338,42 @@ hold rather than as an exhaustive style guide.
   reach, so the value is declared as `scroll-margin-top` on `.html-frame` in
   `html.scss` and copied onto each heading as an inline style at load. It is
   still one value in CSS, and `Outline` still reads it back off the heading.
-- **The rendered HTML frame is measured at a reference height, never at the
-  height it was last given — that is what makes the sizing settle rather than
-  merely stay bounded.** The frame's height *is* its document's viewport, so
-  reading `scrollHeight` at the applied height feeds the measurement back into
-  itself and `body { min-height: 200vh }` doubles on every pass (decision-3 names
-  the loop). `HtmlView`'s `measure` writes the app scroller's own `clientHeight`
-  first, reads there, then applies — both writes in one task, so no paint falls
-  between them — which makes the result a function of the document, the frame's
-  width and that reference alone. `MAX_MEASUREMENT_PASSES` and
-  `MAX_FRAME_HEIGHT_PX` remain as backstops for what that does not make
-  idempotent, not as the mechanism — and the pass budget is spent in
-  `scheduleMeasure`, not only inside `measure`, which is what makes it bound the
-  *work*: a document animating a box's height reports through the
-  `ResizeObserver` every frame and never stops, and each measurement costs two
-  layouts of the frame's document. A width change or a mutation refills the
-  budget, so neither cap is a one-way door.
-  **Every write in `measure` is conditional, and that is a correctness
-  requirement rather than an optimisation.** Writing `scroller.scrollTop` is an
-  instant scroll, and per CSSOM-View an instant scroll aborts a smooth one in
-  progress — so a measurement landing during an outline jump or a fragment-link
-  scroll stops it a few percent in, which reads as "the outline does nothing".
-  Hence the early return when the document already reports the applied height,
-  and hence the offset being written back only when the reference height actually
-  clamped it. **The general rule that follows is that every parent-side write
-  into the frame happens at load, never in a handler**: each one is an attribute
-  mutation the `MutationObserver` reports, so a write made while preparing a jump
-  schedules the measurement that cancels that jump — on its first use and only
-  the first, which is what makes it hard to catch. Both the landing offset (on
-  everything a fragment can address, not the headings alone) and `tabindex="-1"`
-  are assigned in the load pass for that reason; left to `Outline`'s `go`, the
-  `tabindex` write is exactly that sequence. Exceeding the maximum height sends the document to
-  the capped source view — **the frame never gets a scrollbar of its own**, which
-  decision-3, decision-9 and TASK-8 all rest on.
+- **The rendered HTML frame's height is read at the height currently applied,
+  and that is what makes the converged value a fixed point.** The frame's height
+  *is* its document's viewport, so a height measured anywhere else is a height
+  the document is not laid out at: apply it and `90vh` inside resolves against a
+  viewport the document never gets, the content ends up taller than the box
+  holding it, and **the frame becomes the second scroll region decision-3,
+  decision-9 and TASK-8 all forbid** — `scrollIntoView` then scrolls inside the
+  frame and the parent does not move. TASK-5.2 shipped a reference-height variant
+  first, on the reasoning that it removed the feedback loop; it removed the
+  convergence instead, and only the visual round caught it. decision-3 specifies
+  this loop, divergence included; `MAX_MEASUREMENT_PASSES` and
+  `MAX_FRAME_HEIGHT_PX` are what bound it, and the `ResizeObserver` is what
+  drives it — applying a height changes the viewport, which the observer reports,
+  which measures again.
+  **Converging writes nothing**, which is not an optimisation: per CSSOM-View an
+  instant scroll aborts a smooth one, so a measurement landing during an outline
+  jump would stop it a few percent in, and the observers and polls fire during
+  exactly those. **A shrink is invisible from a tall frame** — `scrollHeight` is
+  floored by the frame's own height — so a cause that can shorten the document (a
+  mutation, a width change) asks for a *restart*, which re-seeds the frame at the
+  reader's viewport and carries the reader across on the heading anchor rather
+  than on a `scrollTop` belonging to the height being recomputed. The polls do
+  not restart, so a shrink they alone would catch is not caught; that trade is
+  written beside them.
+- **A `srcdoc` document's base URL is the *parent's*, so `#section` inside the
+  frame is not a same-document link — and `frame-src 'self'` lets it load.** The
+  frame navigates to the app's own URL, the shell renders blank because its
+  scripts are refused, and the reader has no way back inside the view. So does a
+  relative or root-absolute path. `http(s)` links are the ones `frame-src` really
+  does stop, which is why they were inert and these were not; **"the CSP holds the
+  frame in place" is only true of destinations `frame-src` does not carry, and any
+  argument leaning on it has to name the destination first.** Where the frame runs
+  no parent-registered listener nothing can `preventDefault` this, so `HtmlView`
+  neutralizes those links at load with `pointer-events: none` — the click never
+  reaches the anchor while `:link` still matches, so the document keeps its own
+  styling (decision-10). `lib/html-doc`'s `navigatesAppOrigin` is the predicate.
 - **Everything the parent puts inside the frame is lost on every `srcdoc` swap,
   and the click handler is a capability rather than a given.** `contentDocument`
   is `about:blank` until the iframe **element**'s `load` (which does fire on all

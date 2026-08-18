@@ -20,19 +20,22 @@ import { SourceView } from './SourceView';
  * own would reopen decision-3, decision-9 and TASK-8 as one contract.
  *
  * A backstop against pathological growth, not a limit real documents are
- * expected to meet — decision-3 asks for it in those words. Measured by running
- * this component's own sizing loop over 3,268 `.html` / `.htm` files on one
- * working machine, at the width the frame is given beside an open outline:
- * 2,929 of them answered, the median at 1,437px, the 99th percentile at
- * 13,731px, the 99.9th at 82,877px and the tallest — an evaluation report of one
- * long `<pre>` — at 525,753px. So this clears the tallest by nearly 4× and
- * nothing in the corpus falls back.
+ * expected to meet — decision-3 asks for it in those words, and the measurement
+ * says the two are cleanly separable. Running this component's sizing loop over
+ * 3,118 `.html` / `.htm` files on one working machine, at the width the frame is
+ * given beside an open outline, 2,757 answered and they fell into two
+ * populations with nothing in between:
  *
- * The margin is wide because the two errors are not symmetric, and not in the
- * direction the render ceiling's are: a document sent to the source view loses
- * its rendering, while a tall frame costs the parent scroller an extent and no
- * extra layout at all — the document is laid out in full whatever height the
- * frame carries, so the height buys only how much of it is reachable.
+ * - **2,753 settled below 525,753px** — median 1,369, 99th percentile 14,072,
+ *   99.9th 82,877, and the tallest an evaluation report of one long `<pre>`.
+ * - **4 ran away to 33,554,432px**, which is not a property of the documents but
+ *   the engine's own maximum element height: the loop diverges and the engine
+ *   stops it. `safari_reader.html` and three saved report pages.
+ *
+ * Nothing sat between 525,753 and 33,554,432 — a factor of 64 — so this cap
+ * separates "renders" from "diverges" rather than picking a point on a
+ * distribution, and its exact value hardly matters. Those four documents are the
+ * only ones in the corpus that fall back.
  *
  * **Pixels, not bytes or elements.** The render ceiling in `lib/html-doc`
  * already bounds how much there is to lay out; this bounds what CSS makes of it,
@@ -43,24 +46,23 @@ const MAX_FRAME_HEIGHT_PX = 2_000_000;
 /**
  * Measurement passes spent before the frame keeps the height it has.
  *
- * Reading at a reference height (see `measure`) makes the measurement a function
- * of the document rather than of the height last applied, so in the corpus above
- * 2,838 documents settled in one pass and 85 in two. Six did not settle: they
- * crept upward while their remaining subresources arrived, by 417px between the
- * first two passes and by 4px between the eleventh and twelfth, which is where
- * the scan stopped counting. That shape — geometric, not runaway — is what fixes
- * this at 32 rather than at the 12 the scan happened to use.
+ * In the corpus above, **2,727 documents reached their fixed point in one pass
+ * and 17 in more, the slowest in 20.** So this clears the slowest converging
+ * document by 1.6×.
  *
- * What the cap is really for is what a reference height does not make
- * idempotent, and the corpus holds no example: a CSS animation on a box's height
- * reports through the `ResizeObserver` every frame and never stops, with no
- * script running. 32 ends that after about half a second at 60fps.
+ * What it is actually there for is the **13 that never settled at all**, and
+ * they do not diverge — they *oscillate*, alternating between two heights for
+ * all 40 passes the scan allowed, at ordinary sizes (1,440px to 13,840px). A
+ * document with a box whose height depends on the viewport in a way that flips
+ * a wrapping decision has no fixed point at any height, so nothing but a budget
+ * stops it, and {@link MAX_FRAME_HEIGHT_PX} never would: it stays small while it
+ * cycles. The frame ends on whichever of the two heights the budget ran out on,
+ * which costs a line of gap or a line clipped.
  *
- * The two errors are not symmetric here either. An extra pass costs one layout;
- * a budget exhausted early leaves the frame shorter than its document, and the
- * frame has no scroller of its own to reach the rest with. A width change or a
- * mutation refills it, so the budget is only ever spent on resize-driven
- * measurements with no external cause.
+ * The budget is spent in `scheduleMeasure` as well as here, so it bounds the
+ * *work* and not only the height — an oscillating document would otherwise cost
+ * a layout of the frame's document every frame, forever. A width change or a
+ * mutation refills it, so it is not a one-way door.
  */
 const MAX_MEASUREMENT_PASSES = 32;
 
@@ -157,6 +159,8 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
   const pendingMeasure = useRef(0);
   const disposeFrame = useRef<(() => void) | null>(null);
   const anchor = useRef<ScrollAnchor>(null);
+  /** Where the reader was when a restart shrank the frame under them. */
+  const pendingRestore = useRef<ScrollAnchor>(null);
   // Read by the scroll listener, which is bound once and must not be re-bound per
   // heading change.
   const headingsRef = useRef<Heading[]>(headings);
@@ -182,71 +186,70 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
   const showOutline = showRendered && hasOutline && outlineOpen;
 
   /**
-   * Size the frame to its document.
+   * Size the frame to its document, one step of a convergence the observers
+   * drive: applying a height changes the document's viewport, which reports
+   * through the `ResizeObserver`, which brings us back here.
    *
-   * `force` is for a cause that can make the document *shorter* — a mutation, a
-   * width change. The cheap check below cannot see a shrink, because a document
-   * shorter than its frame reports the frame's height back.
+   * **The height is read at the height currently applied, and that is what makes
+   * the value converged on a fixed point** — a height at which the document
+   * reports that height. Reading anywhere else gives a height the document is
+   * not laid out at: `90vh` inside the frame resolves against the frame's own
+   * height, so a value measured at some other reference leaves the content
+   * taller than the box holding it, and the frame becomes the second scroll
+   * region decision-3, decision-9 and TASK-8 all forbid. decision-3 specifies
+   * this loop, including that it can diverge; {@link MAX_MEASUREMENT_PASSES} and
+   * {@link MAX_FRAME_HEIGHT_PX} are what bound it.
+   *
+   * `restart` is for a cause that can make the document *shorter* — a mutation,
+   * a width change. `scrollHeight` is floored by the frame's own height, so from
+   * a tall frame a shrink is invisible; the convergence has to begin again from a
+   * height the document is known to exceed.
    */
-  const measure = useCallback((force: boolean) => {
-    const frame = frameRef.current;
-    const frameDocument = frame?.contentDocument;
-    const scroller = scrollRef.current;
-    if (!frame || !frameDocument || !scroller) {
-      return;
-    }
-    /* A document already at its own height says so without being touched, and
-       leaving it alone then is not an optimisation. The rest of this function
-       writes `scroller.scrollTop`, and per CSSOM-View an instant scroll aborts a
-       smooth one in progress — so a measurement landing during an outline jump
-       or a fragment-link scroll would stop it a few percent in. The observers
-       and the polls all fire during exactly those animations. */
-    if (!force && frameDocument.documentElement.scrollHeight === appliedHeight.current) {
-      return;
-    }
-    /* Read at a fixed reference height, never at the height last applied. The
-       frame's height IS its document's viewport, so measuring at the applied
-       height feeds the measurement back into itself and `body { min-height:
-       200vh }` doubles on every pass (decision-3 calls this out as the trap).
-       Reading at the app scroller's own height resolves a viewport-relative
-       document against the viewport the reader actually has, and makes the
-       measurement a pure function of the document, the width and that reference
-       — so it settles rather than merely being bounded, and the two caps stay
-       backstops rather than the mechanism. Both writes land in one task, so no
-       paint falls between them.
-
-       The scroller's own offset does not survive it unaided: shrinking the frame
-       shortens the scroller, which clamps `scrollTop` there and then, and the
-       taller height applied afterwards does not put it back. So it is carried
-       across every path out of here — otherwise a reader scrolled halfway down
-       is thrown to the end of the shortened document on each re-measurement. */
-    const scrollTop = scroller.scrollTop;
-    frame.style.height = `${scroller.clientHeight}px`;
-    const height = frameDocument.documentElement.scrollHeight;
-    // Settled, or out of budget: put back what was applied. Exhausting the budget
-    // leaves the last applied height rather than reverting, so nothing the reader
-    // could see is clipped; a width change refills it, which is what keeps a
-    // resized document from being stuck with a stale height.
-    const settled = height === appliedHeight.current || passes.current >= MAX_MEASUREMENT_PASSES;
-    if (height > MAX_FRAME_HEIGHT_PX) {
-      // This exit is no different from the others while the frame is still on
-      // screen: `setTooTall` swaps it out on the next render, not now.
-      setTooTall(true);
-      frame.style.height = `${appliedHeight.current ?? height}px`;
-    } else if (settled) {
-      frame.style.height = `${appliedHeight.current ?? height}px`;
-    } else {
+  const measure = useCallback(
+    (restart: boolean) => {
+      const frame = frameRef.current;
+      const frameDocument = frame?.contentDocument;
+      const scroller = scrollRef.current;
+      if (!frame || !frameDocument || !scroller) {
+        return;
+      }
+      if (restart) {
+        passes.current = 0;
+        appliedHeight.current = null;
+        // Seeded at the reader's own viewport rather than at 0: a document sized
+        // in `vh` then starts from the viewport its author meant, and one that
+        // converges reaches the same fixed point from either seed.
+        frame.style.height = `${scroller.clientHeight}px`;
+        // Shrinking the frame shortens the scroller, which clamps the offset
+        // there and then. The heading anchor is what carries the reader back
+        // across the convergence — a saved `scrollTop` would not, because the
+        // height it belonged to is the one being recomputed.
+        pendingRestore.current = anchor.current;
+      }
+      const height = frameDocument.documentElement.scrollHeight;
+      /* Converged, out of budget, or over the ceiling — and in all three the
+         frame keeps the height it has. Nothing is written on the way out, which
+         is not an optimisation: per CSSOM-View an instant scroll aborts a smooth
+         one, so a measurement landing during an outline jump would stop it a few
+         percent in, and the observers and polls fire during exactly those. */
+      if (height === appliedHeight.current || passes.current >= MAX_MEASUREMENT_PASSES) {
+        const restore = pendingRestore.current;
+        if (restore) {
+          pendingRestore.current = null;
+          restoreScrollAnchor(scroller, restore, frameRoot);
+        }
+        return;
+      }
+      if (height > MAX_FRAME_HEIGHT_PX) {
+        setTooTall(true);
+        return;
+      }
       passes.current += 1;
       appliedHeight.current = height;
       frame.style.height = `${height}px`;
-    }
-    // Only when the reference height actually clamped it. Writing back an
-    // unchanged offset would still be an instant scroll, and so would still abort
-    // an animation the early return above is there to protect.
-    if (scroller.scrollTop !== scrollTop) {
-      scroller.scrollTop = scrollTop;
-    }
-  }, []);
+    },
+    [frameRoot],
+  );
 
   /**
    * Measure on the next frame, once per frame. Called from the observers, whose
@@ -261,13 +264,15 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
    * change or a mutation refills the budget, so this is not a one-way door.
    */
   const scheduleMeasure = useCallback(
-    (force: boolean) => {
-      if (pendingMeasure.current !== 0 || passes.current >= MAX_MEASUREMENT_PASSES) {
+    (restart: boolean) => {
+      // A restart refills the budget itself, so a spent one must not turn it away
+      // — that is the path a width change and a mutation come in on.
+      if (pendingMeasure.current !== 0 || (!restart && passes.current >= MAX_MEASUREMENT_PASSES)) {
         return;
       }
       pendingMeasure.current = requestAnimationFrame(() => {
         pendingMeasure.current = 0;
-        measure(force);
+        measure(restart);
       });
     },
     [measure],
@@ -369,7 +374,7 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     const mutations = new MutationObserver(() => {
       // A mutation is an external cause rather than the sizing loop feeding
       // itself, so it refills the budget — and it is the one cause that can make
-      // the document shorter (a `<details>` closing), which is what `force` is
+      // the document shorter (a `<details>` closing), which is what `restart` is
       // for.
       passes.current = 0;
       scheduleMeasure(true);
@@ -380,13 +385,13 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
        moves no box either observer watches, and those all land while the document
        is settling.
 
-       It backs up growth only. A poll passes `force: false` like the observer
-       does, so it cannot see the document get *shorter* — a shrink now reaches
-       the height through a mutation or a width change alone. That is deliberate:
-       forcing these three would put three chances per load to abort an outline
-       jump made in the first two seconds, which is the failure the conditional
-       writes exist to remove, and what a missed shrink costs is trailing blank
-       canvas rather than anything the reader cannot get to. */
+       It backs up growth only. A poll asks for no restart, so like the observer
+       it cannot see the document get *shorter* — a shrink reaches the height
+       through a mutation or a width change alone. That is deliberate: a restart
+       shrinks the frame to the seed, so three of them per load would be three
+       chances to throw a reader who is part-way through the document, and what a
+       missed shrink costs is trailing blank canvas rather than anything the
+       reader cannot get to. */
     const polls = [250, 750, 2000].map((delay) => window.setTimeout(() => scheduleMeasure(false), delay));
 
     disposeFrame.current = () => {
