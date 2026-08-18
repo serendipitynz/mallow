@@ -88,22 +88,32 @@ function runsParentListeners(frameDocument: Document): boolean {
   return ran;
 }
 
-/** The element a fragment addresses, including the named-anchor form older
- *  documents use, which `getElementById` does not answer. */
-function fragmentTarget(frameDocument: Document, href: string): HTMLElement | null {
+function fragmentName(href: string): string {
   const raw = href.slice(1);
-  let name = raw;
   try {
-    name = decodeURIComponent(raw);
+    return decodeURIComponent(raw);
   } catch {
     // A stray `%` is not an escape; the fragment is then the literal text.
+    return raw;
   }
+}
+
+/** The element a fragment addresses, including the named-anchor form older
+ *  documents use, which `getElementById` does not answer. */
+function fragmentTarget(frameDocument: Document, name: string): HTMLElement | null {
   if (name === '') {
     return null;
   }
   return (
     frameDocument.getElementById(name) ?? (frameDocument.getElementsByName(name)[0] as HTMLElement | undefined) ?? null
   );
+}
+
+/** Whether a fragment that matched no element addresses the document's start.
+ *  HTML gives that meaning to an empty fragment and, when nothing carries the
+ *  name, to `top` — which is what `<a href="#top">Back to top</a>` relies on. */
+function addressesDocumentStart(name: string): boolean {
+  return name === '' || name.toLowerCase() === 'top';
 }
 
 /**
@@ -331,13 +341,15 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
         // A frame sized to its content has no viewport of its own, so native
         // fragment navigation has nothing to scroll and the parent does it —
         // through the one boundary-crossing mechanism TASK-8 named.
-        const target = fragmentTarget(frameDocument, href);
-        if (target) {
-          // Nothing is written into the frame here; the target already carries its
-          // landing offset from load. See the loop above for why that matters.
-          const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-          target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-        }
+        // Nothing is written into the frame on this path; both targets already
+        // carry their landing offset — the elements from the load pass, the frame
+        // from `html.scss`. See the loop above for why that matters.
+        const name = fragmentName(href);
+        const target = fragmentTarget(frameDocument, name) ?? (addressesDocumentStart(name) ? frame : null);
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // The frame stands in for the start of the document it holds, so the same
+        // mechanism serves both and there is still only one.
+        target?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
         return;
       }
       if (/^https?:\/\//i.test(href)) {
