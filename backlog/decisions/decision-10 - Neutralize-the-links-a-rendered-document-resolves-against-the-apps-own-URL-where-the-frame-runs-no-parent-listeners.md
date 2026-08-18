@@ -63,8 +63,13 @@ the click never reaches the anchor and the keyboard cannot reach it either, whil
 Both are needed and neither is redundant — `pointer-events` suppresses
 hit-testing and nothing else, so without the second a reader who tabs to the link
 and presses Enter gets the navigation this decision exists to remove. It applies
-to `<area href>` as well as `<a href>`, for the same reason and by the same
-resolution rule. A link that looks like a link and does nothing is
+to `<area href>` as well as `<a href>`: an `<area href="page.html">` resolves
+against the parent's base URL exactly as an `<a>` does, and areas are tabbable,
+so the keyboard half is closed the same way. **The click half is not measured for
+it** — an `<area>` has no box of its own, the hit region belongs to the `<img
+usemap>`, and whether a UA consults the area's `pointer-events` for that region
+is engine-dependent. It is listed below as a probe case rather than claimed
+here. A link that looks like a link and does nothing is
 what decision-9 already accepted for `http(s)`; this puts app-origin links in the
 same state rather than inventing a second one.
 
@@ -117,6 +122,11 @@ and nothing in it runs. What is fixed is a usability failure, not a hole.
   `#` link and a relative link, clicked for real — and a link reached by keyboard
   and activated with Enter, since that path is neutralized by a different
   mechanism than the click — belong beside the checks that are already there.
+- **Whether `pointer-events: none` neutralizes an image-map area's click is
+  unmeasured.** The keyboard path is closed for it either way. If it turns out
+  not to apply, a mapped region clicked on WebKit navigates the frame and blanks
+  the view — the failure this decision removes for `<a>`. Image maps are rare in
+  what this view opens, which is why it is a probe case and not a blocker.
 - **A `<meta http-equiv="refresh">` resolves against the same base URL and is not
   neutralized here, because it does not need to be**: TASK-5.1's visual round
   watched `rendered-inert.html` and the frame stayed where it was. That is one

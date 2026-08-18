@@ -258,7 +258,16 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
            seen rather than on whichever the last pass happened to apply, because
            the two costs are not alike: too tall is a gap under the document, too
            short is content the reader cannot reach, since a frame shorter than
-           its own content is the second scroll region AC #11 forbids. */
+           its own content is the second scroll region AC #11 forbids.
+
+           **That holds because an oscillator's tallest height has had its
+           successor measured**, and it was no greater. A document still *growing*
+           when the budget ran out would have no such guarantee — its tallest
+           reading is the last one, whose successor was never seen. Nothing in the
+           2,757 documents measured was still growing at pass 32 (the slowest to
+           converge took 20, and the 13 non-settlers oscillated rather than grew),
+           so this is the scope of the guarantee rather than a case being
+           mishandled. Growth is what {@link MAX_FRAME_HEIGHT_PX} is for. */
         const tallest = Math.max(tallestHeight.current ?? height, height);
         if (tallest > MAX_FRAME_HEIGHT_PX) {
           setTooTall(true);
@@ -418,6 +427,12 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
           // is what closes the keyboard path. Overwriting a `tabindex` the
           // document set changes an order that only reaches a link which no
           // longer does anything.
+          //
+          // For an `<area>` only the keyboard half is certain. It has no box of
+          // its own — the hit region belongs to the `<img usemap>` — so whether a
+          // UA consults the area's `pointer-events` for that region is
+          // unmeasured here, and decision-10 lists it as a probe case rather than
+          // claiming it.
           link.setAttribute('tabindex', '-1');
         }
       }
