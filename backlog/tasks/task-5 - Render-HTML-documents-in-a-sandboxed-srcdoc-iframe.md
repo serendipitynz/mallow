@@ -1,10 +1,10 @@
 ---
 id: TASK-5
 title: Render HTML documents in a sandboxed srcdoc iframe
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-07-30 08:56'
-updated_date: '2026-08-17 05:55'
+updated_date: '2026-08-19 20:40'
 labels:
   - feature
 milestone: m-1
@@ -39,6 +39,6 @@ Known and accepted across all three: CSS is a network side channel - url(https:/
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 TASK-5.1, TASK-5.2 and TASK-5.3 are all Done
-- [ ] #2 TASK-7 has confirmed decision-3 rather than reopening it
+- [x] #1 TASK-5.1, TASK-5.2 and TASK-5.3 are all Done
+- [x] #2 TASK-7 has confirmed decision-3 rather than reopening it
 <!-- DOD:END -->
