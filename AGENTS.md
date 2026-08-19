@@ -243,6 +243,37 @@ hold rather than as an exhaustive style guide.
   `'unsafe-inline'` because Shiki/mermaid emit inline `style` attributes. If you add
   a dep that needs `eval`/`new Function` or fetches remote assets, the CSP must be
   revisited.
+- **Untrusted-HTML boundary** (the rendered view — decision-3, amended by
+  decision-9 and decision-10; see README "Security"): the document is fed to an
+  iframe through `srcdoc` with `sandbox="allow-same-origin"` and deliberately
+  **no** `allow-scripts`, so nothing in it executes while the parent can still
+  read and drive `contentDocument` — which is what the outline, the height
+  measurement and the link handling rest on. The two flags are a pair, not two
+  independent choices: together they would let a document remove its own
+  sandbox, and with same-origin in place a script in the frame would be a script
+  in the app origin, where `read_file` is plain `std::fs` with no scope and no
+  capability gating. `allow-forms`, `allow-popups` and `allow-top-navigation`
+  stay off for the same kind of reason. The `srcdoc` document also inherits the
+  parent CSP, and that is the second layer — **but the two are not equally
+  broad, so do not write "two independent layers"**: an inline `<script>`, an
+  `on*` attribute, a `javascript:` URL and a remote `<script src>` are each
+  stopped by the sandbox *and* the CSP, while a relative `<script src="./x.js">`
+  is stopped by **the sandbox alone**, because a `srcdoc` document resolves it
+  against the app's own URL where `script-src 'self'` permits it (decision-3's
+  table). **There is no element allowlist and no sanitizer.** What the transform
+  removes is `<iframe>` / `<frame>` — a nested frame pointed at `asset:` would
+  load a document carrying no CSP of its own, so its subresource loads would sit
+  outside both the CSP and the notice-bar count — and `<base>`, which would
+  redirect every reference the rewriting resolves. Both removals are for
+  rendering and network reasons, not sanitization; `<object>` / `<embed>` need
+  none, since `object-src 'none'` already covers them. **Network exposure
+  remains and is accepted**: remote images load because `img-src` carries
+  `https:`, and so does `url(https://…)` inside a `<style>` block or a `style`
+  attribute. CSS is a side channel sandboxing does not close and DOMPurify would
+  not have closed either; it is the exposure Markdown already has, so this adds
+  no new class of outbound request. **Adding `allow-scripts` later is not a
+  one-line change** — with `allow-same-origin` in place the failure mode is
+  arbitrary local file read, not a broken widget — and needs its own decision.
 - **There is no CSP at all under `pnpm tauri dev` on desktop, so that second layer
   is absent for the whole of development.** `set_csp` runs only where Tauri serves
   the assets; the dev webview loads the Vite `devUrl` directly, `index.html`
@@ -402,6 +433,23 @@ hold rather than as an exhaustive style guide.
   parent scroll rather than just before a reload, because a `srcdoc` swap replaces
   the document asynchronously and there is no moment the parent can rely on where
   the new markup is committed and the old document is still readable.
+- **The subresource rewriting needed a base to resolve against, which is why
+  `lib/path` carries `dirname` and `resolvePath`.** A `srcdoc` document's base
+  URL is the parent's, so a reference written beside the document
+  (`img/logo.png`) does not reach the opened folder on its own; the transform's
+  `RefResolver` resolves it against the document's own directory and hands the
+  result to `convertFileSrc`. The two arrived together and neither is useful
+  alone — `dirname` supplies the point to resolve against, `resolvePath` folds
+  `.` and `..` — so a change to one is a change to the pair. Node's `path` is
+  absent in the WebView and neither function is worth a dependency, so both are
+  string ops that read `/` and `\` as separators. **`..` is applied by trimming
+  the directory's own string rather than by rebuilding it from components**, so
+  a drive letter or a UNC prefix survives; climbing past the root stops there,
+  and climbing above the opened folder is deliberately not special-cased,
+  because the asset-protocol grant is what decides whether the result can be
+  read. A document-absolute `/x.png` is not rewritten at all, and that call sits
+  in `lib/html-doc` rather than here — the question is what to do with a URL,
+  not how to join a path.
 - **Whether a reference arrives is decided by the CSP directive that fetches the
   attribute it sits on, not by its scheme — so `lib/html-doc`'s `refTally` takes
   a `RefSite`, and every count runs through it.** `img-src` carries
@@ -428,6 +476,20 @@ hold rather than as an exhaustive style guide.
   `imgSrc`** for a protocol-relative reference, which the parent's base URL makes
   `tauri://host/x` on WebKit and `http://host/x` on WebView2 — one refused, one
   carried — so a count would have to be wrong on a platform.
+- **A video inside a rendered document draws but does not play, and that is not
+  the rewriting failing.** TASK-5.1's second visual round (2026-08-19, macOS /
+  WKWebView, built app) watched a `<video src>` with no poster and a nested
+  `<source src>` each draw the file's first frame — so those references were
+  rewritten and fetched, which is what closed that task's AC #6 — and then
+  watched the controls do nothing when pressed. The same file plays when opened
+  directly in mallow, where `MediaView` uses the same asset protocol with no
+  frame around it. **Only macOS was measured**; WebView2 and WebKitGTK are
+  unmeasured. The suspected mechanism is decision-9's family rather than a fault
+  in `RefResolver` — WebKit implements its media controls in script and the
+  frame runs none — but that is inference, so do not record it as established
+  and do not "fix" the rewriting on the strength of it. README says the same to
+  the reader, because a player that draws a frame and ignores its buttons reads
+  as a bug rather than as something the sandbox declined to do.
 - **The native window title has exactly one writer, `Viewer`, and a view that
   knows a better label reports it upward.** `HtmlView` passes the `<title>` the
   transform already read through `onDocumentTitle`; it never calls
