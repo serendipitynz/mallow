@@ -130,14 +130,14 @@ pub fn open(id: &str, path: &str) -> Result<(), String> {
 #[cfg(target_os = "windows")]
 pub fn open_default(path: &str) -> Result<(), String> {
     // `rundll32` does not re-tokenize what follows the entry point, and
-    // `Command` quotes an argument only for a space, a tab or an empty value —
-    // so a comma reaches the handler untouched, which is the shape that was
-    // measured. **A path holding a space does not reach it as written**: it is
-    // the one case `Command` does quote, so the handler is given
-    // `"C:\…\Some Name\a.html"`, quotes included. That is the idiomatic
-    // spelling of this invocation and very likely handled, but it is unmeasured
-    // here, as is a non-ASCII name — `rundll32` resolves a `…W` entry point
-    // ahead of the plain one, so which of the two runs is also unobserved.
+    // `Command` quotes an argument only for a space, a tab or an empty value.
+    // The three path shapes that follow from that were each opened through this
+    // command on Windows 11 (2026-08-19) and each reached the file's registered
+    // handler: a comma, which is quoted by neither and is what broke the
+    // previous spelling; a space, which `Command` does quote, so the handler is
+    // given `"…\Some Name\a.html"` with the quotes and strips them itself; and
+    // a non-ASCII name, which settles that whichever entry point `rundll32`
+    // resolves — it prefers a `…W` one — carries the name intact.
     //
     // Two better-known spellings were each ruled out by what they do to a path.
     // `explorer <file>` splits on a comma: opening `rendered-notice,check.html`

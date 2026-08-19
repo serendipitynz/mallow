@@ -4,7 +4,7 @@ title: 'Surface what was disabled: notice bar, open outside mallow, window title
 status: In Review
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-08-19 00:25'
+updated_date: '2026-08-19 03:55'
 labels:
   - feature
 milestone: m-1
@@ -27,11 +27,11 @@ Part 3 of 3 for TASK-5 (see decision-3). Makes the limits visible instead of loo
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The notice bar reports counts for inert scripts, for the external references that do not load, and for the local references that are not rewritten - the stylesheet beside the document among them. Reworded from 'external references' and 'font references' because TASK-5.1's transform makes both narrower than they read: an http(s) reference on a rewritten media attribute DOES load, since img-src and media-src carry https:, so it is counted apart and deliberately not reported - one number for both outcomes could be right about neither - and a font is covered only where a <link> names it, because a font reached through url() inside CSS is never parsed. Neither is a lowered bar: both say what is reported instead of implying more
-- [ ] #2 The notice bar says that this document's links do nothing where the frame runs no parent-registered listener, and says it about the document's own table of contents too - a stronger statement than decision-9's http(s) clause, because a bare fragment resolves against the parent's URL and is neutralized rather than followed (decision-10). The claim is driven by the runtime probe, never by a platform name
-- [ ] #3 The open-outside-mallow action works on a file in a folder the user picked anywhere on disk, not only under the home directory
+- [x] #1 The notice bar reports counts for inert scripts, for the external references that do not load, and for the local references that are not rewritten - the stylesheet beside the document among them. Reworded from 'external references' and 'font references' because TASK-5.1's transform makes both narrower than they read: an http(s) reference on a rewritten media attribute DOES load, since img-src and media-src carry https:, so it is counted apart and deliberately not reported - one number for both outcomes could be right about neither - and a font is covered only where a <link> names it, because a font reached through url() inside CSS is never parsed. Neither is a lowered bar: both say what is reported instead of implying more
+- [x] #2 The notice bar says that this document's links do nothing where the frame runs no parent-registered listener, and says it about the document's own table of contents too - a stronger statement than decision-9's http(s) clause, because a bare fragment resolves against the parent's URL and is neutralized rather than followed (decision-10). The claim is driven by the runtime probe, never by a platform name
+- [x] #3 The open-outside-mallow action works on a file in a folder the user picked anywhere on disk, not only under the home directory
 - [x] #4 The action's label matches what it actually does
-- [ ] #5 The window title follows the document's title element when present and falls back to the file name, with a single writer
+- [x] #5 The window title follows the document's title element when present and falls back to the file name, with a single writer
 - [x] #6 New i18n keys are added to both the ja and en dictionaries
 - [x] #7 pnpm build, pnpm test, cargo check and cargo test all pass
 - [x] #8 The title comes from the transform result produced in TASK-5.1, not from a second parse of the document
@@ -52,7 +52,17 @@ counts.links went the other way and widened, from http(s) anchors to every href 
 
 The window title has one writer and it is Viewer, which was already true and is now explicit: every setWindowTitle call moved out of the read effect into one effect of its own, and HtmlView reports the <title> the transform already read through onDocumentTitle rather than writing anything. The label is dropped on a path change and deliberately not on the watcher's reload token - a re-read whose text is unchanged produces no new transform, so nothing would report it back and the title would fall to the file name.
 
-Four of the eight are ticked at In Review, and the four left are the ones a screen answers. #1 (the bar reports the counts), #2 (the link line) and #3 (a file outside the home directory opens) all need the app running, and #2 needs it on both sides of decision-9's boundary - a WebKit machine to see the line and a Windows one to see it absent - while #5's fallback behaviour needs the window title watched as files are switched. What the automated checks do settle is written above them: the rule that picks the lines is unit-tested, the single writer is that grep over setWindowTitle returns Viewer alone, and the single parse is that DOMParser appears once in the HTML path.
+Visual rounds, 2026-08-19, macOS (WKWebView, dev then a --debug --no-bundle build) and Windows 11 (WebView2). All eight are ticked; what each round settled is below, and so is one thing it did not.
+
+The notice bar reports scripts 2 / blockedRefs 3 / unresolvedLocalRefs 3 / removedFrames 1 against the fixture on both platforms, and links 3 out of four anchors - the mailto: is excluded, which is the count the bar's wording depends on. The link line appears on macOS and is absent on Windows, which is AC #2 on both sides of decision-9's boundary; it is driven by the probe, so nothing branches on a platform name. On the built macOS app all four links do nothing. The window title follows the document's <title> and falls back to the file name. "Open in default app" reached the handler from /Volumes/... on macOS and from a network share on Windows, so AC #3 is about a folder well outside the home directory.
+
+TASK-5.2's AC #6 is ticked in the same round: on Windows a fragment link scrolled the parent scroller and an http(s) link opened the OS browser, which is the WebView2 half no round before this had a machine for.
+
+Two failures came out of it, and both were in something written rather than in the rendered view. explorer.exe splits its argument on a comma, so a file named rendered-notice,check.html opened an Explorer window instead of its handler - the review's [P3] becoming a measurement. It is rundll32 url.dll,FileProtocolHandler now, and the three path shapes that follow from Command's quoting rule (comma, space, non-ASCII) were each measured through it. And the fixture claimed 2 local references where the code counts 3: a relative <script src> is one, and it had been left out of the expectation rather than out of the count. Reading that as a defect in the count was one step away.
+
+What did NOT get established is the img-src / media-src split by eye. The data: pair meant to show it has an invisible positive half - the data: image was #eeeeee on white - so "the audio did not play" could still have meant data: was refused outright. The rule is settled by refTally's unit tests and by the CSP text either way; the fixture's controls are now unmistakable (a dark green band, and a remote image carrying legible text rather than placehold.co's default grey box) for whoever runs it next.
+
+The first macOS round ran under pnpm tauri dev, where there is no CSP at all, and an http link navigating the frame was reported as a defect from it. It is not one - frame-src does not exist there. The fixture now marks every item "dev 可" or "要ビルド". #1 (the bar reports the counts), #2 (the link line) and #3 (a file outside the home directory opens) all need the app running, and #2 needs it on both sides of decision-9's boundary - a WebKit machine to see the line and a Windows one to see it absent - while #5's fallback behaviour needs the window title watched as files are switched. What the automated checks do settle is written above them: the rule that picks the lines is unit-tested, the single writer is that grep over setWindowTitle returns Viewer alone, and the single parse is that DOMParser appears once in the HTML path.
 
 TASK-5.2's AC #6 is still open and belongs to this round for the same reason: its first half describes WebView2 and no Windows machine was in either of its visual rounds.
 

@@ -4,7 +4,7 @@ title: 'Wire the frame to the app: lifecycle, outline, height, input'
 status: Done
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-08-18 23:48'
+updated_date: '2026-08-19 03:55'
 labels:
   - feature
 milestone: m-1
@@ -41,7 +41,7 @@ Part 2 of 3 for TASK-5 (see decision-3). Makes the frame behave like part of the
 - [x] #3 The outline lists the document's headings, clicking one scrolls to it, and the active-heading highlight tracks the parent scroller
 - [x] #4 Frame height converges on a document whose body depends on viewport height, within a bounded number of measurements and a maximum height
 - [x] #5 Height is re-measured after images and details elements change the layout, driven by an observer rather than by a listener inside the frame (decision-9)
-- [ ] #6 Where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser and never navigate the app WebView, and every other scheme is inert. Where it does not, an http(s) link is inert, what a '#' link does is observed rather than assumed, and the platform difference is detected at runtime rather than read off a platform name (decision-9)
+- [x] #6 Where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser and never navigate the app WebView, and every other scheme is inert. Where it does not, an http(s) link is inert, what a '#' link does is observed rather than assumed, and the platform difference is detected at runtime rather than read off a platform name (decision-9)
 - [x] #7 After clicking an outline entry, arrow keys, Space, PageDown, Home and End still scroll the document
 - [x] #8 pnpm build and pnpm test pass
 - [x] #9 Height is re-measured when the frame's width changes: window resize, Explorer splitter drag, and outline open/close
@@ -80,7 +80,9 @@ Two, both on macOS (WKWebView) in a built app - `pnpm tauri build --debug --no-b
 
 The first sent the task back with the two findings above. The second closed ten of the eleven criteria.
 
-**AC #6 is left unticked on purpose, and it is the only one.** Its second half - an `http(s)` link inert, a `#` link observed rather than assumed, and the platform difference detected at runtime - is fully observed: that is what the first visual round measured and what decision-10 records. Its **first** half is not, and cannot be here: "where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser" describes WebView2, and no Windows machine was in either round. The interception code is decision-9's as written and unobserved. **TASK-5.3 needs Windows anyway** - its notice bar has to say a different thing on each side of that boundary - so the check belongs in that round.
+**AC #6 was closed in TASK-5.3's visual round (2026-08-19, Windows 11 / WebView2), which is where the paragraph below said it belonged.** A fragment link scrolled the parent scroller and an http(s) link opened the OS browser, so decision-9's interception is observed on the platform that runs it rather than only written. The paragraph is kept as the record of why it stayed open for two rounds.
+
+**AC #6 was left unticked on purpose, and it was the only one.** Its second half - an `http(s)` link inert, a `#` link observed rather than assumed, and the platform difference detected at runtime - is fully observed: that is what the first visual round measured and what decision-10 records. Its **first** half is not, and cannot be here: "where the frame runs parent-registered listeners, fragment links scroll the parent scroller, http(s) links open the OS browser" describes WebView2, and no Windows machine was in either round. The interception code is decision-9's as written and unobserved. **TASK-5.3 needs Windows anyway** - its notice bar has to say a different thing on each side of that boundary - so the check belongs in that round.
 
 The second round also found that `rendered-outline.html` itself fell to the source view: it stacked six `90vh` boxes, so `f(H) = 5.4H + c` has no fixed point and the height ceiling caught it. That is the specified behaviour, not a defect, and the fixture was split - `rendered-outline.html` now carries exactly one `50vh` box, which converges, and `rendered-diverges.html` is the fallback case.
 
