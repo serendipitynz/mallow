@@ -454,11 +454,14 @@ hold rather than as an exhaustive style guide.
   because the asset-protocol grant is what decides whether the result can be
   read. A document-absolute `/x.png` is not rewritten at all, and that call sits
   in `lib/html-doc` rather than here — the question is what to do with a URL,
-  not how to join a path. **What `REWRITTEN` does not cover is neither rewritten
-  nor counted**, so `url()` inside the document's own CSS, `<track src>`,
-  `<input type=image src>` and inline SVG `<image>` / `<use>` fail with no
-  notice-bar line at all — decision-3 requires that be stated rather than left
-  to be discovered, which is why README names the CSS case to the reader.
+  not how to join a path. **A reference no `RefSite` tallies is invisible twice
+  over** — not rewritten, and not counted either. `<link rel=stylesheet>` and
+  `<script src>` are the counted exceptions: `REWRITTEN` does not reach them
+  either, but both tally at `unrewritten`, so a stylesheet beside the document
+  does get a notice-bar line. What falls through entirely is `url()` inside the
+  document's own CSS, `<track src>`, `<input type=image src>` and inline SVG
+  `<image>` / `<use>` — decision-3 requires that be stated rather than left to
+  be discovered, which is why README names the CSS case to the reader.
 - **Whether a reference arrives is decided by the CSP directive that fetches the
   attribute it sits on, not by its scheme — so `lib/html-doc`'s `refTally` takes
   a `RefSite`, and every count runs through it.** `img-src` carries

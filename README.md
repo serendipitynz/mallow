@@ -51,9 +51,9 @@ PDFs, and videos are shown as well, rendered by the OS-native WebView.
     `<source>` element loads from beside the document, a video poster included.
     Stylesheets and scripts do not, whether they are remote or next to the
     document, and neither does remote video. Remote images do load, as they
-    already do in Markdown. Local references outside those elements fail
-    quietly — `url()` in the document's own CSS above all: they neither load nor
-    appear in the line above the document
+    already do in Markdown. Some local references fail quietly — `url()` in the
+    document's own CSS above all: it neither loads nor appears in the line above
+    the document, where a stylesheet beside the document does get counted
   - Links inside the document do nothing on some platforms — the document's own
     table of contents included. mallow detects that per document rather than
     reading it off the OS name, and says so above the document when it applies;
