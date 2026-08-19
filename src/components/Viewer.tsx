@@ -27,7 +27,12 @@ function isMediaKind(kind: FileEntry['kind']): boolean {
 
 export function Viewer({ file, reloadToken }: ViewerProps) {
   const t = useT();
-  const [content, setContent] = useState<string | null>(null);
+  /* The text is held with the path it was read from, and a view is only ever
+     given text whose path is the one now open. Without that the previous file's
+     text renders for one commit under the new file's key — `ViewerBody` remounts
+     on a path change while the read is still in flight — so a view would be
+     transforming one document while being told it is another. */
+  const [content, setContent] = useState<{ path: string; text: string } | null>(null);
   // The cause is held rather than its message, so switching language re-renders
   // the message instead of leaving the one built when the read failed.
   const [error, setError] = useState<ReadError | null>(null);
@@ -55,6 +60,9 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
     [filePath],
   );
 
+  // What the open file's own text is, or null while nothing has been read for it.
+  const text = content !== null && content.path === file?.path ? content.text : null;
+
   /* biome-ignore lint/correctness/useExhaustiveDependencies: keyed on file?.path, not on `file`, on
      purpose. The parent rebuilds the FileEntry object on every tree refresh, so depending on `file`
      would re-read the same document each time the watcher fires. */
@@ -81,7 +89,7 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
           return;
         }
         if (result.ok) {
-          setContent(result.text);
+          setContent({ path: file.path, text: result.text });
         } else {
           setError(result.error);
           setContent(null);
@@ -117,8 +125,8 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
     // reported it is gone, replaced by the error placeholder, and keeping it
     // would leave the window named after a document no longer on screen.
     const label = error === null && viewTitle?.path === file.path ? viewTitle.title : null;
-    setWindowTitle(windowTitle(label ?? documentTitle(file, content ?? '')));
-  }, [file?.path, file?.kind, file?.name, content, viewTitle, error]);
+    setWindowTitle(windowTitle(label ?? documentTitle(file, text ?? '')));
+  }, [file?.path, file?.kind, file?.name, text, viewTitle, error]);
 
   if (!file) {
     return (
@@ -147,13 +155,13 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
     );
   }
 
-  if (content === null) {
+  if (text === null) {
     return <main className="viewer">{loading && <div className="viewer__placeholder">{t('loading')}</div>}</main>;
   }
 
   return (
     <main className="viewer">
-      <ViewerBody key={file.path} file={file} content={content} onDocumentTitle={reportTitle} />
+      <ViewerBody key={file.path} file={file} content={text} onDocumentTitle={reportTitle} />
     </main>
   );
 }
