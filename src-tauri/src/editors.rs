@@ -1,5 +1,6 @@
 //! Detect installed external editors and open files in them, plus "reveal in the
-//! OS file manager". Spawning is done with `std::process::Command` directly.
+//! OS file manager" and "open in the OS default handler". Spawning is done with
+//! `std::process::Command` directly.
 
 use std::path::Path;
 use std::process::Command;
@@ -74,6 +75,15 @@ pub fn reveal(path: &str) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+#[cfg(target_os = "macos")]
+pub fn open_default(path: &str) -> Result<(), String> {
+    Command::new("open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 // ---- Windows ----------------------------------------------------------------
 #[cfg(target_os = "windows")]
 fn first_existing(paths: &[String]) -> Option<String> {
@@ -111,6 +121,21 @@ pub fn detect() -> Vec<EditorInfo> {
 pub fn open(id: &str, path: &str) -> Result<(), String> {
     let exe = win_editor_exe(id).ok_or_else(|| format!("editor not found: {id}"))?;
     Command::new(exe)
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "windows")]
+pub fn open_default(path: &str) -> Result<(), String> {
+    // `explorer <file>` hands the file to its registered handler, and not
+    // `cmd /C start`: `cmd` re-parses its command line by its own rules rather
+    // than the ones `Command` quotes for, so a path holding `&` or `^` would be
+    // split there. `explorer.exe` is an ordinary Win32 program and parses what
+    // was quoted. It exits non-zero even on success, which costs nothing since
+    // the child is spawned and never waited on.
+    Command::new("explorer")
         .arg(path)
         .spawn()
         .map(|_| ())
@@ -164,6 +189,15 @@ pub fn open(id: &str, path: &str) -> Result<(), String> {
 }
 
 #[cfg(target_os = "linux")]
+pub fn open_default(path: &str) -> Result<(), String> {
+    Command::new("xdg-open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "linux")]
 pub fn reveal(path: &str) -> Result<(), String> {
     // Reveal isn't standardized on Linux; open the parent directory.
     let dir = Path::new(path)
@@ -191,4 +225,17 @@ pub fn open_in_editor(id: String, path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn reveal_in_os(path: String) -> Result<(), String> {
     reveal(&path)
+}
+
+/// Hand the file to the OS handler registered for its type.
+///
+/// Spawned with `std::process` like everything else here, and deliberately not
+/// through tauri-plugin-opener: `open_path` requires an allowed `Entry::Path`,
+/// `allow-open-path` ships no scope and `opener:default` contributes only URL
+/// entries, so every call would return `ForbiddenPath`. Widening that scope at
+/// runtime is possible but would be a second runtime-scope mechanism beside
+/// `allow_media_dir` for a call this module can already make (decision-3).
+#[tauri::command]
+pub fn open_in_default_app(path: String) -> Result<(), String> {
+    open_default(&path)
 }

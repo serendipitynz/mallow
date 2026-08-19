@@ -34,6 +34,7 @@ const ja: Dict = {
   // open with
   openIn: '{editor} で開く',
   revealIn: '{manager} で表示',
+  openDefaultApp: '既定のアプリで開く',
   noEditors: '対応エディタが見つかりません',
   'manager.finder': 'Finder',
   'manager.explorer': 'エクスプローラ',
@@ -114,6 +115,7 @@ const en: Dict = {
   // open with
   openIn: 'Open in {editor}',
   revealIn: 'Reveal in {manager}',
+  openDefaultApp: 'Open in default app',
   noEditors: 'No supported editors found',
   'manager.finder': 'Finder',
   'manager.explorer': 'File Explorer',
