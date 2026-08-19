@@ -31,3 +31,26 @@
   // cannot drift apart (TASK-20).
   scroll-margin-top: calc(var(--doc-bar-height, #{$doc-bar-height}) + 1.5rem);
 }
+
+// ---- What the rendered view declined to do -----------------------------------
+// The box comes from `.src-notice`; this adds the action beside the text, because
+// the escape hatch belongs next to the limit it answers (decision-3). It wraps
+// rather than shrinking the button: the count sentences run to several lines at a
+// narrow width, and a clipped label would be the one part of this bar the reader
+// has to guess at.
+.html-notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.html-notice__text {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+.html-notice__action {
+  flex: 0 0 auto;
+}

@@ -4,10 +4,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { Heading, HeadingRoot } from '../lib/heading';
 import { navigatesAppOrigin, transformHtmlDocument } from '../lib/html-doc';
 import { assignHeadingIds } from '../lib/html-headings';
+import { renderedNoticeLines } from '../lib/html-notice';
 import { useT } from '../lib/i18n';
 import { readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { dirname } from '../lib/path';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
+import { openInDefaultApp } from '../lib/tauri';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
@@ -149,6 +151,12 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
   const [outlineOpen, setOutlineOpen] = useState<boolean>(readOutlineOpen);
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [tooTall, setTooTall] = useState(false);
+  /* What the probe below answered on the last load, `null` until one has run.
+     Deliberately outside the reset the transform triggers: this is a property of
+     the WebView and not of the document, so re-reading a file that changed on
+     disk would otherwise drop the notice's link line and bring it back a frame
+     later, moving the document under the reader for no new information. */
+  const [listenersRun, setListenersRun] = useState<boolean | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -186,6 +194,10 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
   const showRendered = mode === 'rendered' && renderable;
   const hasOutline = headings.length > 1;
   const showOutline = showRendered && hasOutline && outlineOpen;
+  const notice = useMemo(
+    () => renderedNoticeLines(transform.counts, { runsParentListeners: listenersRun, hasOutline }),
+    [transform.counts, listenersRun, hasOutline],
+  );
 
   /**
    * Size the frame to its document, one step of a convergence the observers
@@ -373,6 +385,7 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     setHeadings(nextHeadings);
 
     const listeners = runsParentListeners(frameDocument);
+    setListenersRun(listeners);
     const onClick = (event: MouseEvent) => {
       const link = (event.target as Element | null)?.closest?.('a[href]');
       if (!link) {
@@ -588,6 +601,10 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     });
   }
 
+  function openOutside() {
+    void openInDefaultApp(file.path).catch((e) => console.error('openInDefaultApp failed', e));
+  }
+
   return (
     <div className="doc-scroll" ref={scrollRef}>
       <div className={`doc${showOutline ? '' : ' is-outline-closed'}`}>
@@ -633,7 +650,16 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
           )}
         </div>
 
-        {!renderable && <p className="src-notice">{tooTall ? t('htmlTooTall') : t('htmlRenderSkipped')}</p>}
+        {!renderable && (
+          <NoticeBar text={tooTall ? t('htmlTooTall') : t('htmlRenderSkipped')} onOpenOutside={openOutside} />
+        )}
+
+        {showRendered && notice.length > 0 && (
+          <NoticeBar
+            text={notice.map((line) => t(line.key, line.n === undefined ? undefined : { n: line.n })).join(' ')}
+            onOpenOutside={openOutside}
+          />
+        )}
 
         {showRendered ? (
           <div className="doc__body">
@@ -651,6 +677,25 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
           <SourceView source={source} lang="html" />
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * What this view did not do, and the way out of it.
+ *
+ * One element rather than two, because the escape hatch only means anything
+ * beside the limit it answers (decision-3) — and it is offered on both notices:
+ * a document too large to render is the case with the least left to read here.
+ */
+function NoticeBar({ text, onOpenOutside }: { text: string; onOpenOutside: () => void }) {
+  const t = useT();
+  return (
+    <div className="src-notice html-notice">
+      <p className="html-notice__text">{text}</p>
+      <button type="button" className="btn html-notice__action" onClick={onOpenOutside}>
+        {t('openDefaultApp')}
+      </button>
     </div>
   );
 }

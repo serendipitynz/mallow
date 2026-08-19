@@ -62,6 +62,12 @@ const ja: Dict = {
   rendered: '描画',
   htmlRenderSkipped: '要素数またはテキスト量が上限を超えているため、描画せずソースを表示しています。',
   htmlTooTall: '描画したときの高さが上限を超えているため、描画せずソースを表示しています。',
+  htmlNoticeScripts: 'スクリプト {n} 個は実行されません。',
+  htmlNoticeBlockedRefs: 'スタイルシートやスクリプトなど、外部の参照 {n} 件は読み込まれません。',
+  htmlNoticeLocalRefs: '文書の隣にあるスタイルシートなど、局所参照 {n} 件は読み込めません。',
+  htmlNoticeFrames: '入れ子のフレーム {n} 個を取り除きました。',
+  htmlNoticeLinksInert: 'この環境ではリンク {n} 件が動作しません。文書自身の目次も動きません。',
+  htmlNoticeOutlineWorks: '見出しの移動はアウトラインから行えます。',
   // config view
   expandAll: 'すべて展開',
   collapseAll: 'すべて折りたたみ',
@@ -143,6 +149,12 @@ const en: Dict = {
   htmlRenderSkipped:
     'This document has more elements or text than the rendered view builds, so its source is shown instead.',
   htmlTooTall: 'Rendered, this document is taller than the frame is allowed to grow, so its source is shown instead.',
+  htmlNoticeScripts: '{n} script elements do not run.',
+  htmlNoticeBlockedRefs: '{n} external references — stylesheets, scripts and the like — are not loaded.',
+  htmlNoticeLocalRefs: '{n} local references, such as a stylesheet beside the document, are not loaded.',
+  htmlNoticeFrames: '{n} nested frames were removed.',
+  htmlNoticeLinksInert: "{n} links do nothing on this platform, the document's own table of contents included.",
+  htmlNoticeOutlineWorks: 'Use the outline to move between headings.',
   // config view
   expandAll: 'Expand all',
   collapseAll: 'Collapse all',
