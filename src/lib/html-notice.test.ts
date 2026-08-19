@@ -8,26 +8,26 @@ function counts(over: Partial<HtmlCounts> = {}): HtmlCounts {
     textChars: 1_000,
     scripts: 0,
     links: 0,
-    blockedExternalRefs: 0,
+    blockedRefs: 0,
     unresolvedLocalRefs: 0,
     removedFrames: 0,
     ...over,
   };
 }
 
-const keys = (over: Partial<HtmlCounts>, runsParentListeners: boolean | null, hasOutline = false) =>
-  renderedNoticeLines(counts(over), { runsParentListeners, hasOutline }).map((line) => line.key);
+const keys = (over: Partial<HtmlCounts>, runsParentListeners: boolean | null, outlineVisible = false) =>
+  renderedNoticeLines(counts(over), { runsParentListeners, outlineVisible }).map((line) => line.key);
 
 describe('renderedNoticeLines', () => {
   it('says nothing about a document that lost nothing', () => {
-    expect(renderedNoticeLines(counts(), { runsParentListeners: true, hasOutline: true })).toEqual([]);
+    expect(renderedNoticeLines(counts(), { runsParentListeners: true, outlineVisible: true })).toEqual([]);
   });
 
   it('carries the count each line interpolates', () => {
     expect(
       renderedNoticeLines(counts({ scripts: 3, removedFrames: 1 }), {
         runsParentListeners: true,
-        hasOutline: false,
+        outlineVisible: false,
       }),
     ).toEqual([
       { key: 'htmlNoticeScripts', n: 3 },
@@ -55,13 +55,15 @@ describe('renderedNoticeLines', () => {
     expect(keys({ links: 0, scripts: 1 }, false)).toEqual(['htmlNoticeScripts']);
   });
 
+  // "on screen" and not "available": a reader who collapsed the outline would
+  // otherwise be pointed at something that is not showing.
   it('offers the outline in place of the document’s own contents, only when it is on screen', () => {
     expect(keys({ links: 2 }, false, true)).toEqual(['htmlNoticeLinksInert', 'htmlNoticeOutlineWorks']);
     expect(keys({ links: 2 }, false, false)).toEqual(['htmlNoticeLinksInert']);
   });
 
   it('keeps the two external-reference outcomes apart', () => {
-    expect(keys({ blockedExternalRefs: 2 }, true)).toEqual(['htmlNoticeBlockedRefs']);
+    expect(keys({ blockedRefs: 2 }, true)).toEqual(['htmlNoticeBlockedRefs']);
     expect(keys({ unresolvedLocalRefs: 5 }, true)).toEqual(['htmlNoticeLocalRefs']);
   });
 });

@@ -132,9 +132,16 @@ pub fn open_default(path: &str) -> Result<(), String> {
     // `explorer <file>` hands the file to its registered handler, and not
     // `cmd /C start`: `cmd` re-parses its command line by its own rules rather
     // than the ones `Command` quotes for, so a path holding `&` or `^` would be
-    // split there. `explorer.exe` is an ordinary Win32 program and parses what
-    // was quoted. It exits non-zero even on success, which costs nothing since
+    // split there. It exits non-zero even on success, which costs nothing since
     // the child is spawned and never waited on.
+    //
+    // Not a clean win, and unverified here for want of a Windows machine:
+    // `explorer.exe` does not use `CommandLineToArgvW` either and is reported to
+    // split its argument on a comma, so `a,b.html` may open the wrong target or
+    // none. The ways out are `rundll32 url.dll,FileProtocolHandler <file>` or a
+    // `ShellExecuteW` call, the second of which costs a new dependency — so this
+    // waits on the measurement rather than trading one unverified parser for
+    // another.
     Command::new("explorer")
         .arg(path)
         .spawn()

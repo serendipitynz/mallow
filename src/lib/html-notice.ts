@@ -24,9 +24,10 @@ export interface FrameCapability {
    *  has answered — the link line says nothing rather than guessing, since it
    *  would otherwise appear and then contradict itself a frame later. */
   runsParentListeners: boolean | null;
-  /** Whether the outline is on screen, which is what the link line can offer in
-   *  place of the table of contents the document itself carries. */
-  hasOutline: boolean;
+  /** Whether the outline is on screen *now* — not merely available. The link
+   *  line offers it in place of the table of contents the document carries, and
+   *  a reader who has collapsed it would otherwise be pointed at nothing. */
+  outlineVisible: boolean;
 }
 
 export function renderedNoticeLines(counts: HtmlCounts, frame: FrameCapability): NoticeLine[] {
@@ -34,8 +35,8 @@ export function renderedNoticeLines(counts: HtmlCounts, frame: FrameCapability):
   if (counts.scripts > 0) {
     lines.push({ key: 'htmlNoticeScripts', n: counts.scripts });
   }
-  if (counts.blockedExternalRefs > 0) {
-    lines.push({ key: 'htmlNoticeBlockedRefs', n: counts.blockedExternalRefs });
+  if (counts.blockedRefs > 0) {
+    lines.push({ key: 'htmlNoticeBlockedRefs', n: counts.blockedRefs });
   }
   if (counts.unresolvedLocalRefs > 0) {
     lines.push({ key: 'htmlNoticeLocalRefs', n: counts.unresolvedLocalRefs });
@@ -48,7 +49,7 @@ export function renderedNoticeLines(counts: HtmlCounts, frame: FrameCapability):
   // told about a failure it cannot have.
   if (frame.runsParentListeners === false && counts.links > 0) {
     lines.push({ key: 'htmlNoticeLinksInert', n: counts.links });
-    if (frame.hasOutline) {
+    if (frame.outlineVisible) {
       lines.push({ key: 'htmlNoticeOutlineWorks' });
     }
   }

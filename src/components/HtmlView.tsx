@@ -206,8 +206,8 @@ export function HtmlView({
   const hasOutline = headings.length > 1;
   const showOutline = showRendered && hasOutline && outlineOpen;
   const notice = useMemo(
-    () => renderedNoticeLines(transform.counts, { runsParentListeners: listenersRun, hasOutline }),
-    [transform.counts, listenersRun, hasOutline],
+    () => renderedNoticeLines(transform.counts, { runsParentListeners: listenersRun, outlineVisible: showOutline }),
+    [transform.counts, listenersRun, showOutline],
   );
 
   /**

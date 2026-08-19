@@ -397,17 +397,20 @@ hold rather than as an exhaustive style guide.
   parent scroll rather than just before a reload, because a `srcdoc` swap replaces
   the document asynchronously and there is no moment the parent can rely on where
   the new markup is committed and the old document is still readable.
-- **An `http(s)` reference loads or does not depending on the attribute it sits
-  on, so the two outcomes are counted apart and the notice bar must keep them
-  apart.** On the attributes the transform rewrites (`img src`, `srcset`,
-  `source src`, `video src`, `poster`) the CSP carries `https:` in `img-src` and
-  `media-src`, so a remote image arrives and nothing was lost; on `<link rel=…>`
-  and `<script src>` nothing carries it and the reference is refused. `HtmlCounts`
-  therefore has `blockedExternalRefs` for the second alone, and the first is not
-  counted at all. **One number for both would leave the notice bar unable to be
-  right about either**, which is the same reversal `unresolvedLocalRefs` already
-  has: a relative path is lost on the unrewritten paths and resolved on the
-  rewritten ones.
+- **Whether a reference arrives is decided by the CSP directive that fetches the
+  attribute it sits on, not by its scheme — so `lib/html-doc`'s `refTally` takes
+  a `RefSite`, and every count runs through it.** `img-src` carries
+  `https: http: data:`, `media-src` is `'self' asset:` and nothing else, and
+  `style-src` / `script-src` carry neither a host nor a scheme. So the same
+  `https://…` arrives on `img src`, `img srcset`, `source srcset` and `video
+  poster`, and is refused on `video src`, `audio src` and `<script src>`; and a
+  `//host/x.css` or `data:text/css` on `<link rel=stylesheet>` is refused too,
+  which a rule keyed on `http(s)` misses entirely. **`source src` has no answer of
+  its own** — inside `<picture>` it is `img-src` and inside `<video>`/`<audio>` it
+  is `media-src`, so the parent decides. `blockedRefs` counts what does not
+  arrive and `unresolvedLocalRefs` what is not rewritten; a remote image is in
+  neither, because it loads. **One number over both outcomes leaves the notice bar
+  unable to be right about either.**
 - **`counts.links` is every `a[href]`, not the `http(s)` ones**, because where the
   frame runs no parent-registered listener *all* of them do nothing — a bare
   fragment included, since it resolves against the parent's URL and is neutralized

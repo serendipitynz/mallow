@@ -368,15 +368,19 @@ Comments と Functions の規約は機械的に検査されない。コメント
   スクロールアンカーは再読み込みの直前ではなく**親のスクロールのたびに**取る —
   `srcdoc` の差し替えは非同期に文書を置き換えるので、「新しいマークアップが確定していて、
   かつ古い文書がまだ読める」瞬間を親が当てにできないため。
-- **`http(s)` の参照が読み込まれるかどうかは、それが載っている属性で決まる。
-  だから 2 つの結末は別々に数え、通知バーも混ぜてはならない。** 変換が書き換える属性
-  （`img src`・`srcset`・`source src`・`video src`・`poster`）では CSP の `img-src` と
-  `media-src` が `https:` を運ぶのでリモート画像は届き、失われたものは無い。
-  `<link rel=…>` と `<script src>` ではどのディレクティブも運ばないので拒否される。
-  そこで `HtmlCounts` は後者だけを `blockedExternalRefs` として持ち、前者は数えない。
-  **1 つの数にまとめると、通知バーはどちらについても正しくなれない。**
-  これは `unresolvedLocalRefs` が既に持っている反転と同じ形で、相対パスは
-  書き換えない経路では失われ、書き換える経路では解決する。
+- **参照が届くかどうかを決めるのは、その属性を取りに行く CSP ディレクティブであって
+  スキームではない。** だから `lib/html-doc` の `refTally` は `RefSite` を取り、
+  数え上げは全部そこを通る。`img-src` は `https: http: data:` を運び、
+  `media-src` は `'self' asset:` だけ、`style-src` / `script-src` はホストもスキームも運ばない。
+  同じ `https://…` が `img src`・`img srcset`・`source srcset`・`video poster` では届き、
+  `video src`・`audio src`・`<script src>` では拒否される。
+  `<link rel=stylesheet>` 上の `//host/x.css` や `data:text/css` も拒否されるが、
+  **`http(s)` だけを見る規則はこれを取りこぼす**。
+  **`source src` は自分では答えを持たない** — `<picture>` の中なら `img-src`、
+  `<video>` / `<audio>` の中なら `media-src` なので、親が決める。
+  `blockedRefs` は届かないものを、`unresolvedLocalRefs` は書き換えないものを数え、
+  リモート画像はどちらにも入らない（読み込まれるため）。
+  **1 つの数に両方の結末をまとめると、通知バーはどちらについても正しくなれない。**
 - **`counts.links` は `http(s)` のものではなく `a[href]` 全部。** 親のリスナが動かない
   環境では**すべてのリンクが動かない**からで、裸のフラグメントも含まれる — それは親の URL に
   解決されるので無力化される（decision-10）。通知バーはその数を添えてこの事実を言うので、

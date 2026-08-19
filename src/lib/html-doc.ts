@@ -65,15 +65,18 @@ export interface HtmlCounts {
    *  that belongs to the `<img usemap>` is unmeasured, so an area is not something
    *  this count may promise does nothing (decision-10 lists it as a probe case). */
   links: number;
-  /** `http(s)` references that do not load: a remote stylesheet, script, preload
-   *  or icon reached through `<link>` or `<script src>`.
+  /** References the CSP refuses, so the document does not get them: a remote
+   *  stylesheet or script, a `data:` or protocol-relative one in the same place,
+   *  and remote media on the attributes `media-src` answers for.
    *
-   *  **A remote image or video is deliberately not in this count**, because it
-   *  loads — `img-src` and `media-src` carry `https:`, which decision-3 accepts as
-   *  the same exposure the markdown view already has. Counting the two together
-   *  would put a reference that arrived and one that was refused behind one
-   *  number, and the notice bar can then only be wrong about one of them. */
-  blockedExternalRefs: number;
+   *  **A remote image is deliberately not in this count**, because it arrives:
+   *  `img-src` carries `https:` / `http:` / `data:`, which decision-3 accepts as
+   *  the same exposure the markdown view already has. **A remote video is, and
+   *  that asymmetry is the whole reason {@link RefSite} exists** — `media-src` is
+   *  `'self' asset:` only, so the same URL on `video src` is refused exactly as
+   *  one on `script src` is. Counting an arrival and a refusal behind one number
+   *  leaves the notice bar unable to be right about either. */
+  blockedRefs: number;
   /** References to local files this transform deliberately did not rewrite — a
    *  relative stylesheet or script, and a document-absolute path anywhere.
    *  Rewriting a stylesheet would need `asset:` in `style-src`, a CSP change
@@ -166,9 +169,9 @@ export function renderSkipReason(counts: { elements: number; textChars: number }
  *   `http(s)`, `blob:` or any other explicit scheme, a protocol-relative
  *   `//host/…`, a bare `#fragment`, an empty value.
  * - `external` — an `http(s)` URL. A subset of `untouched` for rewriting
- *   purposes, separated because whether it loads depends on the attribute it sits
- *   on: fetched under `img-src` / `media-src` on the rewritten set, refused on the
- *   rest (see {@link HtmlCounts.blockedExternalRefs}).
+ *   purposes, separated because whether it loads depends on where it sits:
+ *   fetched under `img-src`, refused under `media-src` and on the attributes
+ *   nothing rewrites (see {@link RefSite}).
  * - `local` — a document-relative path, the only kind rewritten to an `asset:` URL.
  * - `unresolvable` — a document-absolute `/x.png`. Left alone deliberately: the
  *   viewer knows the document's own directory, not the folder the user opened,
@@ -191,6 +194,55 @@ export function classifyRef(value: string): RefKind {
     return /^https?:/i.test(ref) ? 'external' : 'untouched';
   }
   return ref.startsWith('/') ? 'unresolvable' : 'local';
+}
+
+/**
+ * Where a reference sits, which is what decides whether it arrives.
+ *
+ * - `imgSrc` — an attribute this transform rewrites that is fetched under
+ *   `img-src`, which carries `https:`, `http:` and `data:`. A remote or embedded
+ *   image arrives, so nothing was lost.
+ * - `mediaSrc` — an attribute this transform rewrites that is fetched under
+ *   `media-src`, which carries none of them: `'self' asset:` and nothing else. A
+ *   remote video is refused exactly as a remote script is. **The two rewritten
+ *   sites are not interchangeable**, which is why they are named apart rather
+ *   than folded into "the transform rewrites this".
+ * - `unrewritten` — an attribute left as written: `<link rel=…>` and
+ *   `<script src>`. A relative path there resolves against the app's own URL and
+ *   404s; anything carrying a scheme or a host is refused, since `style-src` is
+ *   `'self' 'unsafe-inline'` and `script-src` is `'self' 'wasm-unsafe-eval'`.
+ */
+export type RefSite = 'imgSrc' | 'mediaSrc' | 'unrewritten';
+
+/** Which count a reference falls into, or `null` when the reader lost nothing by
+ *  it — it was rewritten and resolves, it arrives as written, or it addresses
+ *  nothing to fetch. */
+export type RefTally = 'blocked' | 'unresolvedLocal' | null;
+
+/**
+ * What one reference costs the reader, given where it sits.
+ *
+ * Split out as a pure function because the answer reverses between sites for the
+ * same value: `https://x/a.mp4` arrives on `img src` and is refused on `video
+ * src`, and `./a.css` is rewritten on a media attribute and lost on `<link>`.
+ * A single rule over the value alone was wrong about one of the two, whichever
+ * way it was written.
+ */
+export function refTally(value: string, site: RefSite): RefTally {
+  const kind = classifyRef(value);
+  if (kind === 'unresolvable') {
+    return 'unresolvedLocal';
+  }
+  if (kind === 'local') {
+    return site === 'unrewritten' ? 'unresolvedLocal' : null;
+  }
+  if (site === 'imgSrc') {
+    return null;
+  }
+  // An empty value or a bare fragment addresses nothing to fetch, so no site
+  // loses anything by it.
+  const ref = value.trim();
+  return ref === '' || ref.startsWith('#') ? null : 'blocked';
 }
 
 /**
@@ -309,12 +361,44 @@ export function rewriteRef(value: string, resolver: RefResolver): string | null 
  *  relative `url()` inside CSS, and relative `<link rel=stylesheet>` / local
  *  fonts — the last two because rewriting them would need `asset:` in
  *  `style-src` / `font-src`, a CSP change decision-3 rules out. */
-const REWRITTEN: { selector: string; attributes: string[] }[] = [
-  { selector: 'img', attributes: ['src', 'srcset'] },
-  { selector: 'source', attributes: ['src', 'srcset'] },
-  { selector: 'video', attributes: ['src', 'poster'] },
-  { selector: 'audio', attributes: ['src'] },
+const REWRITTEN: { selector: string; attributes: { name: string; site: RefSite | 'fromParent' }[] }[] = [
+  {
+    selector: 'img',
+    attributes: [
+      { name: 'src', site: 'imgSrc' },
+      { name: 'srcset', site: 'imgSrc' },
+    ],
+  },
+  // `srcset` on a `<source>` is a `<picture>` candidate whatever the parent, so
+  // only `src` has to ask.
+  {
+    selector: 'source',
+    attributes: [
+      { name: 'src', site: 'fromParent' },
+      { name: 'srcset', site: 'imgSrc' },
+    ],
+  },
+  {
+    selector: 'video',
+    attributes: [
+      { name: 'src', site: 'mediaSrc' },
+      { name: 'poster', site: 'imgSrc' },
+    ],
+  },
+  { selector: 'audio', attributes: [{ name: 'src', site: 'mediaSrc' }] },
 ];
+
+/** A `<source src>` is fetched under whichever directive answers for its parent,
+ *  so the parent decides. An unrecognized parent is read as `imgSrc`, which
+ *  claims nothing was blocked: understating beats asserting a refusal for markup
+ *  the parser may never fetch at all. */
+function siteOf(element: Element, declared: RefSite | 'fromParent'): RefSite {
+  if (declared !== 'fromParent') {
+    return declared;
+  }
+  const parent = element.parentElement?.tagName.toLowerCase();
+  return parent === 'video' || parent === 'audio' ? 'mediaSrc' : 'imgSrc';
+}
 
 /** `rel` values whose `<link>` fetches something. `rel="canonical"` and friends
  *  are not counted, because nothing is fetched for them and a count that
@@ -327,7 +411,7 @@ function emptyCounts(): HtmlCounts {
     textChars: 0,
     scripts: 0,
     links: 0,
-    blockedExternalRefs: 0,
+    blockedRefs: 0,
     unresolvedLocalRefs: 0,
     removedFrames: 0,
   };
@@ -372,20 +456,31 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
     base.remove();
   }
 
-  counts.links = doc.querySelectorAll('a[href]').length;
+  for (const anchor of doc.querySelectorAll('a[href]')) {
+    // The two classes whose fate is settled: an app-origin href is neutralized
+    // here (decision-10) and an `http(s)` one is refused by `frame-src`
+    // (decision-9). A `mailto:` or `tel:` href is neither, and whether the
+    // WebViews hand it to the OS from inside a sandboxed frame is unmeasured —
+    // so it stays out of a count the notice bar uses to say links do nothing.
+    const href = anchor.getAttribute('href') ?? '';
+    if (navigatesAppOrigin(href) || classifyRef(href) === 'external') {
+      counts.links += 1;
+    }
+  }
 
   for (const { selector, attributes } of REWRITTEN) {
     for (const element of doc.querySelectorAll(selector)) {
-      for (const name of attributes) {
+      for (const { name, site: declared } of attributes) {
         const value = element.getAttribute(name);
         if (value === null) {
           continue;
         }
+        const site = siteOf(element, declared);
         if (name === 'srcset') {
-          element.setAttribute(name, rewriteSrcsetValue(value, resolver, counts));
+          element.setAttribute(name, rewriteSrcsetValue(value, resolver, counts, site));
           continue;
         }
-        tallyRewritable(value, counts);
+        tally(value, counts, site);
         const rewritten = rewriteRef(value, resolver);
         if (rewritten !== null) {
           element.setAttribute(name, rewritten);
@@ -397,11 +492,11 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
   for (const link of doc.querySelectorAll('link[href]')) {
     const rels = (link.getAttribute('rel') ?? '').toLowerCase().split(/\s+/);
     if (rels.some((rel) => FETCHING_REL.has(rel))) {
-      tallyUnrewritten(link.getAttribute('href') ?? '', counts);
+      tally(link.getAttribute('href') ?? '', counts, 'unrewritten');
     }
   }
   for (const script of doc.querySelectorAll('script[src]')) {
-    tallyUnrewritten(script.getAttribute('src') ?? '', counts);
+    tally(script.getAttribute('src') ?? '', counts, 'unrewritten');
   }
 
   return {
@@ -415,33 +510,20 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
   };
 }
 
-/** Count a reference on an attribute this transform *does* rewrite, where only
- *  the document-absolute case goes missing: a relative path is rewritten and
- *  resolves, and an `http(s)` one is fetched under `img-src` / `media-src` and is
- *  nothing the reader lost either. */
-function tallyRewritable(value: string, counts: HtmlCounts): void {
-  if (classifyRef(value) === 'unresolvable') {
+/** Add one reference to whichever count {@link refTally} puts it in. */
+function tally(value: string, counts: HtmlCounts, site: RefSite): void {
+  const verdict = refTally(value, site);
+  if (verdict === 'blocked') {
+    counts.blockedRefs += 1;
+  } else if (verdict === 'unresolvedLocal') {
     counts.unresolvedLocalRefs += 1;
   }
 }
 
-/** Count a reference on an attribute this transform leaves as written. Here a
- *  local path is exactly what goes missing — inside `srcdoc` it resolves against
- *  the app's own URL and 404s — so it counts alongside the document-absolute
- *  case, where the rewritten set counts only the latter. */
-function tallyUnrewritten(value: string, counts: HtmlCounts): void {
-  const kind = classifyRef(value);
-  if (kind === 'external') {
-    counts.blockedExternalRefs += 1;
-  } else if (kind === 'local' || kind === 'unresolvable') {
-    counts.unresolvedLocalRefs += 1;
-  }
-}
-
-function rewriteSrcsetValue(value: string, resolver: RefResolver, counts: HtmlCounts): string {
+function rewriteSrcsetValue(value: string, resolver: RefResolver, counts: HtmlCounts, site: RefSite): string {
   return serializeSrcset(
     parseSrcset(value).map((candidate) => {
-      tallyRewritable(candidate.url, counts);
+      tally(candidate.url, counts, site);
       return { url: rewriteRef(candidate.url, resolver) ?? candidate.url, descriptor: candidate.descriptor };
     }),
   );

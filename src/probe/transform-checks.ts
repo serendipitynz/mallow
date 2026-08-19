@@ -77,7 +77,8 @@ const MESSY = `<!doctype html>
 <html><head><TITLE>Messy</TITLE><BASE
    HREF="https://example.com/"><style>#alive { color: rgb(0, 128, 0) }</style>
   <link rel="stylesheet" href="site.css">
-  <link rel="stylesheet" href="https://cdn.example.com/remote.css"></head>
+  <link rel="stylesheet" href="https://cdn.example.com/remote.css">
+  <link rel="stylesheet" href="//cdn.example.com/proto.css"></head>
 <body>
   <p id="alive">alive</p>
   <IMG
@@ -90,6 +91,8 @@ const MESSY = `<!doctype html>
   <iframe src="nested.html"></iframe>
   <a href="https://example.com/">out</a>
   <a href="#alive">in</a>
+  <a href="mailto:nobody@example.com">mail</a>
+  <video src="https://cdn.example.com/clip.mp4"></video>
   <script src="app.js"></script>
   <video POSTER=poster.png src="clip-video.mp4"><audio src="tone.mp3">
 </body></html>`;
@@ -192,13 +195,13 @@ export async function runTransformChecks(host: HTMLElement): Promise<TransformCh
     check(
       'counts',
       [9],
-      'what the notice bar reports is counted: a relative stylesheet and script count as lost and a remote stylesheet as blocked, while a rewritten image and a remote image count as neither',
+      'what the notice bar reports is counted, and the reference that arrives is told from the ones that do not',
       counts.unresolvedLocalRefs === 3 &&
-        counts.blockedExternalRefs === 1 &&
+        counts.blockedRefs === 3 &&
         counts.links === 2 &&
         counts.scripts === 1 &&
         counts.removedFrames === 1,
-      `unresolvedLocalRefs=${counts.unresolvedLocalRefs} (want 3: site.css, app.js, /absolute.png) blockedExternalRefs=${counts.blockedExternalRefs} (want 1: remote.css, and NOT remote.png, which img-src loads) links=${counts.links} (want 2: one http, one fragment) scripts=${counts.scripts} (want 1) removedFrames=${counts.removedFrames} (want 1)`,
+      `unresolvedLocalRefs=${counts.unresolvedLocalRefs} (want 3: site.css, app.js, /absolute.png) blockedRefs=${counts.blockedRefs} (want 3: remote.css, //proto.css, and the remote video media-src refuses - and NOT remote.png, which img-src loads) links=${counts.links} (want 2: one http and one fragment, NOT the mailto:) scripts=${counts.scripts} (want 1) removedFrames=${counts.removedFrames} (want 1)`,
     ),
   );
 
