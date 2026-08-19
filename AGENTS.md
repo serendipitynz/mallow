@@ -69,7 +69,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
   tauri-plugin-opener because that plugin's path scope cannot be satisfied without
-  a second runtime-scope mechanism beside `allow_media_dir` (decision-3).
+  a second runtime-scope mechanism beside `allow_media_dir` (decision-3). **On
+  Windows it is `rundll32 url.dll,FileProtocolHandler`, and the two obvious
+  spellings are both wrong about paths**: `explorer <file>` splits on a comma
+  (measured — `a,b.html` opened an Explorer window, not the handler) and
+  `cmd /C start` re-parses by `cmd`'s rules rather than the ones `Command` quotes
+  for.
 - `lib.rs` — plugin registration (opener, dialog, store, window-state), the
   `invoke_handler`, and (macOS only) a native app menu whose Settings… item
   (⌘,) emits the `menu:settings` event the frontend listens for.

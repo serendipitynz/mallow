@@ -129,20 +129,21 @@ pub fn open(id: &str, path: &str) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 pub fn open_default(path: &str) -> Result<(), String> {
-    // `explorer <file>` hands the file to its registered handler, and not
-    // `cmd /C start`: `cmd` re-parses its command line by its own rules rather
-    // than the ones `Command` quotes for, so a path holding `&` or `^` would be
-    // split there. It exits non-zero even on success, which costs nothing since
-    // the child is spawned and never waited on.
+    // `rundll32` takes everything after its first space as one unparsed argument
+    // string, so a path is handed on exactly as written.
     //
-    // Not a clean win, and unverified here for want of a Windows machine:
-    // `explorer.exe` does not use `CommandLineToArgvW` either and is reported to
-    // split its argument on a comma, so `a,b.html` may open the wrong target or
-    // none. The ways out are `rundll32 url.dll,FileProtocolHandler <file>` or a
-    // `ShellExecuteW` call, the second of which costs a new dependency — so this
-    // waits on the measurement rather than trading one unverified parser for
-    // another.
-    Command::new("explorer")
+    // Two better-known spellings were each ruled out by what they do to a path.
+    // `explorer <file>` splits on a comma: opening `rendered-notice,check.html`
+    // through it raised an Explorer window rather than the file's handler
+    // (measured on Windows 11, 2026-08-19). `cmd /C start "" <file>` re-parses
+    // its command line by `cmd`'s rules rather than the ones `Command` quotes
+    // for, so `&`, `^` and `%` in a name are live there.
+    //
+    // `ShellExecuteW` is the API this is standing in for and would end the
+    // question, but it costs a new production dependency (the `windows` crate),
+    // which is not this task's to add.
+    Command::new("rundll32")
+        .arg("url.dll,FileProtocolHandler")
         .arg(path)
         .spawn()
         .map(|_| ())

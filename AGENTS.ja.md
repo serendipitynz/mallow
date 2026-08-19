@@ -73,6 +73,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   最後のものはファイルをその種別に登録された OS のハンドラへ渡す。
   tauri-plugin-opener ではなくここにあるのは、あのプラグインのパススコープを満たすには
   `allow_media_dir` の隣に 2 つ目の実行時スコープ機構が要るため（decision-3）。
+  **Windows では `rundll32 url.dll,FileProtocolHandler` を使う。思いつく 2 つの綴りは
+  どちらもパスの扱いを誤る** — `explorer <file>` はコンマで分割し（実測: `a,b.html` で
+  ハンドラではなく Explorer のウィンドウが開いた）、`cmd /C start` は `Command` が
+  quote する規則ではなく `cmd` 自身の規則で読み直す。
 - `lib.rs` — プラグイン登録（opener, dialog, store, window-state）、`invoke_handler`、
   および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
   `menu:settings` イベントを emit し、フロントがそれを購読する。
