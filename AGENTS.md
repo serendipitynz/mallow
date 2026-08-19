@@ -411,13 +411,18 @@ hold rather than as an exhaustive style guide.
   arrive and `unresolvedLocalRefs` what is not rewritten; a remote image is in
   neither, because it loads. **One number over both outcomes leaves the notice bar
   unable to be right about either.**
-- **`counts.links` is every `a[href]`, not the `http(s)` ones**, because where the
-  frame runs no parent-registered listener *all* of them do nothing — a bare
-  fragment included, since it resolves against the parent's URL and is neutralized
-  (decision-10). The notice bar states that with this number beside it, so the
-  number has to be the one the reader sees. **`area[href]` is neutralized but not
-  counted**: only its keyboard path is settled, and whether `pointer-events`
-  reaches a hit region owned by the `<img usemap>` is unmeasured.
+- **`counts.links` carries the two classes whose fate is settled and nothing
+  else**, because the notice bar's number has to be one it can account for: an
+  app-origin href, neutralized where no parent listener runs (decision-10 — a bare
+  fragment is one, so the document's own table of contents is in the count), and
+  an `http(s)` one, refused by `frame-src` (decision-9). **`mailto:` / `tel:` and
+  `area[href]` are excluded**, each because the thing that would settle it is
+  unmeasured: whether a sandboxed frame hands an external-protocol scheme to the
+  OS, and whether `pointer-events` reaches a hit region owned by the `<img
+  usemap>`. Both are TASK-23's to measure. **The same silence is deliberate at
+  `imgSrc`** for a protocol-relative reference, which the parent's base URL makes
+  `tauri://host/x` on WebKit and `http://host/x` on WebView2 — one refused, one
+  carried — so a count would have to be wrong on a platform.
 - **The native window title has exactly one writer, `Viewer`, and a view that
   knows a better label reports it upward.** `HtmlView` passes the `<title>` the
   transform already read through `onDocumentTitle`; it never calls

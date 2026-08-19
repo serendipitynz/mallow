@@ -54,16 +54,20 @@ export interface HtmlCounts {
   textChars: number;
   /** `<script>` elements, all of them inert (sandbox, and mostly the CSP too). */
   scripts: number;
-  /** `<a href>` elements, all of which do nothing wherever the frame runs no
-   *  parent-registered listener — the document's own table of contents included,
-   *  because a bare fragment resolves against the parent's URL and is neutralized
-   *  there (decision-10). Every href is counted, not the `http(s)` ones alone,
-   *  which is what makes that statement's number match what the reader sees.
+  /** `<a href>` elements that do nothing wherever the frame runs no
+   *  parent-registered listener — **the two classes whose fate is settled, and
+   *  only those**: an app-origin href, which is neutralized there (decision-10,
+   *  and a bare fragment is one of them, so the document's own table of contents
+   *  is counted), and an `http(s)` one, which `frame-src` refuses (decision-9).
+   *  Widening it past those would make the notice bar's number larger than what
+   *  it can account for.
    *
-   *  **`<area href>` is not counted**, although it is neutralized alongside: only
-   *  its keyboard path is settled. Whether `pointer-events` reaches a hit region
-   *  that belongs to the `<img usemap>` is unmeasured, so an area is not something
-   *  this count may promise does nothing (decision-10 lists it as a probe case). */
+   *  **`mailto:` and `tel:` are therefore excluded**: neither argument reaches
+   *  them, and whether a sandboxed frame hands an external-protocol scheme to
+   *  the OS is unmeasured (TASK-23 AC #5). **`<area href>` is excluded too**,
+   *  although it is neutralized alongside `<a>`: only its keyboard path is
+   *  settled, and whether `pointer-events` reaches a hit region belonging to the
+   *  `<img usemap>` is likewise unmeasured (TASK-23 AC #3). */
   links: number;
   /** References the CSP refuses, so the document does not get them: a remote
    *  stylesheet or script, a `data:` or protocol-relative one in the same place,
@@ -201,7 +205,14 @@ export function classifyRef(value: string): RefKind {
  *
  * - `imgSrc` — an attribute this transform rewrites that is fetched under
  *   `img-src`, which carries `https:`, `http:` and `data:`. A remote or embedded
- *   image arrives, so nothing was lost.
+ *   image arrives, so nothing was lost. **A reference this site does not count is
+ *   not the same as one that loads**: a protocol-relative `//host/x.png` resolves
+ *   against the parent's base URL, so it becomes `tauri://host/x.png` on macOS
+ *   and Linux — refused — and `http://host/x.png` on Windows, which `img-src`
+ *   carries. Nothing this module can read says which, and a count that has to be
+ *   wrong on one platform is worse here than one that is silent: a refused image
+ *   announces itself as a broken image, which is not the unexplained-fault case
+ *   the notice bar exists for. TASK-23's round is where it gets measured.
  * - `mediaSrc` — an attribute this transform rewrites that is fetched under
  *   `media-src`, which carries none of them: `'self' asset:` and nothing else. A
  *   remote video is refused exactly as a remote script is. **The two rewritten
