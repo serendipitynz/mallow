@@ -1,10 +1,10 @@
 ---
 id: TASK-19
 title: Document the HTML rendered view and its untrusted-input boundary
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-17 03:09'
-updated_date: '2026-08-19 08:38'
+updated_date: '2026-08-19 12:03'
 labels:
   - documentation
 milestone: m-1
