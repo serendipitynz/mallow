@@ -32,6 +32,11 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
   // the message instead of leaving the one built when the read failed.
   const [error, setError] = useState<ReadError | null>(null);
   const [loading, setLoading] = useState(false);
+  /* A label the open view supplies for the window title, where the file's own
+     text cannot give one. `HtmlView` is the only supplier today: an HTML
+     document's `<title>` comes out of the transform it already ran, and
+     `lib/title` would have to parse the document again to find it. */
+  const [viewTitle, setViewTitle] = useState<string | null>(null);
 
   /* biome-ignore lint/correctness/useExhaustiveDependencies: keyed on file?.path, not on `file`, on
      purpose. The parent rebuilds the FileEntry object on every tree refresh, so depending on `file`
@@ -40,7 +45,6 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
     if (!file) {
       setContent(null);
       setError(null);
-      setWindowTitle(windowTitle(null));
       return;
     }
     // Media files are rendered by the WebView from the asset URL; skip the text
@@ -49,14 +53,11 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
       setContent(null);
       setError(null);
       setLoading(false);
-      setWindowTitle(windowTitle(file.name));
       return;
     }
     let cancelled = false;
     setLoading(true);
     setError(null);
-    // Reflect the file name immediately; refine to a front-matter title once read.
-    setWindowTitle(windowTitle(file.name));
     readFile(file.path)
       .then((result) => {
         if (cancelled) {
@@ -64,7 +65,6 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
         }
         if (result.ok) {
           setContent(result.text);
-          setWindowTitle(windowTitle(documentTitle(file, result.text)));
         } else {
           setError(result.error);
           setContent(null);
@@ -82,6 +82,30 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
       cancelled = true;
     };
   }, [file?.path, reloadToken]);
+
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: the path is not read in the body —
+     it is the reset trigger. The label belongs to the open file, so it is dropped when the file
+     changes and deliberately not when the watcher re-reads the same one: a re-read whose text is
+     unchanged produces no new transform, so nothing would report the label back. */
+  useEffect(() => {
+    setViewTitle(null);
+  }, [file?.path]);
+
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: `file` is read here but keyed on its
+     path, kind and name, for the reason the read effect above gives — the parent rebuilds the
+     FileEntry on every tree refresh, and depending on the object would spend an IPC call rewriting
+     the title it already holds. */
+  useEffect(() => {
+    if (!file) {
+      setWindowTitle(windowTitle(null));
+      return;
+    }
+    // The one place the native window title is written. A view's own label wins
+    // where it has one; otherwise the file's text answers, and `documentTitle`
+    // falls back to the file name — which is also what an unread file gets, so
+    // the title is right from the moment the file opens rather than after a read.
+    setWindowTitle(windowTitle(viewTitle ?? documentTitle(file, content ?? '')));
+  }, [file?.path, file?.kind, file?.name, content, viewTitle]);
 
   if (!file) {
     return (
@@ -116,12 +140,20 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
 
   return (
     <main className="viewer">
-      <ViewerBody key={file.path} file={file} content={content} />
+      <ViewerBody key={file.path} file={file} content={content} onDocumentTitle={setViewTitle} />
     </main>
   );
 }
 
-function ViewerBody({ file, content }: { file: FileEntry; content: string }) {
+function ViewerBody({
+  file,
+  content,
+  onDocumentTitle,
+}: {
+  file: FileEntry;
+  content: string;
+  onDocumentTitle: (title: string | null) => void;
+}) {
   switch (file.kind) {
     case 'markdown':
       return <MarkdownView source={content} />;
@@ -145,7 +177,7 @@ function ViewerBody({ file, content }: { file: FileEntry; content: string }) {
     // one (decision-3), so `html` is a second kind whose view is not settled by
     // the kind alone.
     case 'html':
-      return <HtmlView source={content} file={file} />;
+      return <HtmlView source={content} file={file} onDocumentTitle={onDocumentTitle} />;
     // The kind name doubles as the Shiki grammar id, so no kind→lang table is
     // needed: ini, diff and sql are in `lib/shiki`'s LANGS, and `text` is what
     // SourceView already falls back to for a grammar it has not loaded.

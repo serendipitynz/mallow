@@ -137,7 +137,18 @@ function addressesDocumentStart(name: string): boolean {
  * for the same kind of reason. decision-3 says why adding any of them is not a
  * one-line change.
  */
-export function HtmlView({ source, file }: { source: string; file: FileEntry }) {
+export function HtmlView({
+  source,
+  file,
+  onDocumentTitle,
+}: {
+  source: string;
+  file: FileEntry;
+  /** Reports the document's `<title>` upward, because the native window title has
+   *  one writer and it is `Viewer` — this view supplies the value and never sets
+   *  it. Taken from the transform, so the document is not parsed a second time. */
+  onDocumentTitle: (title: string | null) => void;
+}) {
   const t = useT();
   const transform = useMemo(
     () =>
@@ -525,6 +536,13 @@ export function HtmlView({ source, file }: { source: string; file: FileEntry }) 
     setTooTall(false);
     setHeadings([]);
   }, [transform]);
+
+  // The `<title>` the transform already read. Reported rather than written: the
+  // window title has a single writer and it is `Viewer`, which falls back to the
+  // file name for a document that declares none.
+  useEffect(() => {
+    onDocumentTitle(transform.title);
+  }, [transform, onDocumentTitle]);
 
   /* biome-ignore lint/correctness/useExhaustiveDependencies: `showRendered` is not read in the
      body — it is what says the iframe is mounted, so the observer binds to the element that now
