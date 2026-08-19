@@ -1,10 +1,10 @@
 ---
 id: TASK-5.3
 title: 'Surface what was disabled: notice bar, open outside mallow, window title'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-07-30 10:26'
-updated_date: '2026-08-19 03:55'
+updated_date: '2026-08-19 07:59'
 labels:
   - feature
 milestone: m-1
