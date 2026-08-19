@@ -54,12 +54,26 @@ export interface HtmlCounts {
   textChars: number;
   /** `<script>` elements, all of them inert (sandbox, and mostly the CSP too). */
   scripts: number;
-  /** Links carrying an `http(s)` href, which are inert wherever the frame runs no
-   *  parent-registered listener — a platform difference decision-9 requires the
-   *  notice bar to state, which is why they are counted here and not in TASK-5.3. */
+  /** `<a href>` elements, all of which do nothing wherever the frame runs no
+   *  parent-registered listener — the document's own table of contents included,
+   *  because a bare fragment resolves against the parent's URL and is neutralized
+   *  there (decision-10). Every href is counted, not the `http(s)` ones alone,
+   *  which is what makes that statement's number match what the reader sees.
+   *
+   *  **`<area href>` is not counted**, although it is neutralized alongside: only
+   *  its keyboard path is settled. Whether `pointer-events` reaches a hit region
+   *  that belongs to the `<img usemap>` is unmeasured, so an area is not something
+   *  this count may promise does nothing (decision-10 lists it as a probe case). */
   links: number;
-  /** References to `http(s)` URLs: remote images, stylesheets and scripts. */
-  externalRefs: number;
+  /** `http(s)` references that do not load: a remote stylesheet, script, preload
+   *  or icon reached through `<link>` or `<script src>`.
+   *
+   *  **A remote image or video is deliberately not in this count**, because it
+   *  loads — `img-src` and `media-src` carry `https:`, which decision-3 accepts as
+   *  the same exposure the markdown view already has. Counting the two together
+   *  would put a reference that arrived and one that was refused behind one
+   *  number, and the notice bar can then only be wrong about one of them. */
+  blockedExternalRefs: number;
   /** References to local files this transform deliberately did not rewrite — a
    *  relative stylesheet or script, and a document-absolute path anywhere.
    *  Rewriting a stylesheet would need `asset:` in `style-src`, a CSP change
@@ -81,8 +95,9 @@ export interface HtmlTransform {
   html: string | null;
   skipped: RenderSkipReason | null;
   counts: HtmlCounts;
-  /** The document's `<title>`, so TASK-5.3 can set the window title without
-   *  parsing the document a second time. `null` when it has none. */
+  /** The document's `<title>`, which `HtmlView` reports up to `Viewer` for the
+   *  native window title — read here so nothing parses the document a second time.
+   *  `null` when it has none. */
   title: string | null;
   /** Whether the source document declared a doctype. The serialized output
    *  always carries `<!DOCTYPE html>` regardless: quirks mode changes which
@@ -151,7 +166,9 @@ export function renderSkipReason(counts: { elements: number; textChars: number }
  *   `http(s)`, `blob:` or any other explicit scheme, a protocol-relative
  *   `//host/…`, a bare `#fragment`, an empty value.
  * - `external` — an `http(s)` URL. A subset of `untouched` for rewriting
- *   purposes, separated because the notice bar counts it.
+ *   purposes, separated because whether it loads depends on the attribute it sits
+ *   on: fetched under `img-src` / `media-src` on the rewritten set, refused on the
+ *   rest (see {@link HtmlCounts.blockedExternalRefs}).
  * - `local` — a document-relative path, the only kind rewritten to an `asset:` URL.
  * - `unresolvable` — a document-absolute `/x.png`. Left alone deliberately: the
  *   viewer knows the document's own directory, not the folder the user opened,
@@ -310,7 +327,7 @@ function emptyCounts(): HtmlCounts {
     textChars: 0,
     scripts: 0,
     links: 0,
-    externalRefs: 0,
+    blockedExternalRefs: 0,
     unresolvedLocalRefs: 0,
     removedFrames: 0,
   };
@@ -355,11 +372,7 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
     base.remove();
   }
 
-  for (const anchor of doc.querySelectorAll('a[href]')) {
-    if (classifyRef(anchor.getAttribute('href') ?? '') === 'external') {
-      counts.links += 1;
-    }
-  }
+  counts.links = doc.querySelectorAll('a[href]').length;
 
   for (const { selector, attributes } of REWRITTEN) {
     for (const element of doc.querySelectorAll(selector)) {
@@ -402,13 +415,12 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
   };
 }
 
-/** Count a reference on an attribute this transform *does* rewrite, so a local
- *  one resolves and is nothing the reader lost. */
+/** Count a reference on an attribute this transform *does* rewrite, where only
+ *  the document-absolute case goes missing: a relative path is rewritten and
+ *  resolves, and an `http(s)` one is fetched under `img-src` / `media-src` and is
+ *  nothing the reader lost either. */
 function tallyRewritable(value: string, counts: HtmlCounts): void {
-  const kind = classifyRef(value);
-  if (kind === 'external') {
-    counts.externalRefs += 1;
-  } else if (kind === 'unresolvable') {
+  if (classifyRef(value) === 'unresolvable') {
     counts.unresolvedLocalRefs += 1;
   }
 }
@@ -420,7 +432,7 @@ function tallyRewritable(value: string, counts: HtmlCounts): void {
 function tallyUnrewritten(value: string, counts: HtmlCounts): void {
   const kind = classifyRef(value);
   if (kind === 'external') {
-    counts.externalRefs += 1;
+    counts.blockedExternalRefs += 1;
   } else if (kind === 'local' || kind === 'unresolvable') {
     counts.unresolvedLocalRefs += 1;
   }
