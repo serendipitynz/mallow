@@ -49,7 +49,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
   caps), `delimited` (CSV/TSV parser + table caps), `xml-tree` (XML DOM → bounded
-  tree model + parse-error text), `clip` (shared value clip), `custom-emoji` (user
+  tree model + parse-error text), `html-doc` (HTML markup transform + render
+  caps), `html-headings` (heading ids inside the frame), `html-notice` (which
+  notice-bar lines a rendered document carries), `clip` (shared value clip),
+  `custom-emoji` (user
   emoji folder →
   shortcode table), `heading` (the `Heading` type, the injected lookup root and the
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
@@ -442,14 +445,20 @@ hold rather than as an exhaustive style guide.
   alone — `dirname` supplies the point to resolve against, `resolvePath` folds
   `.` and `..` — so a change to one is a change to the pair. Node's `path` is
   absent in the WebView and neither function is worth a dependency, so both are
-  string ops that read `/` and `\` as separators. **`..` is applied by trimming
+  string ops that read `/` and `\` as separators — in the directory being
+  resolved against. The reference the document itself wrote is split on `/`
+  alone, because that is what an HTML document writes. **`..` is applied by trimming
   the directory's own string rather than by rebuilding it from components**, so
   a drive letter or a UNC prefix survives; climbing past the root stops there,
   and climbing above the opened folder is deliberately not special-cased,
   because the asset-protocol grant is what decides whether the result can be
   read. A document-absolute `/x.png` is not rewritten at all, and that call sits
   in `lib/html-doc` rather than here — the question is what to do with a URL,
-  not how to join a path.
+  not how to join a path. **What `REWRITTEN` does not cover is neither rewritten
+  nor counted**, so `url()` inside the document's own CSS, `<track src>`,
+  `<input type=image src>` and inline SVG `<image>` / `<use>` fail with no
+  notice-bar line at all — decision-3 requires that be stated rather than left
+  to be discovered, which is why README names the CSS case to the reader.
 - **Whether a reference arrives is decided by the CSP directive that fetches the
   attribute it sits on, not by its scheme — so `lib/html-doc`'s `refTally` takes
   a `RefSite`, and every count runs through it.** `img-src` carries

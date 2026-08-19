@@ -44,13 +44,16 @@ PDFs, and videos are shown as well, rendered by the OS-native WebView.
   which files are configuration.
 - **HTML** (html / htm)
   - Rendered by default, with a rendered/source toggle. The document is shown
-    with its own CSS applied, inside a sandboxed frame that runs none of its
-    script — so tabs, disclosure widgets and canvas-drawn charts stay inert, and
-    a line above the document says what was left out
-  - Local media sitting beside the document is loaded — images, video, audio,
-    posters. Stylesheets and scripts are not, whether they are remote or next to
-    the document, and neither is remote video. Remote images do load, as they
-    already do in Markdown
+    with the CSS it carries inline applied, inside a sandboxed frame that runs
+    none of its script — so tabs, disclosure widgets and canvas-drawn charts
+    stay inert, and a line above the document says what was left out
+  - Media the document references from an `<img>`, `<video>`, `<audio>` or
+    `<source>` element loads from beside the document, a video poster included.
+    Stylesheets and scripts do not, whether they are remote or next to the
+    document, and neither does remote video. Remote images do load, as they
+    already do in Markdown. Local references outside those elements fail
+    quietly — `url()` in the document's own CSS above all: they neither load nor
+    appear in the line above the document
   - Links inside the document do nothing on some platforms — the document's own
     table of contents included. mallow detects that per document rather than
     reading it off the OS name, and says so above the document when it applies;
