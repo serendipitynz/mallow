@@ -68,8 +68,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   スコープを広げ、その中の画像/PDF/動画を `convertFileSrc` で表示できるようにする。
 - `watch.rs` — `notify` の再帰ウォッチャ。`fs:change` イベント（パス配列）を emit。
   ウォッチャは `WatcherState` が保持。
-- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` を `std::process`
-  で実装（OS ごとに `cfg` で分岐）。
+- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
+  `open_in_default_app` を `std::process` で実装（OS ごとに `cfg` で分岐）。
+  最後のものはファイルをその種別に登録された OS のハンドラへ渡す。
+  tauri-plugin-opener ではなくここにあるのは、あのプラグインのパススコープを満たすには
+  `allow_media_dir` の隣に 2 つ目の実行時スコープ機構が要るため（decision-3）。
 - `lib.rs` — プラグイン登録（opener, dialog, store, window-state）、`invoke_handler`、
   および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
   `menu:settings` イベントを emit し、フロントがそれを購読する。
@@ -365,6 +368,28 @@ Comments と Functions の規約は機械的に検査されない。コメント
   スクロールアンカーは再読み込みの直前ではなく**親のスクロールのたびに**取る —
   `srcdoc` の差し替えは非同期に文書を置き換えるので、「新しいマークアップが確定していて、
   かつ古い文書がまだ読める」瞬間を親が当てにできないため。
+- **`http(s)` の参照が読み込まれるかどうかは、それが載っている属性で決まる。
+  だから 2 つの結末は別々に数え、通知バーも混ぜてはならない。** 変換が書き換える属性
+  （`img src`・`srcset`・`source src`・`video src`・`poster`）では CSP の `img-src` と
+  `media-src` が `https:` を運ぶのでリモート画像は届き、失われたものは無い。
+  `<link rel=…>` と `<script src>` ではどのディレクティブも運ばないので拒否される。
+  そこで `HtmlCounts` は後者だけを `blockedExternalRefs` として持ち、前者は数えない。
+  **1 つの数にまとめると、通知バーはどちらについても正しくなれない。**
+  これは `unresolvedLocalRefs` が既に持っている反転と同じ形で、相対パスは
+  書き換えない経路では失われ、書き換える経路では解決する。
+- **`counts.links` は `http(s)` のものではなく `a[href]` 全部。** 親のリスナが動かない
+  環境では**すべてのリンクが動かない**からで、裸のフラグメントも含まれる — それは親の URL に
+  解決されるので無力化される（decision-10）。通知バーはその数を添えてこの事実を言うので、
+  数は読者が見ているものと一致していなければならない。**`area[href]` は無力化するが数えない** —
+  キーボード経路しか確定しておらず、`<img usemap>` が持つ当たり判定に `pointer-events` が
+  効くかは未計測のため。
+- **ネイティブウィンドウタイトルの書き手は `Viewer` 1 つだけで、より良い label を知っている
+  ビューはそれを上へ報告する。** `HtmlView` は変換が既に読んだ `<title>` を
+  `onDocumentTitle` で渡すだけで、`setWindowTitle` を呼ばず、文書を 2 度目に解析もしない
+  （`lib/title` の `frontMatterTitle` は markdown 以外の種別に `null` を返すので、
+  `documentTitle` だけでは常にファイル名になる）。label を落とすのは**パスが変わったとき**で、
+  ウォッチャの reload token では落とさない — 内容が変わっていない再読み込みは新しい変換を
+  生まないので、報告し直すものが無くタイトルがファイル名に落ちてしまう。
 - **`TableView` の上限は定数 4 本で、`SourceView` と違って内容そのものを落とす。**
   `TABLE_MAX_ROWS`（5,000）・`TABLE_MAX_COLUMNS`（100）・`TABLE_MAX_CELLS`（20,000）・
   `TABLE_MAX_CELL_CHARS`（500）が `lib/delimited` にある。4 本要るのは、前の 2 本が

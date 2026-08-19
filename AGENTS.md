@@ -65,8 +65,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   folder so its image/pdf/video files can be rendered via `convertFileSrc`.
 - `watch.rs` — `notify` recursive watcher; emits the `fs:change` event (list of
   paths). The watcher handle lives in `WatcherState`.
-- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` via
-  `std::process`, gated per-OS with `cfg`.
+- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
+  `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
+  hands a file to the OS handler registered for it, and is here rather than on
+  tauri-plugin-opener because that plugin's path scope cannot be satisfied without
+  a second runtime-scope mechanism beside `allow_media_dir` (decision-3).
 - `lib.rs` — plugin registration (opener, dialog, store, window-state), the
   `invoke_handler`, and (macOS only) a native app menu whose Settings… item
   (⌘,) emits the `menu:settings` event the frontend listens for.
@@ -394,6 +397,33 @@ hold rather than as an exhaustive style guide.
   parent scroll rather than just before a reload, because a `srcdoc` swap replaces
   the document asynchronously and there is no moment the parent can rely on where
   the new markup is committed and the old document is still readable.
+- **An `http(s)` reference loads or does not depending on the attribute it sits
+  on, so the two outcomes are counted apart and the notice bar must keep them
+  apart.** On the attributes the transform rewrites (`img src`, `srcset`,
+  `source src`, `video src`, `poster`) the CSP carries `https:` in `img-src` and
+  `media-src`, so a remote image arrives and nothing was lost; on `<link rel=…>`
+  and `<script src>` nothing carries it and the reference is refused. `HtmlCounts`
+  therefore has `blockedExternalRefs` for the second alone, and the first is not
+  counted at all. **One number for both would leave the notice bar unable to be
+  right about either**, which is the same reversal `unresolvedLocalRefs` already
+  has: a relative path is lost on the unrewritten paths and resolved on the
+  rewritten ones.
+- **`counts.links` is every `a[href]`, not the `http(s)` ones**, because where the
+  frame runs no parent-registered listener *all* of them do nothing — a bare
+  fragment included, since it resolves against the parent's URL and is neutralized
+  (decision-10). The notice bar states that with this number beside it, so the
+  number has to be the one the reader sees. **`area[href]` is neutralized but not
+  counted**: only its keyboard path is settled, and whether `pointer-events`
+  reaches a hit region owned by the `<img usemap>` is unmeasured.
+- **The native window title has exactly one writer, `Viewer`, and a view that
+  knows a better label reports it upward.** `HtmlView` passes the `<title>` the
+  transform already read through `onDocumentTitle`; it never calls
+  `setWindowTitle`, and nothing parses the document again to find it
+  (`frontMatterTitle` in `lib/title` answers `null` for every non-markdown kind,
+  so `documentTitle` alone would always yield the file name here). The label is
+  dropped on a **path** change and deliberately not on the watcher's reload token:
+  a re-read whose text is unchanged produces no new transform, so nothing would
+  report the label back and the title would fall to the file name.
 - **`TableView` is capped by four constants, and unlike `SourceView` it does
   withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100),
   `TABLE_MAX_CELLS` (20,000) and `TABLE_MAX_CELL_CHARS` (500) live in
