@@ -59,3 +59,10 @@ export function openInEditor(id: string, path: string): Promise<void> {
 export function revealInOs(path: string): Promise<void> {
   return invoke('reveal_in_os', { path });
 }
+
+/** Hand the file to the OS handler registered for its type. A custom command
+ *  rather than the opener plugin, whose path scope cannot be satisfied without a
+ *  second runtime-scope mechanism (decision-3). */
+export function openInDefaultApp(path: string): Promise<void> {
+  return invoke('open_in_default_app', { path });
+}

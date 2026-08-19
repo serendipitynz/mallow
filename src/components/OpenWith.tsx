@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '../lib/i18n';
-import { detectEditors, openInEditor, revealInOs } from '../lib/tauri';
+import { detectEditors, openInDefaultApp, openInEditor, revealInOs } from '../lib/tauri';
 import type { EditorInfo, FileEntry } from '../lib/types';
 import { ShareIcon } from './icons';
 
@@ -56,6 +56,13 @@ export function OpenWith({ file }: { file: FileEntry | null }) {
     setOpen(false);
   }
 
+  function openDefault() {
+    if (file) {
+      void openInDefaultApp(file.path).catch((e) => console.error(e));
+    }
+    setOpen(false);
+  }
+
   return (
     <div className="menu" ref={rootRef}>
       <button
@@ -79,6 +86,12 @@ export function OpenWith({ file }: { file: FileEntry | null }) {
             </button>
           ))}
           <div className="menu__sep" />
+          {/* Named for what it does rather than for a browser: the OS handler
+              registered for a kind is not always one, and resolving its display
+              name costs a per-OS lookup for a word (decision-3). */}
+          <button type="button" className="menu__item" role="menuitem" onClick={openDefault}>
+            {t('openDefaultApp')}
+          </button>
           <button type="button" className="menu__item" role="menuitem" onClick={reveal}>
             {t('revealIn', { manager: t(revealManagerKey()) })}
           </button>

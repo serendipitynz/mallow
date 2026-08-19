@@ -68,8 +68,15 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   スコープを広げ、その中の画像/PDF/動画を `convertFileSrc` で表示できるようにする。
 - `watch.rs` — `notify` の再帰ウォッチャ。`fs:change` イベント（パス配列）を emit。
   ウォッチャは `WatcherState` が保持。
-- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` を `std::process`
-  で実装（OS ごとに `cfg` で分岐）。
+- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
+  `open_in_default_app` を `std::process` で実装（OS ごとに `cfg` で分岐）。
+  最後のものはファイルをその種別に登録された OS のハンドラへ渡す。
+  tauri-plugin-opener ではなくここにあるのは、あのプラグインのパススコープを満たすには
+  `allow_media_dir` の隣に 2 つ目の実行時スコープ機構が要るため（decision-3）。
+  **Windows では `rundll32 url.dll,FileProtocolHandler` を使う。思いつく 2 つの綴りは
+  どちらもパスの扱いを誤る** — `explorer <file>` はコンマで分割し（実測: `a,b.html` で
+  ハンドラではなく Explorer のウィンドウが開いた）、`cmd /C start` は `Command` が
+  quote する規則ではなく `cmd` 自身の規則で読み直す。
 - `lib.rs` — プラグイン登録（opener, dialog, store, window-state）、`invoke_handler`、
   および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
   `menu:settings` イベントを emit し、フロントがそれを購読する。
@@ -365,6 +372,36 @@ Comments と Functions の規約は機械的に検査されない。コメント
   スクロールアンカーは再読み込みの直前ではなく**親のスクロールのたびに**取る —
   `srcdoc` の差し替えは非同期に文書を置き換えるので、「新しいマークアップが確定していて、
   かつ古い文書がまだ読める」瞬間を親が当てにできないため。
+- **参照が届くかどうかを決めるのは、その属性を取りに行く CSP ディレクティブであって
+  スキームではない。** だから `lib/html-doc` の `refTally` は `RefSite` を取り、
+  数え上げは全部そこを通る。`img-src` は `https: http: data:` を運び、
+  `media-src` は `'self' asset:` だけ、`style-src` / `script-src` はホストもスキームも運ばない。
+  同じ `https://…` が `img src`・`img srcset`・`source srcset`・`video poster` では届き、
+  `video src`・`audio src`・`<script src>` では拒否される。
+  `<link rel=stylesheet>` 上の `//host/x.css` や `data:text/css` も拒否されるが、
+  **`http(s)` だけを見る規則はこれを取りこぼす**。
+  **`source src` は自分では答えを持たない** — `<picture>` の中なら `img-src`、
+  `<video>` / `<audio>` の中なら `media-src` なので、親が決める。
+  `blockedRefs` は届かないものを、`unresolvedLocalRefs` は書き換えないものを数え、
+  リモート画像はどちらにも入らない（読み込まれるため）。
+  **1 つの数に両方の結末をまとめると、通知バーはどちらについても正しくなれない。**
+- **`counts.links` は「結末が確定している 2 クラス」だけを持ち、それ以外は持たない。**
+  通知バーの数は、バーが説明を付けられるものでなければならないため。2 クラスとは、
+  親のリスナが動かない環境で無力化される app-origin の href（decision-10。裸のフラグメントも
+  これなので、文書自身の目次は数に入る）と、`frame-src` が拒否する `http(s)`（decision-9）。
+  **`mailto:` / `tel:` と `area[href]` は除外**する。どちらも決め手が未計測だから —
+  sandbox のフレームが外部プロトコルを OS へ渡すかどうか、`<img usemap>` が持つ当たり判定に
+  `pointer-events` が効くかどうか。いずれも TASK-23 で測る。
+  **`imgSrc` のプロトコル相対参照も同じ理由で黙っている** — 親の base URL によって
+  WebKit では `tauri://host/x`（拒否）、WebView2 では `http://host/x`（許可）になるので、
+  数えるとどちらかのプラットフォームで必ず誤る。
+- **ネイティブウィンドウタイトルの書き手は `Viewer` 1 つだけで、より良い label を知っている
+  ビューはそれを上へ報告する。** `HtmlView` は変換が既に読んだ `<title>` を
+  `onDocumentTitle` で渡すだけで、`setWindowTitle` を呼ばず、文書を 2 度目に解析もしない
+  （`lib/title` の `frontMatterTitle` は markdown 以外の種別に `null` を返すので、
+  `documentTitle` だけでは常にファイル名になる）。label を落とすのは**パスが変わったとき**で、
+  ウォッチャの reload token では落とさない — 内容が変わっていない再読み込みは新しい変換を
+  生まないので、報告し直すものが無くタイトルがファイル名に落ちてしまう。
 - **`TableView` の上限は定数 4 本で、`SourceView` と違って内容そのものを落とす。**
   `TABLE_MAX_ROWS`（5,000）・`TABLE_MAX_COLUMNS`（100）・`TABLE_MAX_CELLS`（20,000）・
   `TABLE_MAX_CELL_CHARS`（500）が `lib/delimited` にある。4 本要るのは、前の 2 本が

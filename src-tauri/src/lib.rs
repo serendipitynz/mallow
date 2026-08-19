@@ -81,6 +81,7 @@ pub fn run() {
             editors::detect_editors,
             editors::open_in_editor,
             editors::reveal_in_os,
+            editors::open_in_default_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

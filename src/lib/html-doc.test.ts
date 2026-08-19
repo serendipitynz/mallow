@@ -7,6 +7,7 @@ import {
   parseSrcset,
   RENDER_MAX_ELEMENTS,
   RENDER_MAX_TEXT_CHARS,
+  refTally,
   renderSkipReason,
   rewriteRef,
   serializeSrcset,
@@ -169,6 +170,56 @@ describe('renderSkipReason', () => {
   it('catches a document that is small by one measure and huge by the other', () => {
     expect(renderSkipReason({ elements: 16, textChars: 2_000_000 })).toBe('text');
     expect(renderSkipReason({ elements: 200_000, textChars: 1_000 })).toBe('elements');
+  });
+});
+
+describe('refTally', () => {
+  // The whole reason the site is a parameter: one value, two answers.
+  // `img-src` carries `https:` / `http:` / `data:`; `media-src` is `'self'
+  // asset:` and nothing else, so the same URL arrives on an image and is refused
+  // on a video.
+  it('answers the same reference differently on an image and on a video', () => {
+    expect(refTally('https://cdn.example.com/a.png', 'imgSrc')).toBeNull();
+    expect(refTally('https://cdn.example.com/a.mp4', 'mediaSrc')).toBe('blocked');
+    expect(refTally('data:image/gif;base64,R0lGODlhAQABAAAAACw=', 'imgSrc')).toBeNull();
+    expect(refTally('data:video/mp4;base64,AAAA', 'mediaSrc')).toBe('blocked');
+  });
+
+  // On `<link rel=…>` and `<script src>` nothing is rewritten, so a relative path
+  // resolves against the app's own URL and 404s — the reversal that makes the
+  // same value lost here and fine on a media attribute.
+  it('loses a relative path only where nothing rewrites it', () => {
+    expect(refTally('./site.css', 'unrewritten')).toBe('unresolvedLocal');
+    expect(refTally('img/logo.png', 'imgSrc')).toBeNull();
+    expect(refTally('clip.mp4', 'mediaSrc')).toBeNull();
+  });
+
+  // Neither `style-src 'self' 'unsafe-inline'` nor `script-src 'self'
+  // 'wasm-unsafe-eval'` carries a host or a scheme, so a protocol-relative or
+  // `data:` stylesheet is refused as surely as a remote one — and each was
+  // counted nowhere while the rule keyed on `http(s)` alone.
+  it('counts every reference the policy refuses where nothing rewrites it', () => {
+    expect(refTally('https://cdn.example.com/x.css', 'unrewritten')).toBe('blocked');
+    expect(refTally('//cdn.example.com/x.css', 'unrewritten')).toBe('blocked');
+    expect(refTally('data:text/css,body{}', 'unrewritten')).toBe('blocked');
+    expect(refTally('blob:1234', 'unrewritten')).toBe('blocked');
+  });
+
+  // A document-absolute path is answered by neither the opened folder nor the
+  // asset grant, wherever it sits.
+  it('loses a document-absolute path on every site', () => {
+    for (const site of ['imgSrc', 'mediaSrc', 'unrewritten'] as const) {
+      expect(refTally('/absolute.png', site)).toBe('unresolvedLocal');
+    }
+  });
+
+  // Nothing is fetched for either, so counting them would tell the reader
+  // something was lost when nothing was.
+  it('charges nothing for a value that addresses nothing to fetch', () => {
+    for (const site of ['imgSrc', 'mediaSrc', 'unrewritten'] as const) {
+      expect(refTally('', site)).toBeNull();
+      expect(refTally('#frag', site)).toBeNull();
+    }
   });
 });
 

@@ -1,5 +1,6 @@
 //! Detect installed external editors and open files in them, plus "reveal in the
-//! OS file manager". Spawning is done with `std::process::Command` directly.
+//! OS file manager" and "open in the OS default handler". Spawning is done with
+//! `std::process::Command` directly.
 
 use std::path::Path;
 use std::process::Command;
@@ -74,6 +75,15 @@ pub fn reveal(path: &str) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+#[cfg(target_os = "macos")]
+pub fn open_default(path: &str) -> Result<(), String> {
+    Command::new("open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 // ---- Windows ----------------------------------------------------------------
 #[cfg(target_os = "windows")]
 fn first_existing(paths: &[String]) -> Option<String> {
@@ -111,6 +121,36 @@ pub fn detect() -> Vec<EditorInfo> {
 pub fn open(id: &str, path: &str) -> Result<(), String> {
     let exe = win_editor_exe(id).ok_or_else(|| format!("editor not found: {id}"))?;
     Command::new(exe)
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "windows")]
+pub fn open_default(path: &str) -> Result<(), String> {
+    // `rundll32` does not re-tokenize what follows the entry point, and
+    // `Command` quotes an argument only for a space, a tab or an empty value.
+    // The three path shapes that follow from that were each opened through this
+    // command on Windows 11 (2026-08-19) and each reached the file's registered
+    // handler: a comma, which is quoted by neither and is what broke the
+    // previous spelling; a space, which `Command` does quote, so the handler is
+    // given `"…\Some Name\a.html"` with the quotes and strips them itself; and
+    // a non-ASCII name, which settles that whichever entry point `rundll32`
+    // resolves — it prefers a `…W` one — carries the name intact.
+    //
+    // Two better-known spellings were each ruled out by what they do to a path.
+    // `explorer <file>` splits on a comma: opening `rendered-notice,check.html`
+    // through it raised an Explorer window rather than the file's handler
+    // (measured on Windows 11, 2026-08-19). `cmd /C start "" <file>` re-parses
+    // its command line by `cmd`'s rules rather than the ones `Command` quotes
+    // for, so `&`, `^` and `%` in a name are live there.
+    //
+    // `ShellExecuteW` is the API this is standing in for and would end the
+    // question, but it costs a new production dependency (the `windows` crate),
+    // which is not this task's to add.
+    Command::new("rundll32")
+        .arg("url.dll,FileProtocolHandler")
         .arg(path)
         .spawn()
         .map(|_| ())
@@ -164,6 +204,15 @@ pub fn open(id: &str, path: &str) -> Result<(), String> {
 }
 
 #[cfg(target_os = "linux")]
+pub fn open_default(path: &str) -> Result<(), String> {
+    Command::new("xdg-open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "linux")]
 pub fn reveal(path: &str) -> Result<(), String> {
     // Reveal isn't standardized on Linux; open the parent directory.
     let dir = Path::new(path)
@@ -191,4 +240,17 @@ pub fn open_in_editor(id: String, path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn reveal_in_os(path: String) -> Result<(), String> {
     reveal(&path)
+}
+
+/// Hand the file to the OS handler registered for its type.
+///
+/// Spawned with `std::process` like everything else here, and deliberately not
+/// through tauri-plugin-opener: `open_path` requires an allowed `Entry::Path`,
+/// `allow-open-path` ships no scope and `opener:default` contributes only URL
+/// entries, so every call would return `ForbiddenPath`. Widening that scope at
+/// runtime is possible but would be a second runtime-scope mechanism beside
+/// `allow_media_dir` for a call this module can already make (decision-3).
+#[tauri::command]
+pub fn open_in_default_app(path: String) -> Result<(), String> {
+    open_default(&path)
 }

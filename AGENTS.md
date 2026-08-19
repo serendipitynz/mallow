@@ -65,8 +65,16 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   folder so its image/pdf/video files can be rendered via `convertFileSrc`.
 - `watch.rs` — `notify` recursive watcher; emits the `fs:change` event (list of
   paths). The watcher handle lives in `WatcherState`.
-- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` via
-  `std::process`, gated per-OS with `cfg`.
+- `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
+  `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
+  hands a file to the OS handler registered for it, and is here rather than on
+  tauri-plugin-opener because that plugin's path scope cannot be satisfied without
+  a second runtime-scope mechanism beside `allow_media_dir` (decision-3). **On
+  Windows it is `rundll32 url.dll,FileProtocolHandler`, and the two obvious
+  spellings are both wrong about paths**: `explorer <file>` splits on a comma
+  (measured — `a,b.html` opened an Explorer window, not the handler) and
+  `cmd /C start` re-parses by `cmd`'s rules rather than the ones `Command` quotes
+  for.
 - `lib.rs` — plugin registration (opener, dialog, store, window-state), the
   `invoke_handler`, and (macOS only) a native app menu whose Settings… item
   (⌘,) emits the `menu:settings` event the frontend listens for.
@@ -394,6 +402,41 @@ hold rather than as an exhaustive style guide.
   parent scroll rather than just before a reload, because a `srcdoc` swap replaces
   the document asynchronously and there is no moment the parent can rely on where
   the new markup is committed and the old document is still readable.
+- **Whether a reference arrives is decided by the CSP directive that fetches the
+  attribute it sits on, not by its scheme — so `lib/html-doc`'s `refTally` takes
+  a `RefSite`, and every count runs through it.** `img-src` carries
+  `https: http: data:`, `media-src` is `'self' asset:` and nothing else, and
+  `style-src` / `script-src` carry neither a host nor a scheme. So the same
+  `https://…` arrives on `img src`, `img srcset`, `source srcset` and `video
+  poster`, and is refused on `video src`, `audio src` and `<script src>`; and a
+  `//host/x.css` or `data:text/css` on `<link rel=stylesheet>` is refused too,
+  which a rule keyed on `http(s)` misses entirely. **`source src` has no answer of
+  its own** — inside `<picture>` it is `img-src` and inside `<video>`/`<audio>` it
+  is `media-src`, so the parent decides. `blockedRefs` counts what does not
+  arrive and `unresolvedLocalRefs` what is not rewritten; a remote image is in
+  neither, because it loads. **One number over both outcomes leaves the notice bar
+  unable to be right about either.**
+- **`counts.links` carries the two classes whose fate is settled and nothing
+  else**, because the notice bar's number has to be one it can account for: an
+  app-origin href, neutralized where no parent listener runs (decision-10 — a bare
+  fragment is one, so the document's own table of contents is in the count), and
+  an `http(s)` one, refused by `frame-src` (decision-9). **`mailto:` / `tel:` and
+  `area[href]` are excluded**, each because the thing that would settle it is
+  unmeasured: whether a sandboxed frame hands an external-protocol scheme to the
+  OS, and whether `pointer-events` reaches a hit region owned by the `<img
+  usemap>`. Both are TASK-23's to measure. **The same silence is deliberate at
+  `imgSrc`** for a protocol-relative reference, which the parent's base URL makes
+  `tauri://host/x` on WebKit and `http://host/x` on WebView2 — one refused, one
+  carried — so a count would have to be wrong on a platform.
+- **The native window title has exactly one writer, `Viewer`, and a view that
+  knows a better label reports it upward.** `HtmlView` passes the `<title>` the
+  transform already read through `onDocumentTitle`; it never calls
+  `setWindowTitle`, and nothing parses the document again to find it
+  (`frontMatterTitle` in `lib/title` answers `null` for every non-markdown kind,
+  so `documentTitle` alone would always yield the file name here). The label is
+  dropped on a **path** change and deliberately not on the watcher's reload token:
+  a re-read whose text is unchanged produces no new transform, so nothing would
+  report the label back and the title would fall to the file name.
 - **`TableView` is capped by four constants, and unlike `SourceView` it does
   withhold content.** `TABLE_MAX_ROWS` (5,000), `TABLE_MAX_COLUMNS` (100),
   `TABLE_MAX_CELLS` (20,000) and `TABLE_MAX_CELL_CHARS` (500) live in
