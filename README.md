@@ -4,8 +4,9 @@
 
 A lightweight Markdown / config-file viewer. Open a folder, pick a file from the
 tree, and view Markdown with GitHub-equivalent rendering or config files
-(JSON / YAML / TOML family) as a collapsible hierarchical tree. Images, PDFs, and
-videos are shown too, rendered by the OS-native WebView.
+(JSON / YAML / TOML family) as a collapsible hierarchical tree. HTML documents
+are rendered too, in a sandboxed frame that runs none of their script. Images,
+PDFs, and videos are shown as well, rendered by the OS-native WebView.
 
 ## Features
 
@@ -41,8 +42,32 @@ videos are shown too, rendered by the OS-native WebView.
   threshold, saying so above the document. These sit apart from **Config files**
   above because the split is about which files get a structured view, not about
   which files are configuration.
-- **HTML files (source view)** (html / htm): shown as source, not rendered —
-  rendering a document is not implemented yet.
+- **HTML** (html / htm)
+  - Rendered by default, with a rendered/source toggle. The document is shown
+    with the CSS it carries inline applied, inside a sandboxed frame that runs
+    none of its script — so tabs, disclosure widgets and canvas-drawn charts
+    stay inert, and a line above the document says what was left out
+  - Media the document references from an `<img>`, `<video>`, `<audio>` or
+    `<source>` element loads from beside the document, a video poster included.
+    Stylesheets and scripts do not, whether they are remote or next to the
+    document, and neither does remote video. Remote images do load, as they
+    already do in Markdown. Some local references fail quietly — `url()` in the
+    document's own CSS above all: it neither loads nor appears in the line above
+    the document, where a stylesheet beside the document does get counted
+  - Links inside the document do nothing on some platforms — the document's own
+    table of contents included. mallow detects that per document rather than
+    reading it off the OS name, and says so above the document when it applies;
+    the outline beside the document works everywhere
+  - A video shows its first frame, or its poster if it has one, but pressing its
+    controls starts nothing. That was seen on macOS (WKWebView); the Windows and
+    Linux WebViews have not been measured. Opening the video file itself in
+    mallow plays it
+  - A document with more elements or text than the frame builds, or one that
+    renders taller than the frame is allowed to grow, falls back to the source
+    view with a line saying so
+  - **Open in default app** (in the footer, and offered in the notice) hands the
+    file to whatever your OS opens `.html` with — the whole document, scripts
+    and all
 - **Standalone mermaid files** (.mmd / .mermaid)
 - **Images, PDFs, and videos** (png / jpg / jpeg / gif / webp / svg, pdf,
   webm / mp4 / mov — plus heic/heif on macOS): rendered by the OS-native WebView
@@ -91,8 +116,9 @@ digits, `_`, `+` and `-` are accepted.
 
 ## Security
 
-mallow is meant to open **untrusted** Markdown safely, so rendering has a clear
-boundary:
+mallow is meant to open **untrusted** documents safely, so rendering has a clear
+boundary. Markdown and HTML are contained by different mechanisms, because a
+Markdown document never becomes live DOM and an HTML one does:
 
 - **No raw HTML.** markdown-it runs with `html: false`, so a literal `<script>`
   or `<img onerror=…>` in a document is shown as text, never executed. URL schemes
@@ -110,6 +136,20 @@ boundary:
   opens. The CSP allows `asset:` URLs for `img`/`media`/`frame` sources, but a
   document cannot inject one: `html: false` and markdown-it's link validation
   block the `asset:` scheme, so media only loads for files chosen in the tree.
+- **Rendered HTML** is the one file kind whose content really does become DOM,
+  so it is contained by the frame around it rather than by escaping. The
+  document is loaded into an iframe with `sandbox="allow-same-origin"` and
+  **no** `allow-scripts`: nothing in it executes, no form submits, no popup
+  opens, and it cannot navigate the app away — while mallow itself can still
+  read the document to build the outline and measure its height. The CSP above
+  applies to it as well, since a `srcdoc` document inherits it. Those are two
+  layers, but not equally broad ones: a relative `<script src="./x.js">` is
+  stopped by the sandbox alone, because the frame resolves it against mallow's
+  own URL. There is **no element allowlist and no HTML sanitizer** — nested
+  `<iframe>` / `<frame>` and `<base>` are removed for rendering and network
+  reasons, not as sanitization. What remains reachable from a document is the
+  network exposure Markdown already has: remote images load, and so does
+  `url(https://…)` in the document's own CSS.
 
 ## Development
 
@@ -136,7 +176,7 @@ src/                Frontend (React + TS)
 src-tauri/          Rust backend
   src/commands.rs   read_dir_tree / read_file / path_exists / allow_media_dir (std::fs)
   src/watch.rs      Recursive file watching via notify (emits the fs:change event)
-  src/editors.rs    Editor detection / launch / reveal in OS
+  src/editors.rs    Editor detection / launch / reveal in OS / open in the default app
   icons/app-icon.png  Icon master (input for regeneration)
 ```
 

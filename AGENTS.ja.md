@@ -52,6 +52,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `delimited`（CSV/TSV パーサ + 表ビューの上限）、
   `xml-tree`（XML DOM → 上限付きツリーモデル + parsererror 文言の解析）、
   `html-doc`（HTML の markup 変換 + 描画上限）、
+  `html-headings`（フレーム内の見出しへの id 付与）、
+  `html-notice`（描画した文書が通知バーのどの行を持つか）、
   `clip`（値の切り詰め・共通）、
   `custom-emoji`（ユーザーの絵文字フォルダ →
   ショートコード表）、`heading`（`Heading` 型・注入する lookup root・純関数の座標変換）、
@@ -233,6 +235,31 @@ Comments と Functions の規約は機械的に検査されない。コメント
   mermaid が inline `style` 属性を出力するため `'unsafe-inline'` を維持する。`eval` /
   `new Function` を要する、またはリモート資産を取得する依存を追加する場合は CSP の見直しが
   必要。
+- **未信頼 HTML の境界**（描画表示。decision-3 を decision-9・decision-10 が改訂。README
+  の "セキュリティ" 参照）: 文書は `sandbox="allow-same-origin"` かつ `allow-scripts`
+  **無し**の iframe へ `srcdoc` で流し込む。文書中のスクリプトは一切実行されない一方、
+  親からは `contentDocument` を読み書きできる — アウトライン・高さの実測・リンクの扱いは
+  すべてこれに乗っている。2 つのフラグは対であって独立した選択ではない: 両方揃うと文書が
+  自分の sandbox を外せてしまい、same-origin がある状態でフレーム内のスクリプトは
+  アプリ origin のスクリプトになる（そこでは `read_file` がスコープも capability も無い
+  素の `std::fs`）。`allow-forms` / `allow-popups` / `allow-top-navigation` を切ってあるのも
+  同じ理由。`srcdoc` 文書は親の CSP も継承し、それが第二層になる — **ただし 2 層は同じ
+  広さではないので「独立した 2 層」と書いてはいけない**: inline `<script>`・`on*` 属性・
+  `javascript:` URL・リモートの `<script src>` は sandbox **と** CSP の両方が止めるが、
+  相対パスの `<script src="./x.js">` を止めるのは **sandbox だけ**である。`srcdoc` は
+  それをアプリ自身の URL に対して解決し、`script-src 'self'` がそれを通すため
+  （decision-3 の表）。**要素の許可リストもサニタイザも無い。** 変換が取り除くのは
+  `<iframe>` / `<frame>`（`asset:` を指す入れ子フレームは自身の CSP を持たない文書を
+  読み込むので、その下位資源の読み込みが CSP の外にも通知バーの数の外にも出る）と
+  `<base>`（書き換えが解決するすべての参照を差し替えてしまう）の 2 種で、どちらも描画と
+  ネットワークの都合であってサニタイズではない。`<object>` / `<embed>` は
+  `object-src 'none'` が既に覆うので何も要らない。**ネットワークへの露出は残り、それは
+  許容済み**: `img-src` が `https:` を運ぶのでリモート画像は読み込まれ、`<style>` ブロックや
+  `style` 属性の `url(https://…)` も同じく読み込まれる。CSS は sandbox で塞がらない側路で、
+  DOMPurify を入れても塞がらなかった類のもの。Markdown が既に持つ露出と同じなので、
+  外向きリクエストの種類は増えていない。**後から `allow-scripts` を足すのは 1 行の変更では
+  ない** — `allow-same-origin` がある以上、失敗の形は壊れたウィジェットではなく任意の
+  ローカルファイル読み出しになる — ので、それ自体の decision を要する。
 - **`pnpm tauri dev` のデスクトップ実行には CSP が一切無く、開発中はこの第二層が
   丸ごと存在しない。** `set_csp` は Tauri が資産を配る経路でしか走らず、dev の WebView は
   Vite の `devUrl` を直接読み込み、`index.html` は CSP の `<meta>` を持たず、`devCsp` も
@@ -372,6 +399,26 @@ Comments と Functions の規約は機械的に検査されない。コメント
   スクロールアンカーは再読み込みの直前ではなく**親のスクロールのたびに**取る —
   `srcdoc` の差し替えは非同期に文書を置き換えるので、「新しいマークアップが確定していて、
   かつ古い文書がまだ読める」瞬間を親が当てにできないため。
+- **下位資源の書き換えには解決の基準点が要る。`lib/path` の `dirname` と `resolvePath` は
+  そのために入った。** `srcdoc` 文書の base URL は親の URL なので、文書の隣に書かれた参照
+  （`img/logo.png`）はそれだけでは開いたフォルダに届かない。変換の `RefResolver` が文書自身の
+  ディレクトリに対して解決し、その結果を `convertFileSrc` へ渡す。2 つは同時に入り、片方だけでは
+  成立しない — `dirname` が解決の基準点を出し、`resolvePath` が `.` と `..` を畳む — ので、
+  片方を触るときは対で触る。WebView に Node の `path` は無く、この 2 つのために依存を足す価値も
+  無いので、どちらも `/` と `\` の両方を区切りとして読む文字列操作になっている — ただし
+  それは解決の相手であるディレクトリ側の話で、文書自身が書いた参照は `/` だけで分割する。
+  HTML 文書が書くのはそちらだから。**`..` は
+  構成要素から組み直すのではなくディレクトリの文字列を切り詰めて適用する**ので、ドライブレターや
+  UNC 接頭辞が生き残る。ルートより上へは登らず、開いたフォルダより上へ登ることを特別扱いしないのは
+  意図的で、読めるかどうかを決めるのは asset protocol の許可のほうだから。文書絶対パスの `/x.png`
+  はそもそも書き換えない。その判断がここではなく `lib/html-doc` にあるのは、問いが「パスをどう
+  繋ぐか」ではなく「その URL をどう扱うか」だから。**どの `RefSite` も数えない参照は二重に
+  見えなくなる** — 書き換えられず、数にも入らない。`<link rel=stylesheet>` と `<script src>` は
+  数えられる例外で、`REWRITTEN` は同じく届かないが `unrewritten` として数えるため、文書の隣の
+  スタイルシートは通知バーの行を持つ。完全に抜け落ちるのは文書自身の CSS の `url()`・
+  `<track src>`・`<input type=image src>`・インライン SVG の `<image>` / `<use>` で、
+  通知バーの行を 1 つも伴わずに失敗する。decision-3 はこれを「黙って壊れたままにせず書き記す
+  こと」と要求しており、README が CSS の場合を利用者に名指しで書いているのはそのため。
 - **参照が届くかどうかを決めるのは、その属性を取りに行く CSP ディレクティブであって
   スキームではない。** だから `lib/html-doc` の `refTally` は `RefSite` を取り、
   数え上げは全部そこを通る。`img-src` は `https: http: data:` を運び、
@@ -395,6 +442,17 @@ Comments と Functions の規約は機械的に検査されない。コメント
   **`imgSrc` のプロトコル相対参照も同じ理由で黙っている** — 親の base URL によって
   WebKit では `tauri://host/x`（拒否）、WebView2 では `http://host/x`（許可）になるので、
   数えるとどちらかのプラットフォームで必ず誤る。
+- **描画表示の中の動画は、絵は出るが再生されない。これは書き換えの失敗ではない。**
+  TASK-5.1 の目視 2 巡目（2026-08-19、macOS / WKWebView、ビルド済みアプリ）では、poster を
+  持たない `<video src>` と入れ子の `<source src>` がどちらもファイルの最初のフレームを
+  描いた — つまりその参照は書き換えられて取得されており、これが同タスクの AC #6 を閉じた —
+  うえで、コントロールを押しても何も起きなかった。同じファイルを mallow で直接開けば再生する
+  （`MediaView` は同じ asset protocol を使い、フレームを挟まない）。**測ったのは macOS だけ**で、
+  WebView2 と WebKitGTK は未計測。原因は `RefResolver` の不具合ではなく decision-9 と同じ系統
+  （WebKit はメディアコントロールをスクリプトで実装しており、フレームはスクリプトを一切
+  走らせない）と見ているが、これは推定なので確定として書かないこと。また、これを根拠に
+  書き換え側へ手を入れないこと。README にも同じことを書いてある — 最初のフレームを描いておいてボタンに
+  応答しないプレーヤーは、sandbox が断ったものではなく不具合として読まれるため。
 - **ネイティブウィンドウタイトルの書き手は `Viewer` 1 つだけで、より良い label を知っている
   ビューはそれを上へ報告する。** `HtmlView` は変換が既に読んだ `<title>` を
   `onDocumentTitle` で渡すだけで、`setWindowTitle` を呼ばず、文書を 2 度目に解析もしない
