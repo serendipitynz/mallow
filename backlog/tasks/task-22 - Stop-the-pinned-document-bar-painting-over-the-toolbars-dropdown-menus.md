@@ -4,9 +4,10 @@ title: Stop the pinned document bar painting over the toolbar's dropdown menus
 status: To Do
 assignee: []
 created_date: '2026-08-18 11:57'
-updated_date: '2026-08-18 11:57'
+updated_date: '2026-08-19 20:49'
 labels:
   - bug
+milestone: m-2
 dependencies: []
 ordinal: 33000
 ---

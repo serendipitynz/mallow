@@ -4,8 +4,10 @@ title: Report a position for JSON syntax errors that JSON.parse does not locate
 status: To Do
 assignee: []
 created_date: '2026-08-16 02:53'
+updated_date: '2026-08-19 20:49'
 labels:
   - bug
+milestone: m-2
 dependencies: []
 priority: medium
 ordinal: 29000

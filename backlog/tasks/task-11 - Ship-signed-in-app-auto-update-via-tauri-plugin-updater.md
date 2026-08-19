@@ -4,9 +4,10 @@ title: Ship signed in-app auto-update via tauri-plugin-updater
 status: To Do
 assignee: []
 created_date: '2026-08-01 23:13'
-updated_date: '2026-08-02 00:04'
+updated_date: '2026-08-19 20:48'
 labels:
   - feature
+milestone: m-2
 dependencies: []
 priority: high
 type: feature

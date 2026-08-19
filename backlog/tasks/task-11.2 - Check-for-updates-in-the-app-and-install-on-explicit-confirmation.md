@@ -4,9 +4,10 @@ title: Check for updates in the app and install on explicit confirmation
 status: To Do
 assignee: []
 created_date: '2026-08-01 23:14'
-updated_date: '2026-08-02 00:03'
+updated_date: '2026-08-19 20:48'
 labels:
   - feature
+milestone: m-2
 dependencies:
   - TASK-11.1
 parent_task_id: TASK-11

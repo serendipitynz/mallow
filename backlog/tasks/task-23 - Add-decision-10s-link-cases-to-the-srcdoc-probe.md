@@ -4,9 +4,10 @@ title: Add decision-10's link cases to the srcdoc probe
 status: To Do
 assignee: []
 created_date: '2026-08-19 00:19'
-updated_date: '2026-08-19 00:20'
+updated_date: '2026-08-19 20:49'
 labels:
   - bug
+milestone: m-2
 dependencies: []
 ordinal: 34000
 ---

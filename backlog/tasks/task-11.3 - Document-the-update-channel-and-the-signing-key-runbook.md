@@ -4,9 +4,10 @@ title: Document the update channel and the signing-key runbook
 status: To Do
 assignee: []
 created_date: '2026-08-01 23:14'
-updated_date: '2026-08-02 00:04'
+updated_date: '2026-08-19 20:48'
 labels:
   - documentation
+milestone: m-2
 dependencies:
   - TASK-11.1
   - TASK-11.2

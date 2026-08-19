@@ -4,9 +4,10 @@ title: Load media that sits in a dot-prefixed directory
 status: To Do
 assignee: []
 created_date: '2026-08-18 10:32'
-updated_date: '2026-08-18 10:33'
+updated_date: '2026-08-19 20:49'
 labels:
   - bug
+milestone: m-2
 dependencies: []
 ordinal: 32000
 ---

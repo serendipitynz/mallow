@@ -4,9 +4,10 @@ title: Generate updater keys and emit signed updater artifacts from CI
 status: To Do
 assignee: []
 created_date: '2026-08-01 23:13'
-updated_date: '2026-08-03 00:16'
+updated_date: '2026-08-19 20:48'
 labels:
   - feature
+milestone: m-2
 dependencies: []
 parent_task_id: TASK-11
 priority: high
