@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { isJsonPlist } from '../lib/file';
 import { useT } from '../lib/i18n';
 import { type ReadError, readErrorMessage } from '../lib/read-error';
@@ -35,8 +35,25 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
   /* A label the open view supplies for the window title, where the file's own
      text cannot give one. `HtmlView` is the only supplier today: an HTML
      document's `<title>` comes out of the transform it already ran, and
-     `lib/title` would have to parse the document again to find it. */
-  const [viewTitle, setViewTitle] = useState<string | null>(null);
+     `lib/title` would have to parse the document again to find it.
+
+     **Stored with the path it belongs to, rather than dropped by an effect when
+     the path changes.** That effect would run in the same commit as the one
+     writing the title, which reads the label from its own render — so the
+     previous document's label would be written once before the reset landed.
+     Keyed, the mismatch is simply not a match. It is also what keeps the label
+     across the watcher's reload token: a re-read whose text is unchanged
+     produces no new transform, so nothing would report it back. */
+  const [viewTitle, setViewTitle] = useState<{ path: string; title: string | null } | null>(null);
+  const filePath = file?.path;
+  const reportTitle = useCallback(
+    (title: string | null) => {
+      if (filePath !== undefined) {
+        setViewTitle({ path: filePath, title });
+      }
+    },
+    [filePath],
+  );
 
   /* biome-ignore lint/correctness/useExhaustiveDependencies: keyed on file?.path, not on `file`, on
      purpose. The parent rebuilds the FileEntry object on every tree refresh, so depending on `file`
@@ -83,14 +100,6 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
     };
   }, [file?.path, reloadToken]);
 
-  /* biome-ignore lint/correctness/useExhaustiveDependencies: the path is not read in the body —
-     it is the reset trigger. The label belongs to the open file, so it is dropped when the file
-     changes and deliberately not when the watcher re-reads the same one: a re-read whose text is
-     unchanged produces no new transform, so nothing would report the label back. */
-  useEffect(() => {
-    setViewTitle(null);
-  }, [file?.path]);
-
   /* biome-ignore lint/correctness/useExhaustiveDependencies: `file` is read here but keyed on its
      path, kind and name, for the reason the read effect above gives — the parent rebuilds the
      FileEntry on every tree refresh, and depending on the object would spend an IPC call rewriting
@@ -101,11 +110,15 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
       return;
     }
     // The one place the native window title is written. A view's own label wins
-    // where it has one; otherwise the file's text answers, and `documentTitle`
-    // falls back to the file name — which is also what an unread file gets, so
-    // the title is right from the moment the file opens rather than after a read.
-    setWindowTitle(windowTitle(viewTitle ?? documentTitle(file, content ?? '')));
-  }, [file?.path, file?.kind, file?.name, content, viewTitle]);
+    // where it has one for the file now open; otherwise the file's text answers,
+    // and `documentTitle` falls back to the file name — which is also what an
+    // unread file gets, so the title is right from the moment the file opens
+    // rather than after a read. A failed read drops the label too: the view that
+    // reported it is gone, replaced by the error placeholder, and keeping it
+    // would leave the window named after a document no longer on screen.
+    const label = error === null && viewTitle?.path === file.path ? viewTitle.title : null;
+    setWindowTitle(windowTitle(label ?? documentTitle(file, content ?? '')));
+  }, [file?.path, file?.kind, file?.name, content, viewTitle, error]);
 
   if (!file) {
     return (
@@ -140,7 +153,7 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
 
   return (
     <main className="viewer">
-      <ViewerBody key={file.path} file={file} content={content} onDocumentTitle={setViewTitle} />
+      <ViewerBody key={file.path} file={file} content={content} onDocumentTitle={reportTitle} />
     </main>
   );
 }
