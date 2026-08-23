@@ -282,6 +282,38 @@ export function navigatesAppOrigin(value: string): boolean {
 }
 
 /**
+ * Make every app-origin link in `root` visible but inert, by suppressing
+ * hit-testing on it and taking it out of the tab order.
+ *
+ * For the branch where the frame runs no parent-registered listener, so nothing
+ * can `preventDefault` a click. `pointer-events` rather than removing the
+ * `href`: the click never reaches the anchor, so nothing activates, while
+ * `:link` still matches and the document keeps the styling its author gave it.
+ * An `http(s)` link is left alone — `frame-src` does not carry it, which is the
+ * inertness decision-9 accepted.
+ *
+ * Both writes are needed. `pointer-events` suppresses hit-testing and nothing
+ * else, so without the second a reader who tabs to the link and presses Enter
+ * gets the navigation this exists to remove. Overwriting a `tabindex` the
+ * document set changes an order that only reaches a link which no longer does
+ * anything.
+ *
+ * For an `<area>` only the keyboard half is certain: it has no box of its own —
+ * the hit region belongs to the `<img usemap>` — so whether a UA consults the
+ * area's `pointer-events` for that region is engine-dependent. decision-10 lists
+ * it as a probe case rather than claiming it, and `src/probe/link-checks.ts` is
+ * where it is measured.
+ */
+export function neutralizeAppOriginLinks(root: ParentNode): void {
+  for (const link of root.querySelectorAll<HTMLElement>('a[href], area[href]')) {
+    if (navigatesAppOrigin(link.getAttribute('href') ?? '')) {
+      link.style.pointerEvents = 'none';
+      link.setAttribute('tabindex', '-1');
+    }
+  }
+}
+
+/**
  * Split a `srcset` into its candidates.
  *
  * The list is comma-separated, but a comma may also sit inside a URL — and a

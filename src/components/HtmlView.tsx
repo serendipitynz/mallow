@@ -2,7 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Heading, HeadingRoot } from '../lib/heading';
-import { navigatesAppOrigin, transformHtmlDocument } from '../lib/html-doc';
+import { neutralizeAppOriginLinks, transformHtmlDocument } from '../lib/html-doc';
 import { assignHeadingIds } from '../lib/html-headings';
 import { renderedNoticeLines } from '../lib/html-notice';
 import { useT } from '../lib/i18n';
@@ -435,31 +435,8 @@ export function HtmlView({
          the frame to the app shell, which renders blank because its scripts are
          refused, with no way back inside the view. That is what a real click on a
          `#` link was measured doing (decision-10); decision-9 had inferred it
-         would be inert, and it is not.
-
-         `pointer-events` rather than removing the `href`: the click never reaches
-         the anchor, so nothing activates, while `:link` still matches and the
-         document keeps the styling its author gave it. An `http(s)` link is left
-         alone — it is already inert because `frame-src` does not carry it, which
-         is the inertness decision-9 accepted. */
-      for (const link of frameDocument.querySelectorAll<HTMLElement>('a[href], area[href]')) {
-        if (navigatesAppOrigin(link.getAttribute('href') ?? '')) {
-          link.style.pointerEvents = 'none';
-          // `pointer-events` suppresses hit-testing and nothing else: the anchor
-          // stays in the tab order and Enter still activates it, which on this
-          // branch nothing can `preventDefault`. Taking it out of the tab order
-          // is what closes the keyboard path. Overwriting a `tabindex` the
-          // document set changes an order that only reaches a link which no
-          // longer does anything.
-          //
-          // For an `<area>` only the keyboard half is certain. It has no box of
-          // its own — the hit region belongs to the `<img usemap>` — so whether a
-          // UA consults the area's `pointer-events` for that region is
-          // unmeasured here, and decision-10 lists it as a probe case rather than
-          // claiming it.
-          link.setAttribute('tabindex', '-1');
-        }
-      }
+         would be inert, and it is not. */
+      neutralizeAppOriginLinks(frameDocument);
     }
 
     // Late layout is observed, never listened for: a `load` listener on an image
