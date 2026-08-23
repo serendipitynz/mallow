@@ -360,6 +360,22 @@ hold rather than as an exhaustive style guide.
   text, never computed from the declared `--src-line-height`** — WebKit lays
   each line box out at an integer height, so the declared 20.8px is used as 20px
   and a computed position drifts a line every 25.
+- **The toolbar has to keep its own compositing layer, and the z-index numbers
+  alone do not hold the dropdowns above `.doc__bar`.** The bar's
+  `backdrop-filter` puts it on a layer of its own; open a toolbar menu while
+  `.doc-scroll` overflows and then enlarge the window until it does not, and
+  the rebuild that follows re-sorts the bar's layer above the already-open
+  popup — which is why this reads as intermittent, since anything that moves
+  the same overflow state (highlighting arriving, mermaid, `HtmlView`
+  converging on its height) does it too. `.toolbar` therefore carries
+  `position: relative; z-index: 10; will-change: transform`
+  (`src/styles/app.scss`), and **the `will-change` is load-bearing rather than
+  decoration** — dropping that line alone, with the other two in place, brings
+  the failure back. **Do not raise `.doc__bar` instead**: it has to stay above
+  the document it pins over. `.menu__popup`'s 50 now sorts only inside the
+  toolbar's stacking context. Measured on macOS / WKWebView only, and **nothing
+  automated can catch a regression here** — no check in the suite sees paint
+  order.
 - **The heading jump and the outline's scroll spy are one number crossing from
   TypeScript into CSS and back, and all three files have to hold.** `.doc__bar` is
   pinned over the top of the scroll container, so a heading must clear it to be
