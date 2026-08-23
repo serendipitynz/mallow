@@ -1,10 +1,10 @@
 ---
 id: TASK-11.1
 title: Generate updater keys and emit signed updater artifacts from CI
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-01 23:13'
-updated_date: '2026-08-19 20:48'
+updated_date: '2026-08-23 01:19'
 labels:
   - feature
 milestone: m-2
@@ -77,20 +77,20 @@ Nothing here can be proven on a draft release, because releases/latest resolves 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 pnpm tauri signer generate has been run, the public key is committed in tauri.conf.json, and the private key - plus its password if the key has one - exists as repo secrets without ever being committed
-- [ ] #2 Whether the key is password-protected is decided and recorded, and the CI secret list matches that decision
-- [ ] #3 The updater variables are present in .env.signing.example with empty values, and scripts/macos-sign-build.sh still runs to completion without an interactive prompt
-- [ ] #4 A local pnpm tauri build emits the .app.tar.gz alongside its .sig, and a build with --no-sign still produces bundles without the private key
+- [x] #1 pnpm tauri signer generate has been run, the public key is committed in tauri.conf.json, and the private key - plus its password if the key has one - exists as repo secrets without ever being committed
+- [x] #2 Whether the key is password-protected is decided and recorded, and the CI secret list matches that decision
+- [x] #3 The updater variables are present in .env.signing.example with empty values, and scripts/macos-sign-build.sh still runs to completion without an interactive prompt
+- [x] #4 A local pnpm tauri build emits the .app.tar.gz alongside its .sig, and a build with --no-sign still produces bundles without the private key
 - [ ] #5 A published test release carries a latest.json containing at least darwin-aarch64, darwin-x86_64, windows-x86_64-nsis, windows-x86_64-msi, linux-x86_64-appimage and linux-x86_64-deb, each with a signature. The bare os-arch and -app entries appearing alongside them is expected, not a misconfiguration
 - [ ] #6 Whether linux-x86_64-rpm appears in that latest.json is confirmed from the real artifact, and the reach claims in TASK-11 and TASK-11.3 are made to match the answer
-- [ ] #7 What a Linux install with no matching latest.json entry should do is decided and recorded, rather than being left to the bare-key fallback that would install an AppImage over it
-- [ ] #8 The download urls in latest.json are either tag-pinned, or the decision to leave them resolving to latest is recorded with its reason
+- [x] #7 What a Linux install with no matching latest.json entry should do is decided and recorded, rather than being left to the bare-key fallback that would install an AppImage over it
+- [x] #8 The download urls in latest.json are either tag-pinned, or the decision to leave them resolving to latest is recorded with its reason
 - [ ] #9 No two matrix jobs can write latest.json concurrently, and one real release confirms every expected platform is present
 - [ ] #10 The release build log shows the bundle-type patch applied for deb, rpm, nsis and msi, since a failed patch is only a warning
-- [ ] #11 release.yml pins tauri-action to a v0 release rather than the floating v0 tag
-- [ ] #12 The endpoint URL names the owner the git remote points at, not the redirecting one, and the takkyun strings elsewhere are either corrected or recorded as deliberately left
-- [ ] #13 The two Rust crates and their two JS packages are added, registered in lib.rs, and permitted in capabilities/default.json, with the plugin registrations either all desktop-gated or all ungated
+- [x] #11 release.yml pins tauri-action to a v0 release rather than the floating v0 tag
+- [x] #12 The endpoint URL names the owner the git remote points at, not the redirecting one, and the takkyun strings elsewhere are either corrected or recorded as deliberately left
+- [x] #13 The two Rust crates and their two JS packages are added, registered in lib.rs, and permitted in capabilities/default.json, with the plugin registrations either all desktop-gated or all ungated
 - [ ] #14 The macOS .app.tar.gz contains the signed and notarized .app, so an updated install still passes Gatekeeper
-- [ ] #15 cargo check and cargo test pass in src-tauri, and pnpm build and pnpm test pass
-- [ ] #16 THIRD-PARTY-NOTICES.md is regenerated with pnpm notices after the new dependencies land
+- [x] #15 cargo check and cargo test pass in src-tauri, and pnpm build and pnpm test pass
+- [x] #16 THIRD-PARTY-NOTICES.md is regenerated with pnpm notices after the new dependencies land
 <!-- AC:END -->
