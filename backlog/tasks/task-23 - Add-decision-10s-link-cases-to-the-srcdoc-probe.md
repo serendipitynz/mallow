@@ -4,7 +4,7 @@ title: Add decision-10's link cases to the srcdoc probe
 status: In Review
 assignee: []
 created_date: '2026-08-19 00:19'
-updated_date: '2026-08-23 07:29'
+updated_date: '2026-08-23 10:27'
 labels:
   - bug
 milestone: m-2
@@ -41,57 +41,74 @@ The instrument and how to run it are in src/probe/README.md; the existing click 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-The instrument is built; no acceptance criterion is checked, because every one of
-them is a measurement and this task delivered the thing that takes it. What
-exists now, per AC:
+The instrument is built and has had one round on two of the three WebViews. No
+acceptance criterion is ticked yet; what follows is what that round settled, what
+it did not, and why the instrument changed before the next one.
 
-- #1, #2, #3, #5 — one armed fixture (`appOriginLinkFixture`) carrying a `#`
-  link, a relative link, `mailto:`, `tel:` and an `<area href>` inside an
-  `<img usemap>`, armed in two modes. **raw** applies nothing; **neutralized**
-  applies the app's own pass. Each reading is the frame's `location`, whether the
-  fixture is still there, and the parent scroller's `scrollTop`, appended on
-  change and accumulated across re-arms — a click that navigates destroys the
-  fixture, so the targets are worked through one at a time.
-- #4, #6 — automatic, no interaction: an app-origin `<meta http-equiv=refresh>`
-  and a protocol-relative image reference.
+## Round 1 — Windows (WebView2 151.0.0.0) and Linux (WebKitGTK, Version/60.5)
 
-Three things about the design are load-bearing rather than incidental.
+Reports in `_sandbox/handoff/task-23/`. Both runs were valid: the app-origin
+script ran in the parent and a CSP was in force on each.
 
-**The neutralization pass is now a named function.** `neutralizeAppOriginLinks`
-moved out of `HtmlView` into `lib/html-doc`, beside `navigatesAppOrigin`, and the
-probe calls the same one. A copy in the probe would have measured the copy, and
-the mechanism is what is under measurement here.
+**Settled on both engines, machine-side:**
 
-**The raw mode is what makes the neutralized mode mean anything.** An `<area>`
-that does nothing when neutralized is only evidence if it did something when it
-was not — which is the whole of AC #3, since an area has no box of its own and
-the hit region belongs to the `<img usemap>`. The same pairing covers the
-keyboard: `pointer-events` and `tabindex` close different paths, so the section
-records `tabbableHrefs` as the machine-side expectation the hand-recorded
-keyboard answer is checked against.
+- **AC #1's premise reproduced.** Raw, a `#` link and a relative link each
+  navigate the frame to the app's own URL and the fixture is gone —
+  `http://tauri.localhost/#deep-anchor` and
+  `http://tauri.localhost/probe-app-origin-target.html` on WebView2,
+  `tauri://localhost#deep-anchor` and
+  `tauri://localhost/probe-app-origin-target.html` on WebKitGTK. The parent
+  scroller's `scrollTop` was 0 across the navigation on both, so the fragment did
+  not scroll the parent either.
+- **AC #4 passes on both.** An app-origin `<meta http-equiv=refresh>` did not
+  navigate the frame, which extends what decision-10 had from one engine.
+- **AC #6 splits exactly as predicted, and each half is recorded.**
+  `//probe.invalid/protocol-relative.png` resolved to
+  `http://probe.invalid/…` on WebView2, where `img-src` carries `http:` and no
+  violation was reported (PASS), and to `tauri://probe.invalid/…` on WebKitGTK,
+  where `img-src` carries no `tauri:`. The WebKitGTK verdict is INCONCLUSIVE
+  rather than PASS because that engine reports no violation inside a `srcdoc`
+  frame at all — the section's own control says so — so only the resolved URL is
+  evidence there. That is the half `refTally` would have to be keyed on, and it
+  is the half that is now measured.
+- decision-9's listener claim held again: the parent-dispatched control event
+  arrived 8 and 5 times on WebView2 and 0 and 0 times on WebKitGTK.
 
-**The two automatic cases needed their own controls, and one of them changed a
-fixture.** The app-origin meta refresh is aimed at a path that does not exist,
-so "the frame navigated" is unambiguous without loading the app shell to read;
-its delay is 1s rather than 0 because a zero-delay refresh can replace the
-document before the parent has read it once, and a fixture that was never there
-and one that navigated are the same absence. The protocol-relative image is
-injected from the parent rather than authored, because an `<img>` in the initial
-markup is fetched before any violation listener can exist — the trap
-`networkFixture`'s `@font-face` comment already describes. Its reading is the
-resolved URL (`tauri://probe.invalid/…` where the app origin is `tauri:`,
-`http://probe.invalid/…` where it is `http:`) plus whether a violation was
-reported; the load fails on every platform by design, so the load outcome says
-nothing. Where the engine reports no violations inside a `srcdoc` frame the
-check is `inconclusive` and the resolved URL is still recorded, because that half
-is this platform's answer either way.
+**Not settled, and the round could not settle them.** Every hand-recorded field
+came back `(not recorded)`, so AC #2, #3 and #5 have no attribution. On WebView2
+the click counters allow a correspondence — three external-protocol clicks
+against exactly three readings where `contentDocument` became unreadable, and in
+the neutralized arm `area-link` heard a click while the `<a>` clicks fell through
+to the body and the frame then navigated — which points at `pointer-events: none`
+not reaching an image-map region. **That is a correspondence between counts, not
+a measurement, and it is not recorded as one.** On WebKitGTK not even that is
+available: the counters are 0 by construction there. macOS has not been run.
 
-What is NOT done: the runs. This needs one built probe run per platform — macOS
-(WKWebView), Windows (WebView2), Linux (WebKitGTK) — and the reports pasted back
-here before any AC is checked. `src/probe/README.md` has the procedure; the new
-section is documented there under "The app-origin link section (TASK-23)".
-Nothing in this change ships in an ordinary build: the probe is behind
-`MALLOW_PROBE=1`. The one exception is the `neutralizeAppOriginLinks` extraction,
-which is behaviour-identical and covered by `pnpm build` / `pnpm lint` /
-`pnpm test` (247 pass).
+## What changed before round 2
+
+The round exposed two defects in the instrument, both mine, and both meaning a
+re-run was needed regardless of whether the fields were filled in.
+
+- **The `<area>` and the relative link shared a destination**, so a navigation to
+  it could not name its cause — `<a>` and `<area>` both reach it, and on WebKit
+  there is no counter to break the tie. The area now has `AREA_TARGET` of its
+  own.
+- **Attribution rested on hand-recorded fields alone.** It now rests on the arm:
+  an `about to` selector names the attempt before the click, every reading is
+  filed under it, and the fields keep only what the machine cannot see — whether
+  an external application opened, whether the page went blank or showed an error.
+  This is what makes an engine with dead listeners readable at all, since there
+  an arm in which nothing navigated and an arm in which nothing was clicked
+  produce the same readings.
+
+## Still to do
+
+One built probe run per WebView with the attempts named — macOS (WKWebView),
+Windows (WebView2), Linux (WebKitGTK). AC #4 and #6 have their answers on two of
+the three and need only macOS; AC #1 needs macOS and its hand-recorded outcomes;
+AC #2, #3 and #5 need all three again.
+
+Nothing here ships in an ordinary build: the probe is behind `MALLOW_PROBE=1`.
+The exception is the `neutralizeAppOriginLinks` extraction, which is
+behaviour-identical and covered by `pnpm build` / `pnpm lint` / `pnpm test`.
 <!-- SECTION:NOTES:END -->
