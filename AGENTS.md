@@ -366,8 +366,10 @@ hold rather than as an exhaustive style guide.
   `.doc-scroll` overflows and then enlarge the window until it does not, and
   the rebuild that follows re-sorts the bar's layer above the already-open
   popup — which is why this reads as intermittent, since anything that moves
-  the same overflow state (highlighting arriving, mermaid, `HtmlView`
-  converging on its height) does it too. `.toolbar` therefore carries
+  the same overflow state does it too. **Which things do is inference, not
+  measurement**: the four steps above are what was measured, and highlighting
+  arriving, mermaid, and `HtmlView` converging on its height are named as
+  candidates rather than as observed triggers. `.toolbar` therefore carries
   `position: relative; z-index: 10; will-change: transform`
   (`src/styles/app.scss`), and **the `will-change` is load-bearing rather than
   decoration** — dropping that line alone, with the other two in place, brings
