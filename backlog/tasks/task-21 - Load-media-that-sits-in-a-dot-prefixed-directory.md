@@ -1,10 +1,10 @@
 ---
 id: TASK-21
 title: Load media that sits in a dot-prefixed directory
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-18 10:32'
-updated_date: '2026-08-19 20:49'
+updated_date: '2026-08-23 06:58'
 labels:
   - bug
 milestone: m-2
@@ -26,8 +26,33 @@ If it is real, the fix is a second grant beside the recursive one rather than a 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The failure is reproduced on macOS or Linux before anything is changed: an image inside a dot-prefixed directory under the opened folder, opened from the tree, does not render
+- [x] #1 The failure is reproduced on macOS or Linux before anything is changed: an image inside a dot-prefixed directory under the opened folder, opened from the tree, does not render
 - [ ] #2 Media inside a dot-prefixed directory under the opened folder renders, on every platform
-- [ ] #3 The widening is scoped to the folder the user opened, and is stated in AGENTS.md and AGENTS.ja.md beside the existing allow_media_dir note
-- [ ] #4 cargo check and cargo test pass
+- [x] #3 The widening is scoped to the folder the user opened, and is stated in AGENTS.md and AGENTS.ja.md beside the existing allow_media_dir note
+- [x] #4 cargo check and cargo test pass
 <!-- AC:END -->
+
+## Implementation Notes
+<!-- SECTION:NOTES:BEGIN -->
+Reproduced on macOS (2026-08-23) against tauri 2.11.3's own `scope::fs::Scope`
+rather than a model of it: a scope built the way the app builds it, granted a
+temp directory with `allow_directory(dir, true)`, answered `is_allowed` with
+`true` for `<dir>/assets/x.png` and `false` for both `<dir>/.assets/x.png` and
+`<dir>/.hidden.png`. `protocol/asset.rs:46` turns that `false` into a 403, which
+is the broken image. So the source reading in the description held, and the
+defect is wider than the title says - a dot-prefixed *file* fails too, at any
+depth.
+
+AC #1 is checked on that measurement. The screen half of it, and AC #2, are
+left for the visual round: this environment cannot see the app. A fixture with
+a non-dot control beside the dot cases is prepared for that round.
+
+**The fix is not the second grant the description proposed.** It is
+`assetProtocol.scope.requireLiteralLeadingDot: false` in `tauri.conf.json`,
+which changes the scope's match options rather than its patterns. The second
+grant was rejected because it cannot be written: no finite set of globs covers
+dot directories at every depth or the dot-prefixed files themselves, and a
+directory created after the grant would be missed regardless. The principle the
+description states - that the boundary stays in the scope, and `lib/path`'s
+handling of a leading dot is untouched - is kept.
+<!-- SECTION:NOTES:END -->

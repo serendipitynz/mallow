@@ -292,6 +292,24 @@ Comments と Functions の規約は機械的に検査されない。コメント
   フォームの WebView に依存する（heic/heif は `file_kind` で macOS に限定。PDF は一部 Linux の
   WebKitGTK では非対応）。`<img>` / `<video>` は復号失敗時にフォールバック文言を出す。
   `<iframe>`（PDF）は信頼できるエラー信号がないため、空表示になることがある。
+- **先頭のドットは再帰許可だけでは届かない。`assetProtocol.scope` が `[]` ではなく
+  オブジェクトなのはこのため。** `allow_media_dir` が呼ぶ `Scope::allow_directory` は
+  `<dir>/**` の glob を積み、スコープの照合は `glob::MatchOptions` で行われる。その
+  `require_literal_leading_dot` は unix で `true`、Windows で `false` が既定
+  （tauri 2.11.3 の `src/scope/fs.rs`）。この既定のもとで `*` と `**` はドットで始まる
+  パス要素をすべて拒むので、`.assets/` の中の画像も、文書の隣の `.hidden.png` も 403 で
+  拒否され、WebView には壊れた画像として出る — `MediaView` でも、描画ビューの書き換え済み
+  参照でも同じ。`tauri.conf.json` の `requireLiteralLeadingDot: false` が asset protocol の
+  スコープ全体でこれを外す。**`allow_media_dir` が許可したフォルダの外へは広がらない** —
+  パターンは変わらず、静的な `allow` / `deny` は空のまま、`is_allowed` は照合前に
+  canonicalize するので `..` が glob に届くこともない。**2 つ目の許可では代われない** —
+  任意の深さのドットディレクトリも、ドットで始まるファイル自体も、有限個の glob では
+  覆えず、許可の後に作られたディレクトリは取り逃す。これは Windows と `read_dir_tree` が
+  既にいた場所へ unix を合わせる変更でもある: `read_dir_tree` はドットディレクトリを
+  一度も除外しておらず、ツリーは以前からそれらのファイルを並べていた。macOS 上で
+  tauri 2.11.3 の `Scope` そのものに対して実測（TASK-21）。`commands.rs` の
+  `asset_scope_reaches_media_behind_a_leading_dot` は値を書き写さず
+  `tauri.conf.json` から読み出すので、このキーを外すとテストが落ちる。
 - **絵文字。** Unicode 絵文字は `<span class="emoji">` で包み、そこだけカラー絵文字
   フォント（`$font-emoji`）を先頭にしたスタックを当てる。包まないと、本文の日本語
   フォントが持っている一部の絵文字でフォールバック競争に勝ってしまう — `:ok:` は

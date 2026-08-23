@@ -169,6 +169,17 @@ pub fn path_exists(path: String) -> bool {
 /// so media files under it can be rendered via `convertFileSrc`. The asset scope
 /// starts empty and is widened here as the user opens folders, keeping it scoped
 /// to what is actually being browsed rather than the whole filesystem.
+///
+/// The recursive grant is a `<dir>/**` glob, and reaching a dot-prefixed path
+/// through it takes `assetProtocol.scope.requireLiteralLeadingDot: false` in
+/// `tauri.conf.json` — without it the scope matches with glob's unix default,
+/// where `*` and `**` refuse any component starting with a dot, so an image in
+/// `.assets/` is refused with a 403 the WebView shows as a broken image. That
+/// key is set for this reason and is load-bearing here; a second grant cannot
+/// replace it, because no finite set of globs covers dot directories at every
+/// depth or the dot-prefixed files themselves. It also makes unix agree with
+/// Windows, where the same default is already `false`, and with `read_dir_tree`,
+/// which has always listed dot directories.
 #[tauri::command]
 pub fn allow_media_dir(app: tauri::AppHandle, path: String) -> Result<(), String> {
     use tauri::Manager;
@@ -211,6 +222,63 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    /// The asset-protocol scope as the app actually ships it: built from
+    /// `tauri.conf.json` rather than from a copy of its values, so what these
+    /// tests hold is that file and not a restatement of it.
+    fn shipped_asset_scope() -> tauri::scope::fs::Scope {
+        let config: serde_json::Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let scope: tauri::utils::config::FsScope =
+            serde_json::from_value(config["app"]["security"]["assetProtocol"]["scope"].clone()).unwrap();
+        tauri::scope::fs::Scope::new(&tauri::test::mock_app(), &scope).unwrap()
+    }
+
+    /// `is_allowed` canonicalizes before matching and macOS reaches its temp
+    /// directory through a symlink, so a grant made against the un-canonicalized
+    /// path matches nothing and every assertion below would pass or fail for the
+    /// wrong reason.
+    fn real_path(dir: &TempDir) -> PathBuf {
+        fs::canonicalize(dir.path()).unwrap()
+    }
+
+    #[test]
+    fn asset_scope_reaches_media_behind_a_leading_dot() {
+        let tmp = TempDir::new();
+        let root = real_path(&tmp);
+        let files = ["assets/x.png", ".assets/x.png", ".assets/.nested/x.png", ".hidden.png"];
+        for rel in files {
+            let full = root.join(rel);
+            fs::create_dir_all(full.parent().unwrap()).unwrap();
+            fs::write(full, b"x").unwrap();
+        }
+
+        let scope = shipped_asset_scope();
+        scope.allow_directory(&root, true).unwrap();
+
+        for rel in files {
+            assert!(scope.is_allowed(root.join(rel)), "{rel} is under the opened folder and must be readable");
+        }
+    }
+
+    #[test]
+    fn asset_scope_stays_inside_the_opened_folder() {
+        let tmp = TempDir::new();
+        let root = real_path(&tmp);
+        // Both outside files exist: a missing path fails to canonicalize and is
+        // refused for that reason instead, which would not test the scope.
+        for rel in ["opened/x.png", "sibling/x.png", "sibling/.assets/x.png"] {
+            let full = root.join(rel);
+            fs::create_dir_all(full.parent().unwrap()).unwrap();
+            fs::write(full, b"x").unwrap();
+        }
+
+        let scope = shipped_asset_scope();
+        scope.allow_directory(root.join("opened"), true).unwrap();
+
+        assert!(scope.is_allowed(root.join("opened/x.png")));
+        assert!(!scope.is_allowed(root.join("sibling/x.png")));
+        assert!(!scope.is_allowed(root.join("sibling/.assets/x.png")));
     }
 
     #[test]
