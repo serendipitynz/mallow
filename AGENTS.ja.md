@@ -36,16 +36,19 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 **フロントエンド (`src/`)**
 - `App.tsx` — 最上位の状態: フォルダを開く、選択、ファイル監視の配線、エクスプローラの
   幅/左右、セッション復元、設定モーダルの開閉（フッターのボタン・`menu:settings`
-  イベント・`Cmd/Ctrl+,` ショートカットのいずれからも開く）。
+  イベント・`Cmd/Ctrl+,` ショートカットのいずれからも開く）、起動時の更新確認
+  （セッション復元の後ろへ遅らせる。`autoCheckUpdates` 設定で切れる）。
 - `hooks/useFileTree.ts` — ファイルツリーの集中管理（展開集合・子マップ・`refresh`・
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
+- `hooks/useUpdater.ts` — 更新確認・導入の同意・再起動（tauri-plugin-updater +
+  tauri-plugin-process）。更新確認から導入の同意までの間 `Update` ハンドルを保持する。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
   ソース切替）、ErrorBanner（構文エラー表示の共通部品）、MermaidView、
   MediaView（画像/PDF/動画を asset protocol 経由で表示）、Outline、Toolbar、
-  OpenWith、ThemePicker、SettingsModal、icons（Lucide の SVG をインライン化・
-  ランタイム依存なし）。
+  OpenWith、ThemePicker、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
+  icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
   `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、
@@ -59,7 +62,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   ショートコード表）、`heading`（`Heading` 型・注入する lookup root・純関数の座標変換）、
   `scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
-  localStorage に永続化）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
+  localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
+  積算）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
   `markdown`、`config`、`source`、`html`、`table`、`xml`。
 

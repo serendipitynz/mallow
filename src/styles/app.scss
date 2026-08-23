@@ -497,3 +497,118 @@
   border: 1px solid $border;
   border-radius: 6px;
 }
+
+// ---- Update dialog ----------------------------------------------------------
+.update {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.update__version {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: $ink;
+}
+
+.update__running {
+  margin: 0;
+  font-size: 12px;
+  color: $muted;
+}
+
+// The release body as written. Scrolls in its own box rather than growing the
+// dialog: the notes are as long as whoever wrote them made them.
+.update__notes {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 8px 10px;
+  font-family: $font-mono;
+  font-size: 12px;
+  line-height: 1.6;
+  color: $ink;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: 6px;
+}
+
+// The plugin's own failure text. Kept, unparsed, because it is the only
+// diagnostic there is — the errors carry no variant to branch on.
+.update__detail {
+  margin: 0;
+  font-family: $font-mono;
+  font-size: 11px;
+  line-height: 1.5;
+  color: $muted;
+  word-break: break-word;
+}
+
+.update-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.update-progress__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: $muted;
+}
+
+.update-progress__readout {
+  font-family: $font-mono;
+  font-variant-numeric: tabular-nums;
+}
+
+// `appearance: none` is what lets the two pseudo-elements below be painted at
+// all; without it WebKit keeps the platform bar and ignores them.
+.update-progress__bar {
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 3px;
+  background: $surface;
+
+  &::-webkit-progress-bar {
+    border-radius: 3px;
+    background: $surface;
+  }
+
+  &::-webkit-progress-value {
+    border-radius: 3px;
+    background: $teal;
+  }
+
+  // An indeterminate bar has no value pseudo-element to paint, so with
+  // `appearance: none` it is an empty track — which reads as a stalled transfer
+  // rather than as a phase with no measurable extent. The sweep is on the track
+  // itself for that reason. Stilled under reduced motion, where a flat track is
+  // the lesser problem.
+  &:indeterminate::-webkit-progress-bar {
+    background: linear-gradient(90deg, $surface 25%, $teal 50%, $surface 75%);
+    background-size: 250% 100%;
+    animation: update-progress-sweep 1.4s linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+}
+
+@keyframes update-progress-sweep {
+  from {
+    background-position: 125% 0;
+  }
+
+  to {
+    background-position: -125% 0;
+  }
+}

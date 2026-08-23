@@ -36,15 +36,21 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 **Frontend (`src/`)**
 - `App.tsx` — top-level state: open folder, selection, file-watch wiring, explorer
   width/side, session restore, settings-modal open state (footer button, the
-  `menu:settings` event, and the Cmd/Ctrl+, shortcut all open it).
+  `menu:settings` event, and the Cmd/Ctrl+, shortcut all open it), and the
+  launch update check (deferred behind session restore; the `autoCheckUpdates`
+  preference turns it off).
 - `hooks/useFileTree.ts` — centralized lazy file-tree state (expanded set, children
   map, `refresh`, `expandPaths`). The tree components are controlled by this.
+- `hooks/useUpdater.ts` — the update check, the install consent and the relaunch
+  (tauri-plugin-updater + tauri-plugin-process). Holds the `Update` handle
+  between the check and the confirmation.
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
   toggle), ErrorBanner (shared syntax-error banner), MermaidView,
   MediaView (image/pdf/video via the asset protocol), Outline, Toolbar, OpenWith,
-  ThemePicker, SettingsModal, icons (inlined Lucide SVGs, no runtime dependency).
+  ThemePicker, SettingsModal, UpdateDialog (target version, consent, progress),
+  icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
@@ -57,7 +63,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   shortcode table), `heading` (the `Heading` type, the injected lookup root and the
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
-  persisted in localStorage), `file`, `path`, `tauri` (invoke wrappers), `types`.
+  persisted in localStorage), `update-flow` (the check and install states, the
+  download accumulator), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
   `markdown`, `config`, `source`, `html`, `table`, `xml`.
 

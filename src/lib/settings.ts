@@ -9,6 +9,10 @@ export interface Settings {
   explorerSide?: 'left' | 'right';
   /** Folder holding the user's custom `:shortcode:` emoji (see lib/custom-emoji). */
   customEmojiDir?: string;
+  /** Whether to run an update check after launch. Absent means on. Turning it
+   *  off leaves the manual check in Settings, and neither installs anything on
+   *  its own — so this is not an "auto-update" switch. */
+  autoCheckUpdates?: boolean;
 }
 
 let storePromise: Promise<Store> | null = null;
