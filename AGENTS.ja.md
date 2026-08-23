@@ -41,7 +41,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `hooks/useFileTree.ts` — ファイルツリーの集中管理（展開集合・子マップ・`refresh`・
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
 - `hooks/useUpdater.ts` — 更新確認・導入の同意・再起動（tauri-plugin-updater +
-  tauri-plugin-process）。確認から確認後までの間 `Update` ハンドルを保持する。
+  tauri-plugin-process）。更新確認から導入の同意までの間 `Update` ハンドルを保持する。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
