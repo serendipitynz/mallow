@@ -21,7 +21,16 @@ import {
   run,
   runAssetImageCheck,
 } from './harness';
-import { armLinkProbe, type LinkCheck, type LinkProbeMode, type LinkProbeState, runLinkChecks } from './link-checks';
+import {
+  armLinkProbe,
+  LINK_ATTEMPT_LABEL,
+  LINK_ATTEMPTS,
+  type LinkAttempt,
+  type LinkCheck,
+  type LinkProbeMode,
+  type LinkProbeState,
+  runLinkChecks,
+} from './link-checks';
 import { buildReport, guessWebViewVersion, type LinkManual, type Manual } from './report';
 import { runTransformChecks, type TransformCheck } from './transform-checks';
 import './probe.scss';
@@ -100,6 +109,9 @@ export default function Probe() {
   const [rawProbe, setRawProbe] = useState<LinkProbeState | null>(null);
   const [neutralProbe, setNeutralProbe] = useState<LinkProbeState | null>(null);
   const [linkManual, setLinkManual] = useState<LinkManual>(EMPTY_LINK_MANUAL);
+  // Chosen before arming rather than described afterwards: every reading an arm
+  // produces is attributed to this, which is what the first round could not do.
+  const [linkAttempt, setLinkAttempt] = useState<LinkAttempt>(LINK_ATTEMPTS[0]);
   // Shown live beside the tall frame so the two hand-recorded scroll answers are
   // a reading rather than a judgement: "yes" is this number changing.
   const [scrollTop, setScrollTop] = useState(0);
@@ -221,6 +233,7 @@ export default function Probe() {
           linkScrollerRef.current as HTMLElement,
           linkHostRef.current as HTMLElement,
           mode,
+          linkAttempt,
           mode === 'raw' ? rawProbe : neutralProbe,
           mode === 'raw' ? setRawProbe : setNeutralProbe,
         );
@@ -228,7 +241,7 @@ export default function Probe() {
         setError(String(e));
       }
     },
-    [rawProbe, neutralProbe],
+    [rawProbe, neutralProbe, linkAttempt],
   );
 
   useEffect(
@@ -311,7 +324,7 @@ export default function Probe() {
           </li>
           {state.readings.map((r) => (
             <li key={r.seq}>
-              {r.seq} ({r.at}): {r.location} — on fixture: {String(r.onFixture)}, scrollTop {r.scrollTop}
+              {r.seq} ({r.at}, {r.attempt}): {r.location} — on fixture: {String(r.onFixture)}, scrollTop {r.scrollTop}
             </li>
           ))}
           {state.truncated && <li>readings capped — later changes were not recorded</li>}
@@ -646,14 +659,34 @@ export default function Probe() {
 
         <h3>Click it yourself (AC #1, #2, #3, #5)</h3>
         <p className="probe-note">
-          Arm one mode, click <strong>one</strong> target, read its row below, then re-arm before the next — a click
-          that navigates takes the fixture with it. Readings accumulate across re-arms of the same mode.{' '}
+          <strong>Pick what you are about to do, then arm, then do exactly that one thing.</strong> Every reading the
+          arm produces is filed under it, which is what lets an engine that runs no parent-registered listener be read
+          at all — there the click counters are 0 whatever happened, so an arm where nothing navigated and an arm where
+          nothing was clicked are the same readings unless the attempt was named first. Then re-arm for the next one: a
+          click that navigates takes the fixture with it. Readings accumulate across re-arms of the same mode.
+        </p>
+        <p className="probe-note">
           <strong>Raw</strong> is what the document does on its own; <strong>neutralized</strong> applies the app&apos;s
           own pass, and the raw answer is what makes that one mean anything — an <code>&lt;area&gt;</code> that does
-          nothing when neutralized is only evidence if it did something when it was not. For the keyboard rows, click
-          this page outside the frame first, then Tab into it.
+          nothing when neutralized is only evidence if it did something when it was not. For the keyboard attempt, click
+          this page outside the frame first, then Tab in.
         </p>
         <div className="probe-controls">
+          <label className="probe-field">
+            <span>about to</span>
+            <select
+              value={linkAttempt}
+              onChange={(e) => {
+                setLinkAttempt(e.target.value as LinkAttempt);
+              }}
+            >
+              {LINK_ATTEMPTS.map((attempt) => (
+                <option key={attempt} value={attempt}>
+                  {LINK_ATTEMPT_LABEL[attempt]}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => {
@@ -677,15 +710,23 @@ export default function Probe() {
           <Host hostRef={linkHostRef} />
         </div>
         <div className="probe-grid">
-          {linkField('rawFragmentClick', 'AC #1 raw: clicked the # link', CLICK_OUTCOME)}
-          {linkField('rawRelativeClick', 'AC #1 raw: clicked the relative link', CLICK_OUTCOME)}
-          {linkField('rawAreaClick', 'AC #3 raw: clicked inside the image map', CLICK_OUTCOME)}
-          {linkField('rawMailtoClick', 'AC #5 raw: clicked the mailto: link', CLICK_OUTCOME)}
-          {linkField('rawTelClick', 'AC #5 raw: clicked the tel: link', CLICK_OUTCOME)}
-          {linkField('rawKeyboard', 'AC #2 raw: Tab to the # link, then Enter', KEYBOARD_OUTCOME)}
-          {linkField('neutralizedFragmentClick', 'AC #3 neutralized: clicked the # link (control)', CLICK_OUTCOME)}
-          {linkField('neutralizedAreaClick', 'AC #3 neutralized: clicked inside the image map', CLICK_OUTCOME)}
-          {linkField('neutralizedKeyboard', 'AC #2 neutralized: Tab to the # link, then Enter', KEYBOARD_OUTCOME)}
+          {linkField('rawFragmentClick', `AC #1 raw — ${LINK_ATTEMPT_LABEL['fragment-click']}`, CLICK_OUTCOME)}
+          {linkField('rawRelativeClick', `AC #1 raw — ${LINK_ATTEMPT_LABEL['relative-click']}`, CLICK_OUTCOME)}
+          {linkField('rawAreaClick', `AC #3 raw — ${LINK_ATTEMPT_LABEL['area-click']}`, CLICK_OUTCOME)}
+          {linkField('rawMailtoClick', `AC #5 raw — ${LINK_ATTEMPT_LABEL['mailto-click']}`, CLICK_OUTCOME)}
+          {linkField('rawTelClick', `AC #5 raw — ${LINK_ATTEMPT_LABEL['tel-click']}`, CLICK_OUTCOME)}
+          {linkField('rawKeyboard', `AC #2 raw — ${LINK_ATTEMPT_LABEL['fragment-keyboard']}`, KEYBOARD_OUTCOME)}
+          {linkField(
+            'neutralizedFragmentClick',
+            `AC #3 neutralized — ${LINK_ATTEMPT_LABEL['fragment-click']} (control)`,
+            CLICK_OUTCOME,
+          )}
+          {linkField('neutralizedAreaClick', `AC #3 neutralized — ${LINK_ATTEMPT_LABEL['area-click']}`, CLICK_OUTCOME)}
+          {linkField(
+            'neutralizedKeyboard',
+            `AC #2 neutralized — ${LINK_ATTEMPT_LABEL['fragment-keyboard']}`,
+            KEYBOARD_OUTCOME,
+          )}
         </div>
         <label className="probe-field probe-field--wide">
           <span>notes for this section</span>

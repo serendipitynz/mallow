@@ -7,7 +7,7 @@
  *  evidence for — has to survive a copy and paste. */
 
 import type { Check, ClickCounts, Environment, LateLayout } from './harness';
-import type { LinkCheck, LinkProbeState } from './link-checks';
+import { LINK_ATTEMPT_LABEL, type LinkCheck, type LinkProbeState } from './link-checks';
 import type { TransformCheck } from './transform-checks';
 
 export interface Manual {
@@ -165,7 +165,7 @@ function linkProbeBlock(label: string, state: LinkProbeState | null): string {
   const clicks = Object.entries(state.clicksByTarget);
   const readings = state.readings.map(
     (r) =>
-      `  - ${r.seq} (${r.at}): location \`${r.location}\`, still on the fixture: ${r.onFixture}, scroller scrollTop ${r.scrollTop}`,
+      `  - ${r.seq} (${r.at}, ${r.attempt}): location \`${r.location}\`, still on the fixture: ${r.onFixture}, scroller scrollTop ${r.scrollTop}`,
   );
   return [
     `- ${label} — armed ${state.arms} time(s):`,
@@ -174,7 +174,7 @@ function linkProbeBlock(label: string, state: LinkProbeState | null): string {
     `  - custom event dispatched by the parent into contentDocument: ${state.customEvent} (0 means this document runs no parent-registered listener at all, so the click counts below say nothing about whether a click arrived)`,
     `  - activation control (<details> opened by a parent-driven click): ${state.activation}`,
     `  - clicks heard, per target: ${clicks.length === 0 ? '(none heard)' : clicks.map(([id, n]) => `${id}=${n}`).join(', ')}`,
-    `  - readings${state.truncated ? ` (capped — later changes were not recorded)` : ''}:`,
+    `  - readings${state.truncated ? ' (capped — later changes were not recorded)' : ''}, each naming the attempt its arm was for:`,
     ...readings,
   ].join('\n');
 }
@@ -206,15 +206,15 @@ function linkBlock(link: LinkSection | null): string {
     '',
     '#### Real clicks, recorded by hand',
     '',
-    `- AC #1 raw, \`#\` link clicked: ${m.rawFragmentClick || '(not recorded)'}`,
-    `- AC #1 raw, relative link clicked: ${m.rawRelativeClick || '(not recorded)'}`,
-    `- AC #3 raw, \`<area>\` region clicked: ${m.rawAreaClick || '(not recorded)'}`,
-    `- AC #5 raw, \`mailto:\` clicked: ${m.rawMailtoClick || '(not recorded)'}`,
-    `- AC #5 raw, \`tel:\` clicked: ${m.rawTelClick || '(not recorded)'}`,
-    `- AC #2 raw, keyboard on the \`#\` link: ${m.rawKeyboard || '(not recorded)'}`,
-    `- AC #3 neutralized, \`#\` link clicked (the control for the row below): ${m.neutralizedFragmentClick || '(not recorded)'}`,
-    `- AC #3 neutralized, \`<area>\` region clicked: ${m.neutralizedAreaClick || '(not recorded)'}`,
-    `- AC #2 neutralized, keyboard on the \`#\` link: ${m.neutralizedKeyboard || '(not recorded)'}`,
+    `- AC #1 raw, ${LINK_ATTEMPT_LABEL['fragment-click']}: ${m.rawFragmentClick || '(not recorded)'}`,
+    `- AC #1 raw, ${LINK_ATTEMPT_LABEL['relative-click']}: ${m.rawRelativeClick || '(not recorded)'}`,
+    `- AC #3 raw, ${LINK_ATTEMPT_LABEL['area-click']}: ${m.rawAreaClick || '(not recorded)'}`,
+    `- AC #5 raw, ${LINK_ATTEMPT_LABEL['mailto-click']}: ${m.rawMailtoClick || '(not recorded)'}`,
+    `- AC #5 raw, ${LINK_ATTEMPT_LABEL['tel-click']}: ${m.rawTelClick || '(not recorded)'}`,
+    `- AC #2 raw, ${LINK_ATTEMPT_LABEL['fragment-keyboard']}: ${m.rawKeyboard || '(not recorded)'}`,
+    `- AC #3 neutralized, ${LINK_ATTEMPT_LABEL['fragment-click']} (the control for the row below): ${m.neutralizedFragmentClick || '(not recorded)'}`,
+    `- AC #3 neutralized, ${LINK_ATTEMPT_LABEL['area-click']}: ${m.neutralizedAreaClick || '(not recorded)'}`,
+    `- AC #2 neutralized, ${LINK_ATTEMPT_LABEL['fragment-keyboard']}: ${m.neutralizedKeyboard || '(not recorded)'}`,
     '',
     '#### Notes',
     '',

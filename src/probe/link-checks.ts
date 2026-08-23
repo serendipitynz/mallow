@@ -241,9 +241,42 @@ export async function runLinkChecks(
  *  mechanism rather than a description of it. */
 export type LinkProbeMode = 'raw' | 'neutralized';
 
+/** What one arm is for: which element, reached by which input.
+ *
+ *  **The arm carries it, rather than a field filled in afterwards.** The first
+ *  round left every hand-recorded field blank and the record could then answer
+ *  nothing about the `<area>`, the keyboard or the two external-protocol schemes
+ *  — an arm in which nothing navigated and an arm in which nothing was clicked
+ *  are the same readings. Where the engine runs no parent-registered listener
+ *  (WebKit, decision-9) the click counters are zero by construction, so nothing
+ *  else can break that tie: naming the attempt before the click is the only
+ *  attribution that survives on every engine. */
+export const LINK_ATTEMPTS = [
+  'fragment-click',
+  'relative-click',
+  'area-click',
+  'mailto-click',
+  'tel-click',
+  'fragment-keyboard',
+] as const;
+
+export type LinkAttempt = (typeof LINK_ATTEMPTS)[number];
+
+/** Shared by the screen and the report so the operator's instruction and the
+ *  record use one wording. */
+export const LINK_ATTEMPT_LABEL: Record<LinkAttempt, string> = {
+  'fragment-click': 'click the # link',
+  'relative-click': 'click the relative link',
+  'area-click': 'click inside the image map',
+  'mailto-click': 'click the mailto: link',
+  'tel-click': 'click the tel: link',
+  'fragment-keyboard': 'Tab to the # link, then press Enter',
+};
+
 export interface FrameReading {
   seq: number;
   at: 'armed' | 'changed';
+  attempt: LinkAttempt;
   location: string;
   onFixture: boolean;
   scrollTop: number;
@@ -252,8 +285,8 @@ export interface FrameReading {
 export interface LinkProbeState {
   mode: LinkProbeMode;
   /** How many times this mode has been armed. A click that navigates destroys
-   *  the fixture, so the targets are worked through one arm at a time and the
-   *  readings accumulate across them. */
+   *  the fixture, so the attempts are worked through one arm at a time and the
+   *  readings accumulate across them, each carrying the attempt it belongs to. */
   arms: number;
   neutralizedHrefs: string[];
   /** Hrefs still in the tab order after the mode was applied. In `neutralized`
@@ -293,11 +326,13 @@ export function emptyLinkProbeState(mode: LinkProbeMode): LinkProbeState {
  *  a reading rather than a coincidence.
  *
  *  `previous` carries the readings forward across re-arms of the same mode, so
- *  working through the targets one at a time leaves one record instead of five. */
+ *  working through the attempts one at a time leaves one record instead of six,
+ *  and `attempt` is what makes each stretch of that record attributable. */
 export async function armLinkProbe(
   scroller: HTMLElement,
   host: HTMLElement,
   mode: LinkProbeMode,
+  attempt: LinkAttempt,
   previous: LinkProbeState | null,
   onUpdate: (state: LinkProbeState) => void,
 ): Promise<() => void> {
@@ -332,6 +367,7 @@ export async function armLinkProbe(
     const reading: FrameReading = {
       seq: state.readings.length,
       at,
+      attempt,
       location: frameLocation(frame),
       onFixture: stillOnFixture(frame),
       scrollTop: Math.round(scroller.scrollTop),
