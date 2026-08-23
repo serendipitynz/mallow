@@ -1,10 +1,10 @@
 ---
 id: TASK-23
 title: Add decision-10's link cases to the srcdoc probe
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-19 00:19'
-updated_date: '2026-08-19 20:49'
+updated_date: '2026-08-23 07:29'
 labels:
   - bug
 milestone: m-2
@@ -37,3 +37,61 @@ The instrument and how to run it are in src/probe/README.md; the existing click 
 - [ ] #5 A mailto: and a tel: link are clicked for real, since neither decision-9's frame-src argument nor decision-10's neutralization covers an external-protocol scheme, and counts.links excludes them for exactly that reason
 - [ ] #6 A protocol-relative image reference is watched on all three WebViews and the answer recorded per platform, since a srcdoc document's base URL makes it tauri://host/x.png on macOS and Linux and http://host/x.png on Windows - one of which img-src carries and the other does not, so refTally counts it as nothing rather than being wrong on one of them
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The instrument is built; no acceptance criterion is checked, because every one of
+them is a measurement and this task delivered the thing that takes it. What
+exists now, per AC:
+
+- #1, #2, #3, #5 — one armed fixture (`appOriginLinkFixture`) carrying a `#`
+  link, a relative link, `mailto:`, `tel:` and an `<area href>` inside an
+  `<img usemap>`, armed in two modes. **raw** applies nothing; **neutralized**
+  applies the app's own pass. Each reading is the frame's `location`, whether the
+  fixture is still there, and the parent scroller's `scrollTop`, appended on
+  change and accumulated across re-arms — a click that navigates destroys the
+  fixture, so the targets are worked through one at a time.
+- #4, #6 — automatic, no interaction: an app-origin `<meta http-equiv=refresh>`
+  and a protocol-relative image reference.
+
+Three things about the design are load-bearing rather than incidental.
+
+**The neutralization pass is now a named function.** `neutralizeAppOriginLinks`
+moved out of `HtmlView` into `lib/html-doc`, beside `navigatesAppOrigin`, and the
+probe calls the same one. A copy in the probe would have measured the copy, and
+the mechanism is what is under measurement here.
+
+**The raw mode is what makes the neutralized mode mean anything.** An `<area>`
+that does nothing when neutralized is only evidence if it did something when it
+was not — which is the whole of AC #3, since an area has no box of its own and
+the hit region belongs to the `<img usemap>`. The same pairing covers the
+keyboard: `pointer-events` and `tabindex` close different paths, so the section
+records `tabbableHrefs` as the machine-side expectation the hand-recorded
+keyboard answer is checked against.
+
+**The two automatic cases needed their own controls, and one of them changed a
+fixture.** The app-origin meta refresh is aimed at a path that does not exist,
+so "the frame navigated" is unambiguous without loading the app shell to read;
+its delay is 1s rather than 0 because a zero-delay refresh can replace the
+document before the parent has read it once, and a fixture that was never there
+and one that navigated are the same absence. The protocol-relative image is
+injected from the parent rather than authored, because an `<img>` in the initial
+markup is fetched before any violation listener can exist — the trap
+`networkFixture`'s `@font-face` comment already describes. Its reading is the
+resolved URL (`tauri://probe.invalid/…` where the app origin is `tauri:`,
+`http://probe.invalid/…` where it is `http:`) plus whether a violation was
+reported; the load fails on every platform by design, so the load outcome says
+nothing. Where the engine reports no violations inside a `srcdoc` frame the
+check is `inconclusive` and the resolved URL is still recorded, because that half
+is this platform's answer either way.
+
+What is NOT done: the runs. This needs one built probe run per platform — macOS
+(WKWebView), Windows (WebView2), Linux (WebKitGTK) — and the reports pasted back
+here before any AC is checked. `src/probe/README.md` has the procedure; the new
+section is documented there under "The app-origin link section (TASK-23)".
+Nothing in this change ships in an ordinary build: the probe is behind
+`MALLOW_PROBE=1`. The one exception is the `neutralizeAppOriginLinks` extraction,
+which is behaviour-identical and covered by `pnpm build` / `pnpm lint` /
+`pnpm test` (247 pass).
+<!-- SECTION:NOTES:END -->
