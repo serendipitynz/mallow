@@ -11,8 +11,10 @@
  *  Each case is here rather than folded into one because each is closed by a
  *  different mechanism and can therefore fail on its own: a click by
  *  `pointer-events: none`, keyboard activation by `tabindex="-1"`, an `<area>`'s
- *  region by neither for certain, a meta refresh by nothing this decision put
- *  there, and the two external-protocol schemes by nothing at all.
+ *  region by neither — measured, and it navigates on all three, which is TASK-25
+ *  — a meta refresh by the sandboxed automatic features flag rather than by
+ *  anything decision-10 put there, and the two external-protocol schemes by
+ *  nothing at all.
  *
  *  This section stands apart from the TASK-7 run above it for the same reason
  *  TASK-5.1's does: its `#N` are TASK-23's acceptance criteria, and one table
@@ -135,7 +137,7 @@ async function runAppOriginMetaRefresh(host: HTMLElement, cspPresent: boolean): 
       `fixture still loaded after ${REFRESH_WAIT_MS}ms: ${survived}; the frame is now at ${frameLocation(frame)}.`,
       doc === null ? 'The parent never got to read the fixture at all, which is itself the navigation.' : '',
       `CSP: ${cspPresent ? describeViolation(hit) : 'no CSP on this run, so the CSP layer was not measured'}.`,
-      `frame-src is 'self', so it CARRIES this destination — unlike TASK-7's nav.meta-refresh, which aims at a host frame-src does not carry and can therefore be answered by the CSP. And a sandbox without allow-top-navigation does not stop a frame navigating ITSELF. So a pass here is attributable to neither layer by the arguments on record, and a fail means a document can blank the rendered view with no interaction at all — which neutralizing links does not cover.`,
+      `frame-src is 'self', so it CARRIES this destination — unlike TASK-7's nav.meta-refresh, which aims at a host frame-src does not carry and can therefore be answered by the CSP. So the CSP cannot be what stops this one, and the sandbox is: a declarative refresh is one of the automatic features the sandboxed automatic features browsing context flag gates, and that flag stays set unless the sandbox carries allow-scripts, which this one deliberately does not (https://html.spec.whatwg.org/multipage/semantics.html#attr-meta-http-equiv-refresh). "allow-top-navigation is absent" is NOT the reason and would be the wrong one — a sandbox does not need that keyword to navigate ITSELF. A fail therefore means this engine performs a declarative refresh with the flag set, and a document can blank the rendered view with no interaction at all — which neutralizing links does not cover.`,
     ]
       .filter((part) => part !== '')
       .join(' '),
