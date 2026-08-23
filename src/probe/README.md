@@ -243,6 +243,14 @@ The `<area>` and the relative link point at **different** paths on purpose. They
 shared one in the first round, and a navigation could then not name its cause:
 both reach it, and there was no counter to break the tie on WebKit.
 
+**Both modes have to be armed, and the coverage line above the fixture says what
+is left.** Rounds 1 and 2 both ended with the neutralized half never armed, which
+is the half that matters most on the two WebKit engines: the parent runs no
+listener there, so neutralization is the branch the app actually takes, and the
+raw answers alone say only that the paths are open. `mailto:` and `tel:` are the
+exception and are needed in `raw` only — the pass does not touch a scheme the OS
+owns, so arming them again would measure the same link twice.
+
 For the keyboard rows, click this page **outside** the frame first and then Tab
 into it. The two mechanisms are independent: `pointer-events: none` closes the
 click and `tabindex="-1"` closes the keyboard, so a run that only clicks leaves
