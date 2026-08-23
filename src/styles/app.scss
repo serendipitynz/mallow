@@ -25,16 +25,17 @@
   // rather than the menu. `backdrop-filter` keeps the bar on its own
   // compositing layer; losing the scroller rebuilds the layers around it, and
   // the popup — un-promoted content in an ancestor stacking context, already
-  // in the DOM — is not sorted against the layer that comes back. Why the same
-  // menu on the same document also differed between plain openings is a
-  // reading rather than a measurement: a document settling after load
-  // (highlighting, mermaid, the rendered frame converging on its height) moves
-  // the same overflow state with nobody touching the window.
+  // in the DOM — is not sorted against the layer that comes back. Anything
+  // that moves the same overflow state does it, which is why this was first
+  // reported as intermittent.
   // `will-change` is the half the numbers cannot carry, and it is load-bearing
   // rather than decoration: with the position and z-index above still in
   // place, dropping this one line brings the failure back. It gives the
   // toolbar its own layer at mount, so the order is settled between two
-  // layers as declared here and no promotion has to survive a rebuild.
+  // layers as declared here and no promotion has to survive a rebuild. Both
+  // halves are measured on macOS / WKWebView only, and the hint is advisory:
+  // an engine free to ignore it takes the failure back with nothing in the
+  // automated suite to notice, because none of it sees paint order.
   // Raising the bar instead is not available — it has to stay above the
   // document it pins over.
   // One consequence: a promoted toolbar is the containing block for any
@@ -76,6 +77,8 @@
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
+  // Local to `.toolbar`'s stacking context rather than the app-wide scale:
+  // what holds this above the pinned document bar is the z-index there.
   z-index: 50;
   min-width: 200px;
   padding: 4px;
