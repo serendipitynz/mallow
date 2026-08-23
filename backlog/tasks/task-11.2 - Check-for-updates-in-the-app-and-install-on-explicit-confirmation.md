@@ -4,7 +4,7 @@ title: Check for updates in the app and install on explicit confirmation
 status: In Review
 assignee: []
 created_date: '2026-08-01 23:14'
-updated_date: '2026-08-23 04:26'
+updated_date: '2026-08-23 06:18'
 labels:
   - feature
 milestone: m-2
@@ -70,3 +70,20 @@ Do NOT assume a SmartScreen warning on the Windows update path. The updater down
 - [ ] #10 The Windows update path has been run on a real or virtual install and the copy matches what actually happens there
 - [x] #11 pnpm build and pnpm test pass
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-23 06:18
+---
+AC #7 and #10 cannot be closed inside v0.7.0, and the user chose to wait for the release after it (2026-08-23).
+
+Running the Windows update path needs two things at once: a Windows install whose binary carries the updater, and a published release newer than it carrying latest.json. v0.6.0 has no updater in it and v0.7.0 is the first release that will, so publishing v0.7.0 leaves a v0.7.0 install with nothing newer to resolve. The same constraint holds for AC #7, which asks for a refused authentication prompt on three platforms.
+
+The alternative considered and not taken was to build a Windows installer locally with a lowered version and install that against the published v0.7.0 — the public key is the same, so the signature would verify. It was declined in favour of measuring on a real rollout.
+
+So this task stays In Review past the v0.7.0 release session and closes when the version after it (v0.7.1 or v0.8.0) is published — the same session that settles the parent's DoD #2. Everything else is done: AC #1-#6, #8, #9 and #11 are met and PR #40 was approved.
+
+One observation worth keeping for whoever runs the app before that release: the manual check reports 'could not check for updates' even when online, because the endpoint resolves to releases/download/v0.6.0/latest.json and returns 404 (v0.6.0 carries no such asset). The plugin reads only 204 No Content as 'no update' and parses every other body as JSON, so a 404 is an error. This is the 'simply no release yet' case in the task description, not a defect, and it turns into 'you are on the latest version' once v0.7.0 is published.
+---
+<!-- COMMENTS:END -->
