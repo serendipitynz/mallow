@@ -466,7 +466,19 @@ hold rather than as an exhaustive style guide.
   no parent-registered listener nothing can `preventDefault` this, so `HtmlView`
   neutralizes those links at load with `pointer-events: none` — the click never
   reaches the anchor while `:link` still matches, so the document keeps its own
-  styling (decision-10). `lib/html-doc`'s `navigatesAppOrigin` is the predicate.
+  styling (decision-10). `lib/html-doc` holds both halves: `navigatesAppOrigin`
+  is the predicate and `neutralizeAppOriginLinks` is the pass. **The pass is a
+  named function rather than a loop inside `HtmlView` because the probe applies
+  the same one** — `src/probe/link-checks.ts` measures decision-10's open cases
+  by arming the fixture twice, once raw and once with this pass applied, and a
+  copy of the mechanism there would measure the copy rather than what ships.
+  **What that measured (TASK-23, all three WebViews): the `<a>` click and the
+  keyboard path are both closed, and an `<area>` is not.** `pointer-events` does
+  not reach a hit region the area does not own, so an image map still navigates
+  the frame — and on WebView2, where listeners do run and the pass is never
+  applied, `HtmlView`'s handler matches `closest('a[href]')`, which an `<area>` is
+  not. Two routes to the same failure, neither covered by decision-10's halves;
+  TASK-25 owns it.
 - **Everything the parent puts inside the frame is lost on every `srcdoc` swap,
   and the click handler is a capability rather than a given.** `contentDocument`
   is `about:blank` until the iframe **element**'s `load` (which does fire on all
@@ -527,13 +539,18 @@ hold rather than as an exhaustive style guide.
   app-origin href, neutralized where no parent listener runs (decision-10 — a bare
   fragment is one, so the document's own table of contents is in the count), and
   an `http(s)` one, refused by `frame-src` (decision-9). **`mailto:` / `tel:` and
-  `area[href]` are excluded**, each because the thing that would settle it is
-  unmeasured: whether a sandboxed frame hands an external-protocol scheme to the
-  OS, and whether `pointer-events` reaches a hit region owned by the `<img
-  usemap>`. Both are TASK-23's to measure. **The same silence is deliberate at
-  `imgSrc`** for a protocol-relative reference, which the parent's base URL makes
-  `tauri://host/x` on WebKit and `http://host/x` on WebView2 — one refused, one
-  carried — so a count would have to be wrong on a platform.
+  `area[href]` are excluded, and TASK-23 has now measured both — so what is
+  pending is no longer the same thing in each case.** An external-protocol scheme
+  is handed to no OS application on any of the three, so that exclusion has become
+  a policy question (whether to count a link that does nothing) rather than a gap,
+  and the policy is decision-10's to take. An `area[href]` went the other way: it
+  navigates the frame on all three whether the pass is applied or not, so it is
+  not in the neutralized class at all and counting it as one would be wrong until
+  TASK-25 lands. **The same silence is deliberate at `imgSrc`** for a
+  protocol-relative reference, which the parent's base URL makes `tauri://host/x`
+  on WebKit and `http://host/x` on WebView2 — one refused, one carried, measured
+  as such on all three in TASK-23 — so a count would have to be wrong on a
+  platform.
 - **A video inside a rendered document draws but does not play, and that is not
   the rewriting failing.** TASK-5.1's second visual round (2026-08-19, macOS /
   WKWebView, built app) watched a `<video src>` with no poster and a nested

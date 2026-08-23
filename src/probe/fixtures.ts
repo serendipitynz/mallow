@@ -1,4 +1,5 @@
-/** Fixture documents for TASK-7's srcdoc sandbox / CSP probe.
+/** Fixture documents for the probe: TASK-7's srcdoc sandbox / CSP section and
+ *  TASK-23's app-origin link section, which share the marker discipline below.
  *
  *  This module is a measuring instrument, not part of the app: it is reachable
  *  only from the probe build (`MALLOW_PROBE=1`, see `vite.config.ts`) and
@@ -245,4 +246,118 @@ export function colorSchemeFixture(): string {
  *  the caller, exactly as the rendered view will do. */
 export function assetImageFixture(assetUrl: string): string {
   return page('', `<img id="asset-img" src="${attr(assetUrl)}" alt="asset: image (must load)" height="64">`);
+}
+
+/** Where the app-origin references in TASK-23's fixtures are aimed. A path that
+ *  does not exist, deliberately: the reading is whether the frame navigated at
+ *  all, and a target that cannot load says so without pulling the app shell —
+ *  blank, since its scripts are refused — into the frame to be read instead. A
+ *  bare fragment is the one that cannot avoid it, because `#x` resolves to the
+ *  app's own URL plus a fragment, and that URL is the app shell. */
+export const APP_ORIGIN_TARGET = 'probe-app-origin-target.html';
+
+/** The `<area>`'s own destination, distinct from `APP_ORIGIN_TARGET`.
+ *
+ *  They shared one path in the first round, and that made a navigation unable to
+ *  name its cause: `<a>` and `<area>` both reach it, and where the engine runs no
+ *  parent-registered listener there is no click counter to break the tie either.
+ *  Measured on Linux (2026-08-23) — the neutralized arm showed no navigation at
+ *  all, which is equally what "the area was never clicked" looks like. */
+export const AREA_TARGET = 'probe-area-target.html';
+
+/** External-protocol hrefs (TASK-23 AC #5). Neither decision-9's `frame-src`
+ *  argument nor decision-10's neutralization covers a scheme the OS owns, which
+ *  is why `counts.links` excludes them until this is measured. Pointed at
+ *  `probe.invalid` so a handler that does open has nothing to send. */
+export const MAILTO_TARGET = 'mailto:probe@probe.invalid';
+export const TEL_TARGET = 'tel:+10000000000';
+
+/** A protocol-relative image reference (TASK-23 AC #6). It inherits the scheme
+ *  of the base URL — the parent's, for a `srcdoc` document — and takes its host
+ *  from the reference itself, so the same string is `tauri://probe.invalid/…`
+ *  where the app origin is `tauri:` and `http://probe.invalid/…` where it is
+ *  `http:`. `img-src` carries `http:` and not `tauri:`, so one arrives and the
+ *  other is refused. The host cannot resolve either way, so the load fails on
+ *  both and only the resolved URL and the violation separate them. */
+export const PROTOCOL_RELATIVE_IMAGE = '//probe.invalid/protocol-relative.png';
+
+/** Targets for TASK-23's real mouse clicks and keyboard activation.
+ *
+ *  One document rather than one per case: a click that navigates destroys the
+ *  fixture, so the cases have to be re-armed between them whatever the layout,
+ *  and keeping them together means the neutralization pass that the probe
+ *  applies is the same single pass the app makes.
+ *
+ *  The image map is here because an `<area>` has no box of its own — the hit
+ *  region belongs to the `<img usemap>` — so it cannot be clicked without an
+ *  image that renders. `DATA_IMAGE` is 1×1 and transparent, so a background and
+ *  a border are what make the region visible to whoever has to click it, and the
+ *  `coords` cover the rendered box rather than the intrinsic one, which is the
+ *  space `<area>` coordinates are interpreted in.
+ *
+ *  The filler is tall enough that `deep-anchor` sits outside the parent
+ *  scroller's viewport: a fragment jump that moved nothing and one whose target
+ *  was already on screen would otherwise read alike. */
+export function appOriginLinkFixture(): string {
+  return page(
+    [
+      '<style>',
+      'body { font: 14px system-ui, sans-serif; margin: 12px; }',
+      'a { font-size: 15px; }',
+      'p { margin: 10px 0; }',
+      '#map-image { width: 240px; height: 72px; background: #ffe0e0; border: 1px solid #993333; }',
+      '.filler { height: 600px; background: #eef; margin: 12px 0; }',
+      '</style>',
+    ].join(''),
+    [
+      `<p><a id="frag-link" href="#deep-anchor">fragment link — #deep-anchor</a></p>`,
+      `<p><a id="rel-link" href="${APP_ORIGIN_TARGET}">relative link — ${APP_ORIGIN_TARGET}</a></p>`,
+      `<p><a id="mailto-link" href="${MAILTO_TARGET}">mailto: link</a></p>`,
+      `<p><a id="tel-link" href="${TEL_TARGET}">tel: link</a></p>`,
+      `<p><img id="map-image" src="${DATA_IMAGE}" usemap="#probe-map" alt="image map — click inside the red box"></p>`,
+      `<map name="probe-map"><area id="area-link" shape="rect" coords="0,0,240,72" href="${AREA_TARGET}" alt="mapped region"></map>`,
+      '<div class="filler">filler — scroll past this</div>',
+      '<h2 id="deep-anchor">deep anchor</h2>',
+      '<p>the fragment link above addresses this heading</p>',
+    ].join(''),
+  );
+}
+
+/** A meta refresh aimed at the app's own origin (TASK-23 AC #4).
+ *
+ *  Distinct from `metaRefreshFixture`, and the difference is the whole point:
+ *  that one is aimed at a destination `frame-src` does not carry, so the CSP can
+ *  answer for it. `frame-src` is `'self'`, so it carries this one — leaving the
+ *  sandbox as the only candidate, and a sandbox without `allow-top-navigation`
+ *  does not stop a frame navigating itself. decision-10 left it at one engine's
+ *  answer rather than asserting it for all three. */
+export function metaRefreshAppOriginFixture(): string {
+  // One second rather than zero, unlike `metaRefreshFixture`. A zero-delay
+  // refresh can replace the document before the parent has read it once, and a
+  // fixture that was never there and one that navigated are the same absence —
+  // the delay is what makes the navigation attributable to the refresh.
+  return page(`<meta http-equiv="refresh" content="1;url=${APP_ORIGIN_TARGET}">`, '<p>app-origin meta refresh</p>');
+}
+
+/** The protocol-relative image case (TASK-23 AC #6).
+ *
+ *  The reference is NOT authored here: an `<img>` in the initial markup is
+ *  fetched during the first layout, before the parent can attach a violation
+ *  listener, and the missed violation would read as "the CSP did not refuse it"
+ *  — the same trap `networkFixture`'s `@font-face` comment describes. The parent
+ *  injects it instead, which changes nothing about how it resolves, because a
+ *  URL is resolved against the document's base URL and not against whoever
+ *  inserted the node.
+ *
+ *  What the document does carry is the effect target: a silent engine and an
+ *  uninherited policy look identical from the event side, so the blue rule here
+ *  is what a parent-injected `data:` stylesheet has to fail to override. It
+ *  reuses `networkFixture`'s id on purpose — that is the selector inside
+ *  `DATA_STYLESHEET`, so one control serves both fixtures, and the two documents
+ *  never coexist. */
+export function protocolRelativeFixture(): string {
+  return page(
+    '<style>#csp-effect-target { color: rgb(0, 0, 255); }</style>',
+    '<p id="csp-effect-target">CSP inheritance, measured by effect</p>',
+  );
 }
