@@ -425,7 +425,12 @@ Comments と Functions の規約は機械的に検査されない。コメント
   そこに乗る議論は先に宛先を名指しすること。親登録リスナが動かない環境では
   `preventDefault` できないので、`HtmlView` が load 時に `pointer-events: none` で
   無力化する — クリックはアンカーへ届かないが `:link` は当たり続けるので文書自身の
-  装飾は保たれる（decision-10）。述語は `lib/html-doc` の `navigatesAppOrigin`。
+  装飾は保たれる（decision-10）。両方とも `lib/html-doc` にある — 述語が
+  `navigatesAppOrigin`、適用そのものが `neutralizeAppOriginLinks`。**`HtmlView` の中の
+  ループではなく名前のある関数なのは、プローブが同じものを適用するため** —
+  `src/probe/link-checks.ts` は decision-10 の未測定ケースを、フィクスチャを raw と
+  この適用済みの 2 モードで armして測る。そこに機構の写しを置けば、出荷しているものでは
+  なく写しを測ることになる。
 - **親がフレームの中へ置いたものは `srcdoc` の差し替えごとに全部消える。クリック処理は
   「あるもの」ではなく「能力」。** `contentDocument` は iframe **要素**の `load` までは
   `about:blank`（この load は 3 環境とも発火する）で、差し替えのたびに文書が作り直されるので、

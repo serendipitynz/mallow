@@ -466,7 +466,12 @@ hold rather than as an exhaustive style guide.
   no parent-registered listener nothing can `preventDefault` this, so `HtmlView`
   neutralizes those links at load with `pointer-events: none` — the click never
   reaches the anchor while `:link` still matches, so the document keeps its own
-  styling (decision-10). `lib/html-doc`'s `navigatesAppOrigin` is the predicate.
+  styling (decision-10). `lib/html-doc` holds both halves: `navigatesAppOrigin`
+  is the predicate and `neutralizeAppOriginLinks` is the pass. **The pass is a
+  named function rather than a loop inside `HtmlView` because the probe applies
+  the same one** — `src/probe/link-checks.ts` measures decision-10's open cases
+  by arming the fixture twice, once raw and once with this pass applied, and a
+  copy of the mechanism there would measure the copy rather than what ships.
 - **Everything the parent puts inside the frame is lost on every `srcdoc` swap,
   and the click handler is a capability rather than a given.** `contentDocument`
   is `about:blank` until the iframe **element**'s `load` (which does fire on all

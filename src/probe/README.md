@@ -3,10 +3,11 @@
 A measuring instrument, not part of mallow. It builds only when `MALLOW_PROBE=1`
 is set, and the ordinary build does not contain a byte of it.
 
-It was built for TASK-7 and grew a second section for TASK-5.1, whose transform
-has to be exercised on a real engine (see **The transform section** below). The
-two are kept apart on screen and in the report, because their `#N` are different
-tasks' acceptance criteria.
+It was built for TASK-7 and grew two more sections: TASK-5.1's, whose transform
+has to be exercised on a real engine (see **The transform section** below), and
+TASK-23's, which measures the link cases decision-10 left open (see **The
+app-origin link section**). All three are kept apart on screen and in the report,
+because their `#N` are different tasks' acceptance criteria.
 
 TASK-7's part answers whether the two behaviours decision-3 rests on actually
 hold on this project's three WebViews:
@@ -128,7 +129,10 @@ again.
      (`pkg-config --modversion webkit2gtk-4.1`, or `apt list --installed | grep webkit2gtk`).
 7. Press **Run the transform checks** in the TASK-5.1 section. It needs no
    interaction and takes no time; its verdicts go into their own table.
-8. Copy the report out of the box at the bottom and send it back. One report per
+8. Work through the TASK-23 section — **Run the automatic link checks** first,
+   then the two armed modes. See **The app-origin link section** below; it is the
+   one part of the run that cannot be worked through in a single pass.
+9. Copy the report out of the box at the bottom and send it back. One report per
    platform.
 
 ## What "the run was valid" means
@@ -187,3 +191,50 @@ frame.
 Unlike TASK-7's checks, none of these depend on the CSP, so they mean the same
 thing in any run mode. Everything else in this file still applies: the run that
 is worth recording is a built one.
+
+## The app-origin link section (TASK-23)
+
+decision-9 inferred that a `#` link inside the frame was inert. TASK-5.2's visual
+round found it navigates the frame to the app's own URL and leaves a blank page
+the reader cannot get out of, and **the probe had nothing to say either way,
+because TASK-7's part clicks external links only.** decision-10 neutralized those
+links and listed what it could not settle. This section is that list.
+
+Two of the six need no interaction: an app-origin `<meta http-equiv=refresh>`,
+and a protocol-relative image reference. **Run the automatic link checks** does
+both. It is disabled until the run at the top of the page has finished, because
+whether a CSP is in force decides whether a refused reference's silence means
+anything, and that is what the top run establishes.
+
+The other four are real clicks and real keystrokes, and the fixture is armed in
+two modes:
+
+- **raw** — nothing applied, which is what a document does on its own. This is
+  decision-10's premise, measured on one engine so far.
+- **neutralized** — the app's own pass applied, so what is measured is the
+  mechanism that ships rather than a description of it (`neutralizeAppOriginLinks`
+  in `lib/html-doc`, the same function `HtmlView` calls).
+
+**The raw answer is what makes the neutralized one mean anything.** An `<area>`
+that does nothing when neutralized is only evidence if it did something when it
+was not — that is the whole of AC #3, since an area has no box of its own and the
+hit region belongs to the `<img usemap>`.
+
+**Click one target, then re-arm.** A click that navigates takes the fixture with
+it, so the targets are worked through one at a time; the readings accumulate
+across re-arms of the same mode, so the record stays one list. Each reading is
+the frame's location, whether the fixture is still there, and the parent
+scroller's `scrollTop` — a click whose outcome was "nothing visible" is only
+worth having if those three are beside it. Fill in that target's field before
+arming the next one.
+
+For the keyboard rows, click this page **outside** the frame first and then Tab
+into it. The two mechanisms are independent: `pointer-events: none` closes the
+click and `tabindex="-1"` closes the keyboard, so a run that only clicks leaves
+half of decision-10 unmeasured.
+
+`mailto:` and `tel:` are here because neither decision-9's `frame-src` argument
+nor decision-10's neutralization covers a scheme the OS owns. They point at
+`probe.invalid`, so a handler that does open has nothing to send — but it may
+still open, and that is the observation. `counts.links` excludes them until this
+says otherwise.
