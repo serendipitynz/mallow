@@ -7,6 +7,7 @@
  *  evidence for — has to survive a copy and paste. */
 
 import type { Check, ClickCounts, Environment, LateLayout } from './harness';
+import type { LinkCheck, LinkProbeState } from './link-checks';
 import type { TransformCheck } from './transform-checks';
 
 export interface Manual {
@@ -21,6 +22,37 @@ export interface Manual {
   colorSchemeCanvas: string;
   colorSchemeReadable: string;
   notes: string;
+}
+
+/** TASK-23's hand-recorded answers, kept apart from `Manual` for the same reason
+ *  its table is kept apart from TASK-7's: these are a different task's criteria,
+ *  and a reader who cannot tell which task a field belongs to cannot use either.
+ *
+ *  There is one field per target per mode rather than one per case. A click on a
+ *  link that navigates destroys the fixture, so the targets are clicked one at a
+ *  time across several arms, and the raw answer is what makes the neutralized
+ *  one mean anything: an `<area>` that does nothing when neutralized is only
+ *  evidence if it did something when it was not. */
+export interface LinkManual {
+  rawFragmentClick: string;
+  rawRelativeClick: string;
+  rawAreaClick: string;
+  rawMailtoClick: string;
+  rawTelClick: string;
+  rawKeyboard: string;
+  neutralizedFragmentClick: string;
+  neutralizedAreaClick: string;
+  neutralizedKeyboard: string;
+  notes: string;
+}
+
+/** Everything TASK-23's section puts in the report. One parameter rather than
+ *  four, because the four are only readable together. */
+export interface LinkSection {
+  checks: LinkCheck[];
+  raw: LinkProbeState | null;
+  neutralized: LinkProbeState | null;
+  manual: LinkManual;
 }
 
 const VERDICT_MARK: Record<Check['verdict'], string> = {
@@ -121,6 +153,76 @@ function transformBlock(checks: TransformCheck[] | null): string {
   ].join('\n');
 }
 
+/** One armed mode's record: what the parent could still see of the frame, and
+ *  what it heard. The readings are the evidence behind the hand-recorded answers
+ *  and are printed in full — a click whose outcome was "nothing visible" is only
+ *  worth having if the frame's location and the scroller's offset are there to
+ *  say what "nothing" covered. */
+function linkProbeBlock(label: string, state: LinkProbeState | null): string {
+  if (state === null) {
+    return `- ${label}: not armed`;
+  }
+  const clicks = Object.entries(state.clicksByTarget);
+  const readings = state.readings.map(
+    (r) =>
+      `  - ${r.seq} (${r.at}): location \`${r.location}\`, still on the fixture: ${r.onFixture}, scroller scrollTop ${r.scrollTop}`,
+  );
+  return [
+    `- ${label} — armed ${state.arms} time(s):`,
+    `  - hrefs the app's own pass neutralized: ${state.neutralizedHrefs.length === 0 ? '(none)' : state.neutralizedHrefs.join(', ')}`,
+    `  - hrefs still in the tab order afterwards: ${state.tabbableHrefs.length === 0 ? '(none)' : state.tabbableHrefs.join(', ')}`,
+    `  - custom event dispatched by the parent into contentDocument: ${state.customEvent} (0 means this document runs no parent-registered listener at all, so the click counts below say nothing about whether a click arrived)`,
+    `  - activation control (<details> opened by a parent-driven click): ${state.activation}`,
+    `  - clicks heard, per target: ${clicks.length === 0 ? '(none heard)' : clicks.map(([id, n]) => `${id}=${n}`).join(', ')}`,
+    `  - readings${state.truncated ? ` (capped — later changes were not recorded)` : ''}:`,
+    ...readings,
+  ].join('\n');
+}
+
+/** TASK-23's section. Apart from the tables above it for the same reason
+ *  TASK-5.1's is: its `#N` are TASK-23's acceptance criteria. */
+function linkBlock(link: LinkSection | null): string {
+  if (link === null) {
+    return ["### TASK-23 — decision-10's link cases on this engine", '', 'not run', ''].join('\n');
+  }
+  const rows = link.checks.map(
+    (c) =>
+      `| ${VERDICT_MARK[c.verdict]} | ${c.ac.map((n) => `#${n}`).join(', ')} | ${c.layer} | ${c.title} | ${c.detail.replace(/\|/g, '\\|')} |`,
+  );
+  const m = link.manual;
+  return [
+    "### TASK-23 — decision-10's link cases on this engine",
+    '',
+    `AC numbers in this section are **TASK-23's**.`,
+    '',
+    link.checks.length === 0
+      ? 'automatic checks: not run'
+      : ['| verdict | AC | layer | check | observation |', '|---|---|---|---|---|', ...rows].join('\n'),
+    '',
+    '#### Real clicks, measured',
+    '',
+    linkProbeBlock('raw (nothing neutralized)', link.raw),
+    linkProbeBlock("neutralized (the app's own pass applied)", link.neutralized),
+    '',
+    '#### Real clicks, recorded by hand',
+    '',
+    `- AC #1 raw, \`#\` link clicked: ${m.rawFragmentClick || '(not recorded)'}`,
+    `- AC #1 raw, relative link clicked: ${m.rawRelativeClick || '(not recorded)'}`,
+    `- AC #3 raw, \`<area>\` region clicked: ${m.rawAreaClick || '(not recorded)'}`,
+    `- AC #5 raw, \`mailto:\` clicked: ${m.rawMailtoClick || '(not recorded)'}`,
+    `- AC #5 raw, \`tel:\` clicked: ${m.rawTelClick || '(not recorded)'}`,
+    `- AC #2 raw, keyboard on the \`#\` link: ${m.rawKeyboard || '(not recorded)'}`,
+    `- AC #3 neutralized, \`#\` link clicked (the control for the row below): ${m.neutralizedFragmentClick || '(not recorded)'}`,
+    `- AC #3 neutralized, \`<area>\` region clicked: ${m.neutralizedAreaClick || '(not recorded)'}`,
+    `- AC #2 neutralized, keyboard on the \`#\` link: ${m.neutralizedKeyboard || '(not recorded)'}`,
+    '',
+    '#### Notes',
+    '',
+    m.notes || '(none)',
+    '',
+  ].join('\n');
+}
+
 export function buildReport(
   env: Environment,
   checks: Check[],
@@ -128,6 +230,7 @@ export function buildReport(
   clicks: ClickCounts | null,
   late: LateLayout | null,
   transformChecks: TransformCheck[] | null,
+  link: LinkSection | null,
 ): string {
   const counts = {
     pass: checks.filter((c) => c.verdict === 'pass').length,
@@ -182,6 +285,7 @@ export function buildReport(
     `- keyboard scrolling reaches the parent scroller with focus inside the frame: ${manual.keyboardScrolls || '(not recorded)'}`,
     '',
     transformBlock(transformChecks),
+    linkBlock(link),
     '### Notes',
     '',
     manual.notes || '(none)',

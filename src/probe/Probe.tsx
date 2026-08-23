@@ -21,12 +21,47 @@ import {
   run,
   runAssetImageCheck,
 } from './harness';
-import { buildReport, guessWebViewVersion, type Manual } from './report';
+import { armLinkProbe, type LinkCheck, type LinkProbeMode, type LinkProbeState, runLinkChecks } from './link-checks';
+import { buildReport, guessWebViewVersion, type LinkManual, type Manual } from './report';
 import { runTransformChecks, type TransformCheck } from './transform-checks';
 import './probe.scss';
 
 const YES_NO = ['(not recorded)', 'yes', 'no', 'partly — see notes'];
 const CANVAS = ['(not recorded)', 'white / light', 'dark / the app surface', 'something else — see notes'];
+
+/** What a target did when it was clicked for real. One list for every target,
+ *  so two modes' answers can be compared without translating between them. */
+const CLICK_OUTCOME = [
+  '(not recorded)',
+  'nothing visible happened',
+  'the frame navigated — a blank page or an error page',
+  'an external app or handler opened',
+  'something else — see notes',
+];
+
+/** Two questions in one list, because the second only exists if the first was
+ *  answered: `tabindex="-1"` is meant to stop Tab reaching the link at all, and
+ *  Enter is only reachable once it did. */
+const KEYBOARD_OUTCOME = [
+  '(not recorded)',
+  'Tab never reached the link',
+  'Tab reached the link and Enter did nothing',
+  'Tab reached the link and Enter navigated the frame',
+  'something else — see notes',
+];
+
+const EMPTY_LINK_MANUAL: LinkManual = {
+  rawFragmentClick: CLICK_OUTCOME[0],
+  rawRelativeClick: CLICK_OUTCOME[0],
+  rawAreaClick: CLICK_OUTCOME[0],
+  rawMailtoClick: CLICK_OUTCOME[0],
+  rawTelClick: CLICK_OUTCOME[0],
+  rawKeyboard: KEYBOARD_OUTCOME[0],
+  neutralizedFragmentClick: CLICK_OUTCOME[0],
+  neutralizedAreaClick: CLICK_OUTCOME[0],
+  neutralizedKeyboard: KEYBOARD_OUTCOME[0],
+  notes: '',
+};
 
 const EMPTY_MANUAL: Manual = {
   platform: '',
@@ -61,6 +96,10 @@ export default function Probe() {
   const [late, setLate] = useState<LateLayout | null>(null);
   const [focusNote, setFocusNote] = useState<string>('');
   const [transformChecks, setTransformChecks] = useState<TransformCheck[] | null>(null);
+  const [linkChecks, setLinkChecks] = useState<LinkCheck[] | null>(null);
+  const [rawProbe, setRawProbe] = useState<LinkProbeState | null>(null);
+  const [neutralProbe, setNeutralProbe] = useState<LinkProbeState | null>(null);
+  const [linkManual, setLinkManual] = useState<LinkManual>(EMPTY_LINK_MANUAL);
   // Shown live beside the tall frame so the two hand-recorded scroll answers are
   // a reading rather than a judgement: "yes" is this number changing.
   const [scrollTop, setScrollTop] = useState(0);
@@ -79,6 +118,13 @@ export default function Probe() {
   const lateLayoutRef = useRef<HTMLDivElement>(null);
   const transformRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const metaRefreshAppOriginRef = useRef<HTMLDivElement>(null);
+  const protocolRelativeRef = useRef<HTMLDivElement>(null);
+  const linkScrollerRef = useRef<HTMLDivElement>(null);
+  const linkHostRef = useRef<HTMLDivElement>(null);
+  // The armed link probe polls, so re-arming has to stop the previous one first;
+  // two intervals writing the same mode's readings would interleave them.
+  const linkTeardownRef = useRef<(() => void) | null>(null);
 
   // Applied straight to the attribute rather than through `setTheme`, which
   // would persist into the real app's localStorage — the probe shares its origin.
@@ -149,14 +195,65 @@ export default function Probe() {
     }
   }, []);
 
+  const onRunLinkChecks = useCallback(async () => {
+    if (result === null) {
+      return;
+    }
+    try {
+      setLinkChecks(
+        await runLinkChecks(
+          metaRefreshAppOriginRef.current as HTMLElement,
+          protocolRelativeRef.current as HTMLElement,
+          result.env.cspPresent,
+        ),
+      );
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [result]);
+
+  const onArmLink = useCallback(
+    async (mode: LinkProbeMode) => {
+      try {
+        linkTeardownRef.current?.();
+        linkTeardownRef.current = null;
+        linkTeardownRef.current = await armLinkProbe(
+          linkScrollerRef.current as HTMLElement,
+          linkHostRef.current as HTMLElement,
+          mode,
+          mode === 'raw' ? rawProbe : neutralProbe,
+          mode === 'raw' ? setRawProbe : setNeutralProbe,
+        );
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [rawProbe, neutralProbe],
+  );
+
+  useEffect(
+    () => () => {
+      linkTeardownRef.current?.();
+    },
+    [],
+  );
+
   const checks = useMemo(
     () => (result === null ? [] : assetCheck === null ? result.checks : [...result.checks, assetCheck]),
     [result, assetCheck],
   );
 
   const report = useMemo(
-    () => (result === null ? '' : buildReport(result.env, checks, manual, clicks, late, transformChecks)),
-    [result, checks, manual, clicks, late, transformChecks],
+    () =>
+      result === null
+        ? ''
+        : buildReport(result.env, checks, manual, clicks, late, transformChecks, {
+            checks: linkChecks ?? [],
+            raw: rawProbe,
+            neutralized: neutralProbe,
+            manual: linkManual,
+          }),
+    [result, checks, manual, clicks, late, transformChecks, linkChecks, rawProbe, neutralProbe, linkManual],
   );
 
   useEffect(() => {
@@ -192,6 +289,52 @@ export default function Probe() {
           ))}
         </select>
       )}
+    </div>
+  );
+
+  const linkCounters = (label: string, state: LinkProbeState | null) =>
+    state === null ? null : (
+      <div key={label}>
+        <h3>
+          {label} — armed {state.arms}×
+        </h3>
+        <ul className="probe-counters">
+          <li>hrefs the app&apos;s own pass neutralized: {state.neutralizedHrefs.join(', ') || '(none)'}</li>
+          <li>hrefs still in the tab order: {state.tabbableHrefs.join(', ') || '(none)'}</li>
+          <li>custom event dispatched by the parent: {state.customEvent}</li>
+          <li>activation control: {String(state.activation)}</li>
+          <li>
+            clicks heard, per target:{' '}
+            {Object.entries(state.clicksByTarget)
+              .map(([id, n]) => `${id}=${n}`)
+              .join(', ') || '(none heard)'}
+          </li>
+          {state.readings.map((r) => (
+            <li key={r.seq}>
+              {r.seq} ({r.at}): {r.location} — on fixture: {String(r.onFixture)}, scrollTop {r.scrollTop}
+            </li>
+          ))}
+          {state.truncated && <li>readings capped — later changes were not recorded</li>}
+        </ul>
+      </div>
+    );
+
+  const linkField = (key: keyof LinkManual, label: string, options: string[]) => (
+    <div className="probe-field" key={key}>
+      <label htmlFor={`probe-link-${key}`}>{label}</label>
+      <select
+        id={`probe-link-${key}`}
+        value={linkManual[key]}
+        onChange={(e) => {
+          setLinkManual((m) => ({ ...m, [key]: e.target.value }));
+        }}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </div>
   );
 
@@ -443,6 +586,117 @@ export default function Probe() {
           </table>
         )}
         <Host hostRef={transformRef} />
+      </section>
+
+      <section className="probe-manual">
+        <h2>TASK-23 — decision-10&apos;s link cases</h2>
+        <p className="probe-note">
+          AC numbers in this section are <strong>TASK-23&apos;s</strong>. A <code>srcdoc</code> document&apos;s base URL
+          is the parent&apos;s, so an href with no scheme resolves to the app&apos;s own URL, and following it loads the
+          app shell inside the frame — blank, because its scripts are refused, with no way back. decision-10 neutralizes
+          those links where the frame runs no parent-registered listener. What it does not settle is whether the click
+          half reaches an <code>&lt;area&gt;</code>, what the keyboard does, what an external-protocol scheme does, and
+          what a protocol-relative reference resolves to on this engine.
+        </p>
+        <div className="probe-controls">
+          <button type="button" onClick={onRunLinkChecks} disabled={result === null}>
+            Run the automatic link checks (AC #4, #6)
+          </button>
+        </div>
+        <p className="probe-note">
+          Those two need no interaction, but they do need the run at the top of the page: whether a CSP is in force
+          decides whether a refused reference&apos;s silence means anything.
+        </p>
+        {linkChecks !== null && (
+          <table className="probe-table">
+            <thead>
+              <tr>
+                <th>verdict</th>
+                <th>AC</th>
+                <th>layer</th>
+                <th>check</th>
+                <th>observation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {linkChecks.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <span className={`probe-verdict probe-verdict--${c.verdict}`}>{c.verdict}</span>
+                  </td>
+                  <td>{c.ac.map((n) => `#${n}`).join(', ')}</td>
+                  <td>{c.layer}</td>
+                  <td>{c.title}</td>
+                  <td className="probe-detail">{c.detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="probe-grid">
+          <div>
+            <h3>App-origin meta refresh</h3>
+            <Host hostRef={metaRefreshAppOriginRef} />
+          </div>
+          <div>
+            <h3>Protocol-relative image</h3>
+            <Host hostRef={protocolRelativeRef} />
+          </div>
+        </div>
+
+        <h3>Click it yourself (AC #1, #2, #3, #5)</h3>
+        <p className="probe-note">
+          Arm one mode, click <strong>one</strong> target, read its row below, then re-arm before the next — a click
+          that navigates takes the fixture with it. Readings accumulate across re-arms of the same mode.{' '}
+          <strong>Raw</strong> is what the document does on its own; <strong>neutralized</strong> applies the app&apos;s
+          own pass, and the raw answer is what makes that one mean anything — an <code>&lt;area&gt;</code> that does
+          nothing when neutralized is only evidence if it did something when it was not. For the keyboard rows, click
+          this page outside the frame first, then Tab into it.
+        </p>
+        <div className="probe-controls">
+          <button
+            type="button"
+            onClick={() => {
+              void onArmLink('raw');
+            }}
+          >
+            Arm raw
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void onArmLink('neutralized');
+            }}
+          >
+            Arm neutralized (the app&apos;s own pass)
+          </button>
+        </div>
+        {linkCounters('raw', rawProbe)}
+        {linkCounters('neutralized', neutralProbe)}
+        <div className="probe-scroller" ref={linkScrollerRef}>
+          <Host hostRef={linkHostRef} />
+        </div>
+        <div className="probe-grid">
+          {linkField('rawFragmentClick', 'AC #1 raw: clicked the # link', CLICK_OUTCOME)}
+          {linkField('rawRelativeClick', 'AC #1 raw: clicked the relative link', CLICK_OUTCOME)}
+          {linkField('rawAreaClick', 'AC #3 raw: clicked inside the image map', CLICK_OUTCOME)}
+          {linkField('rawMailtoClick', 'AC #5 raw: clicked the mailto: link', CLICK_OUTCOME)}
+          {linkField('rawTelClick', 'AC #5 raw: clicked the tel: link', CLICK_OUTCOME)}
+          {linkField('rawKeyboard', 'AC #2 raw: Tab to the # link, then Enter', KEYBOARD_OUTCOME)}
+          {linkField('neutralizedFragmentClick', 'AC #3 neutralized: clicked the # link (control)', CLICK_OUTCOME)}
+          {linkField('neutralizedAreaClick', 'AC #3 neutralized: clicked inside the image map', CLICK_OUTCOME)}
+          {linkField('neutralizedKeyboard', 'AC #2 neutralized: Tab to the # link, then Enter', KEYBOARD_OUTCOME)}
+        </div>
+        <label className="probe-field probe-field--wide">
+          <span>notes for this section</span>
+          <textarea
+            rows={4}
+            value={linkManual.notes}
+            onChange={(e) => {
+              setLinkManual((m) => ({ ...m, notes: e.target.value }));
+            }}
+          />
+        </label>
       </section>
 
       <section className="probe-manual">
