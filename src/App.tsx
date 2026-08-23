@@ -372,6 +372,7 @@ export default function App() {
         onAutoCheckChange={changeAutoCheckUpdates}
         updateCheck={updater.check}
         onCheckForUpdate={() => checkForUpdate('manual')}
+        covered={updater.flow.phase !== 'none'}
       />
       {/* After the settings modal in document order, so it paints over it when a
           manual check turns one up while the modal is still open. */}

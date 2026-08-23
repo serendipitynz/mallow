@@ -18,6 +18,14 @@ interface SettingsModalProps {
   onAutoCheckChange: (on: boolean) => void;
   updateCheck: CheckState;
   onCheckForUpdate: () => void;
+  /** True while another dialog is painted over this modal. It then handles no
+   *  Escape and takes no focus or clicks, so the dialog on top owns both:
+   *  otherwise one Escape closes the two at once, and Tab reaches the controls
+   *  behind the dialog — including the check that would supersede the very offer
+   *  the dialog is asking about. `inert` carries the focus and pointer half; on a
+   *  WebView old enough to ignore it the Escape guard still holds and only the
+   *  Tab path degrades. */
+  covered: boolean;
 }
 
 export function SettingsModal({
@@ -33,11 +41,12 @@ export function SettingsModal({
   onAutoCheckChange,
   updateCheck,
   onCheckForUpdate,
+  covered,
 }: SettingsModalProps) {
   const { t, lang, setLang } = useI18n();
 
   useEffect(() => {
-    if (!open) {
+    if (!open || covered) {
       return;
     }
     const onKey = (e: KeyboardEvent) => {
@@ -47,7 +56,7 @@ export function SettingsModal({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, covered, onClose]);
 
   if (!open) {
     return null;
@@ -60,6 +69,7 @@ export function SettingsModal({
     <div
       className="modal-overlay"
       role="presentation"
+      inert={covered}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
