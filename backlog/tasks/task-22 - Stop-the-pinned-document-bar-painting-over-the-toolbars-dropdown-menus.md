@@ -1,10 +1,10 @@
 ---
 id: TASK-22
 title: Stop the pinned document bar painting over the toolbar's dropdown menus
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-18 11:57'
-updated_date: '2026-08-23 03:17'
+updated_date: '2026-08-23 04:01'
 labels:
   - bug
 milestone: m-2
