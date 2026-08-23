@@ -106,7 +106,7 @@ const SANDBOX = 'allow-same-origin';
 const VIOLATION_WAIT_MS = 1500;
 const LOAD_TIMEOUT_MS = 5000;
 
-function sleep(ms: number): Promise<void> {
+export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
@@ -121,7 +121,7 @@ function expect(condition: boolean): Verdict {
   return condition ? 'pass' : 'fail';
 }
 
-function mountFrame(host: HTMLElement, srcdoc: string, onLoad?: () => void): HTMLIFrameElement {
+export function mountFrame(host: HTMLElement, srcdoc: string, onLoad?: () => void): HTMLIFrameElement {
   host.replaceChildren();
   const frame = document.createElement('iframe');
   frame.setAttribute('sandbox', SANDBOX);
@@ -143,7 +143,7 @@ function mountFrame(host: HTMLElement, srcdoc: string, onLoad?: () => void): HTM
 /** Resolve once the fixture document itself is in the frame. Waiting for the
  *  `alive` marker rather than for `load` is what makes "the fixture navigated
  *  away" observable: that document answers `load` too. */
-async function waitForFixture(frame: HTMLIFrameElement): Promise<Document> {
+export async function waitForFixture(frame: HTMLIFrameElement): Promise<Document> {
   const deadline = Date.now() + LOAD_TIMEOUT_MS;
   // Whether the parent ever got a document at all. A frame that lost same-origin
   // hands back `null` rather than throwing, so this is the difference between
@@ -172,7 +172,7 @@ async function waitForFixture(frame: HTMLIFrameElement): Promise<Document> {
 }
 
 /** Whether the fixture is still the frame's document, i.e. nothing navigated. */
-function stillOnFixture(frame: HTMLIFrameElement): boolean {
+export function stillOnFixture(frame: HTMLIFrameElement): boolean {
   try {
     // `?.` alone would answer `undefined !== null` — true — for an unreadable
     // frame, turning a lost document into "nothing navigated".
@@ -182,12 +182,12 @@ function stillOnFixture(frame: HTMLIFrameElement): boolean {
   }
 }
 
-interface ViolationCollector {
+export interface ViolationCollector {
   events: SecurityPolicyViolationEvent[];
   stop: () => void;
 }
 
-function collectViolations(target: Document): ViolationCollector {
+export function collectViolations(target: Document): ViolationCollector {
   const events: SecurityPolicyViolationEvent[] = [];
   const onViolation = (event: Event): void => {
     events.push(event as SecurityPolicyViolationEvent);
@@ -201,14 +201,14 @@ function collectViolations(target: Document): ViolationCollector {
   };
 }
 
-function violationFor(
+export function violationFor(
   events: SecurityPolicyViolationEvent[],
   needle: string,
 ): SecurityPolicyViolationEvent | undefined {
   return events.find((event) => event.blockedURI.includes(needle));
 }
 
-function describeViolation(event: SecurityPolicyViolationEvent | undefined): string {
+export function describeViolation(event: SecurityPolicyViolationEvent | undefined): string {
   if (event === undefined) {
     return 'no securitypolicyviolation reported';
   }
@@ -276,7 +276,7 @@ function measureClickDispatch(doc: Document): ClickDispatch {
  *
  *  The element is closed again afterwards so the control leaves no trace in a
  *  fixture that is also being looked at. */
-function measureActivation(doc: Document): boolean {
+export function measureActivation(doc: Document): boolean {
   const details = doc.getElementById('activation-control') as HTMLDetailsElement | null;
   const summary = doc.getElementById('activation-summary');
   if (details === null || summary === null) {
