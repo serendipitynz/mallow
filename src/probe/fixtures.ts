@@ -256,6 +256,15 @@ export function assetImageFixture(assetUrl: string): string {
  *  app's own URL plus a fragment, and that URL is the app shell. */
 export const APP_ORIGIN_TARGET = 'probe-app-origin-target.html';
 
+/** The `<area>`'s own destination, distinct from `APP_ORIGIN_TARGET`.
+ *
+ *  They shared one path in the first round, and that made a navigation unable to
+ *  name its cause: `<a>` and `<area>` both reach it, and where the engine runs no
+ *  parent-registered listener there is no click counter to break the tie either.
+ *  Measured on Linux (2026-08-23) — the neutralized arm showed no navigation at
+ *  all, which is equally what "the area was never clicked" looks like. */
+export const AREA_TARGET = 'probe-area-target.html';
+
 /** External-protocol hrefs (TASK-23 AC #5). Neither decision-9's `frame-src`
  *  argument nor decision-10's neutralization covers a scheme the OS owns, which
  *  is why `counts.links` excludes them until this is measured. Pointed at
@@ -306,7 +315,7 @@ export function appOriginLinkFixture(): string {
       `<p><a id="mailto-link" href="${MAILTO_TARGET}">mailto: link</a></p>`,
       `<p><a id="tel-link" href="${TEL_TARGET}">tel: link</a></p>`,
       `<p><img id="map-image" src="${DATA_IMAGE}" usemap="#probe-map" alt="image map — click inside the red box"></p>`,
-      `<map name="probe-map"><area id="area-link" shape="rect" coords="0,0,240,72" href="${APP_ORIGIN_TARGET}" alt="mapped region"></map>`,
+      `<map name="probe-map"><area id="area-link" shape="rect" coords="0,0,240,72" href="${AREA_TARGET}" alt="mapped region"></map>`,
       '<div class="filler">filler — scroll past this</div>',
       '<h2 id="deep-anchor">deep anchor</h2>',
       '<p>the fragment link above addresses this heading</p>',
