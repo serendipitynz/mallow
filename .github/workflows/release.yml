@@ -323,10 +323,16 @@ jobs:
           # The lost-update defect and a job that quietly produced no bundle look
           # identical from here: a platform is simply absent. Name the ones that
           # must be present rather than trusting the matrix went green.
+          # Both Linux architectures are listed, not just x86_64: the arm64 job is a
+          # fourth writer of this asset, and its bare linux-aarch64 fallback was
+          # just deleted above, so an arm64 entry lost here leaves those installs
+          # with nothing to resolve at all. rpm stays out until a real release
+          # shows whether it appears.
           for key in \
             darwin-aarch64 darwin-x86_64 \
             windows-x86_64-nsis windows-x86_64-msi \
-            linux-x86_64-appimage linux-x86_64-deb; do
+            linux-x86_64-appimage linux-x86_64-deb \
+            linux-aarch64-appimage linux-aarch64-deb; do
             if [ "$(jq -r --arg k "$key" '.platforms | has($k)' out/latest.json)" != "true" ]; then
               echo "::error::latest.json has no '$key' entry. A build job produced no bundle, or two jobs raced on this asset." >&2
               exit 1
