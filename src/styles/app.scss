@@ -16,6 +16,32 @@
   padding: 0 12px;
   border-bottom: 1px solid $border;
   background: var(--color-bg);
+  // Hold the dropdowns above the pinned `.doc__bar`. The z-index numbers on
+  // their own already said they were — `.menu__popup` carries 50 against the
+  // bar's 5, and neither has a stacking context between it and the root, so
+  // the two sort directly — and the bar painted over an open menu anyway.
+  // What that takes, measured: open a menu while `.doc-scroll` overflows, then
+  // widen the window until it no longer does. The trigger is that transition
+  // rather than the menu. `backdrop-filter` keeps the bar on its own
+  // compositing layer; losing the scroller rebuilds the layers around it, and
+  // the popup — un-promoted content in an ancestor stacking context, already
+  // in the DOM — is not sorted against the layer that comes back. Why the same
+  // menu on the same document also differed between plain openings is a
+  // reading rather than a measurement: a document settling after load
+  // (highlighting, mermaid, the rendered frame converging on its height) moves
+  // the same overflow state with nobody touching the window.
+  // `will-change` is the half the numbers cannot carry, and it is load-bearing
+  // rather than decoration: with the position and z-index above still in
+  // place, dropping this one line brings the failure back. It gives the
+  // toolbar its own layer at mount, so the order is settled between two
+  // layers as declared here and no promotion has to survive a rebuild.
+  // Raising the bar instead is not available — it has to stay above the
+  // document it pins over.
+  // One consequence: a promoted toolbar is the containing block for any
+  // `position: fixed` descendant, which would anchor to it, not the viewport.
+  position: relative;
+  z-index: 10;
+  will-change: transform;
 }
 
 .toolbar__path {
