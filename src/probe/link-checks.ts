@@ -282,12 +282,29 @@ export interface FrameReading {
   scrollTop: number;
 }
 
+/** Which attempts each mode needs before its half of the record is complete.
+ *
+ *  They differ because the pass only touches app-origin hrefs: `mailto:` and
+ *  `tel:` are the same links in both modes, so arming them again measures the
+ *  same thing twice. Stating the set is what lets the report say what is missing
+ *  rather than only what is there — rounds 1 and 2 both ended with the
+ *  neutralized half unarmed, and a record that only lists what was done reads as
+ *  complete either way. */
+export const EXPECTED_ATTEMPTS: Record<LinkProbeMode, readonly LinkAttempt[]> = {
+  raw: LINK_ATTEMPTS,
+  neutralized: ['fragment-click', 'relative-click', 'area-click', 'fragment-keyboard'],
+};
+
 export interface LinkProbeState {
   mode: LinkProbeMode;
   /** How many times this mode has been armed. A click that navigates destroys
    *  the fixture, so the attempts are worked through one arm at a time and the
    *  readings accumulate across them, each carrying the attempt it belongs to. */
   arms: number;
+  /** One entry per arm, in order. Kept beside the readings rather than derived
+   *  from them because the reading cap can drop an arm's marker, and a lost
+   *  marker would report an attempt as never made. */
+  armedAttempts: LinkAttempt[];
   neutralizedHrefs: string[];
   /** Hrefs still in the tab order after the mode was applied. In `neutralized`
    *  this is the stated expectation the keyboard reading is checked against. */
@@ -299,10 +316,17 @@ export interface LinkProbeState {
   truncated: boolean;
 }
 
+/** Attempts this mode still owes, in the order the selector offers them. */
+export function missingAttempts(mode: LinkProbeMode, state: LinkProbeState | null): LinkAttempt[] {
+  const armed = new Set(state === null ? [] : state.armedAttempts);
+  return EXPECTED_ATTEMPTS[mode].filter((attempt) => !armed.has(attempt));
+}
+
 export function emptyLinkProbeState(mode: LinkProbeMode): LinkProbeState {
   return {
     mode,
     arms: 0,
+    armedAttempts: [],
     neutralizedHrefs: [],
     tabbableHrefs: [],
     activation: false,
@@ -339,8 +363,14 @@ export async function armLinkProbe(
   const state: LinkProbeState =
     previous === null || previous.mode !== mode
       ? emptyLinkProbeState(mode)
-      : { ...previous, readings: [...previous.readings], clicksByTarget: { ...previous.clicksByTarget } };
+      : {
+          ...previous,
+          armedAttempts: [...previous.armedAttempts],
+          readings: [...previous.readings],
+          clicksByTarget: { ...previous.clicksByTarget },
+        };
   state.arms += 1;
+  state.armedAttempts.push(attempt);
 
   const frame = mountFrame(host, appOriginLinkFixture());
   const doc = await waitForFixture(frame);
@@ -385,7 +415,12 @@ export async function armLinkProbe(
   };
   const publish = (at: FrameReading['at']): void => {
     record(at);
-    onUpdate({ ...state, readings: [...state.readings], clicksByTarget: { ...state.clicksByTarget } });
+    onUpdate({
+      ...state,
+      armedAttempts: [...state.armedAttempts],
+      readings: [...state.readings],
+      clicksByTarget: { ...state.clicksByTarget },
+    });
   };
 
   const onClick = (event: Event): void => {

@@ -23,12 +23,14 @@ import {
 } from './harness';
 import {
   armLinkProbe,
+  EXPECTED_ATTEMPTS,
   LINK_ATTEMPT_LABEL,
   LINK_ATTEMPTS,
   type LinkAttempt,
   type LinkCheck,
   type LinkProbeMode,
   type LinkProbeState,
+  missingAttempts,
   runLinkChecks,
 } from './link-checks';
 import { buildReport, guessWebViewVersion, type LinkManual, type Manual } from './report';
@@ -304,6 +306,20 @@ export default function Probe() {
       )}
     </div>
   );
+
+  /* Rounds 1 and 2 both ended with the neutralized half unarmed. A record that
+     lists only what was done reads as finished either way, so the section says
+     what it still owes — on screen, where it can still be acted on. */
+  const linkCoverage = (mode: LinkProbeMode, state: LinkProbeState | null) => {
+    const missing = missingAttempts(mode, state);
+    const done = EXPECTED_ATTEMPTS[mode].length - missing.length;
+    return (
+      <li key={mode}>
+        <strong>{mode}</strong>: {done}/{EXPECTED_ATTEMPTS[mode].length} armed
+        {missing.length === 0 ? ' — complete' : ` — still to arm: ${missing.join(', ')}`}
+      </li>
+    );
+  };
 
   const linkCounters = (label: string, state: LinkProbeState | null) =>
     state === null ? null : (
@@ -704,6 +720,10 @@ export default function Probe() {
             Arm neutralized (the app&apos;s own pass)
           </button>
         </div>
+        <ul className="probe-counters">
+          {linkCoverage('raw', rawProbe)}
+          {linkCoverage('neutralized', neutralProbe)}
+        </ul>
         {linkCounters('raw', rawProbe)}
         {linkCounters('neutralized', neutralProbe)}
         <div className="probe-scroller" ref={linkScrollerRef}>

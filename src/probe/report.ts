@@ -7,7 +7,14 @@
  *  evidence for — has to survive a copy and paste. */
 
 import type { Check, ClickCounts, Environment, LateLayout } from './harness';
-import { LINK_ATTEMPT_LABEL, type LinkCheck, type LinkProbeState } from './link-checks';
+import {
+  EXPECTED_ATTEMPTS,
+  LINK_ATTEMPT_LABEL,
+  type LinkCheck,
+  type LinkProbeMode,
+  type LinkProbeState,
+  missingAttempts,
+} from './link-checks';
 import type { TransformCheck } from './transform-checks';
 
 export interface Manual {
@@ -158,9 +165,14 @@ function transformBlock(checks: TransformCheck[] | null): string {
  *  and are printed in full — a click whose outcome was "nothing visible" is only
  *  worth having if the frame's location and the scroller's offset are there to
  *  say what "nothing" covered. */
-function linkProbeBlock(label: string, state: LinkProbeState | null): string {
+function linkProbeBlock(mode: LinkProbeMode, label: string, state: LinkProbeState | null): string {
+  const missing = missingAttempts(mode, state);
+  const coverage =
+    missing.length === 0
+      ? `all ${EXPECTED_ATTEMPTS[mode].length} attempts armed`
+      : `**NOT ARMED: ${missing.join(', ')}** — ${EXPECTED_ATTEMPTS[mode].length - missing.length} of ${EXPECTED_ATTEMPTS[mode].length} attempts covered, so this half answers nothing about the rest`;
   if (state === null) {
-    return `- ${label}: not armed`;
+    return `- ${label}: not armed at all (${coverage})`;
   }
   const clicks = Object.entries(state.clicksByTarget);
   const readings = state.readings.map(
@@ -168,7 +180,7 @@ function linkProbeBlock(label: string, state: LinkProbeState | null): string {
       `  - ${r.seq} (${r.at}, ${r.attempt}): location \`${r.location}\`, still on the fixture: ${r.onFixture}, scroller scrollTop ${r.scrollTop}`,
   );
   return [
-    `- ${label} — armed ${state.arms} time(s):`,
+    `- ${label} — armed ${state.arms} time(s), ${coverage}:`,
     `  - hrefs the app's own pass neutralized: ${state.neutralizedHrefs.length === 0 ? '(none)' : state.neutralizedHrefs.join(', ')}`,
     `  - hrefs still in the tab order afterwards: ${state.tabbableHrefs.length === 0 ? '(none)' : state.tabbableHrefs.join(', ')}`,
     `  - custom event dispatched by the parent into contentDocument: ${state.customEvent} (0 means this document runs no parent-registered listener at all, so the click counts below say nothing about whether a click arrived)`,
@@ -201,8 +213,8 @@ function linkBlock(link: LinkSection | null): string {
     '',
     '#### Real clicks, measured',
     '',
-    linkProbeBlock('raw (nothing neutralized)', link.raw),
-    linkProbeBlock("neutralized (the app's own pass applied)", link.neutralized),
+    linkProbeBlock('raw', 'raw (nothing neutralized)', link.raw),
+    linkProbeBlock('neutralized', "neutralized (the app's own pass applied)", link.neutralized),
     '',
     '#### Real clicks, recorded by hand',
     '',
