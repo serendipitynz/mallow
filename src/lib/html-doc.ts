@@ -298,11 +298,14 @@ export function navigatesAppOrigin(value: string): boolean {
  * document set changes an order that only reaches a link which no longer does
  * anything.
  *
- * For an `<area>` only the keyboard half is certain: it has no box of its own —
- * the hit region belongs to the `<img usemap>` — so whether a UA consults the
- * area's `pointer-events` for that region is engine-dependent. decision-10 lists
- * it as a probe case rather than claiming it, and `src/probe/link-checks.ts` is
- * where it is measured.
+ * **For an `<area>` only the keyboard half works, and that is measured rather
+ * than expected.** It has no box of its own — the hit region belongs to the
+ * `<img usemap>` — and TASK-23 clicked one for real on all three WebViews with
+ * this pass applied: `tabindex="-1"` holds, `pointer-events: none` does not, and
+ * the frame navigates to the app's own URL exactly as an un-neutralized link
+ * would. So this function does not make an image map inert, and a caller must not
+ * read it as doing so. TASK-25 owns the fix; decision-10 had listed the question
+ * as a probe case rather than claiming an answer, and this is the answer.
  */
 export function neutralizeAppOriginLinks(root: ParentNode): void {
   for (const link of root.querySelectorAll<HTMLElement>('a[href], area[href]')) {
