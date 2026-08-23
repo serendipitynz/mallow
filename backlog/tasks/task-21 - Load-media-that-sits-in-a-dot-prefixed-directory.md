@@ -1,10 +1,10 @@
 ---
 id: TASK-21
 title: Load media that sits in a dot-prefixed directory
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-18 10:32'
-updated_date: '2026-08-23 06:58'
+updated_date: '2026-08-23 07:10'
 labels:
   - bug
 milestone: m-2
@@ -27,7 +27,7 @@ If it is real, the fix is a second grant beside the recursive one rather than a 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 The failure is reproduced on macOS or Linux before anything is changed: an image inside a dot-prefixed directory under the opened folder, opened from the tree, does not render
-- [ ] #2 Media inside a dot-prefixed directory under the opened folder renders, on every platform
+- [x] #2 Media inside a dot-prefixed directory under the opened folder renders, on every platform
 - [x] #3 The widening is scoped to the folder the user opened, and is stated in AGENTS.md and AGENTS.ja.md beside the existing allow_media_dir note
 - [x] #4 cargo check and cargo test pass
 <!-- AC:END -->
@@ -43,9 +43,19 @@ is the broken image. So the source reading in the description held, and the
 defect is wider than the title says - a dot-prefixed *file* fails too, at any
 depth.
 
-AC #1 is checked on that measurement. The screen half of it, and AC #2, are
-left for the visual round: this environment cannot see the app. A fixture with
-a non-dot control beside the dot cases is prepared for that round.
+AC #1 is checked on that measurement. The visual round then ran on macOS
+(2026-08-23, `pnpm tauri dev`, fixture at `_sandbox/handoff/task-21-fixture/`):
+the non-dot control rendered, and so did all three dot cases - a dot directory,
+a nested one, and a dot-prefixed file - through the tree and through the
+rendered view's rewritten references both. The same fixture was confirmed to
+fail on the released v0.6.0, so the two states were seen side by side rather
+than one of them assumed.
+
+AC #2 says "on every platform" and rests on three legs, only the first of which
+is a screen: macOS measured as above; Linux covered by the same unit tests in
+CI, which runs on ubuntu and shares the unix default this task is about;
+Windows needing no change at all, since `require_literal_leading_dot` already
+defaults to `false` there.
 
 **The fix is not the second grant the description proposed.** It is
 `assetProtocol.scope.requireLiteralLeadingDot: false` in `tauri.conf.json`,
