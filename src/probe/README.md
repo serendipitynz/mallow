@@ -220,13 +220,28 @@ that does nothing when neutralized is only evidence if it did something when it
 was not — that is the whole of AC #3, since an area has no box of its own and the
 hit region belongs to the `<img usemap>`.
 
-**Click one target, then re-arm.** A click that navigates takes the fixture with
-it, so the targets are worked through one at a time; the readings accumulate
-across re-arms of the same mode, so the record stays one list. Each reading is
-the frame's location, whether the fixture is still there, and the parent
-scroller's `scrollTop` — a click whose outcome was "nothing visible" is only
-worth having if those three are beside it. Fill in that target's field before
-arming the next one.
+**Pick what you are about to do, arm, then do exactly that one thing, then
+re-arm.** The `about to` selector beside the arm buttons is not a convenience:
+every reading the arm produces is filed under it, and that is the only
+attribution that survives on every engine. Where the frame runs no
+parent-registered listener the click counters are 0 whatever happened
+(decision-9, and measured again on WebKitGTK in the first round), so an arm in
+which nothing navigated and an arm in which nothing was clicked are the same
+readings unless the attempt was named before the click.
+
+A click that navigates takes the fixture with it, which is why the attempts are
+worked through one at a time; the readings accumulate across re-arms of the same
+mode, so the record stays one list. Each reading is the attempt, the frame's
+location, whether the fixture is still there, and the parent scroller's
+`scrollTop` — a click whose outcome was "nothing visible" is only worth having if
+those are beside it. Fill in that attempt's field before arming the next one; the
+field wording matches the selector, and it carries what the machine cannot see —
+whether an external application opened, whether the page went blank or showed an
+error.
+
+The `<area>` and the relative link point at **different** paths on purpose. They
+shared one in the first round, and a navigation could then not name its cause:
+both reach it, and there was no counter to break the tie on WebKit.
 
 For the keyboard rows, click this page **outside** the frame first and then Tab
 into it. The two mechanisms are independent: `pointer-events: none` closes the
