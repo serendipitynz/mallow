@@ -314,6 +314,26 @@ hold rather than as an exhaustive style guide.
   by the platform WebView (heic/heif are gated to macOS in `file_kind`; PDF is absent
   on some Linux WebKitGTK builds). `<img>`/`<video>` fall back to a message on decode
   error; `<iframe>` (PDF) has no reliable error signal, so it can show blank.
+- **A leading dot is not covered by the recursive grant on its own, which is why
+  `assetProtocol.scope` is an object rather than `[]`.** `allow_media_dir` calls
+  `Scope::allow_directory`, which pushes a `<dir>/**` glob, and the scope matches
+  with `glob::MatchOptions`, whose `require_literal_leading_dot` defaults to `true`
+  on unix and `false` on Windows (tauri 2.11.3, `src/scope/fs.rs`). Under that
+  default `*` and `**` refuse every path component starting with a dot, so an image
+  in `.assets/` — and a `.hidden.png` beside the document — is refused with a 403 the
+  WebView shows as a broken image, in `MediaView` and in the rendered view's
+  rewritten references alike. `requireLiteralLeadingDot: false` in `tauri.conf.json`
+  turns that off for the whole asset-protocol scope. **It widens nothing past the
+  folders `allow_media_dir` has granted**: the patterns are unchanged, the static
+  `allow`/`deny` lists stay empty, and `is_allowed` canonicalizes before matching, so
+  a `..` component never reaches the glob. **A second grant cannot replace it** — no
+  finite set of globs covers dot directories at every depth or the dot-prefixed files
+  themselves, and one created after the grant would be missed anyway. It also puts
+  unix where Windows and `read_dir_tree` already were: that command never filtered
+  dot directories, so the tree has always listed those files. Measured on macOS
+  against tauri 2.11.3's own `Scope` (TASK-21), and `commands.rs`'s
+  `asset_scope_reaches_media_behind_a_leading_dot` reads the key back out of
+  `tauri.conf.json` rather than restating it, so removing it fails the suite.
 - **Emoji.** Unicode emoji are wrapped in `<span class="emoji">` so CSS can put a
   colour-emoji stack (`$font-emoji`) in front for them alone. Without the wrapper
   the JP body font wins the fallback race for the few emoji it covers — `:ok:` is
