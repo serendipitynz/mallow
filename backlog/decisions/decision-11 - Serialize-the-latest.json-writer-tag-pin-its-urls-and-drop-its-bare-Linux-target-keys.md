@@ -99,8 +99,8 @@ silently produced nothing both present as an absent platform, so
 `finalize-updater-json` fails when any of `darwin-aarch64`, `darwin-x86_64`,
 `windows-x86_64-nsis`, `windows-x86_64-msi`, `linux-x86_64-appimage`,
 `linux-x86_64-deb`, `linux-aarch64-appimage` or `linux-aarch64-deb` is missing,
-or when any entry carries an empty signature. Both Linux architectures are
-listed rather than only the six TASK-11.1's AC #5 enumerates: the arm64 job is a
+or when any entry carries an empty signature. Both Linux architectures are in
+that set, and TASK-11.1's AC #5 was tightened to name them: the arm64 job is a
 fourth writer of the asset, and the bare `linux-aarch64` key this decision
 deletes was its only fallback, so an arm64 entry lost here leaves those installs
 with nothing to resolve. rpm is deliberately absent — the job prints the full
