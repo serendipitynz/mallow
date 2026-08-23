@@ -79,7 +79,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   どちらもパスの扱いを誤る** — `explorer <file>` はコンマで分割し（実測: `a,b.html` で
   ハンドラではなく Explorer のウィンドウが開いた）、`cmd /C start` は `Command` が
   quote する規則ではなく `cmd` 自身の規則で読み直す。
-- `lib.rs` — プラグイン登録（opener, dialog, store, window-state）、`invoke_handler`、
+- `lib.rs` — プラグイン登録（opener, dialog, store, window-state, updater, process。
+  decision-11 によりどれも `cfg(desktop)` で括らない）、`invoke_handler`、
   および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
   `menu:settings` イベントを emit し、フロントがそれを購読する。
 
@@ -539,6 +540,10 @@ macOS ビルドを Gatekeeper 警告なしで起動させるには、**Developer
 2. **設定** — `.env.signing.example` を `.env.signing`（git 無視）へコピーし、
    `APPLE_SIGNING_IDENTITY` / `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` を
    記入する。資格情報はローカルに留まり、アカウント固有の値はコミットしない。
+   同じファイルは更新署名の 2 変数も持つ（下の「署名付きの自己更新」）。macOS の
+   資格情報だからではなく、このファイルを export する唯一のスクリプトが
+   `macos-sign-build.sh` だからで、Windows や Linux でバンドルする貢献者は
+   手で export する。
 3. **ビルド** — `./scripts/macos-sign-build.sh`（`pnpm tauri build` のラッパ）。
    Tauri が hardened runtime（`bundle.macOS.hardenedRuntime` は既定 `true`）で署名し、
    公証してチケットを staple する。初回の公証は数分かかることがある。**Tauri は
@@ -564,13 +569,17 @@ universal な `.dmg` 1 つ）/ Windows（x86_64 のみ）/ Linux（**x86_64 と 
 `v*` タグの push、または Actions タブからタグを指定した手動実行で起動する。
 `tauri-apps/tauri-action` を使い、macOS の `.dmg` は後段のステップで公証 + staple
 してから `gh release upload --clobber` で差し替える（ローカルスクリプトと同じ穴埋め）。
+各バンドルには updater 資産とその `.sig` が付き、リリース全体で `latest.json` が
+1 つ付く — その生成のどこが壊れやすいかは下の「署名付きの自己更新」。
 Linux は 2 ジョブとも `ubuntu-24.04` 系イメージで動くので、Linux のバンドルは
 glibc 2.39 を要求する。Ubuntu 22 の 2.35 より下限を上げた理由はワークフローの
 matrix コメントが正本。`ubuntu-24.04-arm` ラベルは public リポジトリでしか解決しない。
 
 初回設定 — macOS ランナーは以下のリポジトリ Secrets がある時だけ署名・公証する。
 `scripts/setup-ci-signing-secrets.sh path/to/DeveloperID.p12` が `.env.signing` と
-書き出した `.p12` から6つすべてを登録する（値は一切表示しない）:
+書き出した `.p12` から Apple 側の 6 つを登録する（値は一切表示しない）。
+その下の更新用 2 つはこのスクリプトでは登録せず手で設定する — スクリプトは `.p12`
+を必須引数に取るので、更新鍵だけを回すのに証明書ごと要求することになる:
 
 - `APPLE_CERTIFICATE` — Developer ID Application の `.p12` を base64 化したもの
   （キーチェーンアクセス → 自分の証明書 → 書き出す…）。
@@ -579,6 +588,11 @@ matrix コメントが正本。`ubuntu-24.04-arm` ラベルは public リポジ�
   （`.env.signing` の値はコピーしない: CI は取り込んだ証明書の Common Name を
   文字列一致で照合するため、ローカル署名で有効な SHA-1 ハッシュだと失敗する）。
 - `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID` — `.env.signing` と同じ値。
+- `TAURI_SIGNING_PRIVATE_KEY` — updater 資産に署名する minisign の秘密鍵
+  （`gh secret set TAURI_SIGNING_PRIVATE_KEY < path/to/key`）。
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — そのパスワード。**省略できない**:
+  tauri-cli は未設定のとき空パスワードを代入するので、未設定だとエラーではなく
+  「どのクライアントも受け付けない署名」が出荷される。
 
 リリース手順: `pnpm release <patch|minor|major|X.Y.Z>`
 （`scripts/release-version.mjs`）。バージョンが書かれた **4か所すべて**
@@ -594,6 +608,64 @@ Windows / Linux バンドルは未署名。
 Draft のリリースノートは前回タグ以降にマージされた PR から生成され、`.github/release.yml`
 に従いラベルで分類される（PR に `feature` / `bug` / `documentation` を付けると振り分けられ、
 それ以外は "Other Changes" に入る）。
+
+### 署名付きの自己更新（更新チャネル）
+
+`bundle.createUpdaterArtifacts` が有効で、`tauri.conf.json` の
+`plugins.updater.pubkey` が minisign の**公開**鍵を持つので、リリースビルドは
+updater 資産（macOS では `mallow.app.tar.gz`）を作って署名する。endpoint は
+`https://github.com/serendipitynz/mallow/releases/latest/download/latest.json`
+で、GitHub は `latest` を**公開済み・非プレリリース**のリリースにだけ解決する —
+Draft を公開することが配布の開始そのものであり、**Draft のままでは更新経路について
+何も確かめられない。**
+
+**秘密鍵には回復経路が無い。** クライアントは自分に焼かれた公開鍵だけを信じるので、
+秘密鍵を失っても**回しても**、既に入っている全コピーが更新を受け取れなくなり、
+復旧は各利用者の手動再インストールだけになる。Developer ID 証明書とは別物であり、
+同じ扱いをしてはいけない。
+
+公開鍵をコミットすると、秘密鍵を**持たない**ビルドの挙動が変わる。3 つの失敗は
+同じ形をしていない:
+
+- **`TAURI_SIGNING_PRIVATE_KEY` が無い** — ビルドは止まる。
+- **鍵はありパスワードが無く、CI の外** — tauri-cli が対話プロンプトで待つので、
+  非対話の `scripts/macos-sign-build.sh` はハングする。
+- **公開鍵と一致しない秘密鍵** — 警告 1 行でビルドは**成功し**、実行時にどの
+  クライアントも拒否する署名が出荷される。`.env.signing.example` が両方の値を
+  **空**にしてあるのはこのためで、コピーしたファイルは 3 番目で静かに失敗する
+  代わりに 1 番目で明示的に失敗する。
+
+`tauri build --no-sign` は鍵を持たない貢献者がローカルでバンドルできなくなるのを
+防ぐ — `Updater signing is skipped due to --no-sign flag` を出力し、`.sig` の無い
+`.app.tar.gz` を作る。**コード署名も同時に飛ばす**ので、貢献者の逃げ道であって
+リリース経路ではない。
+
+**`latest.json` の契約は decision-11 が正本**で、そこで決めた 3 つはいずれも
+ビルドを失敗させずに壊れる。build matrix に `max-parallel: 1` を置いているのは、
+各ジョブがこの 1 つの資産を lock 無しで read-modify-write するためで、並行させると
+lost update が起きて 1 プラットフォーム欠けたリリースが出荷され、リリースページは
+完全に見える。`tagName` を `releaseId` と併せて渡してダウンロード URL を自分の
+タグへ固定する。渡さないと URL はダウンロード時点の最新へ解決するので、updater
+資産を持たない版を次に出した瞬間に旧版クライアントの URL がすべて 404 になる。
+そして `finalize-updater-json` ジョブが bare な `linux-x86_64` /
+`linux-aarch64` キーを削る — これは自分のエントリを持たない Linux install が
+落ちる先で、中身は AppImage なので、deb の install が AppImage のバイトで
+自分を上書きすることになる。このジョブは期待するプラットフォームや署名が
+欠けたときにも失敗するので、lost update は「黙って不完全なリリース」ではなく
+赤いジョブになり、そのログが `linux-x86_64-rpm` の未決の問いに答える場所になる。
+`tauri-action` を `@v0` の浮動タグではなく `action-v0.6.2` に固定してあるのは
+`latest.json` の形がこのアクション由来だから。`action-v1.0.0` は入力名を変えるが
+Actions は知らない入力を**警告するだけ**なので、中途半端な移行は上の lost update
+を黙って復活させる。
+
+**bundle-type marker はバイナリへのパッチで、静かに失敗する。** tauri-bundler が
+パッケージ化の前にバンドル形式ごとにメインバイナリのトークンを書き換えており、
+クライアントが bare な `os-arch` ではなく `os-arch-installer` を引けるのはその
+トークンだけが理由。パッチの失敗は警告として記録されビルドは続き、できた
+バイナリはバンドル形式を一切報告しない — つまり**ビルドログだけが痕跡**である。
+macOS は両端で例外で、native なバンドルは設計上パッチを飛ばすので Developer ID
+署名が危険に晒されることはなく、パッチされていない macOS のバイナリでも app
+バンドル形式を報告する。
 
 ## 既知の未対応
 

@@ -78,7 +78,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (measured — `a,b.html` opened an Explorer window, not the handler) and
   `cmd /C start` re-parses by `cmd`'s rules rather than the ones `Command` quotes
   for.
-- `lib.rs` — plugin registration (opener, dialog, store, window-state), the
+- `lib.rs` — plugin registration (opener, dialog, store, window-state,
+  updater, process — none `cfg(desktop)`-gated, per decision-11), the
   `invoke_handler`, and (macOS only) a native app menu whose Settings… item
   (⌘,) emits the `menu:settings` event the frontend listens for.
 
@@ -602,7 +603,10 @@ when the right environment variables are present:
 2. **Configure** — copy `.env.signing.example` to `.env.signing` (git-ignored)
    and fill in `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`,
    `APPLE_TEAM_ID`. Credentials stay local; nothing account-specific is
-   committed.
+   committed. The same file carries the two updater-signing variables as well
+   (see "Signed self-update" below) — not because they are macOS credentials but
+   because `macos-sign-build.sh` is the one script that exports this file, so a
+   contributor bundling on Windows or Linux exports them by hand.
 3. **Build** — `./scripts/macos-sign-build.sh` (wraps `pnpm tauri build`). Tauri
    signs with hardened runtime (`bundle.macOS.hardenedRuntime` defaults to
    `true`), notarizes, and staples the ticket. First notarization can take a few
@@ -631,14 +635,20 @@ GitHub release (review, then publish by hand). It triggers on a pushed `v*` tag,
 or manually from the Actions tab with a tag input. It uses
 `tauri-apps/tauri-action`; the macOS `.dmg` is notarized + stapled in a
 follow-up step (same gap the local script closes) and the asset is replaced via
-`gh release upload --clobber`. Both Linux jobs run on `ubuntu-24.04` images, so
+`gh release upload --clobber`. Each bundle is accompanied by an updater
+artifact and its `.sig`, plus one `latest.json` for the whole release — see
+"Signed self-update" below, since how that file is produced is where this
+workflow is easiest to break. Both Linux jobs run on `ubuntu-24.04` images, so
 the Linux bundles need glibc 2.39 — the matrix comment in the workflow is the
 source of truth for why that floor was taken over Ubuntu 22's 2.35. The
 `ubuntu-24.04-arm` label only resolves on public repositories.
 
 One-time setup — the macOS runner signs/notarizes only when these repo secrets
 exist. `scripts/setup-ci-signing-secrets.sh path/to/DeveloperID.p12` registers
-all six from `.env.signing` + an exported `.p12` (no value is printed):
+the six Apple ones from `.env.signing` + an exported `.p12` (no value is
+printed). The two updater secrets below it are **not** registered by that
+script and are set by hand: it takes a `.p12` as a required argument, so
+rotating only the updater key would demand the whole certificate.
 
 - `APPLE_CERTIFICATE` — base64 of a Developer ID Application `.p12` (Keychain
   Access → My Certificates → Export…).
@@ -648,6 +658,11 @@ all six from `.env.signing` + an exported `.p12` (no value is printed):
   common name, so a SHA-1 hash — valid for local signing — would fail there).
 - `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` — the same values as
   `.env.signing`.
+- `TAURI_SIGNING_PRIVATE_KEY` — the minisign private key that signs updater
+  artifacts (`gh secret set TAURI_SIGNING_PRIVATE_KEY < path/to/key`).
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — its password. **Not optional**:
+  tauri-cli substitutes an empty password when this is unset, so an unset value
+  produces signatures no client accepts rather than an error.
 
 Cutting a release: `pnpm release <patch|minor|major|X.Y.Z>`
 (`scripts/release-version.mjs`). It bumps the version in **all four** places it
@@ -663,6 +678,65 @@ workflow before anything is built. Windows/Linux bundles are unsigned.
 The draft's notes are generated from the pull requests merged since the previous
 tag, grouped by label per `.github/release.yml` (label PRs `feature` / `bug` /
 `documentation` to sort them; everything else falls under "Other Changes").
+
+### Signed self-update (the update channel)
+
+`bundle.createUpdaterArtifacts` is on and `plugins.updater.pubkey` in
+`tauri.conf.json` holds the minisign **public** key, so a release build produces
+an updater artifact (`mallow.app.tar.gz` on macOS) and signs it. The endpoint is
+`https://github.com/serendipitynz/mallow/releases/latest/download/latest.json`,
+and GitHub resolves `latest` against **published, non-prerelease** releases only
+— publishing the draft is what starts a rollout, and nothing about the update
+path can be checked while it is still a draft.
+
+**The private key has no recovery path.** A client trusts only the public key
+compiled into it, so losing *or rotating* the private key strands every
+installed copy; recovery is a manual reinstall by each user. It is not the
+Developer ID certificate and must not be handled like one.
+
+Committing the public key changes what a build *without* the private key does,
+and the three failure modes do not fail alike:
+
+- **No `TAURI_SIGNING_PRIVATE_KEY`** — the build stops.
+- **Key set, password unset, outside CI** — tauri-cli blocks on an interactive
+  prompt, which would hang the non-interactive `scripts/macos-sign-build.sh`.
+- **A private key that does not match the committed public key** — one warning
+  line and the build *succeeds*, shipping signatures every client rejects at
+  runtime. This is why `.env.signing.example` leaves both values **empty**: a
+  copied file then fails on the first mode instead of quietly on the third.
+
+`tauri build --no-sign` keeps a contributor without the key from being locked out
+of local bundling — it logs `Updater signing is skipped due to --no-sign flag`
+and produces the `.app.tar.gz` with no `.sig`. It skips **code signing at the
+same time**, so it is a contributor's escape hatch and not a release path.
+
+**decision-11 is the contract for `latest.json`**, and all three things it
+settles fail without failing the build. The build matrix carries
+`max-parallel: 1`, because every job read-modify-writes that one asset with no
+lock — run in parallel, a lost update ships a release missing a platform while
+the release page looks complete. `tagName` is passed alongside `releaseId` so
+the download urls are pinned to their own tag; without it they resolve to
+whatever is newest at download time, and the first later release without updater
+bundles turns every older client's url into a 404. And a `finalize-updater-json`
+job strips the bare `linux-x86_64` / `linux-aarch64` keys, which are the
+fallback a Linux install with no entry of its own would follow — that fallback
+is the AppImage, so a deb install would overwrite itself with AppImage bytes.
+That job also fails when one of the expected platforms or any signature is
+missing, so a lost update is a red job rather than a silently incomplete
+release, and its log is where the open question about `linux-x86_64-rpm` gets
+answered. `tauri-action` is pinned to `action-v0.6.2` rather than floating on
+`@v0` because the shape of `latest.json` comes from it; `action-v1.0.0` renames
+inputs and Actions only *warns* about inputs it does not know, so a
+half-migrated config would restore the lost update silently.
+
+**The bundle-type marker is a binary patch that fails quietly.** tauri-bundler
+rewrites a token in the main binary per bundle type before packaging, and that
+token is the only reason a client resolves `os-arch-installer` rather than the
+bare `os-arch` key. A failed patch is logged as a warning and the build
+continues, and the resulting binary reports no bundle type at all — so **the
+build log is the only place it shows**. macOS is the exception at both ends:
+native bundles skip the patch by design, so the Developer ID signature is never
+at risk, and an unpatched macOS binary still reports the app bundle type.
 
 ## Known follow-ups
 

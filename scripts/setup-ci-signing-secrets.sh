@@ -11,6 +11,12 @@
 # common name against APPLE_SIGNING_IDENTITY — a hash there fails the build.
 # No secret value is printed — each is piped straight into `gh secret set`.
 #
+# This covers the six Apple secrets only. release.yml also needs
+# TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD for updater
+# signing, and they are deliberately not registered here: this script takes a
+# .p12 as a required argument, so rotating only the updater key would demand the
+# whole certificate. Set those two by hand (AGENTS.md "Signed self-update").
+#
 # Usage:
 #   ./scripts/setup-ci-signing-secrets.sh path/to/DeveloperID.p12
 #
