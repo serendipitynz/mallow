@@ -42,6 +42,10 @@ export type UpdateFlow =
   | { phase: 'downloading'; target: UpdateTarget; received: number; total: number | null }
   | { phase: 'installing'; target: UpdateTarget }
   | { phase: 'relaunching'; target: UpdateTarget }
+  /** Installed, but the app did not restart itself. Reachable only where
+   *  `relaunch` rejects, which is why it is not a failure: reporting it as one
+   *  would invite a second install of an update already in place. */
+  | { phase: 'installed'; target: UpdateTarget }
   | { phase: 'failed'; target: UpdateTarget; message: string };
 
 /** A blank or whitespace-only `notes` is reported as absent rather than shown as

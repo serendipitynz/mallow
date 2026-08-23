@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useT } from '../lib/i18n';
+import { type TFn, useT } from '../lib/i18n';
 import { downloadPercent, formatBytes, type UpdateFlow } from '../lib/update-flow';
 import { CloseIcon } from './icons';
 
@@ -10,11 +10,22 @@ interface UpdateDialogProps {
   onDismiss: () => void;
 }
 
-/** Only the two phases that are waiting on the user can be closed. Once the
- *  download has started the plugin offers no way to stop it, so a close control
- *  would leave the install running behind a dismissed dialog. */
+/** Only the phases that are waiting on the user can be closed. Once the download
+ *  has started the plugin offers no way to stop it, so a close control would
+ *  leave the install running behind a dismissed dialog. */
 function isDismissable(flow: UpdateFlow): boolean {
-  return flow.phase === 'available' || flow.phase === 'failed';
+  return flow.phase === 'available' || flow.phase === 'failed' || flow.phase === 'installed';
+}
+
+function dialogTitle(flow: UpdateFlow, t: TFn): string {
+  switch (flow.phase) {
+    case 'failed':
+      return t('updateInstallFailed');
+    case 'installed':
+      return t('updateInstalled');
+    default:
+      return t('updateAvailable');
+  }
 }
 
 export function UpdateDialog({ flow, runningVersion, onConfirm, onDismiss }: UpdateDialogProps) {
@@ -38,7 +49,7 @@ export function UpdateDialog({ flow, runningVersion, onConfirm, onDismiss }: Upd
     return null;
   }
 
-  const title = flow.phase === 'failed' ? t('updateInstallFailed') : t('updateAvailable');
+  const title = dialogTitle(flow, t);
 
   return (
     /* biome-ignore lint/a11y/noStaticElementInteractions: the overlay is a click-outside target,
@@ -113,6 +124,17 @@ export function UpdateDialog({ flow, runningVersion, onConfirm, onDismiss }: Upd
 
           {flow.phase === 'relaunching' ? (
             <UpdateProgress label={t('updateRelaunching')} ariaLabel={t('updateProgress')} />
+          ) : null}
+
+          {flow.phase === 'installed' ? (
+            <>
+              <p className="settings-group__hint">{t('updateInstalledHint')}</p>
+              <div className="seg">
+                <button type="button" className="btn" onClick={onDismiss}>
+                  {t('close')}
+                </button>
+              </div>
+            </>
           ) : null}
 
           {flow.phase === 'failed' ? (

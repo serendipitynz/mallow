@@ -124,6 +124,8 @@ const ja: Dict = {
   updateDownloading: 'ダウンロードしています…',
   updateInstalling: '導入しています。終わるとアプリが再起動します。',
   updateRelaunching: '再起動しています…',
+  updateInstalled: '更新を導入しました',
+  updateInstalledHint: 'アプリを手動で再起動すると、新しいバージョンで開きます。',
   updateInstallFailed: '更新は導入されませんでした。',
   updateInstallFailedHint: '取り消した場合も、通信や書き込みに失敗した場合も、この結果になります。',
 };
@@ -237,6 +239,8 @@ const en: Dict = {
   updateDownloading: 'Downloading…',
   updateInstalling: 'Installing. The app restarts when it finishes.',
   updateRelaunching: 'Restarting…',
+  updateInstalled: 'The update is installed',
+  updateInstalledHint: 'Restart the app by hand to open it on the new version.',
   updateInstallFailed: 'The update was not installed.',
   updateInstallFailedHint: 'Cancelling, and a failed transfer or write, both end here.',
 };
