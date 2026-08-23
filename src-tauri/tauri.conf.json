@@ -29,9 +29,10 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "publisher": "Takuya Otani",
-    "homepage": "https://github.com/takkyun/mallow",
+    "homepage": "https://github.com/serendipitynz/mallow",
     "copyright": "Copyright © 2026 Takuya Otani",
     "license": "MIT",
     "category": "DeveloperTool",
@@ -47,5 +48,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdBRDRERTMzODQzNUYzMgpSV1F5WDBNNDQwMnRCNmtBTVVwUXlSeXVPN0ZUU2R3VTA2Z2ZXajA0UE1vSnh3RDJRRkViNnQyUwo=",
+      "endpoints": ["https://github.com/serendipitynz/mallow/releases/latest/download/latest.json"]
+    }
   }
 }

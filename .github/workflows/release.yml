@@ -106,6 +106,18 @@ jobs:
     needs: create-release
     strategy:
       fail-fast: false
+      # tauri-action's updater-json step GETs latest.json, merges its own
+      # platforms into it, deletes it and re-uploads — with no lock and no
+      # conditional request. Run in parallel, two jobs read the same version and
+      # the second upload drops the first one's platforms, producing a release
+      # whose latest.json is silently missing a platform. Serialising the matrix
+      # removes the interleaving; it is a scheduling guarantee rather than a
+      # structural one, which holds here because nothing else writes that asset.
+      # The alternative (includeUpdaterJson: false plus an aggregation job) is
+      # structurally single-writer but has to build latest.json from the .sig
+      # assets itself — a bespoke script in place of a one-line ordering
+      # constraint. Release builds are the only thing slowed down.
+      max-parallel: 1
       matrix:
         include:
           # Apple Silicon runner; `universal-apple-darwin` lipo-merges an Intel
@@ -181,8 +193,16 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Pinned rather than floating on @v0: the shape of latest.json comes from
+      # this action, so a new release of it would be a shipped bug. Do not jump
+      # to action-v1.0.0 as a version bump — it renames inputs
+      # (includeUpdaterJson -> uploadUpdaterJson, assetNamePattern ->
+      # releaseAssetNamePattern) and changes the url form written into
+      # latest.json, and Actions only warns about inputs it does not know, so a
+      # half-migrated config would silently restore the lost-update defect that
+      # max-parallel above is fixing.
       - name: Build, sign, and upload to the draft release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@action-v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # macOS signing + notarization. Empty/unset on non-macOS runners and
@@ -194,10 +214,25 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Updater signing (minisign). The public key is committed in
+          # tauri.conf.json, so a build without these produces no signatures —
+          # and a key that does not match the committed one only logs a warning
+          # and ships signatures every client rejects. The password secret is
+          # not optional: tauri-cli substitutes an empty password when it is
+          # unset, and mallow's key has one.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           # Upload to the draft create-release made; do not create/edit it here,
           # so its generated notes are preserved.
           releaseId: ${{ needs.create-release.outputs.release_id }}
+          # Tag-pins the download urls written into latest.json. Without it they
+          # read releases/latest/download/<asset> and resolve to whatever is
+          # newest at download time, so the first later release that carries no
+          # updater bundles turns every older client's url into a 404. This does
+          # not create or edit the release: the action only does that when
+          # tagName is set and releaseId is not.
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
           args: ${{ matrix.tauri_args }}
 
       # Tauri notarizes the .app but not the .dmg that wraps it, so the disk
@@ -229,3 +264,82 @@ jobs:
             xcrun stapler staple "$dmg"
             gh release upload "$RELEASE_TAG" "$dmg" --clobber -R "$GITHUB_REPOSITORY"
           done
+
+  # A Linux install whose bundle type has no entry in latest.json does not stop
+  # at "no update" — the client falls back to the bare `linux-<arch>` key, which
+  # is the AppImage, and installs it as one. A deb install would overwrite
+  # itself with AppImage bytes. Two things produce that state: a bundle type
+  # that never reaches latest.json at all (rpm's upstream treatment is
+  # inconsistent), and tauri-bundler's per-bundle marker patch failing, which is
+  # logged as a warning and leaves the binary reporting no bundle type.
+  #
+  # So the bare Linux keys are removed. Every Linux form that self-updates
+  # resolves its own `linux-<arch>-<installer>` key, so nothing that is patched
+  # correctly loses its update path; what is left is an install that finds
+  # nothing and says so, instead of one that breaks itself. Deliberately Linux
+  # only: `darwin-<arch>` is the documented fallback for the -app key, and the
+  # Windows bare key points at the MSI, where both forms are installers that
+  # handle their own upgrade.
+  #
+  # This runs after the whole matrix, so it is also the one place that sees the
+  # finished platform set — which is what turns a lost update from a silently
+  # incomplete release into a red job.
+  finalize-updater-json:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Drop the bare Linux keys and verify the platform set
+        run: |
+          set -eu
+          # The release is a draft, so browser_download_url needs auth; fetch the
+          # asset through the API by id instead.
+          asset_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?per_page=100" \
+            --jq '[.[] | select(.name == "latest.json")][0].id // empty')
+          if [ -z "$asset_id" ]; then
+            echo "::error::No latest.json on release $RELEASE_ID. The updater artifacts were not produced — check the build log for a signing failure." >&2
+            exit 1
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" \
+            -H 'Accept: application/octet-stream' > latest.json
+
+          echo "platforms as built:"
+          jq -r '.platforms | keys[] | "  " + .' latest.json
+
+          mkdir -p out
+          jq 'del(.platforms["linux-x86_64"], .platforms["linux-aarch64"])' latest.json > out/latest.json
+
+          # Every entry must carry a signature; an entry without one is refused
+          # at runtime, which is not visible from the release page.
+          missing_sig=$(jq -r '[.platforms | to_entries[] | select((.value.signature // "") == "") | .key] | join(" ")' out/latest.json)
+          if [ -n "$missing_sig" ]; then
+            echo "::error::latest.json entries without a signature: $missing_sig" >&2
+            exit 1
+          fi
+
+          # The lost-update defect and a job that quietly produced no bundle look
+          # identical from here: a platform is simply absent. Name the ones that
+          # must be present rather than trusting the matrix went green.
+          # Both Linux architectures are listed, not just x86_64: the arm64 job is a
+          # fourth writer of this asset, and its bare linux-aarch64 fallback was
+          # just deleted above, so an arm64 entry lost here leaves those installs
+          # with nothing to resolve at all. rpm stays out until a real release
+          # shows whether it appears.
+          for key in \
+            darwin-aarch64 darwin-x86_64 \
+            windows-x86_64-nsis windows-x86_64-msi \
+            linux-x86_64-appimage linux-x86_64-deb \
+            linux-aarch64-appimage linux-aarch64-deb; do
+            if [ "$(jq -r --arg k "$key" '.platforms | has($k)' out/latest.json)" != "true" ]; then
+              echo "::error::latest.json has no '$key' entry. A build job produced no bundle, or two jobs raced on this asset." >&2
+              exit 1
+            fi
+          done
+
+          echo "platforms as shipped:"
+          jq -r '.platforms | keys[] | "  " + .' out/latest.json
+
+          gh release upload "$RELEASE_TAG" out/latest.json --clobber -R "$GITHUB_REPOSITORY"

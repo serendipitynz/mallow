@@ -26,7 +26,7 @@ Full in-app update is accepted knowing it adds a permanent obligation: the minis
 
 Endpoint is the static JSON on GitHub Releases:
 https://github.com/serendipitynz/mallow/releases/latest/download/latest.json
-The owner is the one the git remote points at. package.json, Cargo.toml and tauri.conf.json still say takkyun/mallow and only resolve through a GitHub rename redirect - tolerable for a homepage link, unacceptable for a URL compiled into shipped binaries, because that redirect disappears the day a takkyun/mallow repository exists and cannot be recalled from installs already in the wild.
+The owner is the one the git remote points at. package.json, Cargo.toml and tauri.conf.json used to say takkyun/mallow, resolving only through a GitHub rename redirect - tolerable for a homepage link, unacceptable for a URL compiled into shipped binaries, because that redirect disappears the day a takkyun/mallow repository exists and cannot be recalled from installs already in the wild. TASK-11.1 corrected all three (decision-11).
 
 GitHub resolves latest against published, non-prerelease releases only, so the draft-then-publish-by-hand flow in .github/workflows/release.yml is unchanged - publishing the draft is what starts a rollout.
 
