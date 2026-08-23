@@ -4,7 +4,7 @@ title: Add decision-10's link cases to the srcdoc probe
 status: In Review
 assignee: []
 created_date: '2026-08-19 00:19'
-updated_date: '2026-08-23 12:41'
+updated_date: '2026-08-23 12:53'
 labels:
   - bug
 milestone: m-2
@@ -30,7 +30,7 @@ The instrument and how to run it are in src/probe/README.md; the existing click 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A real mouse click on a '#' link and on a relative link inside the frame is measured, with the parent scroller's scrollTop and the frame's location recorded as the readings
+- [x] #1 A real mouse click on a '#' link and on a relative link inside the frame is measured, with the parent scroller's scrollTop and the frame's location recorded as the readings
 - [ ] #2 A link reached by keyboard and activated with Enter is measured separately, since that path is closed by tabindex=-1 and not by pointer-events
 - [ ] #3 An <area href> inside an <img usemap> is clicked for real, which settles whether pointer-events reaches a hit region the area does not own
 - [x] #4 A <meta http-equiv=refresh> is watched on all three WebViews, rather than on the one TASK-5.1's visual round covered
@@ -41,79 +41,77 @@ The instrument and how to run it are in src/probe/README.md; the existing click 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-The instrument is built and has had two rounds. AC #4 and #6 are ticked on three
-engines; the rest are named below with what is still owed.
+The instrument is built and has had two rounds. AC #1, #4 and #6 are ticked on
+three engines. What #2, #3 and #5 still owe is named at the end.
 
 ## Round 1 — Windows, Linux (2026-08-23)
 
-Exposed two defects in the instrument rather than answering much: the `<area>`
-and the relative link shared a destination, so a navigation could not name its
-cause, and attribution rested on hand-recorded fields that came back blank. On an
-engine that runs no parent-registered listener the click counters are 0 whatever
-happened (decision-9), so an arm in which nothing navigated and an arm in which
-nothing was clicked produce identical readings. Both were fixed before round 2:
-the area has its own destination, and the operator names the attempt before
-arming, so every reading is filed under it.
+Answered the two automatic cases on WebView2 and otherwise exposed two defects in
+the instrument: the `<area>` and the relative link shared a destination, so a
+navigation could not name its cause, and attribution rested on hand-recorded
+fields that came back blank. On an engine that runs no parent-registered listener
+the click counters are 0 whatever happened (decision-9), so an arm in which
+nothing navigated and an arm in which nothing was clicked produce identical
+readings. Both were fixed before round 2 — the area has its own destination, and
+the operator names the attempt before arming, so every reading is filed under it.
+The automatic checks were untouched by those fixes, so round 1's WebView2 answers
+stand.
 
-Round 1 did settle the two automatic cases on Windows (WebView2 151.0.0.0), and
-those checks were untouched by the fixes, so they stand.
+## Round 2 — all three engines (2026-08-23/24)
 
-## Round 2 — macOS (WKWebView), Linux (WebKitGTK Version/60.5), 2026-08-24
+Reports in `_sandbox/handoff/task-23/`: WebView2 151.0.0.0, WKWebView (macOS),
+WebKitGTK Version/60.5. All three runs valid, and every raw attempt reads
+one-to-one against its arm.
 
-Reports in `_sandbox/handoff/task-23/`. Both runs valid. Windows's round-2 report
-came back empty and is still owed.
+**AC #1 — ticked.** A `#` link and a relative link each navigate the frame to the
+app's own URL and the fixture is gone, on all three:
+`http://tauri.localhost/#deep-anchor` and `…/probe-app-origin-target.html` on
+WebView2, `tauri://localhost#deep-anchor` and `…/probe-app-origin-target.html` on
+both WebKit engines. The parent scroller's `scrollTop` did not move across any of
+those navigations, so the fragment does not scroll the parent either.
+decision-10's measured behaviour, reproduced everywhere rather than on the one
+engine it had.
 
-**Attribution worked.** All six raw attempts read one-to-one on both engines, and
-both engines answered identically:
+**AC #4 — ticked.** An app-origin `<meta http-equiv=refresh>` navigated the frame
+on none of the three.
 
-- `#` link clicked → the frame navigates to `tauri://localhost#deep-anchor` and
-  the fixture is gone. decision-10's measured behaviour, reproduced.
-- relative link clicked → `tauri://localhost/probe-app-origin-target.html`.
-- **`<area>` clicked → `tauri://localhost/probe-area-target.html`.** This is AC
-  #3's positive control, and it is what the shared destination had made
-  unreadable in round 1: an image-map region does navigate the frame when nothing
-  is applied.
-- **`#` link reached by Tab and activated with Enter → it navigates.** AC #2's
-  positive control: the keyboard path is live, so `tabindex="-1"` has something to
-  close.
-- `mailto:` and `tel:` clicked → no change on the frame side at all, on either
-  engine. Not an answer to AC #5, which asks whether the OS handler was reached —
-  that is not visible from script and the hand-recorded fields are still blank.
-- The parent-dispatched control event arrived 0 times in every arm, confirming
-  again that neither WebKit engine runs a parent-registered listener. **So
-  neutralization is the branch the app actually takes on both**, which is what
-  makes the gap below the important one.
+**AC #6 — ticked.** Resolved to `http://probe.invalid/…` on WebView2, where
+`img-src` carries `http:` and no violation was reported, and to
+`tauri://probe.invalid/…` on both WebKit engines, where it carries no `tauri:`.
+Neither WebKit engine reports a violation inside a `srcdoc` frame at all — the
+section's own control says so — so those two are inconclusive on the event and
+recorded on the resolved URL, which is the half `refTally` would have to be keyed
+on. The split the criterion predicted is what was measured.
 
-**AC #4 — ticked.** An app-origin `<meta http-equiv=refresh>` did not navigate the
-frame on WebView2, WKWebView or WebKitGTK. decision-10 had this from one engine
-and asked for three.
+**Positive controls that AC #2 and #3 lacked now exist on all three.** An
+image-map region clicked for real navigates the frame
+(`…/probe-area-target.html`), and the `#` link reached by Tab and activated with
+Enter navigates it too. So both mechanisms have something to close, and a
+neutralized arm that does nothing will not be vacuous.
 
-**AC #6 — ticked.** The reference resolved to `http://probe.invalid/…` on
-WebView2, where `img-src` carries `http:` and no violation was reported, and to
-`tauri://probe.invalid/…` on WKWebView and WebKitGTK, where `img-src` carries no
-`tauri:`. Both WebKit engines report no violation inside a `srcdoc` frame at all —
-the section's own control says so — so those two verdicts are INCONCLUSIVE on the
-event and recorded on the resolved URL, which is the half `refTally` would have to
-be keyed on. The criterion asked for the answer per platform, and the split it
-predicted is what was measured.
+**AC #5 has a machine-side answer, and it splits — but not the half the criterion
+needs.** Clicking `mailto:` or `tel:` takes WebView2's frame to a document the
+parent cannot read and the fixture is gone; on both WebKit engines nothing
+observable happens to the frame at all. Note which way round that falls: WebView2
+runs parent-registered listeners (the control event arrived 7 times, against 0 on
+each WebKit engine), so there the app's own click handler calls `preventDefault`
+and the app never sees this; the engines where nothing can `preventDefault` are
+the engines where the click does nothing to the frame. **Whether the OS handler
+was reached is still unmeasured** — it is not visible from script, and that is the
+half the notice bar's "links do nothing" claim would have to rest on.
 
 ## Still owed
 
-- **The neutralized half, on all three engines.** Rounds 1 and 2 both ended with
-  it unarmed. Every raw control it needs now exists, so arming
-  `fragment-click`, `relative-click`, `area-click` and `fragment-keyboard` under
-  the pass closes AC #2 and AC #3. `mailto:`/`tel:` are not in that set — the pass
-  does not touch a scheme the OS owns.
+- **The neutralized half, on all three engines.** Both rounds ended with it
+  unarmed. Arming `fragment-click`, `relative-click`, `area-click` and
+  `fragment-keyboard` under the pass closes AC #2 and AC #3, and every control
+  they need is now on record. `mailto:`/`tel:` are deliberately not in that set —
+  the pass does not touch a scheme the OS owns.
 - **AC #5's hand-recorded half**, on all three: whether a mail or phone handler
-  opened. The frame-side reading is "nothing happened", and nothing in script can
-  see the rest.
-- **AC #1 on Windows**, as a clean per-attempt record. Round 1 has the two
-  navigations but attributes them through the click counters rather than through
-  the arm, and round 2's Windows report is empty.
-- A third instrument change went in after round 2: the section now states which
-  attempts each mode still owes, on screen and in the report. A record that lists
-  only what was done reads as complete either way, which is how the same half went
-  missing twice.
+  opened.
+- After round 2 the section was changed a third time: it now states which attempts
+  each mode still owes, on screen and in the report. A record listing only what was
+  done reads as complete either way, which is how the same half went missing twice.
 
 Nothing here ships in an ordinary build: the probe is behind `MALLOW_PROBE=1`. The
 exception is the `neutralizeAppOriginLinks` extraction, which is
