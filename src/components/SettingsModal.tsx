@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { CustomEmojiStatus } from '../lib/custom-emoji';
 import { LANGS, useI18n } from '../lib/i18n';
+import type { CheckState } from '../lib/update-flow';
 import { CloseIcon } from './icons';
 
 interface SettingsModalProps {
@@ -11,6 +12,12 @@ interface SettingsModalProps {
   emoji: CustomEmojiStatus;
   onPickEmojiDir: () => void;
   onClearEmojiDir: () => void;
+  /** Null only for the moment before the app version has been read. */
+  runningVersion: string | null;
+  autoCheckUpdates: boolean;
+  onAutoCheckChange: (on: boolean) => void;
+  updateCheck: CheckState;
+  onCheckForUpdate: () => void;
 }
 
 export function SettingsModal({
@@ -21,6 +28,11 @@ export function SettingsModal({
   emoji,
   onPickEmojiDir,
   onClearEmojiDir,
+  runningVersion,
+  autoCheckUpdates,
+  onAutoCheckChange,
+  updateCheck,
+  onCheckForUpdate,
 }: SettingsModalProps) {
   const { t, lang, setLang } = useI18n();
 
@@ -124,6 +136,57 @@ export function SettingsModal({
                 {emoji.error ? t('customEmojiFailed') : t('customEmojiLoaded', { n: emoji.count })}
               </p>
             ) : null}
+          </section>
+
+          <section className="settings-group">
+            <h3 className="settings-group__label">{t('update')}</h3>
+            <p className="settings-path">
+              {runningVersion ? t('updateRunningVersion', { version: runningVersion }) : t('loading')}
+            </p>
+            <p className="settings-group__hint">{t('updateAutoCheck')}</p>
+            {/* biome-ignore lint/a11y/useSemanticElements: see the explorer-position group above. */}
+            <div className="seg" role="group" aria-label={t('updateAutoCheck')}>
+              <button
+                type="button"
+                className={`btn${autoCheckUpdates ? ' is-active' : ''}`}
+                aria-pressed={autoCheckUpdates}
+                onClick={() => onAutoCheckChange(true)}
+              >
+                {t('on')}
+              </button>
+              <button
+                type="button"
+                className={`btn${autoCheckUpdates ? '' : ' is-active'}`}
+                aria-pressed={!autoCheckUpdates}
+                onClick={() => onAutoCheckChange(false)}
+              >
+                {t('off')}
+              </button>
+            </div>
+            <p className="settings-group__hint">{t('updateAutoCheckHint')}</p>
+            <div className="seg">
+              <button
+                type="button"
+                className="btn"
+                disabled={updateCheck.status === 'checking'}
+                onClick={onCheckForUpdate}
+              >
+                {t('updateCheckNow')}
+              </button>
+            </div>
+            {updateCheck.status === 'idle' ? null : (
+              /* The failure text the plugin produced goes in `title` rather than on
+                 screen: offline is the normal outcome here, and the sentence is what
+                 the user acts on. The text is also logged. */
+              <p
+                className={`settings-group__hint${updateCheck.status === 'failed' ? ' is-error' : ''}`}
+                title={updateCheck.status === 'failed' ? updateCheck.message : undefined}
+              >
+                {updateCheck.status === 'checking' ? t('updateChecking') : null}
+                {updateCheck.status === 'upToDate' ? t('updateUpToDate') : null}
+                {updateCheck.status === 'failed' ? t('updateCheckFailed') : null}
+              </p>
+            )}
           </section>
         </div>
       </div>

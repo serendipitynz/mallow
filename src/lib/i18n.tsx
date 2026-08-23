@@ -26,6 +26,8 @@ const ja: Dict = {
   empty: '（空）',
   settings: '設定',
   close: '閉じる',
+  on: 'オン',
+  off: 'オフ',
   // toolbar / theme
   selectTheme: 'テーマを選択',
   'theme.light': 'ライト',
@@ -103,6 +105,27 @@ const ja: Dict = {
   clear: '解除',
   customEmojiLoaded: '{n} 個の絵文字を読み込みました。',
   customEmojiFailed: 'フォルダを読み込めませんでした。',
+  // update
+  update: '更新',
+  updateRunningVersion: '実行中: バージョン {version}',
+  updateAutoCheck: '起動時に更新を確認する',
+  updateAutoCheckHint: 'オフにしても、この画面からいつでも確認できます。確認しただけでは何も導入されません。',
+  updateCheckNow: '今すぐ確認',
+  updateChecking: '確認しています…',
+  updateUpToDate: '最新版を使用しています。',
+  updateCheckFailed: '更新を確認できませんでした。',
+  updateAvailable: '更新があります',
+  updateTargetVersion: 'バージョン {version}',
+  updateNotesLabel: 'このバージョンの変更点',
+  updateAuthNotice: '導入の途中で、システムがパスワードまたは管理者の承認を求めることがあります。',
+  updateInstallNow: '導入する',
+  updateLater: 'あとで',
+  updateProgress: '更新の進行状況',
+  updateDownloading: 'ダウンロードしています…',
+  updateInstalling: '導入しています。終わるとアプリが再起動します。',
+  updateRelaunching: '再起動しています…',
+  updateInstallFailed: '更新は導入されませんでした。',
+  updateInstallFailedHint: '取り消した場合も、通信や書き込みに失敗した場合も、この結果になります。',
 };
 
 const en: Dict = {
@@ -113,6 +136,8 @@ const en: Dict = {
   empty: '(empty)',
   settings: 'Settings',
   close: 'Close',
+  on: 'On',
+  off: 'Off',
   // toolbar / theme
   selectTheme: 'Select theme',
   'theme.light': 'Light',
@@ -193,6 +218,27 @@ const en: Dict = {
   clear: 'Clear',
   customEmojiLoaded: 'Loaded {n} emoji.',
   customEmojiFailed: 'Could not read that folder.',
+  // update
+  update: 'Updates',
+  updateRunningVersion: 'Running version {version}',
+  updateAutoCheck: 'Check for updates at launch',
+  updateAutoCheckHint: 'Turning this off leaves the check on this screen. A check on its own installs nothing.',
+  updateCheckNow: 'Check now',
+  updateChecking: 'Checking…',
+  updateUpToDate: 'You are on the latest version.',
+  updateCheckFailed: 'Could not check for updates.',
+  updateAvailable: 'An update is available',
+  updateTargetVersion: 'Version {version}',
+  updateNotesLabel: "What's in this version",
+  updateAuthNotice: 'The system may ask for a password or for administrator approval while the update is installed.',
+  updateInstallNow: 'Install',
+  updateLater: 'Later',
+  updateProgress: 'Update progress',
+  updateDownloading: 'Downloading…',
+  updateInstalling: 'Installing. The app restarts when it finishes.',
+  updateRelaunching: 'Restarting…',
+  updateInstallFailed: 'The update was not installed.',
+  updateInstallFailedHint: 'Cancelling, and a failed transfer or write, both end here.',
 };
 
 const messages: Record<Lang, Dict> = { ja, en };

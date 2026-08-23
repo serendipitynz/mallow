@@ -4,8 +4,10 @@ import { Explorer } from './components/Explorer';
 import { SettingsIcon } from './components/icons';
 import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
+import { UpdateDialog } from './components/UpdateDialog';
 import { Viewer } from './components/Viewer';
 import { useFileTree } from './hooks/useFileTree';
+import { useUpdater } from './hooks/useUpdater';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
@@ -20,6 +22,11 @@ const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 600;
 
+/** How long after the session has settled the launch update check runs. It is
+ *  gated on the restore finishing rather than on a timer alone, so this only has
+ *  to keep the request off the first document's render. */
+const LAUNCH_CHECK_DELAY_MS = 2_000;
+
 export default function App() {
   const t = useT();
   const tree = useFileTree();
@@ -29,6 +36,9 @@ export default function App() {
   const [explorerSide, setExplorerSide] = useState<'left' | 'right'>('left');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
+  const [restoreSettled, setRestoreSettled] = useState(false);
+  const updater = useUpdater();
 
   const selectedRef = useRef<FileEntry | null>(null);
   const widthRef = useRef(explorerWidth);
@@ -128,6 +138,9 @@ export default function App() {
       if (s.explorerSide) {
         setExplorerSide(s.explorerSide);
       }
+      if (s.autoCheckUpdates === false) {
+        setAutoCheckUpdates(false);
+      }
       if (s.customEmojiDir) {
         await applyEmojiDir(s.customEmojiDir);
       }
@@ -153,7 +166,13 @@ export default function App() {
           }
         }
       }
-    })().catch((e) => console.error('Session restore failed', e));
+    })()
+      .catch((e) => console.error('Session restore failed', e))
+      .finally(() => {
+        if (!disposed) {
+          setRestoreSettled(true);
+        }
+      });
     return () => {
       disposed = true;
     };
@@ -197,8 +216,39 @@ export default function App() {
     };
   }, [refresh]);
 
+  // ---- Update check ---------------------------------------------------------
+  // Deferred behind the session restore so it competes with neither first paint
+  // nor the restore's own reads. A launch check reports nothing but an available
+  // update: being offline at launch is ordinary, and an error box for it would be
+  // worse than not checking.
+  const { checkForUpdate, resetCheck } = updater;
+  const launchChecked = useRef(false);
+  useEffect(() => {
+    if (!restoreSettled || !autoCheckUpdates || launchChecked.current) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      launchChecked.current = true;
+      checkForUpdate('launch');
+    }, LAUNCH_CHECK_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [restoreSettled, autoCheckUpdates, checkForUpdate]);
+
+  const changeAutoCheckUpdates = useCallback((on: boolean) => {
+    setAutoCheckUpdates(on);
+    void saveSetting('autoCheckUpdates', on);
+  }, []);
+
   // ---- Settings (modal opened from the footer, the macOS menu, or Cmd/Ctrl+,) ---
   const openSettings = useCallback(() => setSettingsOpen(true), []);
+
+  // A result from an earlier visit would be read as this visit's answer, so the
+  // inline line starts empty each time the modal is opened.
+  useEffect(() => {
+    if (settingsOpen) {
+      resetCheck();
+    }
+  }, [settingsOpen, resetCheck]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -317,6 +367,19 @@ export default function App() {
         emoji={emoji}
         onPickEmojiDir={pickEmojiDir}
         onClearEmojiDir={clearEmojiDir}
+        runningVersion={updater.runningVersion}
+        autoCheckUpdates={autoCheckUpdates}
+        onAutoCheckChange={changeAutoCheckUpdates}
+        updateCheck={updater.check}
+        onCheckForUpdate={() => checkForUpdate('manual')}
+      />
+      {/* After the settings modal in document order, so it paints over it when a
+          manual check turns one up while the modal is still open. */}
+      <UpdateDialog
+        flow={updater.flow}
+        runningVersion={updater.runningVersion}
+        onConfirm={updater.confirmInstall}
+        onDismiss={updater.dismiss}
       />
     </div>
   );
