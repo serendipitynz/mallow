@@ -7,10 +7,10 @@
   "author": "Takuya Otani <takuya.otani@serenebach.net>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/takkyun/mallow.git"
+    "url": "git+https://github.com/serendipitynz/mallow.git"
   },
-  "homepage": "https://github.com/takkyun/mallow#readme",
-  "bugs": "https://github.com/takkyun/mallow/issues",
+  "homepage": "https://github.com/serendipitynz/mallow#readme",
+  "bugs": "https://github.com/serendipitynz/mallow/issues",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "scripts": {

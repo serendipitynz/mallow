@@ -4,8 +4,8 @@ version = "0.6.0"
 description = "A lightweight desktop Markdown / config-file viewer (Tauri v2)."
 authors = ["Takuya Otani <takuya.otani@serenebach.net>"]
 license = "MIT"
-repository = "https://github.com/takkyun/mallow"
-homepage = "https://github.com/takkyun/mallow"
+repository = "https://github.com/serendipitynz/mallow"
+homepage = "https://github.com/serendipitynz/mallow"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
