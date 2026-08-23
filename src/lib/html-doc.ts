@@ -63,11 +63,19 @@ export interface HtmlCounts {
    *  it can account for.
    *
    *  **`mailto:` and `tel:` are therefore excluded**: neither argument reaches
-   *  them, and whether a sandboxed frame hands an external-protocol scheme to
-   *  the OS is unmeasured (TASK-23 AC #5). **`<area href>` is excluded too**,
-   *  although it is neutralized alongside `<a>`: only its keyboard path is
-   *  settled, and whether `pointer-events` reaches a hit region belonging to the
-   *  `<img usemap>` is likewise unmeasured (TASK-23 AC #3). */
+   *  them. TASK-23 has since measured them — a sandboxed frame hands an
+   *  external-protocol scheme to no OS application on any of the three WebViews —
+   *  so what keeps them out is now a policy question (whether a link that does
+   *  nothing belongs in a count about links doing nothing), and the policy is
+   *  decision-10's to take rather than this contract's.
+   *
+   *  **`<area href>` is excluded for the opposite reason, and it is not
+   *  neutralized.** The pass writes both attributes on it, but only
+   *  `tabindex="-1"` takes: `pointer-events` does not reach a hit region
+   *  belonging to the `<img usemap>`, so a real click navigates the frame on all
+   *  three (TASK-23 AC #3, fixed by TASK-25). Until that lands, counting one
+   *  would put a link that does navigate into a number the notice bar uses to say
+   *  links do nothing. */
   links: number;
   /** References the CSP refuses, so the document does not get them: a remote
    *  stylesheet or script, a `data:` or protocol-relative one in the same place,
@@ -505,9 +513,11 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
   for (const anchor of doc.querySelectorAll('a[href]')) {
     // The two classes whose fate is settled: an app-origin href is neutralized
     // here (decision-10) and an `http(s)` one is refused by `frame-src`
-    // (decision-9). A `mailto:` or `tel:` href is neither, and whether the
-    // WebViews hand it to the OS from inside a sandboxed frame is unmeasured —
-    // so it stays out of a count the notice bar uses to say links do nothing.
+    // (decision-9). A `mailto:` or `tel:` href is neither — measured in TASK-23
+    // as reaching no OS application on any of the three, which makes its
+    // exclusion decision-10's policy call rather than a gap. `<area href>` is not
+    // selected at all: `pointer-events` does not neutralize its click (TASK-25),
+    // so it would be a navigating link inside a count that says links do nothing.
     const href = anchor.getAttribute('href') ?? '';
     if (navigatesAppOrigin(href) || classifyRef(href) === 'external') {
       counts.links += 1;
