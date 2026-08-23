@@ -4,7 +4,7 @@ title: Add decision-10's link cases to the srcdoc probe
 status: In Review
 assignee: []
 created_date: '2026-08-19 00:19'
-updated_date: '2026-08-23 22:18'
+updated_date: '2026-08-23 22:58'
 labels:
   - bug
 milestone: m-2
@@ -95,8 +95,15 @@ prevents it. Both are TASK-25.
 **AC #4.** An app-origin `<meta http-equiv=refresh>` navigated the frame on none
 of the three. decision-10 had this from one engine.
 
-**AC #5.** Clicked for real on all three, with the OS-side half recorded by hand.
-No mail or phone application was handed anything on any platform. The frame-side
+**AC #5.** Clicked for real on all three — the arms and their readings are in
+every report. **The OS-side half is recorded here and only here, and how it was
+obtained is part of the record:** it was observed on screen by whoever ran the
+three builds and reported in the working session on 2026-08-24, and the reports'
+own `mailto:` / `tel:` fields were left `(not recorded)`. So a reader comparing
+the two is not looking at a second, contradicting record — there is one, and it is
+this. Nothing in the frame readings could stand in for it, which is why those
+fields exist; a re-run should fill them. What was observed: no mail or phone
+application was handed anything on any platform. The frame-side
 reading splits: on WebView2 the frame goes to a document the parent cannot read
 and shows blank, on both WebKit engines nothing observable happens at all. Note
 which way that falls — WebView2 is where the app's own click handler runs and
