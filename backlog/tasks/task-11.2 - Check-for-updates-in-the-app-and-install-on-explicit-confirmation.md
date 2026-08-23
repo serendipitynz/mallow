@@ -1,10 +1,10 @@
 ---
 id: TASK-11.2
 title: Check for updates in the app and install on explicit confirmation
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-01 23:14'
-updated_date: '2026-08-19 20:48'
+updated_date: '2026-08-23 04:26'
 labels:
   - feature
 milestone: m-2
@@ -58,15 +58,15 @@ Do NOT assume a SmartScreen warning on the Windows update path. The updater down
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The app checks for an update shortly after launch without delaying first paint, and the check can be turned off in Settings with the choice persisted through lib/settings
-- [ ] #2 A manual check in SettingsModal reports all three outcomes - up to date, update available, check failed - and shows the running version
-- [ ] #3 Nothing is downloaded or installed without an explicit confirmation that shows the target version
-- [ ] #4 The update dialog is still readable when the notes field in latest.json is empty
-- [ ] #5 Download progress is visible; macOS and Linux relaunch through the process plugin, and the Windows path does not leave the UI waiting for a relaunch that never comes because the process has already exited
-- [ ] #6 The confirmation warns that the system may ask for a password or administrator approval, without naming a mechanism the plugin chooses at runtime
+- [x] #1 The app checks for an update shortly after launch without delaying first paint, and the check can be turned off in Settings with the choice persisted through lib/settings
+- [x] #2 A manual check in SettingsModal reports all three outcomes - up to date, update available, check failed - and shows the running version
+- [x] #3 Nothing is downloaded or installed without an explicit confirmation that shows the target version
+- [x] #4 The update dialog is still readable when the notes field in latest.json is empty
+- [x] #5 Download progress is visible; macOS and Linux relaunch through the process plugin, and the Windows path does not leave the UI waiting for a relaunch that never comes because the process has already exited
+- [x] #6 The confirmation warns that the system may ask for a password or administrator approval, without naming a mechanism the plugin chooses at runtime
 - [ ] #7 Refusing the authentication prompt on macOS, Windows and Linux reports a cancelled or failed install rather than a download failure, without matching on upstream error text
-- [ ] #8 Every new string is added to both the ja and en dictionaries in lib/i18n.tsx
-- [ ] #9 Launching offline produces no error UI on the automatic path
+- [x] #8 Every new string is added to both the ja and en dictionaries in lib/i18n.tsx
+- [x] #9 Launching offline produces no error UI on the automatic path
 - [ ] #10 The Windows update path has been run on a real or virtual install and the copy matches what actually happens there
-- [ ] #11 pnpm build and pnpm test pass
+- [x] #11 pnpm build and pnpm test pass
 <!-- AC:END -->
