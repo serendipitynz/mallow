@@ -103,9 +103,11 @@ install an official update. The handoff's third break case (`--no-sign`) is abou
 producing artifacts, not about receiving them; reading it as the latter is what
 put the sentence there.
 
-**Two claims are deliberately absent from the READMEs.** Nothing is said about
-whether the in-app update path on Windows shows a SmartScreen warning (TASK-11.2
-established that assuming one is wrong, and TASK-11.2's AC #10 has not been run),
-and the AppImage prompt line says the path was not measured rather than promising
-silence. SmartScreen appears only in the distribution context, as a reaction to the
-absent code signature on a first browser download.
+**The user cut the README section down, and two of the description's bullets went
+with it.** The prompts are one line naming no mechanism and no platform, and there
+is no signing subsection — so SmartScreen is not documented at all, where the
+description had placed it in the distribution context. AC #6 still holds by the
+stricter reading (nothing unobserved is claimed, and the per-platform prompt
+detail that carried the unmeasured parts is gone); AC #1's three requirements are
+each still stated. The maintainer half in AGENTS is untouched, so nothing was lost
+from the runbook.
