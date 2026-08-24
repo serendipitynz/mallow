@@ -1,10 +1,10 @@
 ---
 id: TASK-11.3
 title: Document the update channel and the signing-key runbook
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-01 23:14'
-updated_date: '2026-08-24 12:01'
+updated_date: '2026-08-24 22:25'
 labels:
   - documentation
 milestone: m-2
@@ -49,7 +49,7 @@ Keep the two language versions of each document in step; they are parallel files
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 README.md and README.ja.md gain an install and update section covering self-update, the coverage of every distributed form, and how to turn the automatic check off
-- [ ] #2 Both READMEs and the first updater-carrying release note say that users on earlier versions must update once by hand
+- [x] #2 Both READMEs and the first updater-carrying release note say that users on earlier versions must update once by hand
 - [x] #3 AGENTS.md and AGENTS.ja.md name publishing the draft as the rollout trigger, list the new CI secrets, and state both that a plain build without the private key fails and that --no-sign is the contributor escape hatch that must not be used for releases
 - [x] #4 The chosen latest.json concurrency fix and the tauri-action pin are recorded with their reasons
 - [x] #5 The key runbook states where the private key is kept and that losing or rotating it forces every user to reinstall
