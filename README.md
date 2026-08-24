@@ -8,6 +8,25 @@ tree, and view Markdown with GitHub-equivalent rendering or config files
 are rendered too, in a sandboxed frame that runs none of their script. Images,
 PDFs, and videos are shown as well, rendered by the OS-native WebView.
 
+## Install and update
+
+Download a build for your platform from the
+[latest release](https://github.com/serendipitynz/mallow/releases/latest).
+
+| Platform | Files | In-app update |
+|---|---|---|
+| macOS (Apple Silicon + Intel) | `_universal.dmg` | yes |
+| Windows (x86_64) | `x64-setup.exe`, `x64_en-US.msi` | yes |
+| Linux (x86_64 / arm64) | `.AppImage`, `.deb` | yes |
+| Linux (x86_64 / arm64) | `.rpm` | no — download-only |
+
+mallow can check for updates, and Settings turns the automatic check off. An rpm
+install is the exception: as of 0.7.0 updating does not work there (a manual check
+answers "Could not check for updates"). The check exists from 0.7.0 onward, so
+from a version earlier than that, download once by hand.
+
+Installing an update may need the system's permission.
+
 ## Features
 
 - **Two-column UI**: file tree on the left (folder hierarchy, lazy-loaded), viewer on the right.
@@ -85,6 +104,8 @@ PDFs, and videos are shown as well, rendered by the OS-native WebView.
 - **Open in editor**: detects and launches VS Code / Zed / CotEditor / mi (macOS),
   Notepad++ / Sakura (Windows), etc. Can also reveal the file in the OS file manager.
 - **Themes**: light / dark / auto + Solarized Light/Dark · Dracula · Nord.
+- **Self-update**: check for a newer version and install it. See
+  [Install and update](#install-and-update).
 - **Persisted settings / session restore**: theme, explorer width and side, the
   custom emoji folder, the last opened folder/file, and window geometry are saved
   and restored on the next launch.

@@ -1,10 +1,10 @@
 ---
 id: TASK-11.3
 title: Document the update channel and the signing-key runbook
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-01 23:14'
-updated_date: '2026-08-19 20:48'
+updated_date: '2026-08-24 12:01'
 labels:
   - documentation
 milestone: m-2
@@ -48,11 +48,66 @@ Keep the two language versions of each document in step; they are parallel files
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 README.md and README.ja.md gain an install and update section covering self-update, the coverage of every distributed form, and how to turn the automatic check off
+- [x] #1 README.md and README.ja.md gain an install and update section covering self-update, the coverage of every distributed form, and how to turn the automatic check off
 - [ ] #2 Both READMEs and the first updater-carrying release note say that users on earlier versions must update once by hand
-- [ ] #3 AGENTS.md and AGENTS.ja.md name publishing the draft as the rollout trigger, list the new CI secrets, and state both that a plain build without the private key fails and that --no-sign is the contributor escape hatch that must not be used for releases
-- [ ] #4 The chosen latest.json concurrency fix and the tauri-action pin are recorded with their reasons
-- [ ] #5 The key runbook states where the private key is kept and that losing or rotating it forces every user to reinstall
-- [ ] #6 The prompts users will meet are described without naming a mechanism the plugin chooses at runtime, and no warning is documented that was not actually observed
-- [ ] #7 The ja and en versions of each document have the same sections and make the same statements - self-update coverage per install form, the one-time manual update, the prompts to expect, and for AGENTS the rollout trigger, the secret list and the key runbook
+- [x] #3 AGENTS.md and AGENTS.ja.md name publishing the draft as the rollout trigger, list the new CI secrets, and state both that a plain build without the private key fails and that --no-sign is the contributor escape hatch that must not be used for releases
+- [x] #4 The chosen latest.json concurrency fix and the tauri-action pin are recorded with their reasons
+- [x] #5 The key runbook states where the private key is kept and that losing or rotating it forces every user to reinstall
+- [x] #6 The prompts users will meet are described without naming a mechanism the plugin chooses at runtime, and no warning is documented that was not actually observed
+- [x] #7 The ja and en versions of each document have the same sections and make the same statements - self-update coverage per install form, the one-time manual update, the prompts to expect, and for AGENTS the rollout trigger, the secret list and the key runbook
 <!-- AC:END -->
+
+## Comments
+
+Recorded on the task rather than only in the handoff notes, because the handoff is
+rewritten per milestone and these outlive that.
+
+**AC #2 is checked on the README half only, and stays unchecked until the release
+round.** Both READMEs now carry the sentence, but the release note half needs a
+published note to be written into: v0.7.0's draft notes are generated from PR
+labels, so the one-time-manual-update sentence is added by hand in the release
+session. AGENTS (both languages) now says that in the release workflow section, so
+the requirement does not live only in the handoff.
+
+**rpm is documented as download-only, and the release round has to confirm it.**
+decision-11 left `linux-x86_64-rpm` deliberately outside the platform set that
+`finalize-updater-json` asserts, because upstream support is inconsistent and the
+answer is not knowable before a real `latest.json`. Both READMEs therefore state
+plainly that the `.rpm` is download-only rather than hedging, since a hedge is what
+leaves an rpm user waiting — scoped to 0.7.0, because that is the release whose
+`latest.json` can be read before publishing. If `linux-x86_64-rpm` does appear in
+it (TASK-11.1 AC #6 reads it), the claim in both READMEs is wrong and has to be
+corrected in that session.
+
+**What an rpm install actually sees is an error, not reassurance** — corrected in
+review, and decision-11 carries an addendum for the same statement. `check()` in
+tauri-plugin-updater 2.10.1 resolves the target through `get_urls` before it
+compares versions, so a missing key raises `TargetsNotFound` rather than yielding
+the no-update outcome; at the JS boundary that is indistinguishable from a network
+failure. A manual check therefore reports "Could not check for updates" and the
+launch check reports nothing.
+
+**`latest.json`'s `notes` stays empty (decided 2026-08-25).** `releaseBody` is not
+passed to `tauri-action`. Filling it would route multi-line generated markdown
+through a job output, which cannot be verified before a real release round, and it
+leans on the same reading of `tagName` / `releaseId` that keeps the hand-published
+draft's generated notes intact — so a mistake there costs the only release
+description users read. The dialog was built to read without notes (TASK-11.2's
+AC #4), and the reasoning is now in AGENTS (both languages) so a later round does
+not re-open it as an oversight.
+
+**The exclusion of source-built copies was wrong and is gone.** A copy built from
+source carries the same endpoint and public key and the same updater client, and
+nothing checks where the running binary came from — so it does check, and it can
+install an official update. The handoff's third break case (`--no-sign`) is about
+producing artifacts, not about receiving them; reading it as the latter is what
+put the sentence there.
+
+**The user cut the README section down, and two of the description's bullets went
+with it.** The prompts are one line naming no mechanism and no platform, and there
+is no signing subsection — so SmartScreen is not documented at all, where the
+description had placed it in the distribution context. AC #6 still holds by the
+stricter reading (nothing unobserved is claimed, and the per-platform prompt
+detail that carried the unmeasured parts is gone); AC #1's three requirements are
+each still stated. The maintainer half in AGENTS is untouched, so nothing was lost
+from the runbook.
