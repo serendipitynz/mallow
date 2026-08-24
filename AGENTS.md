@@ -655,6 +655,30 @@ hold rather than as an exhaustive style guide.
   other one to `XmlView`. **Only `.plist` is sniffed** — a `.xml` starting with
   `{` is a broken XML document and gets the error banner (decision-8). So
   `file.kind` alone no longer tells you which view is on screen.
+- **A JSON syntax error's position comes from two sources, and only one of them
+  decides what is valid.** `JSON.parse` is the gate: `parseJson` calls it, and a
+  `.json` file is valid exactly when it says so, so comments and trailing commas
+  stay errors. Where it throws, `jsonErrorPosition` answers *where* — the engine's
+  own message first (`line N column M`, then `position N`), and where the message
+  names no position, a **strict jsonc scan** (`jsonc-parser` with
+  `allowTrailingComma: false, disallowComments: true`) whose value and error code
+  are both discarded and whose first offset becomes a line. **The scan cannot
+  widen the format, because the only path that reaches it begins with `JSON.parse`
+  having already thrown** — which is what makes "what counts as valid JSON is
+  unchanged" hold by construction rather than by a table of measured agreement
+  (measured anyway: 30 shapes, identical verdicts, and the identical position on
+  the 4 that both locate). **The engine's position wins where the message names
+  one**, because the banner shows that message and an arrow pointing somewhere
+  else is a mismatch the reader can see; there is nothing to disagree with once
+  the message says nothing about position. **Both sources may decline and the
+  banner then shows no position** — rarer than before this existed, so it is
+  covered by a unit test rather than left to a real file to produce. **The
+  wordings are per-engine and a test under Node sees V8's alone**, which is why
+  `jsonErrorPosition` is exported: JavaScriptCore's `JSON Parse error: …` cannot
+  be produced here. `parseJsonl` takes its column from the same helper and hands
+  `JSON.parse` the **raw line rather than a trimmed copy**, so an offset needs no
+  shifting by the indent; its old hard-coded `column: 1` was an inferred position
+  and is gone (decision-12).
 - **An XML parse failure may legitimately carry no line number.** The DOM reports
   a failure as a `<parsererror>` element and offers no API for its position; the
   position exists only inside the message text, so `xmlErrorInfo` reads it back
@@ -663,7 +687,12 @@ hold rather than as an exhaustive style guide.
   name — a valid document may contain a `parsererror` element of its own. All
   three WebViews use libxml2 today and so share one wording; that is not a
   contract, and TASK-7's cross-WebView pass is where it gets checked. Do not add
-  an XML parser dependency to obtain a position (decision-8).
+  an XML parser dependency to obtain a position (decision-8). **This is not a
+  different policy from JSON's but the same rule reaching a different answer** —
+  report a position wherever one can be obtained without adding a dependency and
+  without inferring it (decision-12). JSON has a second strict parser in the tree
+  already; XML has none, so if one ever arrives for another reason, XML is obliged
+  to start reporting a position too.
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 
