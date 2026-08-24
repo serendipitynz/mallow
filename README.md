@@ -21,7 +21,7 @@ Download a build for your platform from the
 | Linux (x86_64 / arm64) | `.rpm` | no — download-only |
 
 mallow can check for updates, and Settings turns the automatic check off. An rpm
-install is the exception: updating does not work there (a manual check always
+install is the exception: as of 0.7.0 updating does not work there (a manual check
 answers "Could not check for updates"). The check exists from 0.7.0 onward, so
 from a version earlier than that, download once by hand.
 
