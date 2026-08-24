@@ -155,6 +155,23 @@ describe('jsonErrorPosition', () => {
     expect(jsonErrorPosition('{"a":1}', 'JSON Parse error: Unexpected identifier')).toEqual({});
   });
 
+  // V8's positionless shapes quote an excerpt of the document, so a document that
+  // holds the words a coordinate is written with can put them where an unanchored
+  // pattern reads them — and then the banner points at the wrong place *and* the
+  // scan that had the right answer is never consulted.
+  it('does not read a coordinate out of the excerpt V8 quotes', () => {
+    const text = '{"a": position 3}';
+    const message = 'Unexpected token \'p\', "{"a": position 3}" is not valid JSON';
+    // 7 is where `position` starts, which is the fault. Offset 3 would be `a`.
+    expect(jsonErrorPosition(text, message)).toEqual({ line: 1, column: 7 });
+  });
+
+  it('does not read a line and column out of the excerpt either', () => {
+    const text = '{"a": "at line 9 column 9", "b": oops}';
+    const message = 'Unexpected token \'o\', ..."at line 9 column 9", "b": oops}" is not valid JSON';
+    expect(jsonErrorPosition(text, message)).toEqual({ line: 1, column: 34 });
+  });
+
   // The banner shows the engine's message, so a position from elsewhere could
   // point away from what that message describes. Where the message names one it
   // wins, even against a scan that would answer differently.
@@ -162,6 +179,23 @@ describe('jsonErrorPosition', () => {
     const text = '{\n  "a": 1,\n  "b": nope\n}';
     const message = 'Unexpected token in JSON at position 0';
     expect(jsonErrorPosition(text, message)).toEqual({ line: 1, column: 1 });
+  });
+});
+
+// The shape that made a value-building scan expensive: the fault is at the start,
+// so the recovered value would be the whole rest of the document. This pins the
+// offset, not the allocation — nothing observable from the return value
+// distinguishes a building scan from a non-building one, so what holds that is the
+// reason written beside `strictJsonErrorOffset`.
+describe('a large malformed document whose fault is at its start', () => {
+  it('is still located', () => {
+    const text = `[oops,${'1,'.repeat(600_000)}1]`;
+    const out = parseConfig(text, 'json');
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.error.line).toBe(1);
+      expect(out.error.column).toBe(2);
+    }
   });
 });
 
