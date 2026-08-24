@@ -54,13 +54,13 @@ export interface HtmlCounts {
   textChars: number;
   /** `<script>` elements, all of them inert (sandbox, and mostly the CSP too). */
   scripts: number;
-  /** `<a href>` elements that do nothing wherever the frame runs no
-   *  parent-registered listener — **the two classes whose fate is settled, and
-   *  only those**: an app-origin href, which is neutralized there (decision-10,
-   *  and a bare fragment is one of them, so the document's own table of contents
-   *  is counted), and an `http(s)` one, which `frame-src` refuses (decision-9).
-   *  Widening it past those would make the notice bar's number larger than what
-   *  it can account for.
+  /** `<a href>` and `<area href>` elements that do nothing wherever the frame
+   *  runs no parent-registered listener — **the two classes whose fate is
+   *  settled, and only those**: an app-origin href, which no longer reaches a
+   *  destination there (decision-10, and a bare fragment is one of them, so the
+   *  document's own table of contents is counted), and an `http(s)` one, which
+   *  `frame-src` refuses (decision-9). Widening it past those would make the
+   *  notice bar's number larger than what it can account for.
    *
    *  **`mailto:` and `tel:` are therefore excluded**: neither argument reaches
    *  them. TASK-23 has since measured them — a sandboxed frame hands an
@@ -69,13 +69,14 @@ export interface HtmlCounts {
    *  nothing belongs in a count about links doing nothing), and the policy is
    *  decision-10's to take rather than this contract's.
    *
-   *  **`<area href>` is excluded for the opposite reason, and it is not
-   *  neutralized.** The pass writes both attributes on it, but only
-   *  `tabindex="-1"` takes: `pointer-events` does not reach a hit region
-   *  belonging to the `<img usemap>`, so a real click navigates the frame on all
-   *  three (TASK-23 AC #3, fixed by TASK-25). Until that lands, counting one
-   *  would put a link that does navigate into a number the notice bar uses to say
-   *  links do nothing. */
+   *  **`<area href>` is in the count as of TASK-25, and by a different
+   *  settlement than the `<a>` beside it.** Its app-origin href is removed here
+   *  rather than neutralized in the frame — see
+   *  {@link neutralizeAppOriginAreas} — so the region navigates nowhere on any
+   *  engine, which is what makes it countable; before that it navigated on all
+   *  three (TASK-23 AC #3). An `http(s)` one is settled by the argument the
+   *  `<a>` case rests on, since `frame-src` answers for the destination and not
+   *  for the element that asked. */
   links: number;
   /** References the CSP refuses, so the document does not get them: a remote
    *  stylesheet or script, a `data:` or protocol-relative one in the same place,
@@ -290,7 +291,7 @@ export function navigatesAppOrigin(value: string): boolean {
 }
 
 /**
- * Make every app-origin link in `root` visible but inert, by suppressing
+ * Make every app-origin `<a href>` in `root` visible but inert, by suppressing
  * hit-testing on it and taking it out of the tab order.
  *
  * For the branch where the frame runs no parent-registered listener, so nothing
@@ -306,20 +307,52 @@ export function navigatesAppOrigin(value: string): boolean {
  * document set changes an order that only reaches a link which no longer does
  * anything.
  *
- * **For an `<area>` only the keyboard half works, and that is measured rather
- * than expected.** It has no box of its own — the hit region belongs to the
- * `<img usemap>` — and TASK-23 clicked one for real on all three WebViews with
- * this pass applied: `tabindex="-1"` holds, `pointer-events: none` does not, and
- * the frame navigates to the app's own URL exactly as an un-neutralized link
- * would. So this function does not make an image map inert, and a caller must not
- * read it as doing so. TASK-25 owns the fix; decision-10 had listed the question
- * as a probe case rather than claiming an answer, and this is the answer.
+ * **`<area href>` is not selected here, and that is measured rather than
+ * assumed.** decision-10 wrote both attributes on it too; TASK-23 clicked one
+ * for real on all three WebViews with this pass applied and the frame navigated
+ * anyway, because the hit region belongs to the `<img usemap>` and the area's own
+ * `pointer-events` is never consulted for it. {@link neutralizeAppOriginAreas}
+ * settles that case instead, before this branch is chosen — so leaving
+ * `area[href]` in this selector would be a branch nothing reaches carrying a
+ * claim that was false while it did.
  */
 export function neutralizeAppOriginLinks(root: ParentNode): void {
-  for (const link of root.querySelectorAll<HTMLElement>('a[href], area[href]')) {
-    if (navigatesAppOrigin(link.getAttribute('href') ?? '')) {
-      link.style.pointerEvents = 'none';
-      link.setAttribute('tabindex', '-1');
+  for (const anchor of root.querySelectorAll<HTMLElement>('a[href]')) {
+    if (navigatesAppOrigin(anchor.getAttribute('href') ?? '')) {
+      anchor.style.pointerEvents = 'none';
+      anchor.setAttribute('tabindex', '-1');
+    }
+  }
+}
+
+/**
+ * Stop every app-origin `<area href>` in `root` being a link at all, by removing
+ * the `href` and taking it out of the tab order.
+ *
+ * **Applied before the branch on parent-registered listeners, not inside one**
+ * (TASK-25). An image map reaches the same navigation by a different route on
+ * each: where no listener runs, `pointer-events: none` does not close it, and
+ * where one does, `HtmlView`'s handler matches `a[href]`, which an `<area>` is
+ * not. One pass ahead of the branch is what leaves both with the same document,
+ * and it is also what lets the probe's neutralized arm measure the shipped
+ * mechanism on every engine rather than the one branch that engine happens to
+ * take.
+ *
+ * **Removing the `href` costs here what decision-10 refused to pay for an
+ * `<a>`.** There it would have cost the document its link styling, since `:link`
+ * stops matching. An `<area>` has no box of its own, so nothing about it is
+ * styled and nothing is lost; and with no `href` it is not a hyperlink, so the
+ * click that used to activate it falls through to the image beneath.
+ *
+ * `tabindex="-1"` stays even though an `href`-less area is not tabbable on its
+ * own: it is what closed the keyboard path on the engines where it was measured
+ * (TASK-23), and this is a removal of one mechanism, not of both.
+ */
+export function neutralizeAppOriginAreas(root: ParentNode): void {
+  for (const area of root.querySelectorAll<HTMLElement>('area[href]')) {
+    if (navigatesAppOrigin(area.getAttribute('href') ?? '')) {
+      area.removeAttribute('href');
+      area.setAttribute('tabindex', '-1');
     }
   }
 }
@@ -510,19 +543,22 @@ export function transformHtmlDocument(doc: Document, resolver: RefResolver): Htm
     base.remove();
   }
 
-  for (const anchor of doc.querySelectorAll('a[href]')) {
-    // The two classes whose fate is settled: an app-origin href is neutralized
-    // here (decision-10) and an `http(s)` one is refused by `frame-src`
-    // (decision-9). A `mailto:` or `tel:` href is neither — measured in TASK-23
-    // as reaching no OS application on any of the three, which makes its
-    // exclusion decision-10's policy call rather than a gap. `<area href>` is not
-    // selected at all: `pointer-events` does not neutralize its click (TASK-25),
-    // so it would be a navigating link inside a count that says links do nothing.
-    const href = anchor.getAttribute('href') ?? '';
+  for (const link of doc.querySelectorAll('a[href], area[href]')) {
+    // The two classes whose fate is settled: an app-origin href reaches nowhere
+    // (decision-10 for an `<a>`, the pass below for an `<area>`) and an `http(s)`
+    // one is refused by `frame-src` (decision-9). A `mailto:` or `tel:` href is
+    // neither — measured in TASK-23 as reaching no OS application on any of the
+    // three, which makes its exclusion decision-10's policy call rather than a
+    // gap.
+    const href = link.getAttribute('href') ?? '';
     if (navigatesAppOrigin(href) || classifyRef(href) === 'external') {
       counts.links += 1;
     }
   }
+  // After the count, because it takes the href the count reads. Here rather than
+  // in `HtmlView` so that both branches of decision-9's listener test get the
+  // same document — see `neutralizeAppOriginAreas`.
+  neutralizeAppOriginAreas(doc);
 
   for (const { selector, attributes } of REWRITTEN) {
     for (const element of doc.querySelectorAll(selector)) {

@@ -398,6 +398,11 @@ export function HtmlView({
     const listeners = runsParentListeners(frameDocument);
     setListenersRun(listeners);
     const onClick = (event: MouseEvent) => {
+      // `a[href]` and not `area[href]`: an image map's app-origin href is gone
+      // before this document was built (`neutralizeAppOriginAreas`, TASK-25), so
+      // there is nothing left here for a wider selector to cancel — while adding
+      // one would newly hand an image map's `http(s)` region to the OS browser on
+      // this engine alone, which is a capability rather than a fix.
       const link = (event.target as Element | null)?.closest?.('a[href]');
       if (!link) {
         return;
