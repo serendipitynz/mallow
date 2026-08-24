@@ -4,7 +4,7 @@ title: Stop an image map navigating the rendered frame away
 status: In Review
 assignee: []
 created_date: '2026-08-23 22:17'
-updated_date: '2026-08-24 06:38'
+updated_date: '2026-08-24 06:53'
 labels:
   - bug
 milestone: m-2
@@ -26,6 +26,20 @@ Where listeners do run (WebView2), the pass is never applied - and `HtmlView`'s 
 decision-10's reason for keeping the `href` does not carry over to `<area>`, which is worth saying because it is what makes the two halves different rather than one problem in two places: `<a>` keeps its `href` so `:link` still matches and the document keeps its own styling, and an `<area>` has no rendered box at all, so nothing about it is styled and nothing is lost by removing it. The listener branch is separately a one-selector question.
 
 Rare in what this view opens, which is why decision-10 made it a probe case rather than a blocker; it is now measured rather than expected.
+
+**Correction (2026-08-24, after the fix was measured on all three WebViews).**
+The sentence above explains the failed `pointer-events` by the region belonging
+to the `<img usemap>` rather than to the area. **That explanation is not what was
+measured and should not be carried forward** — it was the reading of the day,
+inherited from decision-10. What the runs establish is narrower: `pointer-events:
+none` on an `<area>` does not stop the click, removing the `href` leaves nothing
+for the click to activate and the frame moved nowhere on any of the three, and on
+WebView2 — the one engine where a parent-registered listener can observe a target
+at all — the click still reached the `<area>` after the pass (`area-link (not a
+link)`, twice, against no navigation). So the region is not something the area
+stops receiving; it is something whose click no longer activates anything. The
+readings are in the Implementation Notes, and TASK-23 carries the same superseded
+explanation in its own text.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria

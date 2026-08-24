@@ -4,7 +4,7 @@ title: Add decision-10's link cases to the srcdoc probe
 status: Done
 assignee: []
 created_date: '2026-08-19 00:19'
-updated_date: '2026-08-23 23:22'
+updated_date: '2026-08-24 06:53'
 labels:
   - bug
 milestone: m-2
@@ -129,3 +129,12 @@ behaviour-identical and covered by `pnpm build` / `pnpm lint` / `pnpm test`. The
 defect AC #3 found is measured here and fixed in TASK-25, so that fix arrives with
 its own before-and-after rather than inside the task that built the instrument.
 <!-- SECTION:NOTES:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-08-24 06:53
+---
+Correction pointer (2026-08-24, from TASK-25's run). This task's text and AC #3 explain the <area> click by the hit region belonging to the <img usemap> rather than to the area. That explanation is superseded: it was the reading inherited from decision-10, and the runs after TASK-25's fix do not support it. What holds is narrower — pointer-events: none on an <area> does not stop the click; removing the href leaves the click nothing to activate and the frame moved nowhere on any of the three WebViews; and on WebView2, the one engine where a parent-registered listener can observe a target, the click still reached the <area> after the pass (area-link (not a link), twice, against no navigation). The measurement this task made stands as recorded — the region navigated whether neutralized or not. Only the mechanism it was explained by does not. See TASK-25's Implementation Notes and decision-10's amendment.
+---
+<!-- COMMENTS:END -->
