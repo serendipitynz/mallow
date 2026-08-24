@@ -8,6 +8,70 @@ tree, and view Markdown with GitHub-equivalent rendering or config files
 are rendered too, in a sandboxed frame that runs none of their script. Images,
 PDFs, and videos are shown as well, rendered by the OS-native WebView.
 
+## Install and update
+
+Download a build for your platform from the
+[latest release](https://github.com/serendipitynz/mallow/releases/latest).
+
+| Platform | Files | In-app update |
+|---|---|---|
+| macOS (Apple Silicon + Intel) | `_universal.dmg` | yes |
+| Windows (x86_64) | `x64-setup.exe`, `x64_en-US.msi` | yes |
+| Linux (x86_64 / arm64) | `.AppImage`, `.deb` | yes |
+| Linux (x86_64 / arm64) | `.rpm` | no — download-only |
+
+Shortly after launch mallow asks GitHub Releases whether a newer version exists,
+and says something only when one does. **Nothing is downloaded or installed
+before you confirm it**, on a dialog naming the version that would be installed.
+Settings → **Updates** turns that check at launch off; the same screen shows
+which version you are running and keeps a **Check now** button either way.
+
+**The `.rpm` is download-only.** It has no entry on the update channel, so an rpm
+install is told it is up to date rather than being replaced with bytes from a
+different package format. Update it by downloading the newer `.rpm` — no in-app
+update will arrive, however long you wait.
+
+**A version earlier than 0.7.0 receives nothing.** Those builds carry no updater
+at all, so nothing checks and nothing is reported. Download 0.7.0 or newer once
+by hand and every update after that arrives in the app.
+
+**A copy you built from source is outside this as well**: what self-updates are
+the files attached to a release.
+
+### What the update asks for
+
+Installing needs privileges the app does not hold on its own, so expect the
+system to ask:
+
+- **Windows** — expect Windows to ask for permission to make changes before the
+  installer runs.
+- **Linux (`.deb`)** — expect the system to ask for your password, because
+  installing a package needs root. Which dialog it uses is chosen by the system
+  at that moment, not by mallow.
+- **Linux (`.AppImage`)** — replaced in place rather than installed, so root is
+  not involved. Whether anything is asked has not been measured here.
+- **macOS** — expect nothing, unless the installed `mallow.app` is not writable
+  by you (one installed for all users, say), in which case macOS asks for a
+  password.
+
+Declining is not an error — the version you are running is left as it is. mallow
+cannot tell a refusal apart from a failed transfer or a failed write, so it says
+only that the update was not installed.
+
+### Signing
+
+Two different signatures are involved, and they cover different things.
+
+- **Code signature.** The macOS build is signed with a Developer ID certificate
+  and notarized by Apple, so it opens without a Gatekeeper warning. **The Windows
+  and Linux bundles are not code-signed**, which is what Windows reacts to when
+  it warns about an unrecognized publisher on a first download from a browser.
+- **Update signature.** Every updater artifact is signed with mallow's own key,
+  whichever platform it is for, and a client installs nothing whose signature it
+  cannot verify against the public key built into it. This is separate from code
+  signing: a Windows bundle carrying no code signature still receives signed
+  updates.
+
 ## Features
 
 - **Two-column UI**: file tree on the left (folder hierarchy, lazy-loaded), viewer on the right.
@@ -85,6 +149,9 @@ PDFs, and videos are shown as well, rendered by the OS-native WebView.
 - **Open in editor**: detects and launches VS Code / Zed / CotEditor / mi (macOS),
   Notepad++ / Sakura (Windows), etc. Can also reveal the file in the OS file manager.
 - **Themes**: light / dark / auto + Solarized Light/Dark · Dracula · Nord.
+- **Self-update**: mallow checks GitHub Releases for a newer version and installs
+  it after you confirm, on the distributed forms that carry an update entry — see
+  [Install and update](#install-and-update).
 - **Persisted settings / session restore**: theme, explorer width and side, the
   custom emoji folder, the last opened folder/file, and window geometry are saved
   and restored on the next launch.
