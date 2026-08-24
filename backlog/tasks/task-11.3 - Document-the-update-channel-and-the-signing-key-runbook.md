@@ -74,9 +74,18 @@ decision-11 left `linux-x86_64-rpm` deliberately outside the platform set that
 `finalize-updater-json` asserts, because upstream support is inconsistent and the
 answer is not knowable before a real `latest.json`. Both READMEs therefore state
 plainly that the `.rpm` is download-only rather than hedging, since a hedge is what
-leaves an rpm user waiting. If `linux-x86_64-rpm` does appear in v0.7.0's
-`latest.json` (TASK-11.1 AC #6 reads it), the claim in both READMEs is wrong and
-has to be corrected in that session.
+leaves an rpm user waiting — scoped to 0.7.0, because that is the release whose
+`latest.json` can be read before publishing. If `linux-x86_64-rpm` does appear in
+it (TASK-11.1 AC #6 reads it), the claim in both READMEs is wrong and has to be
+corrected in that session.
+
+**What an rpm install actually sees is an error, not reassurance** — corrected in
+review, and decision-11 carries an addendum for the same statement. `check()` in
+tauri-plugin-updater 2.10.1 resolves the target through `get_urls` before it
+compares versions, so a missing key raises `TargetsNotFound` rather than yielding
+the no-update outcome; at the JS boundary that is indistinguishable from a network
+failure. A manual check therefore reports "Could not check for updates" and the
+launch check reports nothing.
 
 **`latest.json`'s `notes` stays empty (decided 2026-08-25).** `releaseBody` is not
 passed to `tauri-action`. Filling it would route multi-line generated markdown
@@ -86,6 +95,13 @@ draft's generated notes intact — so a mistake there costs the only release
 description users read. The dialog was built to read without notes (TASK-11.2's
 AC #4), and the reasoning is now in AGENTS (both languages) so a later round does
 not re-open it as an oversight.
+
+**The exclusion of source-built copies was wrong and is gone.** A copy built from
+source carries the same endpoint and public key and the same updater client, and
+nothing checks where the running binary came from — so it does check, and it can
+install an official update. The handoff's third break case (`--no-sign`) is about
+producing artifacts, not about receiving them; reading it as the latter is what
+put the sentence there.
 
 **Two claims are deliberately absent from the READMEs.** Nothing is said about
 whether the in-app update path on Windows shows a SmartScreen warning (TASK-11.2

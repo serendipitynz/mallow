@@ -149,3 +149,26 @@ question again:
 - The client-side half of the Linux decision is untested until an install with
   no matching entry exists. Nothing here was measured against a published
   release; that is what the v0.7.0 round closes.
+
+## Addendum (2026-08-25, TASK-11.3)
+
+The body above is left as it stands; this corrects one statement in it.
+
+**"finds nothing and reports no update available" is wrong about the second
+half.** An install with no matching target key does not reach the no-update
+outcome — it reaches an error. In tauri-plugin-updater 2.10.1, `check()` calls
+`get_urls` *before* comparing versions, and `get_urls` tries
+`{os}-{arch}-{installer}` then the bare `{os}-{arch}` and returns
+`Error::TargetsNotFound` when neither is present. So the failure the plugin
+raises is indistinguishable, at the JS boundary, from a network failure: mallow's
+manual check reports "Could not check for updates", and the check at launch
+reports nothing at all (it surfaces a failure only for a manual trigger). Read
+from the pinned crate's source rather than observed against a published release,
+which is why it is recorded here instead of in the body.
+
+**What this does not change.** The reason for deleting the bare Linux keys stands
+entirely: the cross-format overwrite is still prevented, and prevented in the
+same way. What changes is only what the user is told — an error rather than
+reassurance — so the READMEs describe it that way (TASK-11.3), and "reports no
+update rather than breaking itself" in Consequences should be read as "does not
+break itself", not as a description of the message.

@@ -26,25 +26,26 @@ before you confirm it**, on a dialog naming the version that would be installed.
 Settings → **Updates** turns that check at launch off; the same screen shows
 which version you are running and keeps a **Check now** button either way.
 
-**The `.rpm` is download-only.** It has no entry on the update channel, so an rpm
-install is told it is up to date rather than being replaced with bytes from a
-different package format. Update it by downloading the newer `.rpm` — no in-app
-update will arrive, however long you wait.
+**The `.rpm` is download-only as of 0.7.0.** It has no entry on the update
+channel, and no fallback entry either, so there is nothing for an rpm install to
+resolve: **Check now** reports that it could not check for updates, and the check
+at launch says nothing at all. That is the shape of the protection — an rpm
+install is never replaced with bytes from a different package format — but it does
+mean no in-app update will arrive, however long you wait. Update it by downloading
+the newer `.rpm`.
 
 **A version earlier than 0.7.0 receives nothing.** Those builds carry no updater
 at all, so nothing checks and nothing is reported. Download 0.7.0 or newer once
 by hand and every update after that arrives in the app.
-
-**A copy you built from source is outside this as well**: what self-updates are
-the files attached to a release.
 
 ### What the update asks for
 
 Installing needs privileges the app does not hold on its own, so expect the
 system to ask:
 
-- **Windows** — expect Windows to ask for permission to make changes before the
-  installer runs.
+- **Windows** — Windows may ask for permission to make changes before the
+  installer runs. Which of the two installers you have decides whether it does,
+  and that has not been measured here.
 - **Linux (`.deb`)** — expect the system to ask for your password, because
   installing a package needs root. Which dialog it uses is chosen by the system
   at that moment, not by mallow.
