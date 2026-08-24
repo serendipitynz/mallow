@@ -885,10 +885,13 @@ fallback a Linux install with no entry of its own would follow — that fallback
 is the AppImage, so a deb install would overwrite itself with AppImage bytes.
 That job also fails when one of the expected platforms or any signature is
 missing, so a lost update is a red job rather than a silently incomplete
-release, and its log is where the open question about `linux-x86_64-rpm` gets
-answered. **Both Linux architectures are in that expected set**, because the
+release. **Both Linux architectures are in that expected set**, because the
 arm64 job is a fourth writer and the bare key just deleted was its only
-fallback. `tauri-action` is pinned to `action-v0.6.2` rather than floating on
+fallback. **So is rpm, as of v0.7.0** — decision-11 held it out until a real
+release showed whether it appears, that release carried
+`linux-x86_64-rpm` and `linux-aarch64-rpm`, and README now tells rpm users an
+update reaches them, so an upstream change that stops signing `.rpm` has to turn
+a release red rather than strand them. `tauri-action` is pinned to `action-v0.6.2` rather than floating on
 `@v0` because the shape of `latest.json` comes from it; `action-v1.0.0` renames
 inputs and Actions only *warns* about inputs it does not know, so a
 half-migrated config would restore the lost update silently.

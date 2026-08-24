@@ -172,3 +172,33 @@ same way. What changes is only what the user is told — an error rather than
 reassurance — so the READMEs describe it that way (TASK-11.3), and "reports no
 update rather than breaking itself" in Consequences should be read as "does not
 break itself", not as a description of the message.
+
+## Addendum (2026-08-25, the v0.7.0 release round)
+
+The body above is left as it stands; this records the answer it deferred, which
+falsifies the first Consequence.
+
+**`linux-x86_64-rpm` appears, and so does `linux-aarch64-rpm`.** The v0.7.0
+draft's `latest.json` carries both, each signed and each with its url tag-pinned
+to its own `.rpm`, and a `.rpm.sig` was uploaded beside every `.rpm`. The build
+logs show the bundle-type marker patched for `rpm` on both Linux jobs, alongside
+`deb` and `appimage`. So an rpm install resolves a target key of its own: it
+neither follows the bare-key fallback this decision deletes nor reaches
+`TargetsNotFound`. The READMEs shipped saying the opposite, which is what this
+decision asked for while the answer did not exist, and they were corrected in the
+same round.
+
+**Measured: the entry. Not measured: the install.** What the artifact shows is
+that a client resolves `linux-{arch}-rpm`. That installing the `.rpm` then
+succeeds on a real rpm system was not tested here — and neither was deb,
+AppImage, msi or nsis, so rpm is documented on the same footing as the rest
+rather than on a stronger claim than the evidence carries.
+
+**rpm joins `finalize-updater-json`'s required key set.** The body left it out
+because a required key that never appears fails every release; that reason is
+spent now that it appears. The reason to add it is the one the body already
+gives for naming platforms at all — the READMEs now tell rpm users an update
+reaches them, so an upstream change that drops rpm's signature has to turn a
+release red rather than silently strand them. This is the one place the shape of
+that check disagrees with what the body wrote, and it disagrees because the
+measurement the body asked for came back.
