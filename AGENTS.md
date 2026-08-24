@@ -275,9 +275,13 @@ hold rather than as an exhaustive style guide.
   removes is `<iframe>` / `<frame>` — a nested frame pointed at `asset:` would
   load a document carrying no CSP of its own, so its subresource loads would sit
   outside both the CSP and the notice-bar count — and `<base>`, which would
-  redirect every reference the rewriting resolves. Both removals are for
-  rendering and network reasons, not sanitization; `<object>` / `<embed>` need
-  none, since `object-src 'none'` already covers them. **Network exposure
+  redirect every reference the rewriting resolves. It also drops one attribute,
+  the app-origin `href` on an `<area>` (TASK-25), which is a navigation fix and
+  not a containment one — a mapped region that follows it lands on the app shell
+  inside a sandboxed frame, which is a blank page rather than an escape. All
+  three removals are for rendering, navigation and network reasons, not
+  sanitization; `<object>` / `<embed>` need none, since `object-src 'none'`
+  already covers them. **Network exposure
   remains and is accepted**: remote images load because `img-src` carries
   `https:`, and so does `url(https://…)` inside a `<style>` block or a `style`
   attribute. CSS is a side channel sandboxing does not close and DOMPurify would
@@ -473,12 +477,38 @@ hold rather than as an exhaustive style guide.
   by arming the fixture twice, once raw and once with this pass applied, and a
   copy of the mechanism there would measure the copy rather than what ships.
   **What that measured (TASK-23, all three WebViews): the `<a>` click and the
-  keyboard path are both closed, and an `<area>` is not.** `pointer-events` does
-  not reach a hit region the area does not own, so an image map still navigates
-  the frame — and on WebView2, where listeners do run and the pass is never
+  keyboard path are both closed, and an `<area>` was not.** `pointer-events: none`
+  on the area does not stop its click — measured, and **do not explain it by the
+  area not owning the region**, since the click event does reach the area on
+  WebView2 (below) — so an image map still navigated the frame — and on WebView2, where listeners do run and the pass is never
   applied, `HtmlView`'s handler matches `closest('a[href]')`, which an `<area>` is
-  not. Two routes to the same failure, neither covered by decision-10's halves;
-  TASK-25 owns it.
+  not. Two routes to the same failure, neither covered by decision-10's halves.
+  **TASK-25 closed both with one pass placed before the branch, and that
+  placement is the point rather than an implementation detail.**
+  `neutralizeAppOriginAreas` runs inside the transform, so the `href` is gone
+  before the frame ever loads and neither route has anything left to travel: no
+  hyperlink for a region's click to activate, and no `area[href]` for a handler's
+  selector to skip. **Not "no click"** — the click is still delivered (below);
+  what is gone is the link it used to carry. **What goes is the
+  activation, not the click, and that is measured** — on WebView2 the neutralized
+  region still hit-tests and the counter recorded it as `area-link (not a link)`
+  against no navigation, so do not write that the click falls through to the
+  image. Re-measured on all three WebViews after the fix (2026-08-24,
+  `_sandbox/handoff/task-25/task-25-{mac,win,linux}.md`): armed raw the region
+  navigated the frame on each, armed with the pass the frame stayed on
+  `about:srcdoc` with no `area[href]` left. It removes the `href`
+  rather than suppressing hit-testing because **decision-10's reason for keeping
+  one does not carry over** — an `<a>` keeps its `href` so `:link` still matches
+  and the document keeps its styling, while an `<area>` has no box at all, so
+  nothing about it is styled and nothing is lost. `tabindex="-1"` is still
+  written: it is what closed the keyboard path where that was measured, and this
+  replaces one mechanism, not both. **`neutralizeAppOriginLinks` therefore
+  selects `a[href]` only**, and `HtmlView`'s handler still matches `a[href]`
+  only — widening either would be a branch nothing reaches, or, on WebView2
+  alone, would newly hand an image map's `http(s)` region to the OS browser,
+  which is a capability and not this fix. The probe applies **both** passes in
+  its neutralized arm for the same reason it applies the app's own function at
+  all: applying one would arm a document the app never shows.
 - **Everything the parent puts inside the frame is lost on every `srcdoc` swap,
   and the click handler is a capability rather than a given.** `contentDocument`
   is `about:blank` until the iframe **element**'s `load` (which does fire on all
@@ -536,17 +566,26 @@ hold rather than as an exhaustive style guide.
   unable to be right about either.**
 - **`counts.links` carries the two classes whose fate is settled and nothing
   else**, because the notice bar's number has to be one it can account for: an
-  app-origin href, neutralized where no parent listener runs (decision-10 — a bare
-  fragment is one, so the document's own table of contents is in the count), and
-  an `http(s)` one, refused by `frame-src` (decision-9). **`mailto:` / `tel:` and
-  `area[href]` are excluded, and TASK-23 has now measured both — so what is
-  pending is no longer the same thing in each case.** An external-protocol scheme
-  is handed to no OS application on any of the three, so that exclusion has become
-  a policy question (whether to count a link that does nothing) rather than a gap,
-  and the policy is decision-10's to take. An `area[href]` went the other way: it
-  navigates the frame on all three whether the pass is applied or not, so it is
-  not in the neutralized class at all and counting it as one would be wrong until
-  TASK-25 lands. **The same silence is deliberate at `imgSrc`** for a
+  app-origin href, which reaches no destination — neutralized on an `<a>` where no
+  parent listener runs (decision-10 — a bare fragment is one, so the document's
+  own table of contents is in the count) and removed outright on an `<area>`
+  (TASK-25) — and an `http(s)` one, refused by `frame-src` (decision-9).
+  **`mailto:` / `tel:` stay excluded, and that exclusion is now a policy question
+  rather than a gap**: TASK-23 measured that an external-protocol scheme is handed
+  to no OS application on any of the three, so what keeps it out is whether to
+  count a link that does nothing, and the policy is decision-10's to take.
+  **`area[href]` is in the count as of TASK-25, and it is the same two classes
+  rather than a third** — its app-origin half is settled ahead of the listener
+  branch, so unlike the earlier reading it is not a navigating link inside a
+  number that says links do nothing, and its `http(s)` half rides the `<a>`
+  argument, since `frame-src` answers for the destination and not for the element
+  that asked — **and that half is now measured rather than carried**: an
+  `<area href="https://…">` clicked in a built app moved the frame on none of the
+  three platforms (2026-08-24, `_sandbox/samples/rendered-imagemap.html`).
+  **What names the CSP as the cause is the macOS leg alone**, where the same
+  region did move the frame under `pnpm tauri dev`, which has no CSP at all; the
+  other two are the outcome without that contrast. **The same
+  silence is deliberate at `imgSrc`** for a
   protocol-relative reference, which the parent's base URL makes `tauri://host/x`
   on WebKit and `http://host/x` on WebView2 — one refused, one carried, measured
   as such on all three in TASK-23 — so a count would have to be wrong on a

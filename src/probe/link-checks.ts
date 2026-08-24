@@ -11,10 +11,11 @@
  *  Each case is here rather than folded into one because each is closed by a
  *  different mechanism and can therefore fail on its own: a click by
  *  `pointer-events: none`, keyboard activation by `tabindex="-1"`, an `<area>`'s
- *  region by neither — measured, and it navigates on all three, which is TASK-25
- *  — a meta refresh by the sandboxed automatic features flag rather than by
- *  anything decision-10 put there, and the two external-protocol schemes by
- *  nothing at all.
+ *  region by neither of those — it navigated on all three, which was TASK-25, and
+ *  what closes it now is the `href` being removed before the branch
+ *  (`neutralizeAppOriginAreas`) — a meta refresh by the sandboxed automatic
+ *  features flag rather than by anything decision-10 put there, and the two
+ *  external-protocol schemes by nothing at all.
  *
  *  This section stands apart from the TASK-7 run above it for the same reason
  *  TASK-5.1's does: its `#N` are TASK-23's acceptance criteria, and one table
@@ -25,7 +26,7 @@
  *  `stillOnFixture`'s null handling is the difference between "the document is
  *  gone" and "nothing navigated". */
 
-import { navigatesAppOrigin, neutralizeAppOriginLinks } from '../lib/html-doc';
+import { navigatesAppOrigin, neutralizeAppOriginAreas, neutralizeAppOriginLinks } from '../lib/html-doc';
 import {
   APP_ORIGIN_TARGET,
   appOriginLinkFixture,
@@ -307,10 +308,30 @@ export interface LinkProbeState {
    *  from them because the reading cap can drop an arm's marker, and a lost
    *  marker would report an attempt as never made. */
   armedAttempts: LinkAttempt[];
-  neutralizedHrefs: string[];
+  /** The app-origin hrefs on this fixture, read **before** the mode is applied
+   *  and over `a[href], area[href]` alike. Named for what it is rather than for
+   *  what happens next: decision-10's "neutralized" is one state a link can end
+   *  in and an `<area>` no longer reaches it, so a name carrying that word would
+   *  claim the wrong thing for half the list.
+   *
+   *  Read before the pass rather than inferred from it: the predicate is the
+   *  app's, so what it selects is part of the measurement. Filled in **both**
+   *  modes, because it describes the fixture and not the pass — left empty in
+   *  `raw` it would report a fixture with three app-origin hrefs as having
+   *  none. */
+  appOriginHrefs: string[];
   /** Hrefs still in the tab order after the mode was applied. In `neutralized`
    *  this is the stated expectation the keyboard reading is checked against. */
   tabbableHrefs: string[];
+  /** Hrefs still on an `<area>` after the mode was applied — the fixture's one in
+   *  `raw`, none in `neutralized` (TASK-25).
+   *
+   *  Read after the pass rather than inferred from it, because on the two WebKit
+   *  engines nothing else in this record can say the pass acted: the click
+   *  counters are 0 there by construction, so "the region navigated nothing"
+   *  and "the region was never clicked" would otherwise rest on the declared
+   *  attempt alone. */
+  linkedAreaHrefs: string[];
   activation: boolean;
   customEvent: number;
   clicksByTarget: Record<string, number>;
@@ -329,8 +350,9 @@ export function emptyLinkProbeState(mode: LinkProbeMode): LinkProbeState {
     mode,
     arms: 0,
     armedAttempts: [],
-    neutralizedHrefs: [],
+    appOriginHrefs: [],
     tabbableHrefs: [],
+    linkedAreaHrefs: [],
     activation: false,
     customEvent: 0,
     clicksByTarget: {},
@@ -384,15 +406,30 @@ export async function armLinkProbe(
 
   const links = [...doc.querySelectorAll<HTMLElement>('a[href], area[href]')];
   const hrefOf = (link: HTMLElement): string => link.getAttribute('href') ?? '';
+  // Ahead of the mode branch, because what it holds is the fixture's own
+  // property: which hrefs the passes would act on. `raw` needs it as much as
+  // `neutralized` does — it is what the raw readings are about.
+  state.appOriginHrefs = links.map(hrefOf).filter(navigatesAppOrigin);
   if (mode === 'neutralized') {
-    // The hrefs are collected before the pass rather than inferred from it: the
-    // predicate is the app's, so what it selects is part of the measurement.
-    state.neutralizedHrefs = links.map(hrefOf).filter(navigatesAppOrigin);
+    // Both passes, because the app applies both to a document it renders — but
+    // **not both on every engine, and this arm cannot stand in for the
+    // difference.** `neutralizeAppOriginAreas` runs ahead of decision-9's
+    // listener branch, so the `<area>` readings here are the shipped mechanism
+    // wherever they are taken. `neutralizeAppOriginLinks` runs inside that
+    // branch, on the side where no parent-registered listener does: on an engine
+    // that runs them the app never calls it, and an anchor is handled by
+    // `HtmlView`'s click handler instead — which this fixture deliberately does
+    // not install, since a `preventDefault` would remove the observation. So
+    // read the `<a>` rows on WebView2 as "what the fallback would do here", not
+    // as what a reader gets. Arming only the areas pass would measure a document
+    // the app never shows on either side.
+    neutralizeAppOriginAreas(doc);
     neutralizeAppOriginLinks(doc);
-  } else {
-    state.neutralizedHrefs = [];
   }
   state.tabbableHrefs = links.filter((link) => link.getAttribute('tabindex') !== '-1').map(hrefOf);
+  // Re-queried rather than filtered out of `links`, since what is being read is
+  // which elements still match `area[href]` at all.
+  state.linkedAreaHrefs = [...doc.querySelectorAll<HTMLElement>('area[href]')].map(hrefOf);
 
   let last = '';
   const record = (at: FrameReading['at']): void => {
@@ -426,8 +463,26 @@ export async function armLinkProbe(
   };
 
   const onClick = (event: Event): void => {
-    const target = (event.target as Element | null)?.closest?.('a[href], area[href]') ?? null;
-    const key = target === null ? '(not a link)' : target.id || '(link with no id)';
+    const from = (event.target as Element | null) ?? null;
+    const link = from?.closest?.('a[href], area[href]') ?? null;
+    // An `<area>` whose href the pass removed is no longer a link, so no selector
+    // naming links can name it. Keyed on links alone it reads as `(not a link)` —
+    // the same entry a click that missed the map produces, which is the tie
+    // TASK-23 spent a round learning to break. So a target with an id is named
+    // even when it is not a link, and said to be one or the other. Measured
+    // worth having: on WebView2 the neutralized arm recorded
+    // `area-link (not a link)=2` against no navigation, which is the region
+    // hit-testing and activating nothing — two facts a bare `(not a link)` would
+    // have merged into one unreadable entry.
+    const identified = link ?? from?.closest?.('[id]') ?? null;
+    let key: string;
+    if (link !== null) {
+      key = link.id || '(link with no id)';
+    } else if (identified !== null) {
+      key = `${identified.id} (not a link)`;
+    } else {
+      key = '(not a link)';
+    }
     state.clicksByTarget[key] = (state.clicksByTarget[key] ?? 0) + 1;
     publish('changed');
   };

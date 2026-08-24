@@ -1,10 +1,10 @@
 ---
 id: TASK-25
 title: Stop an image map navigating the rendered frame away
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-23 22:17'
-updated_date: '2026-08-23 22:17'
+updated_date: '2026-08-24 06:53'
 labels:
   - bug
 milestone: m-2
@@ -26,12 +26,160 @@ Where listeners do run (WebView2), the pass is never applied - and `HtmlView`'s 
 decision-10's reason for keeping the `href` does not carry over to `<area>`, which is worth saying because it is what makes the two halves different rather than one problem in two places: `<a>` keeps its `href` so `:link` still matches and the document keeps its own styling, and an `<area>` has no rendered box at all, so nothing about it is styled and nothing is lost by removing it. The listener branch is separately a one-selector question.
 
 Rare in what this view opens, which is why decision-10 made it a probe case rather than a blocker; it is now measured rather than expected.
+
+**Correction (2026-08-24, after the fix was measured on all three WebViews).**
+The sentence above explains the failed `pointer-events` by the region belonging
+to the `<img usemap>` rather than to the area. **That explanation is not what was
+measured and should not be carried forward** — it was the reading of the day,
+inherited from decision-10. What the runs establish is narrower: `pointer-events:
+none` on an `<area>` does not stop the click, removing the `href` leaves nothing
+for the click to activate and the frame moved nowhere on any of the three, and on
+WebView2 — the one engine where a parent-registered listener can observe a target
+at all — the click still reached the `<area>` after the pass (`area-link (not a
+link)`, twice, against no navigation). So the region is not something the area
+stops receiving; it is something whose click no longer activates anything. The
+readings are in the Implementation Notes, and TASK-23 carries the same superseded
+explanation in its own text.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An <area href> clicked for real inside a rendered document does not navigate the frame, on all three WebViews
-- [ ] #2 The branch where parent-registered listeners run is covered as well as the branch where they do not, since the click reaches the frame by a different route on each and neither of decision-10's halves covers both
-- [ ] #3 The keyboard path stays closed, which tabindex=-1 already does - the fix must not be a rewrite that drops it
-- [ ] #4 The probe's neutralized area-click arm is re-run on all three WebViews and navigates nothing
+- [x] #1 An <area href> clicked for real inside a rendered document does not navigate the frame, on all three WebViews
+- [x] #2 The branch where parent-registered listeners run is covered as well as the branch where they do not, since the click reaches the frame by a different route on each and neither of decision-10's halves covers both
+- [x] #3 The keyboard path stays closed, which tabindex=-1 already does - the fix must not be a rewrite that drops it
+- [x] #4 The probe's neutralized area-click arm is re-run on all three WebViews and navigates nothing
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## What was changed and where
+
+**One pass, placed before the branch, plus the count that becomes honest once it
+is there.** `neutralizeAppOriginAreas` in `src/lib/html-doc.ts` removes the
+`href` from every app-origin `<area href>` and writes `tabindex="-1"` on it;
+`transformHtmlDocument` calls it, so the `href` is gone before the frame ever
+loads. `neutralizeAppOriginLinks` now selects `a[href]` only, and `HtmlView`'s
+click handler still matches `a[href]` only. `counts.links` counts
+`a[href], area[href]`.
+
+The probe's `neutralized` arm applies both passes (`src/probe/link-checks.ts`),
+and gained one counter — `hrefs still on an <area>` — read after the mode is
+applied. On the two WebKit engines the click counters are 0 by construction, so
+without it "the region navigated nothing" and "the region was never clicked"
+would rest on the declared attempt alone. Its click-attribution key now names a
+target that has an id but is not a link, because no selector naming links can
+name an `href`-less area: keyed on links alone it read as `(not a link)`, the
+same entry a click that missed the map produces. (What WebView2 then recorded is
+`area-link (not a link)` — see the measurement below.)
+
+## Why the href is removed rather than the click suppressed
+
+decision-10 rejected removing an `<a>`'s `href` because `:link` stops matching
+and the document loses its own link styling. **That reason does not reach an
+`<area>`**, which has no box of its own: nothing about it is styled, so nothing
+is lost. With no `href` it is not a hyperlink at all, so a click on the region
+activates nothing and the keyboard has no link to reach. `tabindex="-1"` is still
+written — it is the half TASK-23 measured as working, and this replaces one
+mechanism, not both (AC #3).
+
+## Why one pass before the branch rather than one per branch
+
+The task described two routes and called the listener branch "a one-selector
+question". Both routes are closed here by removing the destination instead, and
+the placement is the reason (AC #2):
+
+1. **The probe would otherwise measure the branch the engine happens to take.**
+   `src/probe/link-checks.ts` arms the app's own functions rather than a copy. A
+   fix living half in the pass and half in `HtmlView`'s handler leaves the
+   neutralized arm on WebView2 measuring a pass that engine never applies — a
+   green record for a path that does not ship there. AC #4 asks for that arm on
+   all three, so the mechanism has to be the same one on all three.
+2. **It closes the keyboard path on WebView2, where nothing closed it.** The
+   pass never runs there, so an app-origin `<area>` was reachable by Tab and
+   activated by Enter through the same handler that missed its click.
+3. **Widening `HtmlView`'s selector to `area[href]` was considered and left
+   out.** With the `href` gone there is nothing left for the handler to cancel,
+   and adding it would newly hand a mapped `http(s)` region to the OS browser on
+   WebView2 alone — a capability rather than this fix, and one that would make
+   `counts.links` wrong on a platform.
+
+## `counts.links` and the notice bar
+
+`area[href]` is in the count now, on the same two classes as `<a>`: the
+app-origin half is settled by this pass on every engine, and the `http(s)` half
+by decision-9's argument, since `frame-src` answers for the destination and not
+for the element that asked. `mailto:` / `tel:` stay out, unchanged. The notice
+line only appears where no parent listener runs, so the number it carries is
+still one the bar can account for.
+
+## Records updated
+
+decision-10 gained an amendment section (its body left as written, since the
+consequence it recorded is what happened). AGENTS.md and AGENTS.ja.md: the
+transform's removal list now names the one attribute it drops, the link
+paragraph carries the fix and why the two selectors stay narrow, and the
+`counts.links` paragraph no longer excludes `area[href]`. README.md and
+README.ja.md tell the reader an image map does nothing on *every* platform,
+which is the one thing here that could otherwise read as a fault. `src/probe/`
+README and screen text say which counter to read beside the click.
+
+## Verification
+
+`biome ci` 90 files, 0 errors. `vitest run` 17 files / 247 tests pass. `tsc` and
+`vite build` clean. `cargo fmt --check`, `cargo check`, `cargo test` (18) pass —
+no Rust changed.
+
+**No unit test covers the new pass, by the same rule the rest of the mutate half
+follows.** `lib/html-doc`'s header states the split: strings and `DocNodeLike`
+are unit-tested, the mutate-and-serialize half runs against a real DOM and is
+checked in the probe. A fake `querySelectorAll` would decide the very selection
+under test. `navigatesAppOrigin`, the predicate this pass reads, is already
+covered.
+
+**AC #1 and AC #4 need the probe run and are not checked here** — three engines,
+the `area-click` arm in both modes. AC #2 and AC #3 are structural and closed by
+the code above.
+
+## Measured after the fix (2026-08-24, all three WebViews)
+
+Built probe runs, one per engine, reports at
+`_sandbox/handoff/task-25/task-25-{mac,win,linux}.md` — WKWebView
+(AppleWebKit/605.1.15), WebView2 (Edg/151), WebKitGTK (Ubuntu, Version/60.5).
+All three report `Run validity: both positive controls passed`, so a CSP was in
+force on each.
+
+| engine | raw `area-click` (the control) | neutralized `area-click` |
+|---|---|---|
+| WKWebView | navigated to `tauri://localhost/probe-area-target.html`, `on fixture: false` | `about:srcdoc`, `on fixture: true`, `hrefs still on an <area>: (none)` |
+| WebView2 | navigated to `http://tauri.localhost/probe-area-target.html`, `clicks heard: area-link=2` | no navigation, `(none)`, `clicks heard: area-link (not a link)=2` |
+| WebKitGTK | navigated to `tauri://localhost/probe-area-target.html`, `on fixture: false` | `about:srcdoc`, `on fixture: true`, `(none)` |
+
+**AC #1 and #4 are closed by that table** — the raw arm establishes each engine
+would have navigated, and the neutralized arm is the shipped mechanism on every
+engine (the areas pass runs ahead of the listener branch).
+
+**One thing the run falsified, and the comments were corrected for it.** "With
+no `href` the click falls through to the `<img usemap>` beneath" was the obvious
+reading and is wrong: on WebView2 the region still hit-tests after the pass and
+the click still reaches the `<area>` — recorded as `area-link (not a link)=2`
+against no navigation. What the pass removes is the hyperlink the hit used to
+activate, not the hit. `lib/html-doc`, `src/probe/link-checks.ts`, AGENTS (both
+languages) and decision-10's amendment now say that.
+
+**The app-side check ran on all three platforms as well** — the rendered view a
+reader gets, not the probe (`_sandbox/samples/rendered-imagemap.html`, built apps,
+2026-08-24). None of the fixture's three mapped regions moved the frame on macOS,
+Windows or Linux: the two app-origin ones because this pass took their `href`, the
+`https` one because `frame-src` does not carry it.
+
+**That last one closes the `http(s)` half of the `counts.links` claim, and the
+attribution rests on one leg.** On macOS the same `https` region *did* move the
+frame under `pnpm tauri dev`, which has no CSP at all — that contrast is what
+names the CSP as the cause. Windows and Linux were measured in a build only, so
+they contribute the outcome rather than the attribution.
+
+Also fixed in that fixture: it did not say it must be run against a build, which
+is the trap AGENTS warns about — under dev its `https` region navigates and reads
+as a defect.
+<!-- SECTION:NOTES:END -->

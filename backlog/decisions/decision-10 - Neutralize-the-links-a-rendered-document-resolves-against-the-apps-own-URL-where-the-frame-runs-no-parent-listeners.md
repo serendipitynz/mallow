@@ -132,3 +132,88 @@ and nothing in it runs. What is fixed is a usability failure, not a hole.
   watched `rendered-inert.html` and the frame stayed where it was. That is one
   engine's answer, so the probe should carry it rather than this decision
   asserting it for all three.
+
+## Amendment — the `<area href>` case, closed (TASK-25, 2026-08-24)
+
+**The body above is left as it was written.** It claimed the click half applied
+to an `<area href>` only as far as listing it below as a probe case, and the
+consequence it recorded — "if it turns out not to apply, a mapped region clicked
+on WebKit navigates the frame and blanks the view" — is what happened.
+
+**Measured (TASK-23 round 3, one built probe run per engine, all three
+WebViews).** With this decision's pass applied, `tabindex="-1"` held and
+`pointer-events: none` did not: the click reached the area and the frame
+navigated to the area's own destination. On WebView2 it reached the same end by
+the other route — the pass is never applied there, and the parent's handler
+matches `a[href]`, which an `<area>` is not, so nothing called
+`preventDefault`. **Neither half of this decision covered both routes.**
+
+**Amended decision: an app-origin `<area href>` has its `href` removed in the
+transform, ahead of the branch on parent-registered listeners.** It stops being a
+hyperlink, so a click on the region has nothing to activate and neither route has
+anything left to travel. `tabindex="-1"` is still written, so the mechanism this
+decision measured as working is not withdrawn.
+
+- **The `<a>` case is unchanged**, and so is the reason it is: removing an
+  anchor's `href` costs the document its link styling, which is what the third
+  option above was rejected on. **That reason does not carry over.** An `<area>`
+  has no box of its own, so nothing about it is styled and there is nothing to
+  lose — which is what makes this the same decision applied to a different
+  element rather than a reversal of it.
+- **Placed before the branch rather than in both halves of it.** Two mechanisms
+  would each answer for one engine family, and the probe — which arms the app's
+  own pass, not a copy — could then only ever measure the branch the engine it
+  runs on happens to take. One pass ahead of the branch is measurable on every
+  engine, and it also closes the keyboard path on WebView2, where nothing had
+  closed it.
+- **`neutralizeAppOriginLinks` selects `a[href]` only from here on**, and the
+  parent's click handler still matches `a[href]` only. Widening the pass would
+  leave a branch nothing reaches; widening the handler would, on WebView2 alone,
+  newly hand a mapped `http(s)` region to the OS browser — a capability, not this
+  fix.
+- **`counts.links` now counts `area[href]` on the same two classes as `<a>`.**
+  Its app-origin half is settled here; its `http(s)` half rides decision-9's
+  argument, since `frame-src` answers for the destination and not for the element
+  that asked. TASK-19's reader-facing text gains the one thing a reader could
+  otherwise read as a fault: an image map does nothing on *every* platform, not
+  only where the others do nothing.
+- **A "neutralized link" (defined above) is not what an `<area>` becomes.** That
+  term is for a link that stays visible, styled and readable while activating
+  nothing. An area with no `href` is not a link at all, and calling it
+  neutralized would make the term cover two different states.
+- **Still provisional in the same way the body is.** If `<base
+  href="about:srcdoc">` is ever measured and adopted, it settles the app-origin
+  class at its root for `<a>` and `<area>` together, and this amendment goes with
+  the pass it amends.
+
+### Re-measured after the amendment (2026-08-24, all three WebViews)
+
+Built probe runs, one per engine, reports at
+`_sandbox/handoff/task-25/task-25-{mac,win,linux}.md` (all three report
+`Run validity: both positive controls passed`).
+
+- **Armed raw**, the mapped region navigated the frame to the area's own
+  destination on WKWebView, WebView2 and WebKitGTK alike — the positive control
+  this amendment needed, since a region that does nothing when neutralized is
+  only evidence if it did something when it was not.
+- **Armed with the pass**, the frame stayed on `about:srcdoc` on all three, with
+  no `area[href]` left on the fixture.
+- **The click is not what goes — the activation is.** On WebView2 the
+  neutralized region still hit-tested: the probe counted it as
+  `area-link (not a link)`, twice, against no navigation. So an `<area>` with no
+  `href` is not a region that stops receiving clicks; it is a region whose click
+  has no hyperlink to activate. The earlier wording ("the click falls through to
+  the image beneath") was the obvious reading and is wrong. **So is the body's own
+  explanation above** — that the hit region belongs to the `<img usemap>` and the
+  area's `pointer-events` is never consulted for it. Read it as the reading of the
+  day rather than as a mechanism this decision asserts: what is measured is that
+  `pointer-events: none` does not stop the click, and that the click reaches the
+  area on the one engine where a listener can say so.
+- **decision-9's `frame-src` argument, which this amendment leans on for the
+  `http(s)` half of `counts.links`, was measured for an `<area>` too**: clicked
+  in a built app, an `<area href="https://…">` moved the frame on none of the
+  three platforms. **The causal half rests on one leg** — on macOS the same region
+  did move the frame under `pnpm tauri dev`, which has no CSP at all, and that
+  contrast is what names the CSP; Windows and Linux contribute the outcome, not
+  the attribution. A run of the same fixture in the app rather than the probe, so
+  it is the rendered view a reader gets.

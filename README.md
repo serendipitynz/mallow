@@ -58,6 +58,12 @@ PDFs, and videos are shown as well, rendered by the OS-native WebView.
     table of contents included. mallow detects that per document rather than
     reading it off the OS name, and says so above the document when it applies;
     the outline beside the document works everywhere
+  - An image map is the exception and its regions do nothing on **every**
+    platform. Suppressing a mapped region's click has no effect on it, so the
+    mechanism that leaves the document's other links working on some platforms
+    cannot be used here; the region is dropped as a link before the document is
+    shown instead, which is what keeps it from replacing the view with a blank
+    page
   - A video shows its first frame, or its poster if it has one, but pressing its
     controls starts nothing. That was seen on macOS (WKWebView); the Windows and
     Linux WebViews have not been measured. Opening the video file itself in

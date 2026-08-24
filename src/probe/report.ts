@@ -39,7 +39,8 @@ export interface Manual {
  *  link that navigates destroys the fixture, so the targets are clicked one at a
  *  time across several arms, and the raw answer is what makes the neutralized
  *  one mean anything: an `<area>` that does nothing when neutralized is only
- *  evidence if it did something when it was not. */
+ *  evidence if it did something when it was not — which is what TASK-23 measured
+ *  and TASK-25 then removed. */
 export interface LinkManual {
   rawFragmentClick: string;
   rawRelativeClick: string;
@@ -181,8 +182,9 @@ function linkProbeBlock(mode: LinkProbeMode, label: string, state: LinkProbeStat
   );
   return [
     `- ${label} — armed ${state.arms} time(s), ${coverage}:`,
-    `  - hrefs the app's own pass neutralized: ${state.neutralizedHrefs.length === 0 ? '(none)' : state.neutralizedHrefs.join(', ')}`,
+    `  - app-origin hrefs on the fixture, read before this mode was applied: ${state.appOriginHrefs.length === 0 ? '(none)' : state.appOriginHrefs.join(', ')}`,
     `  - hrefs still in the tab order afterwards: ${state.tabbableHrefs.length === 0 ? '(none)' : state.tabbableHrefs.join(', ')}`,
+    `  - hrefs still on an <area> afterwards: ${state.linkedAreaHrefs.length === 0 ? '(none — the region is no longer a link)' : state.linkedAreaHrefs.join(', ')}`,
     `  - custom event dispatched by the parent into contentDocument: ${state.customEvent} (0 means this document runs no parent-registered listener at all, so the click counts below say nothing about whether a click arrived)`,
     `  - activation control (<details> opened by a parent-driven click): ${state.activation}`,
     `  - clicks heard, per target: ${clicks.length === 0 ? '(none heard)' : clicks.map(([id, n]) => `${id}=${n}`).join(', ')}`,

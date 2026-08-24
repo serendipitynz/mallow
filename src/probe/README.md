@@ -211,14 +211,29 @@ two modes:
 
 - **raw** — nothing applied, which is what a document does on its own. This is
   decision-10's premise, measured on one engine so far.
-- **neutralized** — the app's own pass applied, so what is measured is the
-  mechanism that ships rather than a description of it (`neutralizeAppOriginLinks`
-  in `lib/html-doc`, the same function `HtmlView` calls).
+- **neutralized** — the app's own passes applied, so what is measured is the
+  mechanism that ships rather than a description of it (`neutralizeAppOriginAreas`
+  and `neutralizeAppOriginLinks` in `lib/html-doc`, the same functions the app
+  applies). **Both, because the app applies both to a document it renders** — the
+  areas one ahead of decision-9's listener branch and the links one inside it, so
+  arming only the areas pass would arm a document the app never shows on either
+  side. **Its two halves do not answer for the same engines.** The `<area>` half ships
+  everywhere, so those readings are the shipped mechanism on every engine. The
+  `<a>` half is the branch taken only where no parent-registered listener runs, so
+  on WebView2 this arm measures a pass the app does not apply there — an anchor is
+  handled by `HtmlView`'s click handler on that engine, and this fixture installs
+  no such handler on purpose (a `preventDefault` would remove the observation).
+  Read the `<a>` rows on WebView2 as "what the fallback would do here".
 
 **The raw answer is what makes the neutralized one mean anything.** An `<area>`
 that does nothing when neutralized is only evidence if it did something when it
-was not — that is the whole of AC #3, since an area has no box of its own and the
-hit region belongs to the `<img usemap>`.
+was not — that is the whole of AC #3, since suppressing a mapped region's click
+does not stop it and the reason is not settled. That is also what the round-3 readings
+say happened: the region navigated in both modes, which is TASK-25. What closes it
+now is the `href` being removed rather than any hit-testing, so **the counter to
+read beside the click is `hrefs still on an <area>`** — on the two WebKit engines
+the click counters are 0 whatever happened, and that line is what separates "the
+pass acted and nothing navigated" from "nothing was clicked".
 
 **Pick what you are about to do, arm, then do exactly that one thing, then
 re-arm.** The `about to` selector beside the arm buttons is not a convenience:
@@ -254,10 +269,14 @@ owns, so arming them again would measure the same link twice.
 For the keyboard rows, click this page **outside** the frame first and then Tab
 into it. The two mechanisms are independent: `pointer-events: none` closes the
 click and `tabindex="-1"` closes the keyboard, so a run that only clicks leaves
-half of decision-10 unmeasured.
+half of decision-10 unmeasured. For an `<area>` there is one mechanism rather than
+two — with no `href` it is neither clickable nor a tab stop — and `tabindex="-1"`
+is still written, so the keyboard reading stays a reading rather than becoming a
+restatement of the click.
 
 `mailto:` and `tel:` are here because neither decision-9's `frame-src` argument
 nor decision-10's neutralization covers a scheme the OS owns. They point at
 `probe.invalid`, so a handler that does open has nothing to send — but it may
 still open, and that is the observation. `counts.links` excludes them until this
-says otherwise.
+says otherwise. **The `<area>` is no longer one of the exclusions** — TASK-25
+settled it on every engine, and the count says so.
