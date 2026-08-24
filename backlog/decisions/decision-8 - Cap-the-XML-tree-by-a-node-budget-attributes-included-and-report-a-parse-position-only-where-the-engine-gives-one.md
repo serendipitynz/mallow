@@ -217,3 +217,25 @@ requires it of any kind whose safety or shape depends on a browser API.
   anticipate.** `ViewerBody`'s `case 'xml'` branches on the text. Anything that
   reasons from `file.kind` to "which view is on screen" is wrong for `.plist`
   from here on.
+
+## Amendment — what this decision's position rule does and does not cover (TASK-18, 2026-08-24)
+
+The section above ("A parse position is reported where the engine gives one, and
+never inferred") was written about XML and stays correct about XML. It was read
+afterwards as the project's general policy on parse positions, and it is not:
+decision-12 states the rule that covers every parsed kind — **report a position
+wherever one can be obtained without adding a dependency and without inferring
+it** — and this decision's sentence is that rule's XML consequence.
+
+Nothing here changes. XML still reports a position only where the engine's
+`<parsererror>` wording carries one, because there is still no position source for
+it besides that text and adding an XML parser to get one is still rejected. What
+changes is that the same rule gives `.json` a different answer, since
+`jsonc-parser` is already in the tree for `.jsonc` and a strict scan of it names
+the offset the engine's message omits (decision-12). **The asymmetry is about which
+position sources exist, not about which formats deserve a line** — so if an XML
+parser ever arrives for another reason, XML is obliged to start reporting one.
+
+The other half of "never inferred" gained a case: `parseJsonl`'s `column: 1` was
+an inferred position of exactly the kind this decision forbids, printed into the
+banner for every failing `.jsonl` record. decision-12 removes it.

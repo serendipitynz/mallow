@@ -23,7 +23,8 @@ PDFs, and videos are shown as well, rendered by the OS-native WebView.
   instead of staying literal text. See [Custom emoji](#custom-emoji).
 - **Config files** (json / jsonc / json5 / jsonl / ndjson / yaml / yml / toml)
   - Collapsible tree (expand/collapse all, tree/source toggle)
-  - On a syntax error, switches to the source view and highlights the offending line
+  - On a syntax error, switches to the source view and highlights the offending
+    line where the parser reports one
 - **CSV / TSV** (csv / tsv)
   - Shown as a table (table/source toggle); the first record is the header row
   - A large file has only part of it put in the table, with a line above saying

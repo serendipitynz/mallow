@@ -114,3 +114,25 @@ under Node. `XmlView` and `lib/xml-tree`'s `DomNodeLike` are the worked example.
 decision-8 records the other half of that bargain — what the API expresses only
 as text (an XML parse position, which no DOM API exposes) has to be read back out
 of a message, and the view has to hold up when it cannot be.
+
+A kind that parses at all owes the reader a position on failure, and decision-12
+says how far that obligation reaches: **report a position wherever one can be
+obtained without adding a dependency and without inferring it.** So a new kind is
+asked what position sources it already has, not what its format deserves. Where a
+parser reports an offset or a line, pass it through `ParseErrorInfo` and the
+shared `ErrorBanner` renders it and `SourceView` flags the line; where the only
+source is engine-chosen prose, mine it and accept that it can fail (`xmlErrorInfo`);
+where a strict parser for the format is already in the tree for another kind, a
+scan of it after the real parser has failed is a position source too and does not
+move what counts as valid (`jsonErrorPosition`'s strict jsonc scan). What is never
+allowed is a number nothing measured — the banner prints the line under the
+reader's cursor, so a placeholder there is worse than no line at all.
+
+**Mining prose needs anchors on the wording, because an engine may quote the
+document back at you.** V8's positionless JSON messages embed an excerpt of the
+file, so an unanchored pattern read a coordinate out of the document's own text
+and pointed at the wrong place. A pattern that matches the words a coordinate is
+written *with* (`at position N` at the end of the message) is a property of the
+engine; one that matches the words a coordinate is written *as* (`position N`
+anywhere) is a property of the document. Take the first, and refuse the message
+family that carries an excerpt outright where it can be recognized.
