@@ -1,10 +1,10 @@
 ---
 id: TASK-18
 title: Report a position for JSON syntax errors that JSON.parse does not locate
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-16 02:53'
-updated_date: '2026-08-24 10:55'
+updated_date: '2026-08-24 11:17'
 labels:
   - bug
 milestone: m-2
@@ -132,4 +132,15 @@ decision-12, AGENTS (both languages) and doc-1 were updated in the same round.
 doc-1 carries the reusable half: a pattern matching the words a coordinate is
 written *with* is a property of the engine; one matching the words it is written
 *as* is a property of the document.
+
+## Visual check: passed (2026-08-24, macOS / WKWebView)
+
+AC #1's second half is closed. The six fixtures in `_sandbox/samples/` were opened
+and the banner's line, the flagged line and the scroll landing were checked against
+the values `_sandbox/handoff/task-18/visual-check.md` predicted, across both source
+paths (`json-stray-token-small.json` under `SourceView`'s 256 KiB cap on the
+highlighted path, `json-stray-token-large.json` at 425 KiB on the highlight-skipped
+path where the flag is a measured band). The `.jsonc` fixture holding the same
+content as the two rejected `.json` ones opened as a tree, which is the gate not
+having moved, seen rather than asserted.
 <!-- SECTION:NOTES:END -->
