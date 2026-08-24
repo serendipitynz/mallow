@@ -54,17 +54,18 @@ and gained one counter — `hrefs still on an <area>` — read after the mode is
 applied. On the two WebKit engines the click counters are 0 by construction, so
 without it "the region navigated nothing" and "the region was never clicked"
 would rest on the declared attempt alone. Its click-attribution key now names a
-target that has an id but is not a link, because an `href`-less area puts the
-click on the `<img usemap>` beneath it, which keyed on links alone read as
-`(not a link)` — the same entry a click that missed the map produces.
+target that has an id but is not a link, because no selector naming links can
+name an `href`-less area: keyed on links alone it read as `(not a link)`, the
+same entry a click that missed the map produces. (What WebView2 then recorded is
+`area-link (not a link)` — see the measurement below.)
 
 ## Why the href is removed rather than the click suppressed
 
 decision-10 rejected removing an `<a>`'s `href` because `:link` stops matching
 and the document loses its own link styling. **That reason does not reach an
 `<area>`**, which has no box of its own: nothing about it is styled, so nothing
-is lost. With no `href` it is not a hyperlink at all, so the click falls through
-to the image and the keyboard has no link to reach. `tabindex="-1"` is still
+is lost. With no `href` it is not a hyperlink at all, so a click on the region
+activates nothing and the keyboard has no link to reach. `tabindex="-1"` is still
 written — it is the half TASK-23 measured as working, and this replaces one
 mechanism, not both (AC #3).
 

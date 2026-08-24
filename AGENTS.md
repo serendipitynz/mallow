@@ -477,16 +477,17 @@ hold rather than as an exhaustive style guide.
   by arming the fixture twice, once raw and once with this pass applied, and a
   copy of the mechanism there would measure the copy rather than what ships.
   **What that measured (TASK-23, all three WebViews): the `<a>` click and the
-  keyboard path are both closed, and an `<area>` was not.** `pointer-events` does
-  not reach a hit region the area does not own, so an image map still navigated
-  the frame — and on WebView2, where listeners do run and the pass is never
+  keyboard path are both closed, and an `<area>` was not.** `pointer-events: none`
+  on the area does not stop its click — measured, and **do not explain it by the
+  area not owning the region**, since the click event does reach the area on
+  WebView2 (below) — so an image map still navigated the frame — and on WebView2, where listeners do run and the pass is never
   applied, `HtmlView`'s handler matches `closest('a[href]')`, which an `<area>` is
   not. Two routes to the same failure, neither covered by decision-10's halves.
   **TASK-25 closed both with one pass placed before the branch, and that
   placement is the point rather than an implementation detail.**
   `neutralizeAppOriginAreas` runs inside the transform, so the `href` is gone
   before the frame ever loads and neither route has anything left to travel: no
-  hit region to consult and no click for a handler to miss. **What goes is the
+  hyperlink for a region's click to activate and no click for a handler to miss. **What goes is the
   activation, not the click, and that is measured** — on WebView2 the neutralized
   region still hit-tests and the counter recorded it as `area-link (not a link)`
   against no navigation, so do not write that the click falls through to the

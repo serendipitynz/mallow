@@ -227,8 +227,8 @@ two modes:
 
 **The raw answer is what makes the neutralized one mean anything.** An `<area>`
 that does nothing when neutralized is only evidence if it did something when it
-was not — that is the whole of AC #3, since an area has no box of its own and the
-hit region belongs to the `<img usemap>`. That is also what the round-3 readings
+was not — that is the whole of AC #3, since suppressing a mapped region's click
+does not stop it and the reason is not settled. That is also what the round-3 readings
 say happened: the region navigated in both modes, which is TASK-25. What closes it
 now is the `href` being removed rather than any hit-testing, so **the counter to
 read beside the click is `hrefs still on an <area>`** — on the two WebKit engines

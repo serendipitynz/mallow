@@ -310,8 +310,11 @@ export function navigatesAppOrigin(value: string): boolean {
  * **`<area href>` is not selected here, and that is measured rather than
  * assumed.** decision-10 wrote both attributes on it too; TASK-23 clicked one
  * for real on all three WebViews with this pass applied and the frame navigated
- * anyway, because the hit region belongs to the `<img usemap>` and the area's own
- * `pointer-events` is never consulted for it. {@link neutralizeAppOriginAreas}
+ * anyway: `pointer-events: none` on an `<area>` does not stop the click that
+ * activates it. Why is not settled here — the region is hit-tested through the
+ * `<img usemap>` it sits on, but the click event does reach the area on WebView2
+ * (see {@link neutralizeAppOriginAreas}), so "the area does not own the region"
+ * is a story and the measurement is the fact. {@link neutralizeAppOriginAreas}
  * settles that case instead, before this branch is chosen — so leaving
  * `area[href]` in this selector would be a branch nothing reaches carrying a
  * claim that was false while it did.

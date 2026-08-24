@@ -150,9 +150,9 @@ matches `a[href]`, which an `<area>` is not, so nothing called
 
 **Amended decision: an app-origin `<area href>` has its `href` removed in the
 transform, ahead of the branch on parent-registered listeners.** It stops being a
-hyperlink, so the click falls through to the `<img usemap>` beneath it and
-neither route has anything left to travel. `tabindex="-1"` is still written, so
-the mechanism this decision measured as working is not withdrawn.
+hyperlink, so a click on the region has nothing to activate and neither route has
+anything left to travel. `tabindex="-1"` is still written, so the mechanism this
+decision measured as working is not withdrawn.
 
 - **The `<a>` case is unchanged**, and so is the reason it is: removing an
   anchor's `href` costs the document its link styling, which is what the third
@@ -203,7 +203,12 @@ Built probe runs, one per engine, reports at
   `area-link (not a link)`, twice, against no navigation. So an `<area>` with no
   `href` is not a region that stops receiving clicks; it is a region whose click
   has no hyperlink to activate. The earlier wording ("the click falls through to
-  the image beneath") was the obvious reading and is wrong.
+  the image beneath") was the obvious reading and is wrong. **So is the body's own
+  explanation above** — that the hit region belongs to the `<img usemap>` and the
+  area's `pointer-events` is never consulted for it. Read it as the reading of the
+  day rather than as a mechanism this decision asserts: what is measured is that
+  `pointer-events: none` does not stop the click, and that the click reaches the
+  area on the one engine where a listener can say so.
 - **decision-9's `frame-src` argument, which this amendment leans on for the
   `http(s)` half of `counts.links`, was measured for an `<area>` too**: in a
   built app on WKWebView an `<area href="https://…">` did not move the frame,
