@@ -1,10 +1,10 @@
 ---
 id: TASK-25
 title: Stop an image map navigating the rendered frame away
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-23 22:17'
-updated_date: '2026-08-24 06:53'
+updated_date: '2026-08-24 10:10'
 labels:
   - bug
 milestone: m-2
