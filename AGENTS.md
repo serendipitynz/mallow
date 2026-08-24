@@ -486,7 +486,14 @@ hold rather than as an exhaustive style guide.
   placement is the point rather than an implementation detail.**
   `neutralizeAppOriginAreas` runs inside the transform, so the `href` is gone
   before the frame ever loads and neither route has anything left to travel: no
-  hit region to consult and no click for a handler to miss. It removes the `href`
+  hit region to consult and no click for a handler to miss. **What goes is the
+  activation, not the click, and that is measured** — on WebView2 the neutralized
+  region still hit-tests and the counter recorded it as `area-link (not a link)`
+  against no navigation, so do not write that the click falls through to the
+  image. Re-measured on all three WebViews after the fix (2026-08-24,
+  `_sandbox/handoff/task-25/task-25-{mac,win,linux}.md`): armed raw the region
+  navigated the frame on each, armed with the pass the frame stayed on
+  `about:srcdoc` with no `area[href]` left. It removes the `href`
   rather than suppressing hit-testing because **decision-10's reason for keeping
   one does not carry over** — an `<a>` keeps its `href` so `:link` still matches
   and the document keeps its styling, while an `<area>` has no box at all, so
@@ -569,7 +576,11 @@ hold rather than as an exhaustive style guide.
   branch, so unlike the earlier reading it is not a navigating link inside a
   number that says links do nothing, and its `http(s)` half rides the `<a>`
   argument, since `frame-src` answers for the destination and not for the element
-  that asked. **The same silence is deliberate at `imgSrc`** for a
+  that asked — **and that half is now measured rather than carried**: an
+  `<area href="https://…">` clicked in a built app on WKWebView did not move the
+  frame, while the same click under `pnpm tauri dev` did, which is the CSP naming
+  itself (2026-08-24, `_sandbox/samples/rendered-imagemap.html`). **The same
+  silence is deliberate at `imgSrc`** for a
   protocol-relative reference, which the parent's base URL makes `tauri://host/x`
   on WebKit and `http://host/x` on WebView2 — one refused, one carried, measured
   as such on all three in TASK-23 — so a count would have to be wrong on a

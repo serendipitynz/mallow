@@ -465,11 +465,15 @@ export async function armLinkProbe(
   const onClick = (event: Event): void => {
     const from = (event.target as Element | null) ?? null;
     const link = from?.closest?.('a[href], area[href]') ?? null;
-    // An `<area>` whose href the pass removed is no longer a link, so the click
-    // lands on the `<img usemap>` beneath it. Keyed on links alone that reads as
-    // `(not a link)` — the same entry a click that missed the map produces, which
-    // is the tie TASK-23 spent a round learning to break. So a target with an id
-    // is named even when it is not a link, and said to be one or the other.
+    // An `<area>` whose href the pass removed is no longer a link, so no selector
+    // naming links can name it. Keyed on links alone it reads as `(not a link)` —
+    // the same entry a click that missed the map produces, which is the tie
+    // TASK-23 spent a round learning to break. So a target with an id is named
+    // even when it is not a link, and said to be one or the other. Measured
+    // worth having: on WebView2 the neutralized arm recorded
+    // `area-link (not a link)=2` against no navigation, which is the region
+    // hit-testing and activating nothing — two facts a bare `(not a link)` would
+    // have merged into one unreadable entry.
     const identified = link ?? from?.closest?.('[id]') ?? null;
     let key: string;
     if (link !== null) {

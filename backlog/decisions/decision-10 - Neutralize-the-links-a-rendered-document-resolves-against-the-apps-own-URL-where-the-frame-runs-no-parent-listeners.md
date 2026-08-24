@@ -185,3 +185,27 @@ the mechanism this decision measured as working is not withdrawn.
   href="about:srcdoc">` is ever measured and adopted, it settles the app-origin
   class at its root for `<a>` and `<area>` together, and this amendment goes with
   the pass it amends.
+
+### Re-measured after the amendment (2026-08-24, all three WebViews)
+
+Built probe runs, one per engine, reports at
+`_sandbox/handoff/task-25/task-25-{mac,win,linux}.md` (all three report
+`Run validity: both positive controls passed`).
+
+- **Armed raw**, the mapped region navigated the frame to the area's own
+  destination on WKWebView, WebView2 and WebKitGTK alike — the positive control
+  this amendment needed, since a region that does nothing when neutralized is
+  only evidence if it did something when it was not.
+- **Armed with the pass**, the frame stayed on `about:srcdoc` on all three, with
+  no `area[href]` left on the fixture.
+- **The click is not what goes — the activation is.** On WebView2 the
+  neutralized region still hit-tested: the probe counted it as
+  `area-link (not a link)`, twice, against no navigation. So an `<area>` with no
+  `href` is not a region that stops receiving clicks; it is a region whose click
+  has no hyperlink to activate. The earlier wording ("the click falls through to
+  the image beneath") was the obvious reading and is wrong.
+- **decision-9's `frame-src` argument, which this amendment leans on for the
+  `http(s)` half of `counts.links`, was measured for an `<area>` too**: in a
+  built app on WKWebView an `<area href="https://…">` did not move the frame,
+  while the same click under `pnpm tauri dev` — where no CSP exists at all — did.
+  The difference between the two runs is the CSP naming itself.

@@ -341,12 +341,23 @@ export function neutralizeAppOriginLinks(root: ParentNode): void {
  * **Removing the `href` costs here what decision-10 refused to pay for an
  * `<a>`.** There it would have cost the document its link styling, since `:link`
  * stops matching. An `<area>` has no box of its own, so nothing about it is
- * styled and nothing is lost; and with no `href` it is not a hyperlink, so the
- * click that used to activate it falls through to the image beneath.
+ * styled and nothing is lost; and with no `href` it is not a hyperlink, so
+ * activating it has nothing to follow.
+ *
+ * **It is the activation that goes, not the click** — measured, because the
+ * obvious reading is the wrong one. On WebView2 the click still reaches the
+ * `<area>` itself after this pass: the probe's counter recorded it as
+ * `area-link (not a link)`, twice, against no navigation. The region still
+ * hit-tests; what is gone is the hyperlink the hit used to activate.
  *
  * `tabindex="-1"` stays even though an `href`-less area is not tabbable on its
  * own: it is what closed the keyboard path on the engines where it was measured
  * (TASK-23), and this is a removal of one mechanism, not of both.
+ *
+ * Measured after the fix on all three WebViews (2026-08-24, built probe runs,
+ * `_sandbox/handoff/task-25/task-25-{mac,win,linux}.md`): armed raw the region
+ * navigated the frame to the area's own destination on each, and armed with this
+ * pass the frame stayed on `about:srcdoc` with no `area[href]` left.
  */
 export function neutralizeAppOriginAreas(root: ParentNode): void {
   for (const area of root.querySelectorAll<HTMLElement>('area[href]')) {
