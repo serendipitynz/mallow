@@ -51,10 +51,17 @@ answers "where", for a document the gate already rejected).
 `parseJson` in `src/lib/config-parse.ts` keeps calling `JSON.parse` and keeps
 returning its value on success and its message on failure. What is added runs
 **only inside the catch**, and only when the message carries no position: a
-**strict jsonc scan** — `jsonc-parser`'s `parse` with
-`allowTrailingComma: false` and `disallowComments: true` — whose return value is
-discarded and whose first `ParseError.offset` becomes a line and column through
-the `offsetToLineCol` the other formats already use.
+**strict jsonc scan** — `jsonc-parser` with `allowTrailingComma: false` and
+`disallowComments: true` — whose first reported offset becomes a line and column
+through the `offsetToLineCol` the other formats already use.
+
+The scan goes through `visit`, not the `parse` that `parseJsoncText` calls a few
+lines below it, and the difference is not stylistic: `parse` assembles the
+recovered value, so a malformed 10 MiB array whose fault is at its start costs
+130 MiB of heap and 406 ms to build something discarded on the next line, where
+`visit` reports the same offset in 259 ms and allocates nothing (measured; the
+first offsets agree across the same 34 shapes the strictness was measured on).
+`parseJsoncText` keeps `parse` because it wants the value.
 
 **This is what makes AC #2 hold by construction rather than by measurement.** The
 scan cannot widen what counts as valid JSON, because the only path that reaches it
@@ -77,9 +84,22 @@ on the same character the engine would have named had it named one.
 ### Where the engine gives a position, the engine's position is used
 
 The banner shows the engine's message, so the position beside it comes from the
-same authority whenever that authority provides both: the two existing message
-patterns are tried first, and the strict jsonc scan fills in only where neither
-matched. Preferring the scan unconditionally was rejected for one reason — a
+same authority whenever that authority provides both: the message patterns are
+tried first, and the strict jsonc scan fills in only where neither matched.
+
+**Those patterns have to be anchored on what the engine writes, because V8 puts
+the document inside the message.** Its positionless shapes quote an excerpt —
+`Unexpected token 'p', "{"a": position 3}" is not valid JSON` — so a document
+holding the words a coordinate is written with lands them where an unanchored
+`/position (\d+)/` reads them. That input is real: the pattern matched the
+document's own text, the banner pointed at column 4 instead of the fault at
+column 7, and the scan that had the right answer was never consulted — a wrong
+number is worse than none, and this one also suppressed the right one. Two
+anchors close it, and both are properties of the wording rather than guesses
+about content: the coordinate is written `at position N` / `at line N column M`
+and ends the message, and the excerpt family is refused whole by the
+`is not valid JSON` it always ends with, which loses nothing because that family
+never carries a coordinate. Preferring the scan unconditionally was rejected for one reason — a
 message describing one place next to an arrow pointing at another is a mismatch the
 reader can see, and there is no coherence to break only when the message says
 nothing about position. It also means **no case that reports a position today
@@ -163,7 +183,7 @@ the blank-record check still reads the trimmed copy.
   where the number comes from instead of removing it. This is the one place where
   having two sources buys something beyond coverage.
 - **`printParseErrorCode` is not used for `.json`.** The scan's error code is
-  discarded along with its value; only the offset is read. A future change that
+  discarded and its value is never built; only the offset is read. A future change that
   starts showing jsonc's wording for a `.json` file would be moving the gate by
   the back door, because the reader would then be reading a verdict from something
   that did not decide the verdict.
@@ -173,3 +193,13 @@ the blank-record check still reads the trimmed copy.
 - **Adding a strict parser for another format would oblige the same treatment.**
   The rule is about what is obtainable, so it is the arrival of a position source,
   not a decision about the format, that changes what a kind promises.
+- **The message patterns are now the part that can be wrong rather than merely
+  absent.** Before the anchors they could read a coordinate out of the document
+  V8 quotes back; anchoring is what makes "the engine's position wins" safe to
+  state, and it is why the ordering did not have to change to fix it. Two
+  regression tests hold each half.
+- **Nothing observable distinguishes a building scan from a non-building one**, so
+  the `visit` choice is held by the reason written beside
+  `strictJsonErrorOffset` and by the measurement above — not by a test. What the
+  suite pins is the offset on a large document whose fault is at its start, which
+  is the shape that made the cost visible.

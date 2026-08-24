@@ -4,7 +4,7 @@ title: Report a position for JSON syntax errors that JSON.parse does not locate
 status: In Review
 assignee: []
 created_date: '2026-08-16 02:53'
-updated_date: '2026-08-24 10:39'
+updated_date: '2026-08-24 10:55'
 labels:
   - bug
 milestone: m-2
@@ -97,4 +97,39 @@ bullet promised the offending line unconditionally, which was false for `.json`
 and is still not guaranteed for YAML; it now reads as the XML bullet already did
 ("where the parser reports one"). The improvement this task ships is that the
 qualifier is nearly always met, not that the promise got louder.
+
+## Review round 1 (Codex CLI, 2026-08-24) — both [P2] findings confirmed and fixed
+
+Neither was refutable; both were measured before fixing.
+
+**[P2] the message patterns read the document, not the engine.** V8's positionless
+shapes quote an excerpt of the file, so `{"a": position 3}` produced
+`Unexpected token 'p', "{"a": position 3}" is not valid JSON` — no coordinate — and
+the bare `/position (\d+)/` matched the *document's* text. The banner pointed at
+column 4 instead of the fault at column 7, **and** the scan that had the right
+answer was skipped. So the defect was not merely a wrong number: it suppressed the
+right one, which is the worst of the three possible outcomes. The patterns are now
+anchored on what the engine writes (`at position N` / `at line N column M`, ending
+the message) and the excerpt family is refused whole by the `is not valid JSON` it
+always ends with — that family never carries a coordinate, so nothing is lost. Two
+regression tests, one per pattern. Note this half predates the task: the patterns
+were already there. What the task changed is that a false match now suppresses a
+correct answer instead of merely replacing an absent one.
+
+**[P2] the scan built a value it discarded.** `parse` assembles the recovered value.
+Measured on a malformed 10 MiB array faulting at its start: `parse` 406 ms /
+130 MiB of heap, `visit` 259 ms / 0 MiB, same offset. First offsets agree across
+all 34 shapes checked (the 30 strictness shapes plus 4 from the fixtures). The scan
+goes through `visit` now; `parseJsoncText` keeps `parse` because it wants the value,
+and the reason the two differ is written where they sit.
+
+**What the suite does not hold**: nothing observable from the return value
+distinguishes a building scan from a non-building one, so the `visit` choice rests
+on the doc comment and the measurement. What is pinned is the offset on a large
+document whose fault is at its start — the shape that made the cost visible.
+
+decision-12, AGENTS (both languages) and doc-1 were updated in the same round.
+doc-1 carries the reusable half: a pattern matching the words a coordinate is
+written *with* is a property of the engine; one matching the words it is written
+*as* is a property of the document.
 <!-- SECTION:NOTES:END -->

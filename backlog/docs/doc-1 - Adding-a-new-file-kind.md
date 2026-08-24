@@ -127,3 +127,12 @@ scan of it after the real parser has failed is a position source too and does no
 move what counts as valid (`jsonErrorPosition`'s strict jsonc scan). What is never
 allowed is a number nothing measured — the banner prints the line under the
 reader's cursor, so a placeholder there is worse than no line at all.
+
+**Mining prose needs anchors on the wording, because an engine may quote the
+document back at you.** V8's positionless JSON messages embed an excerpt of the
+file, so an unanchored pattern read a coordinate out of the document's own text
+and pointed at the wrong place. A pattern that matches the words a coordinate is
+written *with* (`at position N` at the end of the message) is a property of the
+engine; one that matches the words a coordinate is written *as* (`position N`
+anywhere) is a property of the document. Take the first, and refuse the message
+family that carries an excerpt outright where it can be recognized.

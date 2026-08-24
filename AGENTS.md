@@ -659,10 +659,9 @@ hold rather than as an exhaustive style guide.
   decides what is valid.** `JSON.parse` is the gate: `parseJson` calls it, and a
   `.json` file is valid exactly when it says so, so comments and trailing commas
   stay errors. Where it throws, `jsonErrorPosition` answers *where* — the engine's
-  own message first (`line N column M`, then `position N`), and where the message
-  names no position, a **strict jsonc scan** (`jsonc-parser` with
-  `allowTrailingComma: false, disallowComments: true`) whose value and error code
-  are both discarded and whose first offset becomes a line. **The scan cannot
+  own message first, and where the message names no position, a **strict jsonc
+  scan** (`jsonc-parser` with `allowTrailingComma: false, disallowComments: true`)
+  whose first reported offset becomes a line. **The scan cannot
   widen the format, because the only path that reaches it begins with `JSON.parse`
   having already thrown** — which is what makes "what counts as valid JSON is
   unchanged" hold by construction rather than by a table of measured agreement
@@ -670,7 +669,20 @@ hold rather than as an exhaustive style guide.
   the 4 that both locate). **The engine's position wins where the message names
   one**, because the banner shows that message and an arrow pointing somewhere
   else is a mismatch the reader can see; there is nothing to disagree with once
-  the message says nothing about position. **Both sources may decline and the
+  the message says nothing about position. **The message patterns are anchored on
+  what the engine writes, and that is load-bearing rather than tidiness**: V8's
+  positionless shapes quote an excerpt of the document
+  (`Unexpected token 'p', "{"a": position 3}" is not valid JSON`), so a bare
+  `/position (\d+)/` read the document's own text — pointing at column 4 instead of
+  the fault at column 7, *and* suppressing the scan that had it right. So a
+  coordinate is recognized only as `at position N` / `at line N column M` ending
+  the message, and the excerpt family is refused whole by the `is not valid JSON`
+  it always ends with (that family never carries a coordinate, so nothing is
+  lost). **The scan goes through `visit`, not the `parse` two functions below
+  it** — `parse` assembles the recovered value, which for a malformed 10 MiB array
+  faulting at its start is 130 MiB of heap and 406 ms to build something discarded
+  on the next line; `visit` reports the same offset and allocates nothing.
+  `parseJsoncText` keeps `parse` because it wants the value. **Both sources may decline and the
   banner then shows no position** — rarer than before this existed, so it is
   covered by a unit test rather than left to a real file to produce. **The
   wordings are per-engine and a test under Node sees V8's alone**, which is why
