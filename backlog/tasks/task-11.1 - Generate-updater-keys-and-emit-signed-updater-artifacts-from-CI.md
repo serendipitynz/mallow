@@ -4,7 +4,7 @@ title: Generate updater keys and emit signed updater artifacts from CI
 status: In Review
 assignee: []
 created_date: '2026-08-01 23:13'
-updated_date: '2026-08-23 01:19'
+updated_date: '2026-08-24 22:00'
 labels:
   - feature
 milestone: m-2
@@ -42,6 +42,8 @@ Read the pinned toolchain rather than the docs or the CLI help text, because the
 Three components have to agree before an entry appears, and they were checked one by one. For deb all three do: tauri-cli signs it, the bundler counts it self-contained, and tauri-action build.ts at the pinned action-v0.6.2 collects the .deb.sig under bundle: deb, which is what puts linux-x86_64-deb into latest.json. For rpm the action collects .rpm.sig the same way and the CLI signs it, so only the bundler check disagrees - which is exactly why it is a question and deb is not.
 
 So do not carry rpm as a settled fact. The first CI run that produces a latest.json is what decides it: if linux-x86_64-rpm is absent, drop rpm from the reach claim in TASK-11 and from both READMEs in TASK-11.3 rather than shipping a promise that does not hold.
+
+Answered by the v0.7.0 release round (2026-08-25): linux-x86_64-rpm and linux-aarch64-rpm are both present and signed, and the build log shows the bundle-type marker patched for rpm on each Linux job. So the bundler's self-contained check, the one component that disagreed, does not gate the entry - it gates only whether a warning is printed. TASK-11, TASK-11.3 and both READMEs were corrected to match, and rpm joined finalize-updater-json's required key set. What this settles is that a client resolves an rpm target key; installing the .rpm on a real rpm system is untested here, as it is for every other form.
 
 Whatever the answer, TASK-11.1 owes one more thing: what a deb or rpm install should do when latest.json has no entry for it. Doing nothing is not neutral - the client falls back to the bare linux-x86_64 entry, which is the AppImage, and installs it as one.
 
@@ -82,7 +84,7 @@ Nothing here can be proven on a draft release, because releases/latest resolves 
 - [x] #3 The updater variables are present in .env.signing.example with empty values, and scripts/macos-sign-build.sh still runs to completion without an interactive prompt
 - [x] #4 A local pnpm tauri build emits the .app.tar.gz alongside its .sig, and a build with --no-sign still produces bundles without the private key
 - [ ] #5 A published test release carries a latest.json containing at least darwin-aarch64, darwin-x86_64, windows-x86_64-nsis, windows-x86_64-msi, linux-x86_64-appimage, linux-x86_64-deb, linux-aarch64-appimage and linux-aarch64-deb, each with a signature. The two aarch64 entries are named because the arm64 job is a fourth writer of the asset and decision-11 deletes the bare linux-aarch64 key that was its only fallback. The bare os-arch and -app entries appearing alongside them is expected, not a misconfiguration
-- [ ] #6 Whether linux-x86_64-rpm appears in that latest.json is confirmed from the real artifact, and the reach claims in TASK-11 and TASK-11.3 are made to match the answer
+- [x] #6 Whether linux-x86_64-rpm appears in that latest.json is confirmed from the real artifact, and the reach claims in TASK-11 and TASK-11.3 are made to match the answer
 - [x] #7 What a Linux install with no matching latest.json entry should do is decided and recorded, rather than being left to the bare-key fallback that would install an AppImage over it
 - [x] #8 The download urls in latest.json are either tag-pinned, or the decision to leave them resolving to latest is recorded with its reason
 - [ ] #9 No two matrix jobs can write latest.json concurrently, and one real release confirms every expected platform is present

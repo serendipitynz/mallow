@@ -29,7 +29,7 @@ Note on timing: the release-note half of AC#2 can only be closed when the first 
 Neither README has an install or download section, nor any mention of Releases, so this means adding one and choosing where it goes - not inserting a paragraph.
 
 - mallow updates itself from GitHub Releases, and the check can be turned off in Settings.
-- Which distributed forms self-update: the macOS .app, the Windows setup.exe and .msi, and the Linux AppImage and deb. Whether rpm belongs in that list is decided by TASK-11.1 against a real latest.json - write what was observed, not what was hoped, and say plainly which forms are download-only so an rpm user is not left waiting for an update that never comes.
+- Which distributed forms self-update: the macOS .app, the Windows setup.exe and .msi, and the Linux AppImage, deb and rpm. Whether rpm belonged in that list was decided by TASK-11.1 against the real v0.7.0 latest.json, which carried it - write what was observed, not what was hoped, and say plainly which forms are download-only so an rpm user is not left waiting for an update that never comes.
 - One-time exception, and the reason the promise needs a caveat: anyone on a release older than the first updater-carrying one has a binary with no updater in it, so nothing will reach them. They download once by hand and are then on the channel. Put the same sentence in that release note.
 - What the update will ask for: UAC on the Windows msi, a system password prompt on deb and rpm, and on macOS a password only when the .app is not writable by the user. Describe the prompt, not the mechanism - the Linux path picks between pkexec, a GUI dialog and terminal sudo at runtime.
 - Windows SmartScreen belongs here, in the distribution context - it appears on the first browser download of the unsigned installer, and per TASK-11.2 it is not expected on the in-app update path. Only state what was actually observed.
@@ -69,18 +69,31 @@ labels, so the one-time-manual-update sentence is added by hand in the release
 session. AGENTS (both languages) now says that in the release workflow section, so
 the requirement does not live only in the handoff.
 
-**rpm is documented as download-only, and the release round has to confirm it.**
-decision-11 left `linux-x86_64-rpm` deliberately outside the platform set that
-`finalize-updater-json` asserts, because upstream support is inconsistent and the
-answer is not knowable before a real `latest.json`. Both READMEs therefore state
-plainly that the `.rpm` is download-only rather than hedging, since a hedge is what
-leaves an rpm user waiting — scoped to 0.7.0, because that is the release whose
-`latest.json` can be read before publishing. If `linux-x86_64-rpm` does appear in
-it (TASK-11.1 AC #6 reads it), the claim in both READMEs is wrong and has to be
-corrected in that session.
+**rpm was documented as download-only, the release round measured it, and the
+answer went the other way.** decision-11 left `linux-x86_64-rpm` deliberately
+outside the platform set that `finalize-updater-json` asserts, because upstream
+support is inconsistent and the answer is not knowable before a real
+`latest.json`. Both READMEs therefore stated plainly that the `.rpm` was
+download-only rather than hedging, since a hedge is what leaves an rpm user
+waiting — scoped to 0.7.0, because that is the release whose `latest.json` can be
+read before publishing. The v0.7.0 round read it (TASK-11.1 AC #6): both
+`linux-x86_64-rpm` and `linux-aarch64-rpm` were there, signed and tag-pinned. So
+that claim was wrong, and both READMEs were corrected in that session, rpm joined
+the required key set, and decision-11 gained a second addendum. **Writing it
+plainly rather than hedging is what made the correction a one-line edit** — a
+hedge would have been defensible after the fact and would have told the reader
+nothing either way.
 
-**What an rpm install actually sees is an error, not reassurance** — corrected in
-review, and decision-11 carries an addendum for the same statement. `check()` in
+**What the measurement covers.** A client resolves an rpm target key. That
+installing the `.rpm` succeeds on a real rpm system is not covered, and is not
+covered for deb, AppImage, msi or nsis either — which is why README puts rpm on
+the same row as the rest rather than on a stronger claim.
+
+**An install with no matching key sees an error, not reassurance** — corrected in
+review, and decision-11 carries an addendum for the same statement. This no longer
+describes rpm (above), but it still describes any install whose bundle-type marker
+patch failed, which is the case decision-11 kept the bare-key deletion for.
+`check()` in
 tauri-plugin-updater 2.10.1 resolves the target through `get_urls` before it
 compares versions, so a missing key raises `TargetsNotFound` rather than yielding
 the no-update outcome; at the JS boundary that is indistinguishable from a network

@@ -17,13 +17,11 @@ Download a build for your platform from the
 |---|---|---|
 | macOS (Apple Silicon + Intel) | `_universal.dmg` | yes |
 | Windows (x86_64) | `x64-setup.exe`, `x64_en-US.msi` | yes |
-| Linux (x86_64 / arm64) | `.AppImage`, `.deb` | yes |
-| Linux (x86_64 / arm64) | `.rpm` | no — download-only |
+| Linux (x86_64 / arm64) | `.AppImage`, `.deb`, `.rpm` | yes |
 
-mallow can check for updates, and Settings turns the automatic check off. An rpm
-install is the exception: as of 0.7.0 updating does not work there (a manual check
-answers "Could not check for updates"). The check exists from 0.7.0 onward, so
-from a version earlier than that, download once by hand.
+mallow can check for updates, and Settings turns the automatic check off. The
+check exists from 0.7.0 onward, so from a version earlier than that, download
+once by hand.
 
 Installing an update may need the system's permission.
 

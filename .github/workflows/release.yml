@@ -270,8 +270,9 @@ jobs:
   # is the AppImage, and installs it as one. A deb install would overwrite
   # itself with AppImage bytes. Two things produce that state: a bundle type
   # that never reaches latest.json at all (rpm's upstream treatment is
-  # inconsistent), and tauri-bundler's per-bundle marker patch failing, which is
-  # logged as a warning and leaves the binary reporting no bundle type.
+  # inconsistent - it did reach latest.json in v0.7.0, which is why the key check
+  # below now requires it), and tauri-bundler's per-bundle marker patch failing,
+  # which is logged as a warning and leaves the binary reporting no bundle type.
   #
   # So the bare Linux keys are removed. Every Linux form that self-updates
   # resolves its own `linux-<arch>-<installer>` key, so nothing that is patched
@@ -326,13 +327,16 @@ jobs:
           # Both Linux architectures are listed, not just x86_64: the arm64 job is a
           # fourth writer of this asset, and its bare linux-aarch64 fallback was
           # just deleted above, so an arm64 entry lost here leaves those installs
-          # with nothing to resolve at all. rpm stays out until a real release
-          # shows whether it appears.
+          # with nothing to resolve at all. rpm is listed as of v0.7.0, whose
+          # latest.json answered the question decision-11 left open by carrying
+          # linux-x86_64-rpm and linux-aarch64-rpm: the READMEs now tell rpm users
+          # an update reaches them, so an upstream change that stops signing .rpm
+          # has to fail here rather than strand them silently.
           for key in \
             darwin-aarch64 darwin-x86_64 \
             windows-x86_64-nsis windows-x86_64-msi \
-            linux-x86_64-appimage linux-x86_64-deb \
-            linux-aarch64-appimage linux-aarch64-deb; do
+            linux-x86_64-appimage linux-x86_64-deb linux-x86_64-rpm \
+            linux-aarch64-appimage linux-aarch64-deb linux-aarch64-rpm; do
             if [ "$(jq -r --arg k "$key" '.platforms | has($k)' out/latest.json)" != "true" ]; then
               echo "::error::latest.json has no '$key' entry. A build job produced no bundle, or two jobs raced on this asset." >&2
               exit 1
