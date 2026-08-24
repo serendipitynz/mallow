@@ -74,20 +74,54 @@ function offsetToLineCol(text: string, offset: number): { line: number; column: 
   return { line, column };
 }
 
+/**
+ * The position of a JSON syntax error, for a document `JSON.parse` has already
+ * rejected: the engine's own message where that names one, a strict jsonc scan
+ * where it does not, and empty when neither answers — a supported state
+ * (decision-12).
+ *
+ * `JSON.parse` stays the only thing that decides whether a `.json` file is valid.
+ * This is reached only from a catch, so it cannot widen the format however lenient
+ * the scan below it were to become.
+ *
+ * Exported for the sake of the wordings this environment cannot produce: the
+ * message shapes come from whichever engine the WebView carries, and a test run
+ * under Node sees V8's alone.
+ */
+export function jsonErrorPosition(text: string, message: string): { line?: number; column?: number } {
+  const lc = message.match(/line (\d+) column (\d+)/);
+  if (lc) {
+    return { line: Number(lc[1]), column: Number(lc[2]) };
+  }
+  const pos = message.match(/position (\d+)/);
+  if (pos) {
+    return offsetToLineCol(text, Number(pos[1]));
+  }
+  // The engine's message is preferred above because the banner shows that message,
+  // and a position from elsewhere could point away from what the message describes.
+  // Nothing to disagree with once the message says nothing about position.
+  const offset = strictJsonErrorOffset(text);
+  return offset === undefined ? {} : offsetToLineCol(text, offset);
+}
+
+/**
+ * The offset of the first error a strict (no comments, no trailing commas) jsonc
+ * scan finds. The parsed value and the error code are both discarded: showing
+ * jsonc's verdict for a `.json` file would attribute it to something that did not
+ * decide it. Allowed to answer nothing.
+ */
+function strictJsonErrorOffset(text: string): number | undefined {
+  const errors: ParseError[] = [];
+  parseJsonc(text, errors, { allowTrailingComma: false, disallowComments: true });
+  return errors.length > 0 ? errors[0].offset : undefined;
+}
+
 function parseJson(text: string): ParseOutcome {
   try {
     return { ok: true, value: JSON.parse(text) };
   } catch (e) {
     const message = (e as Error).message;
-    const lc = message.match(/line (\d+) column (\d+)/);
-    if (lc) {
-      return { ok: false, error: { message, line: Number(lc[1]), column: Number(lc[2]) } };
-    }
-    const pos = message.match(/position (\d+)/);
-    if (pos) {
-      return { ok: false, error: { message, ...offsetToLineCol(text, Number(pos[1])) } };
-    }
-    return { ok: false, error: { message } };
+    return { ok: false, error: { message, ...jsonErrorPosition(text, message) } };
   }
 }
 
@@ -117,14 +151,22 @@ function parseJsonl(text: string): ParseOutcome {
   const lines = text.split(/\r?\n/);
   const records: unknown[] = [];
   for (let i = 0; i < lines.length; i++) {
-    const trimmed = lines[i].trim();
-    if (!trimmed) {
+    const line = lines[i];
+    if (!line.trim()) {
       continue;
     }
     try {
-      records.push(JSON.parse(trimmed));
+      // Parsed with its indentation rather than trimmed, so a reported offset is
+      // already relative to the line and needs no shifting. Whitespace around a
+      // value is legal JSON, so the record itself is unaffected.
+      records.push(JSON.parse(line));
     } catch (e) {
-      return { ok: false, error: { message: `Line ${i + 1}: ${(e as Error).message}`, line: i + 1, column: 1 } };
+      const message = (e as Error).message;
+      // Only the column: a record is one line, so the line is the loop's, and
+      // claiming column 1 without measuring it is the inferred position
+      // decision-8 forbids and decision-12 removed from here.
+      const { column } = jsonErrorPosition(line, message);
+      return { ok: false, error: { message: `Line ${i + 1}: ${message}`, line: i + 1, column } };
     }
   }
   return { ok: true, value: records };
