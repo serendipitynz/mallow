@@ -330,6 +330,10 @@ export default function Probe() {
         <ul className="probe-counters">
           <li>hrefs the app&apos;s own pass neutralized: {state.neutralizedHrefs.join(', ') || '(none)'}</li>
           <li>hrefs still in the tab order: {state.tabbableHrefs.join(', ') || '(none)'}</li>
+          <li>
+            hrefs still on an &lt;area&gt;:{' '}
+            {state.linkedAreaHrefs.join(', ') || '(none — the region is no longer a link)'}
+          </li>
           <li>custom event dispatched by the parent: {state.customEvent}</li>
           <li>activation control: {String(state.activation)}</li>
           <li>
@@ -623,9 +627,10 @@ export default function Probe() {
           AC numbers in this section are <strong>TASK-23&apos;s</strong>. A <code>srcdoc</code> document&apos;s base URL
           is the parent&apos;s, so an href with no scheme resolves to the app&apos;s own URL, and following it loads the
           app shell inside the frame — blank, because its scripts are refused, with no way back. decision-10 neutralizes
-          those links where the frame runs no parent-registered listener. What it does not settle is whether the click
-          half reaches an <code>&lt;area&gt;</code>, what the keyboard does, what an external-protocol scheme does, and
-          what a protocol-relative reference resolves to on this engine.
+          those links where the frame runs no parent-registered listener. What it did not settle is whether the click
+          half reaches an <code>&lt;area&gt;</code> — round 3 measured that it does not, and TASK-25 removed the href
+          instead, which is what this section now re-measures — what the keyboard does, what an external-protocol scheme
+          does, and what a protocol-relative reference resolves to on this engine.
         </p>
         <div className="probe-controls">
           <button type="button" onClick={onRunLinkChecks} disabled={result === null}>
@@ -682,10 +687,16 @@ export default function Probe() {
           click that navigates takes the fixture with it. Readings accumulate across re-arms of the same mode.
         </p>
         <p className="probe-note">
-          <strong>Raw</strong> is what the document does on its own; <strong>neutralized</strong> applies the app&apos;s
-          own pass, and the raw answer is what makes that one mean anything — an <code>&lt;area&gt;</code> that does
-          nothing when neutralized is only evidence if it did something when it was not. For the keyboard attempt, click
-          this page outside the frame first, then Tab in.
+          <strong>Raw</strong> is what the document does on its own; <strong>neutralized</strong> applies both of the
+          app&apos;s own passes, and the raw answer is what makes that one mean anything — an <code>&lt;area&gt;</code>{' '}
+          that does nothing when neutralized is only evidence if it did something when it was not. For the keyboard
+          attempt, click this page outside the frame first, then Tab in.
+        </p>
+        <p className="probe-note">
+          For the image map, read <em>hrefs still on an &lt;area&gt;</em> in the counters beside the click. TASK-25
+          closes that region by removing the href rather than by hit-testing, and on an engine that runs no
+          parent-registered listener the click counters are 0 whatever happened — so that line is what tells a region
+          that navigated nothing from a click that missed the map.
         </p>
         <div className="probe-controls">
           <label className="probe-field">
