@@ -328,7 +328,10 @@ export default function Probe() {
           {label} — armed {state.arms}×
         </h3>
         <ul className="probe-counters">
-          <li>hrefs the app&apos;s own pass neutralized: {state.neutralizedHrefs.join(', ') || '(none)'}</li>
+          <li>
+            app-origin hrefs the passes act on (read before applying them):{' '}
+            {state.appOriginHrefs.join(', ') || '(none)'}
+          </li>
           <li>hrefs still in the tab order: {state.tabbableHrefs.join(', ') || '(none)'}</li>
           <li>
             hrefs still on an &lt;area&gt;:{' '}

@@ -217,6 +217,13 @@ two modes:
   applies). **Both, because the app applies both to every document it renders** —
   the areas one ahead of decision-9's listener branch and the links one inside it,
   so applying only the second would arm a document the app never shows.
+  **Its two halves do not answer for the same engines.** The `<area>` half ships
+  everywhere, so those readings are the shipped mechanism on every engine. The
+  `<a>` half is the branch taken only where no parent-registered listener runs, so
+  on WebView2 this arm measures a pass the app does not apply there — an anchor is
+  handled by `HtmlView`'s click handler on that engine, and this fixture installs
+  no such handler on purpose (a `preventDefault` would remove the observation).
+  Read the `<a>` rows on WebView2 as "what the fallback would do here".
 
 **The raw answer is what makes the neutralized one mean anything.** An `<area>`
 that does nothing when neutralized is only evidence if it did something when it

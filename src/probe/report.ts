@@ -182,7 +182,7 @@ function linkProbeBlock(mode: LinkProbeMode, label: string, state: LinkProbeStat
   );
   return [
     `- ${label} — armed ${state.arms} time(s), ${coverage}:`,
-    `  - hrefs the app's own pass neutralized: ${state.neutralizedHrefs.length === 0 ? '(none)' : state.neutralizedHrefs.join(', ')}`,
+    `  - app-origin hrefs the passes act on, read before applying them: ${state.appOriginHrefs.length === 0 ? '(none)' : state.appOriginHrefs.join(', ')}`,
     `  - hrefs still in the tab order afterwards: ${state.tabbableHrefs.length === 0 ? '(none)' : state.tabbableHrefs.join(', ')}`,
     `  - hrefs still on an <area> afterwards: ${state.linkedAreaHrefs.length === 0 ? '(none — the region is no longer a link)' : state.linkedAreaHrefs.join(', ')}`,
     `  - custom event dispatched by the parent into contentDocument: ${state.customEvent} (0 means this document runs no parent-registered listener at all, so the click counts below say nothing about whether a click arrived)`,

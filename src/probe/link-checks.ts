@@ -308,7 +308,15 @@ export interface LinkProbeState {
    *  from them because the reading cap can drop an arm's marker, and a lost
    *  marker would report an attempt as never made. */
   armedAttempts: LinkAttempt[];
-  neutralizedHrefs: string[];
+  /** The app-origin hrefs on this fixture, read **before** the mode is applied
+   *  and over `a[href], area[href]` alike. Named for what it is rather than for
+   *  what happens next: decision-10's "neutralized" is one state a link can end
+   *  in and an `<area>` no longer reaches it, so a name carrying that word would
+   *  claim the wrong thing for half the list.
+   *
+   *  Read before the pass rather than inferred from it: the predicate is the
+   *  app's, so what it selects is part of the measurement. */
+  appOriginHrefs: string[];
   /** Hrefs still in the tab order after the mode was applied. In `neutralized`
    *  this is the stated expectation the keyboard reading is checked against. */
   tabbableHrefs: string[];
@@ -339,7 +347,7 @@ export function emptyLinkProbeState(mode: LinkProbeMode): LinkProbeState {
     mode,
     arms: 0,
     armedAttempts: [],
-    neutralizedHrefs: [],
+    appOriginHrefs: [],
     tabbableHrefs: [],
     linkedAreaHrefs: [],
     activation: false,
@@ -396,16 +404,25 @@ export async function armLinkProbe(
   const links = [...doc.querySelectorAll<HTMLElement>('a[href], area[href]')];
   const hrefOf = (link: HTMLElement): string => link.getAttribute('href') ?? '';
   if (mode === 'neutralized') {
-    // The hrefs are collected before the pass rather than inferred from it: the
-    // predicate is the app's, so what it selects is part of the measurement.
-    state.neutralizedHrefs = links.map(hrefOf).filter(navigatesAppOrigin);
+    state.appOriginHrefs = links.map(hrefOf).filter(navigatesAppOrigin);
     // Both passes, because the app applies both to every document it renders —
     // the areas one ahead of the listener branch and this one inside it (TASK-25).
     // Applying only the first would measure a document the app never shows.
+    //
+    // **The two halves of this mode do not answer for the same engines.**
+    // `neutralizeAppOriginAreas` is what ships everywhere, so the `<area>`
+    // readings here are the shipped mechanism on every engine. On an engine that
+    // runs parent-registered listeners the app takes the other branch and never
+    // calls `neutralizeAppOriginLinks`, so this arm's `<a>` readings there
+    // measure a pass that engine does not apply — what handles an anchor on that
+    // engine is `HtmlView`'s click handler, which this fixture deliberately does
+    // not install (arming a `preventDefault` would remove the observation). Read
+    // the `<a>` rows on WebView2 as "what the fallback would do here", not as
+    // what a reader gets.
     neutralizeAppOriginAreas(doc);
     neutralizeAppOriginLinks(doc);
   } else {
-    state.neutralizedHrefs = [];
+    state.appOriginHrefs = [];
   }
   state.tabbableHrefs = links.filter((link) => link.getAttribute('tabindex') !== '-1').map(hrefOf);
   // Re-queried rather than filtered out of `links`, since what is being read is
