@@ -1,10 +1,10 @@
 ---
 id: TASK-23
 title: Add decision-10's link cases to the srcdoc probe
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-19 00:19'
-updated_date: '2026-08-23 22:58'
+updated_date: '2026-08-23 23:22'
 labels:
   - bug
 milestone: m-2
