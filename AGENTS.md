@@ -487,7 +487,9 @@ hold rather than as an exhaustive style guide.
   placement is the point rather than an implementation detail.**
   `neutralizeAppOriginAreas` runs inside the transform, so the `href` is gone
   before the frame ever loads and neither route has anything left to travel: no
-  hyperlink for a region's click to activate and no click for a handler to miss. **What goes is the
+  hyperlink for a region's click to activate, and no `area[href]` for a handler's
+  selector to skip. **Not "no click"** — the click is still delivered (below);
+  what is gone is the link it used to carry. **What goes is the
   activation, not the click, and that is measured** — on WebView2 the neutralized
   region still hit-tests and the counter recorded it as `area-link (not a link)`
   against no navigation, so do not write that the click falls through to the
