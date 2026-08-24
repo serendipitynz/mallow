@@ -1,10 +1,10 @@
 ---
 id: TASK-18
 title: Report a position for JSON syntax errors that JSON.parse does not locate
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-16 02:53'
-updated_date: '2026-08-19 20:49'
+updated_date: '2026-08-24 10:39'
 labels:
   - bug
 milestone: m-2
@@ -28,11 +28,73 @@ Related: TASK-4 has the same problem one engine over - DOMParser's parsererror d
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
-
 <!-- AC:BEGIN -->
-- [ ] #1 A .json file whose error JSON.parse does not locate still reports a line, and the source view flags and scrolls to it
-- [ ] #2 What counts as valid JSON is unchanged: comments and trailing commas are still errors in a .json file
-- [ ] #3 The chosen approach adds no new production dependency, or asks first
-- [ ] #4 Unit tests cover both message shapes - the one JSON.parse locates and the one it does not
-- [ ] #5 The promise made here about error positions is consistent with what TASK-4 promises for XML, or the difference is stated
+- [x] #1 A .json file whose error JSON.parse does not locate still reports a line, and the source view flags and scrolls to it
+- [x] #2 What counts as valid JSON is unchanged: comments and trailing commas are still errors in a .json file
+- [x] #3 The chosen approach adds no new production dependency, or asks first
+- [x] #4 Unit tests cover both message shapes - the one JSON.parse locates and the one it does not
+- [x] #5 The promise made here about error positions is consistent with what TASK-4 promises for XML, or the difference is stated
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+decision-12 settles the contract. The gate on validity stays `JSON.parse`; what is
+added is a **position source** — a strict jsonc scan (`jsonc-parser` with
+`allowTrailingComma: false, disallowComments: true`) reached only from the catch,
+whose value and error code are discarded and whose first offset becomes a line.
+
+**AC #2 holds by construction, not by measurement.** The only path to the scan
+begins with `JSON.parse` having thrown, so no document the scan would accept can
+be accepted, however lenient jsonc-parser's grammar is or becomes. The agreement
+was measured anyway, because the *quality* of the position depends on it: across 30
+shapes (comments, both trailing commas, single quotes, unquoted keys, `01`, `+1`,
+`.5`, `1.`, `0x10`, `NaN`, `Infinity`, `undefined`, content after the value,
+trailing garbage, an unclosed brace, a raw tab and a raw newline in a string, `\x`,
+a line continuation, empty, whitespace-only, duplicate keys, `item-6000`) the two
+agree on every verdict (30/30), and on the 4 where both name a position they name
+the same one.
+
+**The engine's position wins where the message has one.** The banner shows the
+engine's message, so a position from elsewhere could point away from what that
+message describes; where the message says nothing about position there is nothing
+to disagree with. This also means no case that reported a position before changes.
+
+**Replacing `JSON.parse` with the jsonc parser — the candidate this task's own
+text named — was rejected.** It moves the gate (AC #2 would then rest on the table
+above), turns the message into a terse code (`InvalidSymbol`) in place of prose
+naming the offending token, and the recovery-oriented parser returns a value
+alongside its errors, so "did this parse" stops being one answer.
+
+**AC #5 is answered by one rule, not by matching XML's promise.** decision-12:
+report a position wherever one can be obtained without adding a dependency and
+without inferring it. JSON has a second strict parser in the tree already (for
+`.jsonc`), XML has none and decision-8 declined to add one — same rule, different
+answer. decision-8's text is unedited; an amendment records the narrowed scope of
+its claim, and says XML would be obliged to report a position if a parser ever
+arrived for another reason.
+
+**One thing fell out of the rule rather than being decided**: `parseJsonl` reported
+`column: 1` for every failing record, which is an inferred position printed under
+the reader's cursor. It now comes from the same helper, and `JSON.parse` is handed
+the raw line rather than a trimmed copy so the offset needs no shifting by the
+indent. Absent where no source answers.
+
+**Which leg holds which AC.** #1's "reports a line" is unit-tested (and the
+fixtures measure line 6002 in a 425 KiB file); its "flags and scrolls" half is the
+`errorLine` path `ConfigView` → `SourceView` already runs for every other config
+format — unchanged code, now reachable for `.json` — and is confirmed by eye, not by
+the suite (`_sandbox/handoff/task-18/visual-check.md`, 6 fixtures, both the
+highlighted and the highlight-skipped source paths). #2 is 9 rejection cases plus
+the same content accepted as `.jsonc`. #3 is `git diff` on `package.json` and
+`pnpm-lock.yaml` being empty. #4 feeds the engine wordings in directly, including
+JavaScriptCore's, which a Node run cannot produce — which is why
+`jsonErrorPosition` is exported, following `xmlErrorInfo`'s precedent. #5 is
+decision-12, decision-8's amendment, doc-1 and AGENTS (both languages).
+
+**README changed in the honest direction, not the flattering one.** Its config
+bullet promised the offending line unconditionally, which was false for `.json`
+and is still not guaranteed for YAML; it now reads as the XML bullet already did
+("where the parser reports one"). The improvement this task ships is that the
+qualifier is nearly always met, not that the promise got louder.
+<!-- SECTION:NOTES:END -->
