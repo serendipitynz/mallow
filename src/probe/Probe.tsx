@@ -329,7 +329,7 @@ export default function Probe() {
         </h3>
         <ul className="probe-counters">
           <li>
-            app-origin hrefs the passes act on (read before applying them):{' '}
+            app-origin hrefs on the fixture (read before this mode was applied):{' '}
             {state.appOriginHrefs.join(', ') || '(none)'}
           </li>
           <li>hrefs still in the tab order: {state.tabbableHrefs.join(', ') || '(none)'}</li>

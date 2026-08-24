@@ -214,10 +214,10 @@ two modes:
 - **neutralized** — the app's own passes applied, so what is measured is the
   mechanism that ships rather than a description of it (`neutralizeAppOriginAreas`
   and `neutralizeAppOriginLinks` in `lib/html-doc`, the same functions the app
-  applies). **Both, because the app applies both to every document it renders** —
-  the areas one ahead of decision-9's listener branch and the links one inside it,
-  so applying only the second would arm a document the app never shows.
-  **Its two halves do not answer for the same engines.** The `<area>` half ships
+  applies). **Both, because the app applies both to a document it renders** — the
+  areas one ahead of decision-9's listener branch and the links one inside it, so
+  arming only the areas pass would arm a document the app never shows on either
+  side. **Its two halves do not answer for the same engines.** The `<area>` half ships
   everywhere, so those readings are the shipped mechanism on every engine. The
   `<a>` half is the branch taken only where no parent-registered listener runs, so
   on WebView2 this arm measures a pass the app does not apply there — an anchor is
