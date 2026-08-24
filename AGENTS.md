@@ -816,10 +816,14 @@ exists. `--dry-run` shows what it would do. Bumping all four together is what
 matters: **Tauri names the bundles after `tauri.conf.json`, not after the tag**,
 so a tag pushed without the bump ships assets carrying the old version's name.
 The `create-release` job re-checks tag ↔ manifest agreement and fails the
-workflow before anything is built. Windows/Linux bundles are unsigned.
+workflow before anything is built. Windows/Linux bundles are not code-signed (a separate matter from the updater signature on their artifacts).
 The draft's notes are generated from the pull requests merged since the previous
 tag, grouped by label per `.github/release.yml` (label PRs `feature` / `bug` /
 `documentation` to sort them; everything else falls under "Other Changes").
+A release that changes how updates reach users needs a sentence those generated
+notes cannot produce, added by hand: v0.7.0 is the first release carrying an
+updater, so anyone on an earlier version has a binary that cannot ask for one and
+has to download once by hand before the channel reaches them at all.
 
 ### Signed self-update (the update channel)
 
@@ -836,6 +840,14 @@ compiled into it, so losing *or rotating* the private key strands every
 installed copy; recovery is a manual reinstall by each user. It is not the
 Developer ID certificate and must not be handled like one.
 
+**Where the key is kept — two places and only two.** The repository secrets,
+which is what CI signs with, and a copy off this machine held by the maintainer,
+which is the only backup. It is not in the repository, not in
+`.env.signing.example` (whose two updater values are empty on purpose), and must
+never be pasted into a transcript, an issue or a PR. Since there is nothing to
+reissue it from, this is a backup problem rather than an incident-response one:
+the recovery from a lost key is asking every user to reinstall by hand.
+
 Committing the public key changes what a build *without* the private key does,
 and the three failure modes do not fail alike:
 
@@ -851,6 +863,14 @@ and the three failure modes do not fail alike:
 of local bundling — it logs `Updater signing is skipped due to --no-sign flag`
 and produces the `.app.tar.gz` with no `.sig`. It skips **code signing at the
 same time**, so it is a contributor's escape hatch and not a release path.
+
+**Committing the public key made `.env.signing` part of local bundling**, not
+only of signed releases: a plain build with no private key in the environment
+stops. `scripts/macos-sign-build.sh` is the only thing that exports that file, so
+invoking `tauri build` directly needs it sourced by hand — `set -a; . ./.env.signing;
+set +a`, then `unset` the `APPLE_*` values to skip notarization — and a contributor
+bundling on Windows or Linux exports the two updater variables themselves. Missing
+this reads as "no private key" rather than as an unexported file.
 
 **decision-11 is the contract for `latest.json`**, and all three things it
 settles fail without failing the build. The build matrix carries
@@ -881,6 +901,15 @@ continues, and the resulting binary reports no bundle type at all — so **the
 build log is the only place it shows**. macOS is the exception at both ends:
 native bundles skip the patch by design, so the Developer ID signature is never
 at risk, and an unpatched macOS binary still reports the app bundle type.
+
+**`latest.json`'s `notes` is empty, and that is a decision rather than an
+omission.** `releaseBody` is not passed to `tauri-action`, so the update dialog
+shows no changelog — it is built to read without one. Filling it would route the
+generated release notes, multi-line markdown, through a job output, which cannot
+be checked before a real release round; and it leans on the reading that the
+action creates or edits a release only when `tagName` is set and `releaseId` is
+not, which is the same reading that keeps the hand-published draft's generated
+notes intact. Revisit it as its own change with a release round to verify it.
 
 ## Known follow-ups
 
