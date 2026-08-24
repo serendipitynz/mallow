@@ -4,7 +4,7 @@ title: Stop an image map navigating the rendered frame away
 status: In Review
 assignee: []
 created_date: '2026-08-23 22:17'
-updated_date: '2026-08-24 00:40'
+updated_date: '2026-08-24 06:38'
 labels:
   - bug
 milestone: m-2
@@ -30,10 +30,10 @@ Rare in what this view opens, which is why decision-10 made it a probe case rath
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An <area href> clicked for real inside a rendered document does not navigate the frame, on all three WebViews
+- [x] #1 An <area href> clicked for real inside a rendered document does not navigate the frame, on all three WebViews
 - [x] #2 The branch where parent-registered listeners run is covered as well as the branch where they do not, since the click reaches the frame by a different route on each and neither of decision-10's halves covers both
 - [x] #3 The keyboard path stays closed, which tabindex=-1 already does - the fix must not be a rewrite that drops it
-- [ ] #4 The probe's neutralized area-click arm is re-run on all three WebViews and navigates nothing
+- [x] #4 The probe's neutralized area-click arm is re-run on all three WebViews and navigates nothing
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -125,4 +125,40 @@ covered.
 **AC #1 and AC #4 need the probe run and are not checked here** — three engines,
 the `area-click` arm in both modes. AC #2 and AC #3 are structural and closed by
 the code above.
+
+## Measured after the fix (2026-08-24, all three WebViews)
+
+Built probe runs, one per engine, reports at
+`_sandbox/handoff/task-25/task-25-{mac,win,linux}.md` — WKWebView
+(AppleWebKit/605.1.15), WebView2 (Edg/151), WebKitGTK (Ubuntu, Version/60.5).
+All three report `Run validity: both positive controls passed`, so a CSP was in
+force on each.
+
+| engine | raw `area-click` (the control) | neutralized `area-click` |
+|---|---|---|
+| WKWebView | navigated to `tauri://localhost/probe-area-target.html`, `on fixture: false` | `about:srcdoc`, `on fixture: true`, `hrefs still on an <area>: (none)` |
+| WebView2 | navigated to `http://tauri.localhost/probe-area-target.html`, `clicks heard: area-link=2` | no navigation, `(none)`, `clicks heard: area-link (not a link)=2` |
+| WebKitGTK | navigated to `tauri://localhost/probe-area-target.html`, `on fixture: false` | `about:srcdoc`, `on fixture: true`, `(none)` |
+
+**AC #1 and #4 are closed by that table** — the raw arm establishes each engine
+would have navigated, and the neutralized arm is the shipped mechanism on every
+engine (the areas pass runs ahead of the listener branch).
+
+**One thing the run falsified, and the comments were corrected for it.** "With
+no `href` the click falls through to the `<img usemap>` beneath" was the obvious
+reading and is wrong: on WebView2 the region still hit-tests after the pass and
+the click still reaches the `<area>` — recorded as `area-link (not a link)=2`
+against no navigation. What the pass removes is the hyperlink the hit used to
+activate, not the hit. `lib/html-doc`, `src/probe/link-checks.ts`, AGENTS (both
+languages) and decision-10's amendment now say that.
+
+**The `http(s)` half of the `counts.links` claim was measured too**, in the app
+rather than the probe (`_sandbox/samples/rendered-imagemap.html`, macOS): an
+`<area href="https://…">` did not move the frame in a built app and did move it
+under `pnpm tauri dev`, where no CSP exists. The difference between the two runs
+is decision-9's `frame-src` argument naming itself for an `<area>`.
+
+Also fixed in that fixture: it did not say it must be run against a build, which
+is the trap AGENTS warns about — under dev its `https` region navigates and reads
+as a defect.
 <!-- SECTION:NOTES:END -->
