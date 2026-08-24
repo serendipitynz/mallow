@@ -580,9 +580,11 @@ hold rather than as an exhaustive style guide.
   number that says links do nothing, and its `http(s)` half rides the `<a>`
   argument, since `frame-src` answers for the destination and not for the element
   that asked — **and that half is now measured rather than carried**: an
-  `<area href="https://…">` clicked in a built app on WKWebView did not move the
-  frame, while the same click under `pnpm tauri dev` did, which is the CSP naming
-  itself (2026-08-24, `_sandbox/samples/rendered-imagemap.html`). **The same
+  `<area href="https://…">` clicked in a built app moved the frame on none of the
+  three platforms (2026-08-24, `_sandbox/samples/rendered-imagemap.html`).
+  **What names the CSP as the cause is the macOS leg alone**, where the same
+  region did move the frame under `pnpm tauri dev`, which has no CSP at all; the
+  other two are the outcome without that contrast. **The same
   silence is deliberate at `imgSrc`** for a
   protocol-relative reference, which the parent's base URL makes `tauri://host/x`
   on WebKit and `http://host/x` on WebView2 — one refused, one carried, measured

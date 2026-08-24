@@ -210,7 +210,10 @@ Built probe runs, one per engine, reports at
   `pointer-events: none` does not stop the click, and that the click reaches the
   area on the one engine where a listener can say so.
 - **decision-9's `frame-src` argument, which this amendment leans on for the
-  `http(s)` half of `counts.links`, was measured for an `<area>` too**: in a
-  built app on WKWebView an `<area href="https://…">` did not move the frame,
-  while the same click under `pnpm tauri dev` — where no CSP exists at all — did.
-  The difference between the two runs is the CSP naming itself.
+  `http(s)` half of `counts.links`, was measured for an `<area>` too**: clicked
+  in a built app, an `<area href="https://…">` moved the frame on none of the
+  three platforms. **The causal half rests on one leg** — on macOS the same region
+  did move the frame under `pnpm tauri dev`, which has no CSP at all, and that
+  contrast is what names the CSP; Windows and Linux contribute the outcome, not
+  the attribution. A run of the same fixture in the app rather than the probe, so
+  it is the rendered view a reader gets.

@@ -167,11 +167,17 @@ against no navigation. What the pass removes is the hyperlink the hit used to
 activate, not the hit. `lib/html-doc`, `src/probe/link-checks.ts`, AGENTS (both
 languages) and decision-10's amendment now say that.
 
-**The `http(s)` half of the `counts.links` claim was measured too**, in the app
-rather than the probe (`_sandbox/samples/rendered-imagemap.html`, macOS): an
-`<area href="https://…">` did not move the frame in a built app and did move it
-under `pnpm tauri dev`, where no CSP exists. The difference between the two runs
-is decision-9's `frame-src` argument naming itself for an `<area>`.
+**The app-side check ran on all three platforms as well** — the rendered view a
+reader gets, not the probe (`_sandbox/samples/rendered-imagemap.html`, built apps,
+2026-08-24). None of the fixture's three mapped regions moved the frame on macOS,
+Windows or Linux: the two app-origin ones because this pass took their `href`, the
+`https` one because `frame-src` does not carry it.
+
+**That last one closes the `http(s)` half of the `counts.links` claim, and the
+attribution rests on one leg.** On macOS the same `https` region *did* move the
+frame under `pnpm tauri dev`, which has no CSP at all — that contrast is what
+names the CSP as the cause. Windows and Linux were measured in a build only, so
+they contribute the outcome rather than the attribution.
 
 Also fixed in that fixture: it did not say it must be run against a build, which
 is the trap AGENTS warns about — under dev its `https` region navigates and reads
