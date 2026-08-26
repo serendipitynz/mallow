@@ -825,6 +825,21 @@ notes cannot produce, added by hand: v0.7.0 is the first release carrying an
 updater, so anyone on an earlier version has a binary that cannot ask for one and
 has to download once by hand before the channel reaches them at all.
 
+**An unsigned Windows bundle costs a sentence in README, and the three
+SmartScreen events it touches are not one event.** A browser receiving a release
+asset is the *download-time* warning; launching the received installer is the
+*run-time* warning; an in-app update running the installer is the *update-path*
+warning. **Only the first is measured** (Edge, v0.7.0, 2026-08-25):
+`Publisher: Unknown`, `Cancel` and `Delete` as the only visible buttons, and
+`Keep anyway` inside the dropdown on `Delete` — which is why README names that
+dropdown rather than saying a warning appears and can be dismissed. A reader who
+only sees `Cancel` and `Delete` concludes the file cannot be had, and one did.
+The other two events are unmeasured, as are the `.msi`, browsers other than
+Edge, and whether code signing removes any of them — SmartScreen judges on
+reputation, so **do not write that signing fixes this**; `Publisher: Unknown` is
+the display of an unsigned bundle, which is not the same as being the warning's
+sufficient condition.
+
 ### Signed self-update (the update channel)
 
 `bundle.createUpdaterArtifacts` is on and `plugins.updater.pubkey` in
