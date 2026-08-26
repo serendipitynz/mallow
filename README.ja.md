@@ -19,8 +19,8 @@
 | Windows（x86_64） | `x64-setup.exe`・`x64_en-US.msi` | あり |
 | Linux（x86_64 / arm64） | `.AppImage`・`.deb`・`.rpm` | あり |
 
-**Windows では、ファイルを保存する前に Edge が警告を出し、そこを通り抜ける操作が
-隠れています。** 確認画面には `Publisher: Unknown` と表示され、ボタンは `Cancel` と
+**Windows では、ファイルを保存する前に Edge が警告を出すことがあり、そこを通り抜ける
+操作が隠れています。** 確認画面には `Publisher: Unknown` と表示され、ボタンは `Cancel` と
 `Delete` の 2 つしか見えませんが、**`Delete` ボタンのドロップダウンにある
 `Keep anyway`** で先へ進めます。ダウンロード一覧の `Keep` を選ぶとこの確認画面が
 出るだけで、それだけではファイルは保存されません。`Publisher: Unknown` は、Windows

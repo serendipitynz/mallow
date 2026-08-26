@@ -19,12 +19,13 @@ Download a build for your platform from the
 | Windows (x86_64) | `x64-setup.exe`, `x64_en-US.msi` | yes |
 | Linux (x86_64 / arm64) | `.AppImage`, `.deb`, `.rpm` | yes |
 
-**On Windows, Edge warns before it saves the file, and the way past the warning
-is hidden.** The confirmation reports `Publisher: Unknown` and shows only two
-buttons, `Cancel` and `Delete` — continue with **`Keep anyway`, in the dropdown
-on the `Delete` button**. Choosing `Keep` in the download list only brings this
-confirmation up; it does not save the file by itself. The Windows bundles are
-not code-signed, which is what `Publisher: Unknown` reports.
+**On Windows, Edge may warn before it saves the file, and the way past the
+warning is hidden.** The confirmation reports `Publisher: Unknown` and shows
+only two buttons, `Cancel` and `Delete` — continue with **`Keep anyway`, in
+the dropdown on the `Delete` button**. Choosing `Keep` in the download list
+only brings this confirmation up; it does not save the file by itself. The
+Windows bundles are not code-signed, which is what `Publisher: Unknown`
+reports.
 
 mallow can check for updates, and Settings turns the automatic check off. The
 check exists from 0.7.0 onward, so from a version earlier than that, download
