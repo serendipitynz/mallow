@@ -1,10 +1,10 @@
 ---
 id: TASK-26
 title: Tell Windows users where the way past the SmartScreen download warning is
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-26 09:21'
-updated_date: '2026-08-26 09:25'
+updated_date: '2026-08-27 06:58'
 labels:
   - documentation
 milestone: m-3
