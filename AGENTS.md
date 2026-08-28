@@ -85,6 +85,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (measured — `a,b.html` opened an Explorer window, not the handler) and
   `cmd /C start` re-parses by `cmd`'s rules rather than the ones `Command` quotes
   for.
+- `print.rs` — `print_window`, which hands the calling webview window to
+  `WebviewWindow::print()` (decision-13). Named for the window because the engine
+  paginates the whole `<body>`, so a name promising a document would be false at
+  the boundary that matters, and a print stylesheet would not make it true. Not
+  `cfg(desktop)`-gated though `print()` is, so a mobile build fails to compile
+  rather than reporting a missing command at runtime.
 - `lib.rs` — plugin registration (opener, dialog, store, window-state,
   updater, process — none `cfg(desktop)`-gated, per decision-11), the
   `invoke_handler`, and (macOS only) a native app menu whose Settings… item
@@ -338,6 +344,38 @@ hold rather than as an exhaustive style guide.
   against tauri 2.11.3's own `Scope` (TASK-21), and `commands.rs`'s
   `asset_scope_reaches_media_behind_a_leading_dot` reads the key back out of
   `tauri.conf.json` rather than restating it, so removing it fails the suite.
+- **Printing is one call that takes three structurally different routes, and
+  `window.print()` is only the Windows one.** `print_window` hands the webview
+  window to `WebviewWindow::print()`; wry 0.55.1 builds an `NSPrintOperation` on
+  macOS, evaluates `window.print()` on Windows and runs GTK's
+  `PrintOperation::run_dialog(None)` on Linux. **So a JS print event cannot be
+  assumed to fire** — the shape decision-9 established for parent-registered
+  listeners — and anything needing the DOM rearranged before printing must do it
+  synchronously in the frontend before invoking. **Tauri's own doc comment says
+  macOS-only while the pinned wry implements all three**; the pinned source is
+  what this rests on, the same disagreement TASK-11.1 hit. **A returned `Ok(())`
+  is not evidence a print UI appeared**: macOS's route is guarded by
+  `respondsToSelector(printOperationWithPrintInfo:)` and returns success having
+  done nothing where that guard fails, Windows returns before the evaluated JS
+  has run, and Linux's dialog has a `None` parent so it need not be in front of
+  mallow. **The entry is gated on the active view, never on `file.kind`**
+  (decision-13): `Print…` is disabled unless the active view is markdown in
+  preview, and the accelerator therefore lives inside `MarkdownView`, where being
+  mounted with `mode` at `preview` *is* that condition rather than a copy of it —
+  `file.kind === 'markdown'` is true of the source half of the toggle, which must
+  not print. **What the engine paginates is the whole `<body>`**, explorer and
+  toolbar and footer and settings modal included, so the paper carries the app
+  shell until a print stylesheet lands; that stylesheet must go in a `.scss` and
+  **never as an inline `<style>` in `index.html`**, which would add a hash to
+  `style-src` and retire its `'unsafe-inline'`, and it must neutralise
+  `.toolbar`'s `will-change: transform` only inside `@media print`. **`@page` is
+  not written before the margins are measured** — macOS's route zeroes all four
+  print margins and writes them into the application-wide
+  `NSPrintInfo::sharedPrintInfo()` while the other two leave the paper to their
+  print UI, so both setting margins and leaving them are wrong until observed.
+  **No automated check sees any of this**: Biome and Vitest do not read SCSS, no
+  harness opens a platform print dialog, and `src/probe/` measures with counters
+  where the evidence here is a screenshot and a PDF.
 - **Emoji.** Unicode emoji are wrapped in `<span class="emoji">` so CSS can put a
   colour-emoji stack (`$font-emoji`) in front for them alone. Without the wrapper
   the JP body font wins the fallback race for the few emoji it covers — `:ok:` is
@@ -715,7 +753,8 @@ hold rather than as an exhaustive style guide.
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
   `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
-  and `custom-emoji`
+  `chord` (accelerator matching, which takes the platform as an argument so it
+  needs no `navigator`), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
