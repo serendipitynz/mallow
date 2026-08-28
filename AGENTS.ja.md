@@ -83,6 +83,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   どちらもパスの扱いを誤る** — `explorer <file>` はコンマで分割し（実測: `a,b.html` で
   ハンドラではなく Explorer のウィンドウが開いた）、`cmd /C start` は `Command` が
   quote する規則ではなく `cmd` 自身の規則で読み直す。
+- `print.rs` — `print_window`。呼び出し元の webview ウィンドウを
+  `WebviewWindow::print()` へ渡す（decision-13）。**文書ではなくウィンドウで命名している** —
+  エンジンがページ割りするのは `<body>` 全体なので、文書を約束する名前は最も肝心な境界で
+  偽になり、印刷用スタイルが入っても真にはならない。`print()` 自体は `cfg(desktop)` だが
+  こちらは括らない。括るとモバイルビルドが実行時の「コマンドが無い」になり、
+  括らなければコンパイルが落ちる。
 - `lib.rs` — プラグイン登録（opener, dialog, store, window-state, updater, process。
   decision-11 によりどれも `cfg(desktop)` で括らない）、`invoke_handler`、
   および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
@@ -312,6 +318,34 @@ Comments と Functions の規約は機械的に検査されない。コメント
   tauri 2.11.3 の `Scope` そのものに対して実測（TASK-21）。`commands.rs` の
   `asset_scope_reaches_media_behind_a_leading_dot` は値を書き写さず
   `tauri.conf.json` から読み出すので、このキーを外すとテストが落ちる。
+- **印刷は 1 つの呼び出しが 3 経路に分かれ、`window.print()` を通るのは Windows だけ。**
+  `print_window` が webview ウィンドウを `WebviewWindow::print()` へ渡す。pin されている
+  wry 0.55.1 は macOS で `NSPrintOperation` を組み立て、Windows で `window.print()` を
+  eval し、Linux で GTK の `PrintOperation::run_dialog(None)` を呼ぶ。
+  **したがって JS の印刷イベントが発火すると仮定できない** — decision-9 が
+  パーサ登録のリスナについて確定させたのと同じ形 — 印刷前に DOM を組み替える必要があるなら、
+  呼び出しより前にフロント側で同期的に済ませる。**Tauri の doc コメントは「macOS のみ」と
+  書いているが、pin された wry には 3 環境すべての実装がある**。根拠は pin されたソース側で、
+  TASK-11.1 が踏んだ食い違いと同じ。**`Ok(())` が返ったことは印刷 UI が出た根拠にならない** —
+  macOS の経路は `respondsToSelector(printOperationWithPrintInfo:)` で守られており、
+  guard が偽なら何もせず成功を返す。Windows は eval した JS が走る前に返り、Linux の
+  ダイアログは親が `None` なので mallow の前面にあるとは限らない。
+  **入口の判定はアクティブなビューで書き、`file.kind` では書かない**（decision-13）:
+  `Print…` はアクティブなビューが markdown の preview でないとき disabled であり、
+  だからアクセラレータは `MarkdownView` の中にある — mount されていて `mode` が `preview`
+  であること自体がその条件で、条件の写しを別に持たない。`file.kind === 'markdown'` は
+  トグルのソース側でも真になり、そこは印刷してはいけない。
+  **エンジンがページ割りするのは `<body>` 全体**で、エクスプローラ・ツールバー・フッター・
+  設定モーダルを含む。印刷用スタイルが入るまで紙にはアプリの外殻が乗る。そのスタイルは
+  `.scss` に書き、**`index.html` に inline `<style>` として置いてはならない** —
+  `style-src` に hash が付いて `'unsafe-inline'` が失効する。`.toolbar` の
+  `will-change: transform` を無効化するのは `@media print` の中だけにする。
+  **余白を測る前に `@page` を書かない** — macOS の経路は印刷操作の余白 4 辺を 0 にし、
+  それをアプリ共有の `NSPrintInfo::sharedPrintInfo()` へ書き込む一方、他の 2 環境は
+  印刷 UI に任せるので、余白を指定するのも任せるのも観測前は誤りである。
+  **自動検査は何も見ない**: Biome と Vitest は SCSS を読まず、印刷ダイアログを開ける
+  ハーネスは無く、`src/probe/` はカウンタで測る器材だが、ここでの根拠はスクリーンショットと
+  PDF である。
 - **絵文字。** Unicode 絵文字は `<span class="emoji">` で包み、そこだけカラー絵文字
   フォント（`$font-emoji`）を先頭にしたスタックを当てる。包まないと、本文の日本語
   フォントが持っている一部の絵文字でフォールバック競争に勝ってしまう — `:ok:` は
