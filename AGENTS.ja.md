@@ -661,7 +661,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   ユニットテストはコードと同じ場所に `src/**/*.test.ts` として置き、純ロジックの
   モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
   `frontmatter`・`title`・`path`・`delimited`・`xml-tree`・
-  `heading`＝座標変換のみ。`findHeading` は DOM のグローバルを要するため対象外・`custom-emoji`＝Tauri 層を
+  `heading`＝座標変換のみ。`findHeading` は DOM のグローバルを要するため対象外・
+  `chord`＝アクセラレータの一致判定。プラットフォームを引数で受けるので `navigator` を要しない・
+  `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
   タイムアウトを上げる — `it` ごとの第 3 引数では持たない（フォーマッタが 3 引数の呼び出しを

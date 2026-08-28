@@ -1,5 +1,6 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { matchesCmdOrCtrl, onMacPlatform } from '../lib/chord';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
@@ -124,16 +125,17 @@ export function MarkdownView({ source }: { source: string }) {
      half of this toggle, which must not print.
 
      Until the File menu lands there is no menu item to grey out, so outside this
-     state the accelerator simply reaches nothing. The modifiers are matched
-     exactly rather than loosely, so that adding `CmdOrCtrl+P` to the menu later
-     does not narrow what already works. `preventDefault` also keeps WebView2 from
+     state the accelerator simply reaches nothing. `matchesCmdOrCtrl` resolves the
+     chord the way the native menu layer will, so the item TASK-12.4 adds and this
+     handler answer to the same keys. `preventDefault` also keeps WebView2 from
      running its own Ctrl+P binding beside the print call. */
   useEffect(() => {
     if (mode !== 'preview') {
       return;
     }
+    const onMac = onMacPlatform();
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'p') {
+      if (matchesCmdOrCtrl(e, 'p', onMac)) {
         e.preventDefault();
         void printWindow().catch((err) => console.error('print failed', err));
       }
