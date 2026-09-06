@@ -57,6 +57,7 @@ WKWebView, `pnpm tauri dev`, A4, default scale, all in
 | 2 | `paper-mac-{light,dark}-2.pdf` | **the stylesheet working**: 6 pages, no shell, reflowed, light on both palettes. mermaid and the images are still absent here — the diagrams were the TASK-29 bug and the images were the fixture's own defect, both fixed after this run |
 | 3 | `paper-mac-{light,dark}-3.pdf` | 7 pages, with the diagrams drawn and the images present — **but shrunk to fit**, which is why its page count is not comparable with run 4's |
 | 4 | `paper-mac-{light,dark}-4.pdf` | **after the code-wrapping fix**: 12 pages at true size, and **truncated** — §10's image and everything after it are missing |
+| 5 | `paper-mac-{light,dark}-5.pdf` | **after removing `break-inside: avoid` from `img`**: 12 pages, truncated **at exactly the same point**. The removal did not help |
 
 **Run 4 answered one question and opened another.** The wrapping fix worked: the
 body prints at the size it has on screen instead of being shrunk to fit, which is
@@ -66,12 +67,38 @@ its one-line intro, then a half-empty page, with the 512px image, §11 and §12
 absent. Run 3 reached §12; scaled down, that image fitted the space left on its
 page and was never pushed to a new one.
 
-**So AC #1 fails on macOS as of run 4**, and it fails for content loss rather than
-for layout. `break-inside: avoid` is removed from `img` in response — see the
-reasoning in `print.scss`, which turns on decision-6's rule rather than on a
-diagnosis: the cause is not established, no harness reproduces it (Chrome prints
-the image and everything after it), and what is established is that content
-disappears. **Run 5 is the test.** Windows and Linux stay unmeasured. **Windows and Linux are unmeasured**, so AC #9 stays open, and
+**AC #1 fails on macOS, and run 5 refuted the first attempt at it.** Removing
+`break-inside: avoid` from `img` changed nothing: same 12 pages, same cut point.
+The truncation had started exactly at an image, and that correlation was wrong —
+the second time in this task that a cause named from a correlation did not hold
+(the first was `.doc`'s `max-width` for the horizontal cropping, caught in
+review).
+
+**What the runs do establish is when it appears**: runs 1–3 were shrunk to fit by
+the engine and all reached §12; runs 4 and 5 print at true size and both stop two
+pages short. The document needs about 14 pages at true size (the harness's count)
+and macOS produces 12 in both runs. **So the shape to suspect is a page count or
+a content height decided somewhere other than where the pages are laid out** —
+not an element-specific rule. That is a hypothesis; nothing has measured it.
+
+**Every pagination constraint is removed in response** — `break-inside`,
+`break-after`, `orphans`, `widows` — because a stylesheet cannot bisect them from
+here, they are all presentation, and what they may be costing is content
+(decision-6). **Run 6 is the test**, and if it still truncates the lever is not in
+this file.
+
+## Two things run 5 established about how to measure at all
+
+- **The print sheet's preview is not the output.** Its pagination differs from the
+  saved PDF's — the preview fitted §10's image, §11 and §12 into its 12 pages
+  while the PDF, at the same stated page count, stops at §10's intro. **Judge on
+  the saved PDF, never on the preview.**
+- **A CSS `filter` reaches the preview and not the PDF.** The dark mermaid
+  inversion showed correctly in the preview and printed black in the saved file.
+  So the filter approach cannot deliver the output that is actually used, and it
+  is removed. **Rendering a second, light-themed copy is the only remaining route
+  for a dark-palette diagram**, at the cost of a change to `lib/mermaid.ts` —
+  the file TASK-29's unexplained bug lives in. **Windows and Linux are unmeasured**, so AC #9 stays open, and
 `procedure.md` is at its second version because the first described the
 pre-stylesheet baseline and would have had those operators record a failure as
 expected.
