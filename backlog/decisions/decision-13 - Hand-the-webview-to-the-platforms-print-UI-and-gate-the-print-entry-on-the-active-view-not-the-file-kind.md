@@ -191,8 +191,10 @@ mallow. The screen and the sheet of paper are the only witnesses.
   page whatever the document's length. **So releasing `.doc-scroll` alone is not
   the print stylesheet's first job; releasing the whole chain is.** The same run
   showed the page cropped horizontally as well — content laid out at window width
-  and cut at the paper's edge rather than scaled to it — so the width the shell
-  imposes has to be released too.
+  and cut at the paper's edge rather than scaled to it — so **the content also has
+  to reflow to the paper's width**. What imposes that width is not isolated: the
+  run shows the cropping, not its cause, and `.doc`'s `max-width: 1180px` is not
+  it, sitting above A4's ~794 CSS px.
 - **The paper carries the app shell, and on macOS the shell is nearly all of
   it.** The sentence above about `<body>` being what the engine paginates stands;
   what the first measurement adds is proportion. The shell is not framing a

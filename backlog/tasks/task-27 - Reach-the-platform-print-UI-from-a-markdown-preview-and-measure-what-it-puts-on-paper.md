@@ -25,7 +25,7 @@ Printing rendered markdown was asked for, and nothing in the tree reaches a prin
 
 **The gate cannot be `file.kind === 'markdown'`.** Markdown has two states and one of them must not print, and one kind no longer implies one view anyway (`.plist` picks its view from its text, `html` owns a rendered/source toggle). The condition is `MarkdownView` mounted with `mode` at `preview`, and putting the accelerator inside that component is what makes it structural instead of a copy kept in sync. Because no `File` submenu exists yet on any platform - mallow's macOS menu has `mallow` and `Edit` only - the accelerator is the whole entry in this task, on all three platforms, and TASK-12.4 adds the item and its disabled appearance. So AC #2 is written about the accelerator being inert, not about anything looking greyed out.
 
-**No print stylesheet lands here, deliberately.** What the engine paginates is the whole `<body>`, explorer and toolbar and footer and settings modal included, and the size of that gap is the print stylesheet's whole job. Shipping the call without `@media print` is what turns that gap into a measured number for TASK-28 instead of an estimate. decision-13 also forbids writing `@page` before the margins are measured: macOS's route zeroes all four print margins and writes them into the application-wide `NSPrintInfo::sharedPrintInfo()`, while Windows and Linux leave it to their print UI, so leaving margins alone and setting them are both wrong until measured. Whether `.doc-scroll` clips the paper to what was on screen is unmeasured and is one of the things to look for. **(Measured on macOS 2026-09-06: it does, and the paper is one page — see the Implementation Notes. Windows and Linux remain unmeasured.)**
+**No print stylesheet lands here, deliberately.** What the engine paginates is the whole `<body>`, explorer and toolbar and footer and settings modal included, and the size of that gap is the print stylesheet's whole job. Shipping the call without `@media print` is what turns that gap into a measured number for TASK-28 instead of an estimate. decision-13 also forbids writing `@page` before the margins are measured: macOS's route zeroes all four print margins and writes them into the application-wide `NSPrintInfo::sharedPrintInfo()`, while Windows and Linux leave it to their print UI, so leaving margins alone and setting them are both wrong until measured. Whether `.doc-scroll` clips the paper to what was on screen was the thing to look for, and the first leg answered it: **it does — confirmed on macOS (2026-09-06), unmeasured on Windows and Linux.** The Implementation Notes carry what that run established.
 
 **The fixture has to create both states of everything it tests.** A document that fits on one page cannot show whether a code block, a table or a mermaid SVG survives a page break, so the fixture spans several pages and puts each of those elements once across a break and once clear of one (TASK-22's lesson, applied to two axes here rather than one). The measurement is also run on a light and a dark palette, because decision-13's light-only rule was taken as a judgement ahead of its observation and this is where the observation is taken.
 
@@ -77,7 +77,10 @@ reaches paper.
 **The page is cropped horizontally as well.** Content was laid out at window
 width and cut at the A4 edge rather than scaled down to it: table columns and
 sentences end mid-character on the right. So releasing the height chain alone
-would not be enough — the width the shell imposes has to go too.
+would not be enough — **the content also has to reflow to the paper's width.**
+**What imposes that width is not isolated**: the run shows the cropping, not its
+cause. `.doc`'s `max-width: 1180px` is not it — A4 is about 794 CSS px at 96dpi,
+so that cap cannot bind at paper width and removing it would change nothing.
 
 **A dark palette prints as pale text on white, which is worse than costly.** The
 background did not reach paper at all (WebKit's default `print-color-adjust`
@@ -103,12 +106,16 @@ margins do not. Re-run it against a margin to close this.
 
 ## What this settles for TASK-28, so far
 
-- **Release the height chain, not just `.doc-scroll`** — all five rules above are
-  in the way, and `.doc-scroll` alone would still sit inside a `100%`-tall body.
+- **Release the height chain, not just `.doc-scroll`** — every rule in the chain
+  above is in the way (`html, body, #root`, `.app`, `.app__body`, `.doc-scroll`),
+  and `.doc-scroll` alone would still sit inside a `100%`-tall body.
 - **Remove the shell** — explorer, toolbar, `.doc__bar`, footer, and the settings
   modal *with its backdrop*.
-- **Release the width** — `.doc`'s `max-width` and the explorer's fixed width,
-  or the page stays cropped rather than reflowed.
+- **Make the content reflow to the paper's width** — it is cropped today, not
+  scaled. **Which rule imposes the width is not isolated yet**, so no override is
+  named here: `.doc`'s `max-width: 1180px` sits above A4's ~794 CSS px and cannot
+  be it. Isolate it by reprinting with candidates removed one at a time, rather
+  than by reading the stylesheet.
 - **The light-only rule is confirmed, with a better reason to write down.**
 - **Page-break behaviour is still unmeasured**, because nothing reached a second
   page. `break-inside` / `break-after` cannot be judged until the height chain is
