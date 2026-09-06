@@ -111,10 +111,16 @@ pipeline, the real compiled CSS) found two defects before the reprint:
 Chrome paginates the same page into 16, so Chrome never had the one-page failure
 being fixed here.
 
-## Two things do not reach the paper, and neither is this stylesheet
+## Two things did not reach the paper in runs 1 and 2, and neither was this stylesheet
 
-Confirmed on screen, not inferred: the reporter's screenshot shows both failing
-in the app itself.
+**Both are fixed and both should appear on a reprint** — this section is why they
+were missing, not a list of what to expect. **An operator on Windows or Linux who
+finds a diagram or an image absent has found a fault, not a documented
+limitation.** (The diagram can also be TASK-29, which reopening the document
+works around; `procedure.md` step 1 checks for that before printing.)
+
+Neither was inferred: the reporter's screenshot showed both failing in the app
+itself, which is what separated them from the print stylesheet.
 
 - **mermaid printed as its own source in runs 1 and 2, and draws in run 3.**
   `renderMermaid` replaces the `<pre class="mermaid">` on success and leaves it in
