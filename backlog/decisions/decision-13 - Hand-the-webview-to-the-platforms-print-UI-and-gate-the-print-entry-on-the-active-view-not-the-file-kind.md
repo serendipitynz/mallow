@@ -239,17 +239,22 @@ mallow. The screen and the sheet of paper are the only witnesses.
   for dropdown paint order — what shipped hides the toolbar outright inside
   `@media print`, which reaches the same paper without touching the screen's paint
   order at all.
-- **`break-inside: avoid` is applied only where a split makes the element
-  unreadable**, which turned out to be two selectors: `img` and
-  `.mermaid-rendered`. **`.mermaid` is not one of them** — that is the `<pre>`
-  holding a diagram's source, which `renderMermaid` replaces on success, so
-  naming it would apply the rule to a `<pre>` and miss every diagram that drew.
-  `figure` and a bare `svg` are not listed either: `html: false` means nothing
-  emits a `<figure>`, and the body's only other SVG is a GFM alert icon that
-  cannot span a break. Not `pre`, `table` or `blockquote`: those split readably
-  (markdown-it emits `<thead>`, which engines repeat on the continuing page), and
-  forcing them whole costs paper — a 21-row table half a page from the bottom
-  went whole onto the next sheet and left half a page blank.
+- **The stylesheet carries no pagination constraint at all** — no
+  `break-inside: avoid`, `break-after: avoid`, `orphans` or `widows`. They were
+  written and then removed while the macOS truncation was being chased, on the
+  reasoning that they are presentation and what they might be costing was content
+  (decision-6). Removing them changed nothing, and the cause turned out to be
+  elsewhere entirely, so **their absence is now a state nothing has printed
+  against rather than a finding**. Reintroducing any of them is its own change
+  with its own reprint.
+  What was learned while they were there is worth keeping: `.mermaid` is the
+  `<pre>` holding a diagram's source and `.mermaid-rendered` is what replaces it,
+  so a rule naming the former applies to a `<pre>` and misses every diagram that
+  drew; `figure` and a bare `svg` match nothing worth protecting, since
+  `html: false` emits no `<figure>` and the body's only other SVG is a GFM alert
+  icon; and `table` is actively worse with it, because a 21-row table half a page
+  from the bottom went whole onto the next sheet and left half a page blank while
+  a split table repeats its `<thead>` anyway.
 - **Code wraps in print, and not wrapping it cost more than a lost line.**
   `overflow: visible` does not wrap `white-space: pre`, so an over-wide code line
   ran past the page — and content wider than the page makes the engine shrink the

@@ -35,7 +35,7 @@ TASK-27 reached the platform's print UI and measured what it puts on paper. On m
 - [x] #2 The content reflows to the paper's width rather than being cropped at it. Written as the requirement, since what imposes the width was never isolated - .doc max-width sits above A4's ~794 CSS px and is not it
 - [x] #3 No part of the app shell appears on the paper: toolbar, explorer, resizer, footer, the pinned doc bar, the outline, and the settings/update modal WITH its overlay, which erased the document rather than overlaying it
 - [x] #4 Paper is light on every palette, and printing from a dark palette produces readable ink rather than the faint text macOS measured
-- [x] #5 break-inside: avoid is applied only where a split makes the element unreadable, which is img and .mermaid-rendered - NOT .mermaid, which is the <pre> holding a diagram's source and would be exactly the shape this rule excludes. figure and a bare svg are excluded too: html: false emits no <figure>, and the body's only other SVG is a GFM alert icon that cannot span a break. Not pre, table or blockquote, which split readably and cost a part-blank page when forced whole
+- [ ] #5 SUPERSEDED 2026-09-07: this required break-inside: avoid on img and .mermaid-rendered. The stylesheet now carries no pagination constraint at all - they were removed while the macOS truncation was being chased, and the cause proved to be elsewhere, so their absence is a state nothing has printed against rather than a finding. Reintroducing any of them is its own change with its own reprint, and this criterion should be rewritten then. Kept unchecked rather than deleted so the reversal is on the record
 - [x] #6 The print stylesheet is a .scss imported last, never an inline <style> in index.html, which would add a hash to style-src and retire its unsafe-inline
 - [x] #7 Nothing in the file leaks outside @media print - .toolbar's will-change: transform in particular keeps its screen behaviour, since dropping it alone brings back the dropdown paint-order failure
 - [x] #8 @page carries a margin, since macOS zeroes the print operation's own margins and would otherwise put text at the paper's edge. No header/footer margin boxes - engine support is uneven and three different sheets is worse than none carrying a page number
@@ -89,7 +89,9 @@ here, they are all presentation, and what they may be costing is content
 file.** Three stylesheets, one cut point.
 
 | 7 | `paper-mac-light-7.pdf` | **printed from a much taller window**: 12 pages, same cut, and the file is the same size as run 6's to the byte. Window geometry is not it |
-| 8 | `paper-mac-light-8.pdf` | **with the `@page` margin removed**: 12 pages and **§12 present**. The margin was the cause |
+| 8 | `paper-mac-light-8.pdf` | **with the `@page` margin removed**: 12 pages and **§12 present** — read at the time as the margin being the cause, and **that reading is superseded** |
+| 7a | `paper-mac-light-7a.pdf` | **run 7's stylesheet, printed complete at 14 pages** after switching printers in the sheet. Same CSS as the truncating `-7`, so **CSS is not what decides it** |
+| 9 | `paper-mac-light-9.pdf` | 11 pages, complete, with the padding and 11pt that have since been reverted |
 
 ## What the runs eliminated, and the one hypothesis that predicts a number
 
@@ -172,11 +174,34 @@ taller window produced 12 pages with the same cut, and a file the same size as r
 6's to the byte. wry still sets no frame, and that is still true of the pinned
 source — it is simply not what is losing the tail.
 
-**If geometry is confirmed, the fix leaves CSS entirely**: mallow would build its
-own `NSPrintOperation` on macOS with the frame set, which means `objc2-app-kit` as
-a new macOS-gated direct dependency and a second print path beside
-`WebviewWindow::print()` — a decision about dependencies and platform code rather
-than a detail.
+**Superseded 2026-09-07.** The geometry test was run (run 7) and answered no, and
+the cause was then found by the reporter and is not in CSS at all — see the
+section below. The paragraph above is kept because the conclusion it draws about
+*where a fix would live* survived its own premise: any fix for this is in mallow's
+own print path, not in a stylesheet.
+
+## SUPERSEDED — the margin conclusion, and what replaced it
+
+**Everything above about `@page`'s margin causing the truncation is wrong, and it
+is kept because the way it was wrong is the useful part.** The arithmetic
+predicted the size of the loss and fit; the conclusion still did not hold.
+`paper-mac-light-7a.pdf` settles it: **run 7's exact stylesheet, printed complete
+at 14 pages** once a printer switch was made in the print sheet, where `-7.pdf`
+had truncated at 12. One stylesheet, both outcomes.
+
+**The cause, found by the reporter:** the print sheet computes a page count, the
+PDF export honours that count, and a layout needing more pages than the count
+simply stops. **Switching printers forces the recalculation** and the export then
+matches. Everything that had appeared to fix it was the same accident wearing
+different clothes — removing the margin brought the required count back under the
+stale one, shrinking the type did the same, and the engine's own shrink-to-fit did
+it for runs 1–3.
+
+**So the prescriptions above are withdrawn**: `@page { margin: 16mm }` is back,
+the `.doc` padding that replaced it is gone, and the body keeps its screen size.
+What replaced them is a warning in `print.scss` not to tune any value there
+against a truncation — a short document prints whatever the margin is, a long one
+is at the mercy of a count taken earlier, and no CSS value changes that.
 
 ## Two things run 5 established about how to measure at all
 

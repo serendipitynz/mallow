@@ -88,9 +88,6 @@
   // width was not isolated by that run, so this releases the caps and the
   // side-by-side grid rather than one named culprit, and the result has to be
   // reprinted to confirm.
-  // The horizontal margin lives here rather than in `@page`, and the note below
-  // `@page` says why. Padding is ordinary layout, so the page count is computed
-  // with it applied and cannot disagree with what is laid out.
   .doc {
     max-width: none;
     margin: 0;
@@ -101,9 +98,6 @@
     display: block;
   }
 
-  // 16px is the screen size and reads large on paper; 11pt is ordinary body copy.
-  // Everything under it is sized in `em`, so this scales the document rather than
-  // just the paragraphs.
   .doc .markdown-body {
     max-width: none;
   }

@@ -387,10 +387,13 @@ hold rather than as an exhaustive style guide.
   overrides beat the theme selectors on source order at equal specificity. It
   hides the toolbar outright rather than neutralising `will-change: transform`,
   which reaches the same paper without touching the screen's paint order; it
-  applies `break-inside: avoid` only to images and `.mermaid-rendered` — **the
-  rendered wrapper, not `.mermaid`, which is the `<pre>` holding the source** —
-  since `pre`, `table` and `blockquote` split readably and forcing them whole
-  leaves part-blank pages; **it wraps code in print** (`pre-wrap` +
+  carries **no pagination constraint at all** — no `break-inside`, `break-after`,
+  `orphans` or `widows`; they were removed while the macOS truncation was being
+  chased and the cause proved to be elsewhere, so their absence is a state nothing
+  has printed against rather than a finding (**if you reintroduce one, note that
+  `.mermaid` is the `<pre>` holding a diagram's source and `.mermaid-rendered` is
+  what replaces it, and that `table` cost a part-blank page**); **it wraps code in
+  print** (`pre-wrap` +
   `overflow-wrap: anywhere`), because `overflow: visible` does not wrap
   `white-space: pre` and one over-wide line otherwise makes the engine shrink the
   whole document to fit the page; and **printing from a dark palette gives monochrome code**,

@@ -36,7 +36,7 @@ Printing rendered markdown was asked for, and nothing in the tree reaches a prin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [x] #1 CmdOrCtrl+P in a markdown preview brings the platform print UI on screen on macOS, Windows and Linux - observed on screen on each, since print_window returns Ok(()) on macOS even where its respondsToSelector guard fails
+- [x] #1 CmdOrCtrl+P in a markdown preview brings the platform print UI on screen - observed on screen rather than inferred from a return value, since print_window returns Ok(()) on macOS even where its respondsToSelector guard fails. Measured on all three (2026-09-07): a sheet on macOS, WebView2's preview on Windows, GTK's dialog on Linux in front of the window. NOTE: what the Linux measurement recorded is that the dialog appears; it also never returns, so the shipped build refuses to print there at all (decision-13) and no Linux user reaches that UI
 - [ ] #2 CmdOrCtrl+P reaches no print call when the active view is not a markdown preview: covering the source half of the toggle and at least one non-markdown view. Written about the accelerator being inert, not about a disabled menu item - no menu item exists until TASK-12.4
 - [x] #3 A fixture in _sandbox/samples/ spans several printed pages and puts a code block, a table, a mermaid diagram, an image and a heading both across a page break and clear of one, so the two states are comparable within one file
 - [ ] #4 The paper (or the PDF the print UI's own destination writes) is inspected on all three platforms and what it holds is recorded: whether the body reaches the last page or is clipped to what was on screen, and which shell elements appear on it
