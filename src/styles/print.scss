@@ -230,6 +230,34 @@
   // `.mermaid-rendered` stays: the same reprint carried its diagrams and
   // continued past them. That is not proof it is safe, only that it was not
   // implicated. **Reconsider it here if a reprint ever truncates at a diagram.**
+  // **A dark-themed diagram is inverted rather than recoloured, and the reason is
+  // that recolouring it is not a stylesheet's job to do.** mermaid bakes its
+  // palette into the SVG at render time (`mermaid.initialize({ theme })`) and
+  // `compileCSS` prefixes every rule it emits with the SVG's own generated id,
+  // so the `<style>` inside the SVG holds `#mermaid-svg-0 .node rect { fill: … }`
+  // at (1,1,1). No external selector reaches that — no number of classes outranks
+  // an id, the id is generated, and `svg[id^=…]` counts as a class — so a CSS
+  // override needs `!important`, which is allowed here, *and* it needs mermaid's
+  // internal class names, which is the part that does not scale: mermaid ships 26
+  // diagram types with a `getStyles` each, so "recolour it" means reimplementing
+  // its light theme and tracking it across versions.
+  //
+  // The inversion is one declaration, couples to nothing, and covers every
+  // diagram type: it post-processes the painted result instead of arguing with
+  // the rules that produced it. **What it does not give is the light theme's
+  // actual colours** — it gives the dark theme's, inverted, with the hue rotated
+  // back so a blue node stays blue rather than turning orange. That is an
+  // approximation, which is why it is worth looking at on the reprint rather than
+  // assuming. Rendering a second, light-themed copy is the exact answer if this
+  // one reads badly, and it costs a change to `lib/mermaid.ts`.
+  //
+  // Scoped to dark palettes: a diagram rendered light needs nothing.
+  .mermaid-rendered {
+    @include on-dark {
+      filter: invert(1) hue-rotate(180deg);
+    }
+  }
+
   .markdown-body {
     .mermaid-rendered {
       break-inside: avoid;
