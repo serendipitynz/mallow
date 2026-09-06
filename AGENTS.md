@@ -375,7 +375,23 @@ hold rather than as an exhaustive style guide.
   `<body>` exactly one viewport tall by construction, so pagination yields one
   page whatever the document's length — **so a print stylesheet has to release
   that whole chain, not just `.doc-scroll`**, and release the width too, since the
-  same run cropped the page horizontally rather than scaling it to the paper. Two
+  same run cropped the page horizontally rather than scaling it to the paper.
+  **`src/styles/print.scss` is that stylesheet** — imported last, so its palette
+  overrides beat the theme selectors on source order at equal specificity. It
+  hides the toolbar outright rather than neutralising `will-change: transform`,
+  which reaches the same paper without touching the screen's paint order; it
+  applies `break-inside: avoid` only to images, SVG, mermaid and `figure`, since
+  `pre`, `table` and `blockquote` split readably and forcing them whole leaves
+  part-blank pages; and **printing from a dark palette gives monochrome code**,
+  because Shiki's dark tokens are inline `--shiki-dark` values applied with
+  `!important` over the inline light colour and CSS cannot un-apply a
+  declaration. **Two traps it was written around, both found by printing rather
+  than by reading**: `@include on-dark` used at the *top level* compiles to
+  `:scope` (`:root[…] :scope .markdown-body …`), which matches nothing and ships
+  silently, so include it inside a rule; and the harness that found it
+  (`_sandbox/handoff/task-27/harness/run.sh`, headless Chrome) **cannot stand in
+  for the platform measurement** — its control run paginates the unstyled page
+  into 16, so Chrome never had the one-page failure at all. Two
   more things that run settled: **a dark palette prints as faint text on white**
   (WebKit's default `print-color-adjust` drops the background, so the palette's
   light ink lands on an unprinted ground — the light-only rule is legibility, not

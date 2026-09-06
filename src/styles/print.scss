@@ -1,0 +1,223 @@
+@use './vars' as *;
+
+// Print rules for the rendered markdown view (decision-13).
+//
+// Imported last, and that ordering is load-bearing rather than tidiness: the
+// palette overrides below match the theme selectors at equal specificity and
+// win on source order alone.
+//
+// Everything here lives inside `@media print`, and nothing may leak to the
+// screen. `.toolbar`'s `will-change: transform` is the rule that makes this
+// worth stating: it is what keeps the toolbar's dropdowns painting above the
+// pinned document bar, and dropping it alone brings that failure back. It is not
+// neutralised here — the toolbar is hidden outright, which reaches the same
+// paper without touching the screen's paint order.
+//
+// What the engine paginates is the whole `<body>`, so this file has three jobs:
+// release the app's height chain, remove the shell, and give the paper one
+// voice about margins and page breaks.
+
+@media print {
+  // ---- 1. Release the height chain ------------------------------------------
+  // Measured on macOS (TASK-27, 2026-09-06): without this the paper is a single
+  // page whatever the document's length. `html, body, #root` at `100%` and the
+  // flex chain below it make the `<body>` exactly one viewport tall by
+  // construction, so pagination has one page's worth of box to work with and
+  // the document's own length lives inside `.doc-scroll`'s clipped overflow.
+  // Releasing `.doc-scroll` alone is not enough — it would still sit inside a
+  // viewport-tall body.
+  html,
+  body,
+  #root {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app {
+    display: block;
+    height: auto;
+  }
+
+  .app__body {
+    display: block;
+    min-height: 0;
+  }
+
+  .viewer {
+    display: block;
+    overflow: visible;
+  }
+
+  .doc-scroll {
+    display: block;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  // ---- 2. Remove the shell --------------------------------------------------
+  // The modal overlay is listed with the panel deliberately: measured on macOS,
+  // its viewport-covering backdrop printed as opaque white and erased the
+  // document behind it, so hiding the panel alone would leave a blank page.
+  .toolbar,
+  .explorer,
+  .app__resizer,
+  .app__footer,
+  .doc__bar,
+  .doc-outline,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  // The copy controls are screen affordances; on paper they are empty boxes over
+  // the content they sit on.
+  .code-block__copy,
+  .mermaid-copy {
+    display: none !important;
+  }
+
+  // ---- 3. Reflow to the paper's width ---------------------------------------
+  // The page was cropped rather than scaled on macOS. Which rule imposed the
+  // width was not isolated by that run, so this releases the caps and the
+  // side-by-side grid rather than one named culprit, and the result has to be
+  // reprinted to confirm.
+  .doc {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .doc__body {
+    display: block;
+  }
+
+  .doc .markdown-body {
+    max-width: none;
+  }
+
+  // Anything that scrolls on screen has to spill instead, or its overflow is
+  // simply absent from the paper.
+  .markdown-body pre,
+  .markdown-body table,
+  .code-block,
+  .src-view pre.shiki {
+    overflow: visible !important;
+  }
+
+  // ---- 4. Paper is light on every palette -----------------------------------
+  // The selectors mirror the theme ones in `global.scss` at equal specificity,
+  // so being last in source order is what makes them win — including over the
+  // `prefers-color-scheme: dark` block, which `:root:not([data-theme])` is here
+  // to answer.
+  //
+  // Measured on macOS: a dark palette prints as faint text on white, because the
+  // background is dropped and the palette's light ink then sits on an unprinted
+  // ground. So this is legibility rather than ink.
+  :root,
+  :root[data-theme],
+  :root:not([data-theme]) {
+    color-scheme: light;
+
+    @include theme-light;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  // Shiki's dark swap survives the palette override, because it is keyed on the
+  // theme attribute rather than on a colour token: `--shiki-dark` is emitted per
+  // token as an inline custom property and applied with `!important`, which
+  // beats the inline light colour beside it.
+  //
+  // **So printing from a dark theme gives monochrome code, and that is a
+  // limitation rather than a choice.** CSS cannot un-apply a declaration, and
+  // the light colour is an inline `style` this rule already outranks — there is
+  // no value to put here that restores it. Inheriting the body ink is the
+  // readable outcome available; restoring the light tokens would mean emitting
+  // `--shiki-light` from the pipeline, which is a change to what every code
+  // block renders on screen and belongs to its own decision.
+  //
+  // `on-dark` is included *inside* each rule rather than around them: used at
+  // the top level its `&` has no parent, and Sass emits `:scope` in its place —
+  // `:root[data-theme='dark'] :scope .markdown-body …`, a `:root` nested under
+  // another element, which matches nothing. That compiles and ships silently.
+  .markdown-body pre.shiki {
+    @include on-dark {
+      &,
+      span {
+        color: inherit !important;
+      }
+    }
+  }
+
+  .src-view pre.shiki {
+    @include on-dark {
+      &,
+      span {
+        color: inherit !important;
+      }
+    }
+  }
+
+  // ---- 5. Page geometry and breaks ------------------------------------------
+  // `@page` is the only place three engines can be given one voice. macOS is
+  // measured and zeroes the print operation's own margins, which puts text at
+  // the paper's edge; Windows and Linux leave the paper to their print UI, so
+  // this margin composes with whatever that UI already reserved rather than
+  // fighting it. Header and footer margin boxes are deliberately absent —
+  // engine support for them is uneven and three different sheets of paper is a
+  // worse outcome than none carrying a page number.
+  @page {
+    margin: 16mm;
+  }
+
+  // `break-inside: avoid` is deliberately narrow, and the narrowness is the
+  // measured part. Applied to `pre`, `table` and `blockquote` it costs more
+  // paper than it saves: a 21-row table half a page from the bottom is pushed
+  // whole onto the next sheet and leaves half a page blank (measured in the
+  // headless-Chrome harness, `_sandbox/handoff/task-27/harness/`), and a table
+  // that splits is well handled anyway — markdown-it emits `<thead>`, which
+  // print engines repeat on the continuing page. Code and quotes split
+  // readably. What genuinely cannot be split is a single atomic box: an image
+  // or a diagram cut in half is unreadable rather than merely inelegant.
+  //
+  // Which of these an engine honours is engine-specific. Chrome is what the
+  // harness measures; the three WebViews are unmeasured, and the reprint is
+  // what says whether they took.
+  .markdown-body {
+    figure,
+    img,
+    .mermaid,
+    svg {
+      break-inside: avoid;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      break-after: avoid;
+      // On screen this clears the pinned bar, which is not in the paper's DOM.
+      scroll-margin-top: 0;
+    }
+
+    // A widow or orphan line is worse in a printout than a slightly shorter
+    // page, since there is no scrolling past it.
+    p,
+    li {
+      orphans: 3;
+      widows: 3;
+    }
+
+    // Images taller than the page would otherwise force a blank page before
+    // themselves under `break-inside: avoid`.
+    img,
+    svg {
+      max-width: 100%;
+      max-height: 100vh;
+    }
+  }
+}

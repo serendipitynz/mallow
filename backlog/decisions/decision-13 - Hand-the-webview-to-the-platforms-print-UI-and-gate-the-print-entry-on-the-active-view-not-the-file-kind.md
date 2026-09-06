@@ -167,11 +167,12 @@ mallow. The screen and the sheet of paper are the only witnesses.
   mechanism rather than a list.** Extending it to another view means making that
   view's active state satisfy the same sentence — the source view is the natural
   next one, since decision-6 makes it every view's shared fallback.
-- **The paper carries the app shell until a print stylesheet lands.** The
-  measurement task deliberately ships the print call without `@media print`, so the
-  first sheets of paper show explorer, toolbar, footer and scrollbars. That is the
-  measured size of the stylesheet's job, and it is why the two rounds are separate
-  tasks rather than one.
+- **The two rounds were separate tasks and are no longer.** The measurement task
+  deliberately shipped the print call without `@media print`, which is what turned
+  the gap into a measured number rather than an estimate — and it also produced a
+  branch that reaches a print UI and prints an unusable page. **That is not a
+  deliverable**, so TASK-28's stylesheet lands beside TASK-27 rather than after it
+  (2026-09-06). The measurement still came first, and still had to.
 - **The settings modal is part of the shell, not part of the gate.** It can be open
   while a markdown preview is mounted, so the accelerator will fire under it. The
   fix belongs in `@media print` with the rest of the shell; widening the gate to
@@ -203,9 +204,34 @@ mallow. The screen and the sheet of paper are the only witnesses.
 - **A print stylesheet must not go into `index.html`.** An inline `<style>` there
   makes tauri-codegen add a hash to `style-src`, which retires its
   `'unsafe-inline'` and breaks Shiki, mermaid and every inline `style` attribute at
-  once. It also must not remove `.toolbar`'s compositing layer
-  (`will-change: transform`), which is load-bearing for dropdown paint order —
-  neutralise it inside `@media print` only.
+  once. `src/styles/print.scss` is the file, imported last so its palette
+  overrides win on source order at equal specificity. It also must not remove
+  `.toolbar`'s compositing layer (`will-change: transform`), which is load-bearing
+  for dropdown paint order — what shipped hides the toolbar outright inside
+  `@media print`, which reaches the same paper without touching the screen's paint
+  order at all.
+- **`break-inside: avoid` is applied only where a split makes the element
+  unreadable** — images, SVG, mermaid, `figure`. Not `pre`, `table` or
+  `blockquote`: those split readably (markdown-it emits `<thead>`, which engines
+  repeat on the continuing page), and forcing them whole costs paper — a 21-row
+  table half a page from the bottom went whole onto the next sheet and left half a
+  page blank.
+- **Printing from a dark palette gives monochrome code, and that is a limitation
+  rather than a choice.** Shiki's dark tokens are inline `--shiki-dark` custom
+  properties applied with `!important`, which outranks the inline light colour
+  beside them; CSS cannot un-apply a declaration, so there is no value that
+  restores the light token. Inheriting the body ink is the readable outcome
+  available. Emitting `--shiki-light` from the pipeline would fix it and would
+  change what every code block renders on screen, so it belongs to its own
+  decision.
+- **A headless-Chrome harness checks the stylesheet and cannot stand in for the
+  measurement.** `_sandbox/handoff/task-27/harness/run.sh` prints the fixture
+  through the app's own pipeline with the real compiled CSS, and it earns its
+  keep — it caught a selector that compiles and matches nothing (`@include
+  on-dark` at the top level emits `:scope`) and the wasted page above. But its
+  control run paginates the unstyled page into 16, so **Chrome never had the
+  one-page failure being fixed**, and only a reprint on the three WebViews says
+  whether the paper is readable.
 - **Nothing automated can show that any of this works.** Biome and Vitest do not
   read SCSS, no test harness can open a platform print dialog, and `src/probe/` is
   a counter-and-table instrument while the evidence here is a screenshot and a PDF.
