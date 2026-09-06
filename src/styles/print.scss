@@ -1,0 +1,244 @@
+@use './vars' as *;
+
+// Print rules for the rendered markdown view (decision-13).
+//
+// Imported last, and that ordering is load-bearing rather than tidiness: the
+// palette overrides below match the theme selectors at equal specificity and
+// win on source order alone.
+//
+// Everything here lives inside `@media print`, and nothing may leak to the
+// screen. `.toolbar`'s `will-change: transform` is the rule that makes this
+// worth stating: it is what keeps the toolbar's dropdowns painting above the
+// pinned document bar, and dropping it alone brings that failure back. It is not
+// neutralised here — the toolbar is hidden outright, which reaches the same
+// paper without touching the screen's paint order.
+//
+// What the engine paginates is the whole `<body>`, so this file has three jobs:
+// release the app's height chain, remove the shell, and give the paper one
+// voice about margins and page breaks.
+
+@media print {
+  // ---- 1. Release the height chain ------------------------------------------
+  // Measured on macOS (TASK-27, 2026-09-06): without this the paper is a single
+  // page whatever the document's length. `html, body, #root` at `100%` and the
+  // flex chain below it make the `<body>` exactly one viewport tall by
+  // construction, so pagination has one page's worth of box to work with and
+  // the document's own length lives inside `.doc-scroll`'s clipped overflow.
+  // Releasing `.doc-scroll` alone is not enough — it would still sit inside a
+  // viewport-tall body.
+  html,
+  body,
+  #root {
+    height: auto;
+    overflow: visible;
+  }
+
+  .app {
+    display: block;
+    height: auto;
+  }
+
+  .app__body {
+    display: block;
+    min-height: 0;
+  }
+
+  .viewer {
+    display: block;
+    overflow: visible;
+  }
+
+  .doc-scroll {
+    display: block;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  // ---- 2. Remove the shell --------------------------------------------------
+  // The modal overlay is listed with the panel deliberately: measured on macOS,
+  // its viewport-covering backdrop printed as opaque white and erased the
+  // document behind it, so hiding the panel alone would leave a blank page.
+  // No `!important` anywhere in this block, and that is checked rather than
+  // hoped for: every rule these override is a single class (`.toolbar`,
+  // `.explorer`, … in `app.scss`), so matching specificity plus this file being
+  // imported last is enough. An `!important` here would win the same contest
+  // while making the next override in either direction harder to reason about.
+  .toolbar,
+  .explorer,
+  .app__resizer,
+  .app__footer,
+  .doc__bar,
+  .doc-outline,
+  .modal-overlay {
+    display: none;
+  }
+
+  // The copy controls are screen affordances; on paper they are empty boxes over
+  // the content they sit on. **Qualified with `.markdown-body` because that is
+  // how their own rules are written** — `markdown.scss` nests both, so a bare
+  // `.mermaid-copy` is one class short and would lose the cascade and print.
+  .markdown-body .code-block__copy,
+  .markdown-body .mermaid-copy {
+    display: none;
+  }
+
+  // ---- 3. Reflow to the paper's width ---------------------------------------
+  // The page was cropped rather than scaled on macOS. Which rule imposed the
+  // width was not isolated by that run, so this releases the caps and the
+  // side-by-side grid rather than one named culprit, and the result has to be
+  // reprinted to confirm.
+  .doc {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .doc__body {
+    display: block;
+  }
+
+  .doc .markdown-body {
+    max-width: none;
+  }
+
+  // Anything that scrolls on screen has to spill instead, or its overflow is
+  // simply absent from the paper. **`overflow: visible` is not enough on a
+  // `<pre>`**: `white-space: pre` does not wrap, so a line longer than the page
+  // runs past the edge and its tail is lost, with no scrollbar to reach it. The
+  // pair below is what actually keeps a long line — `anywhere` because a code
+  // line can be one unbroken token with no break opportunity in it.
+  //
+  // Wrapping is safe here and would not be in `SourceView`, whose plain path
+  // puts line numbers in a column a wrapped line slips out of step with.
+  // Markdown code blocks carry no line numbers.
+  // `pre.shiki` rather than `pre`: the rule that makes it scroll is written that
+  // way, so matching it is what wins without `!important`. `.code-block` sets no
+  // overflow of its own, so it is not listed — a rule that overrides nothing.
+  .markdown-body pre.shiki,
+  .markdown-body table {
+    overflow: visible;
+  }
+
+  .markdown-body pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  // ---- 4. Paper is light on every palette -----------------------------------
+  // The selectors mirror the theme ones in `global.scss` at equal specificity,
+  // so being last in source order is what makes them win — including over the
+  // `prefers-color-scheme: dark` block, which `:root:not([data-theme])` is here
+  // to answer.
+  //
+  // Measured on macOS: a dark palette prints as faint text on white, because the
+  // background is dropped and the palette's light ink then sits on an unprinted
+  // ground. So this is legibility rather than ink.
+  :root,
+  :root[data-theme],
+  :root:not([data-theme]) {
+    color-scheme: light;
+
+    @include theme-light;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  // Shiki's dark swap survives the palette override, because it is keyed on the
+  // theme attribute rather than on a colour token: `--shiki-dark` is emitted per
+  // token as an inline custom property and applied with `!important`, which
+  // beats the inline light colour beside it.
+  //
+  // **So printing from a dark theme gives monochrome code, and that is a
+  // limitation rather than a choice.** CSS cannot un-apply a declaration, and
+  // the light colour is an inline `style` this rule already outranks — there is
+  // no value to put here that restores it. Inheriting the body ink is the
+  // readable outcome available; restoring the light tokens would mean emitting
+  // `--shiki-light` from the pipeline, which is a change to what every code
+  // block renders on screen and belongs to its own decision.
+  //
+  // **This is the one `!important` in the file, and it is forced rather than
+  // chosen.** The declaration it has to beat is itself `!important`
+  // (`markdown.scss` needs that to outrank Shiki's inline per-token colour), and
+  // only an important declaration can override an important one. Nothing about
+  // specificity or source order reaches it.
+  //
+  // `on-dark` is included *inside* each rule rather than around them: used at
+  // the top level its `&` has no parent, and Sass emits `:scope` in its place —
+  // `:root[data-theme='dark'] :scope .markdown-body …`, a `:root` nested under
+  // another element, which matches nothing. That compiles and ships silently.
+  .markdown-body pre.shiki {
+    @include on-dark {
+      &,
+      span {
+        color: inherit !important;
+      }
+    }
+  }
+
+  // ---- 5. Page geometry and breaks ------------------------------------------
+  // **The margin is here again, and the account this file carried for four
+  // commits was wrong.** It said `@page`'s margin caused the truncation, on the
+  // arithmetic that wry zeroes `NSPrintInfo`'s margins so the engine counts pages
+  // against a full-bleed A4 while `@page` lays them out at 89.2% of it. The
+  // arithmetic fit and the conclusion did not: **`mac/paper-mac-light-7a.pdf` is
+  // this exact stylesheet printed complete at 14 pages, where
+  // `paper-mac-light-7.pdf` had truncated at 12.** Same CSS, both results — so
+  // CSS is not what decides it.
+  //
+  // **What decides it is when the page count was computed.** The print sheet
+  // shows a count, the PDF export honours that count, and a layout needing more
+  // pages than the count simply stops — the tail is not printed. **Switching
+  // printers in the sheet forces the recalculation** and the export then matches
+  // the layout, which is how 7a was produced. Removing the margin "worked" only
+  // by bringing the required count back under the stale one; so did shrinking the
+  // type; so did the engine's own shrink-to-fit in the first three runs.
+  //
+  // **So do not tune this value against a truncation.** A short document prints
+  // whatever the margin is; a long one is at the mercy of a count taken earlier,
+  // and no value here makes that go away. It is a macOS print-path defect that
+  // `WebviewWindow::print()` gives mallow no way to reach — wry runs the
+  // operation off `NSPrintInfo::sharedPrintInfo()`, an application-wide singleton
+  // it mutates on every print, which is the kind of state a stale count would
+  // live in.
+  //
+  // Header and footer margin boxes stay absent — engine support for them is
+  // uneven and three different sheets of paper is a worse outcome than none
+  // carrying a page number.
+  @page {
+    margin: 16mm;
+  }
+
+  // **Every pagination constraint was removed while the truncation was being
+  // chased, and none of them was the cause** — `break-inside: avoid`,
+  // `break-after: avoid`, `orphans` and `widows`. Removing them changed nothing
+  // (run 6), which is now explained: the cause was never in this file.
+  //
+  // They are left out for now anyway, because nothing has printed with them since
+  // the real mechanism was found. **Reintroducing them is a change worth making
+  // on its own**, with a reprint that shows the document still reaching its last
+  // page — and, given what is now known, one taken after forcing a recalculation
+  // rather than on a stale count.
+  .markdown-body {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      // On screen this clears the pinned bar, which is not in the paper's DOM.
+      scroll-margin-top: 0;
+    }
+
+    // No `max-height`: it existed only to stop an over-tall image forcing a
+    // blank page ahead of itself under `break-inside: avoid`, which is gone, and
+    // nothing measured how `vh` resolves in paged media on any of the three
+    // engines anyway.
+    img,
+    .mermaid-rendered svg {
+      max-width: 100%;
+    }
+  }
+}

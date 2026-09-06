@@ -1,11 +1,13 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { matchesCmdOrCtrl, onMacPlatform } from '../lib/chord';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { renderMermaid } from '../lib/mermaid';
 import { readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
+import { printWindow } from '../lib/tauri';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
 import { SourceView } from './SourceView';
@@ -114,6 +116,33 @@ export function MarkdownView({ source }: { source: string }) {
     }
     scroller.style.setProperty('--doc-bar-height', `${bar.getBoundingClientRect().height}px`);
   });
+
+  /* decision-13: `Print…` is disabled unless the active view is markdown in
+     preview. The condition lives here rather than in `App` because being mounted
+     with `mode` at `preview` *is* that condition — a view that cannot be printed
+     registers no entry, so there is no copy of the rule to keep in sync. It also
+     cannot be written as `file.kind === 'markdown'`: that is true of the source
+     half of this toggle, which must not print.
+
+     Until the File menu lands there is no menu item to grey out, so outside this
+     state the accelerator simply reaches nothing. `matchesCmdOrCtrl` resolves the
+     chord the way the native menu layer will, so the item TASK-12.4 adds and this
+     handler answer to the same keys. `preventDefault` also keeps WebView2 from
+     running its own Ctrl+P binding beside the print call. */
+  useEffect(() => {
+    if (mode !== 'preview') {
+      return;
+    }
+    const onMac = onMacPlatform();
+    const onKey = (e: KeyboardEvent) => {
+      if (matchesCmdOrCtrl(e, 'p', onMac)) {
+        e.preventDefault();
+        void printWindow().catch((err) => console.error('print failed', err));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode]);
 
   const headings = result?.headings ?? [];
   const hasOutline = headings.length > 1;

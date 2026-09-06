@@ -66,3 +66,11 @@ export function revealInOs(path: string): Promise<void> {
 export function openInDefaultApp(path: string): Promise<void> {
   return invoke('open_in_default_app', { path });
 }
+
+/** Open the platform's print UI for this window. The whole `<body>` is what the
+ *  engine paginates, which is why the command is named for the window (see
+ *  decision-13 and `src-tauri/src/print.rs`). Resolving says nothing about a UI
+ *  having appeared — macOS returns success where its own guard declines. */
+export function printWindow(): Promise<void> {
+  return invoke('print_window');
+}

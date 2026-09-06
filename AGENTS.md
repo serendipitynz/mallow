@@ -85,6 +85,19 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (measured — `a,b.html` opened an Explorer window, not the handler) and
   `cmd /C start` re-parses by `cmd`'s rules rather than the ones `Command` quotes
   for.
+- `print.rs` — `print_window`, which hands the calling webview window to
+  `WebviewWindow::print()` (decision-13) **everywhere but Linux, where it refuses
+  without calling it**: measured 2026-09-07, the GTK dialog opens and never
+  returns — the compositor reports mallow as not responding, Wait does nothing,
+  the dialog's own Cancel cannot be pressed, and Force Quit is the only way out,
+  with a real printer configured and under a `--debug --no-bundle` build. The
+  guard is a `cfg` rather than a runtime platform test **because it must not be
+  able to fail open**; the Linux arm is not compiled on macOS or Windows, so
+  `cargo check` there says nothing about it. Named for the window because the engine
+  paginates the whole `<body>`, so a name promising a document would be false at
+  the boundary that matters, and a print stylesheet would not make it true. Not
+  `cfg(desktop)`-gated though `print()` is, so a mobile build fails to compile
+  rather than reporting a missing command at runtime.
 - `lib.rs` — plugin registration (opener, dialog, store, window-state,
   updater, process — none `cfg(desktop)`-gated, per decision-11), the
   `invoke_handler`, and (macOS only) a native app menu whose Settings… item
@@ -338,6 +351,89 @@ hold rather than as an exhaustive style guide.
   against tauri 2.11.3's own `Scope` (TASK-21), and `commands.rs`'s
   `asset_scope_reaches_media_behind_a_leading_dot` reads the key back out of
   `tauri.conf.json` rather than restating it, so removing it fails the suite.
+- **Printing is one call that takes three structurally different routes, and
+  `window.print()` is only the Windows one.** `print_window` hands the webview
+  window to `WebviewWindow::print()`; wry 0.55.1 builds an `NSPrintOperation` on
+  macOS, evaluates `window.print()` on Windows and runs GTK's
+  `PrintOperation::run_dialog(None)` on Linux. **So a JS print event cannot be
+  assumed to fire** — the shape decision-9 established for parent-registered
+  listeners — and anything needing the DOM rearranged before printing must do it
+  synchronously in the frontend before invoking. **Tauri's own doc comment says
+  macOS-only while the pinned wry implements all three**; the pinned source is
+  what this rests on, the same disagreement TASK-11.1 hit. **A returned `Ok(())`
+  is not evidence a print UI appeared**: macOS's route is guarded by
+  `respondsToSelector(printOperationWithPrintInfo:)` and returns success having
+  done nothing where that guard fails, Windows returns before the evaluated JS
+  has run, and Linux's dialog has a `None` parent so it need not be in front of
+  mallow. **The entry is gated on the active view, never on `file.kind`**
+  (decision-13): `Print…` is disabled unless the active view is markdown in
+  preview, and the accelerator therefore lives inside `MarkdownView`, where being
+  mounted with `mode` at `preview` *is* that condition rather than a copy of it —
+  `file.kind === 'markdown'` is true of the source half of the toggle, which must
+  not print. **What the engine paginates is the whole `<body>`**, explorer and
+  toolbar and footer and settings modal included, so the paper carries the app
+  shell until a print stylesheet lands — **and on macOS the shell is nearly all of
+  it** (measured 2026-09-06; Windows and Linux unmeasured). The paper came out as
+  **one A4 page**, the print sheet's own preview saying `Page 1 of 1` before any
+  user setting. **The cause is the app's height chain, not the print call**:
+  `html, body, #root { height: 100% }` → `.app { height: 100% }` →
+  `.app__body { flex: 1 1 auto; min-height: 0 }` →
+  `.doc-scroll { flex: 1 1 auto; min-height: 0; overflow: auto }` makes the
+  `<body>` exactly one viewport tall by construction, so pagination yields one
+  page whatever the document's length — **so a print stylesheet has to release
+  that whole chain, not just `.doc-scroll`**, and release the width too, since the
+  same run cropped the page horizontally rather than scaling it to the paper.
+  **`src/styles/print.scss` is that stylesheet** — imported last, so its palette
+  overrides beat the theme selectors on source order at equal specificity. It
+  hides the toolbar outright rather than neutralising `will-change: transform`,
+  which reaches the same paper without touching the screen's paint order; it
+  carries **no pagination constraint at all** — no `break-inside`, `break-after`,
+  `orphans` or `widows`; they were removed while the macOS truncation was being
+  chased and the cause proved to be elsewhere, so their absence is a state nothing
+  has printed against rather than a finding (**if you reintroduce one, note that
+  `.mermaid` is the `<pre>` holding a diagram's source and `.mermaid-rendered` is
+  what replaces it, and that `table` cost a part-blank page**); **it wraps code in
+  print** (`pre-wrap` +
+  `overflow-wrap: anywhere`), because `overflow: visible` does not wrap
+  `white-space: pre` and one over-wide line otherwise makes the engine shrink the
+  whole document to fit the page; and **printing from a dark palette gives monochrome code**,
+  because Shiki's dark tokens are inline `--shiki-dark` values applied with
+  `!important` over the inline light colour and CSS cannot un-apply a
+  declaration. **Two traps it was written around, both found by printing rather
+  than by reading**: `@include on-dark` used at the *top level* compiles to
+  `:scope` (`:root[…] :scope .markdown-body …`), which matches nothing and ships
+  silently, so include it inside a rule; and the harness that found it
+  (`_sandbox/handoff/task-27/harness/run.sh`, headless Chrome) **cannot stand in
+  for the platform measurement** — its control run paginates the unstyled page
+  into 16, so Chrome never had the one-page failure at all. Two
+  more things that run settled: **a dark palette prints as faint text on white**
+  (WebKit's default `print-color-adjust` drops the background, so the palette's
+  light ink lands on an unprinted ground — the light-only rule is legibility, not
+  ink), and **the settings modal erases the document rather than overlaying it**,
+  its viewport-covering backdrop printing as opaque white, so the removal has to
+  take the backdrop and not only the panel. That stylesheet must go in a `.scss` and
+  **never as an inline `<style>` in `index.html`**, which would add a hash to
+  `style-src` and retire its `'unsafe-inline'`, and it must neutralise
+  `.toolbar`'s `will-change: transform` only inside `@media print`. **`@page` is
+  not written before the margins are measured** — macOS's route zeroes all four
+  print margins and writes them into the application-wide
+  `NSPrintInfo::sharedPrintInfo()` while the other two leave the paper to their
+  print UI, so both setting margins and leaving them are wrong until observed.
+  **No automated check sees any of this**: Biome and Vitest do not read SCSS, no
+  harness opens a platform print dialog, and `src/probe/` measures with counters
+  where the evidence here is a screenshot and a PDF.
+  **What the three platforms actually do differs more than the stylesheet does**
+  (measured 2026-09-07). Windows prints the whole document correctly and adds
+  WebView2's own header and footer — date, title, URL, page numbers — which the
+  reader can switch off and CSS cannot. macOS loses the end of a long document:
+  the print sheet computes a page count, the PDF export honours it, and a layout
+  needing more pages simply stops — **switching printers in the sheet forces the
+  recalculation and the export then matches**. That is why **no CSS value should
+  be tuned against a truncation**: removing `@page`'s margin, shrinking the type
+  and the engine's own shrink-to-fit all "fixed" it by bringing the required count
+  back under the stale one, and `_sandbox/handoff/task-27/mac/paper-mac-light-7a.pdf`
+  is the same stylesheet as `-7.pdf` printed complete once the count was refreshed.
+  Linux hangs, which is why `print_window` refuses there at all.
 - **Emoji.** Unicode emoji are wrapped in `<span class="emoji">` so CSS can put a
   colour-emoji stack (`$font-emoji`) in front for them alone. Without the wrapper
   the JP body font wins the fallback race for the few emoji it covers — `:ok:` is
@@ -715,7 +811,8 @@ hold rather than as an exhaustive style guide.
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
   `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
-  and `custom-emoji`
+  `chord` (accelerator matching, which takes the platform as an argument so it
+  needs no `navigator`), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument

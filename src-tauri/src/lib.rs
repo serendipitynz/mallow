@@ -1,5 +1,6 @@
 mod commands;
 mod editors;
+mod print;
 mod watch;
 
 use tauri::Emitter;
@@ -84,6 +85,7 @@ pub fn run() {
             editors::open_in_editor,
             editors::reveal_in_os,
             editors::open_in_default_app,
+            print::print_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
