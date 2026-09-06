@@ -59,6 +59,11 @@
   // The modal overlay is listed with the panel deliberately: measured on macOS,
   // its viewport-covering backdrop printed as opaque white and erased the
   // document behind it, so hiding the panel alone would leave a blank page.
+  // No `!important` anywhere in this block, and that is checked rather than
+  // hoped for: every rule these override is a single class (`.toolbar`,
+  // `.explorer`, … in `app.scss`), so matching specificity plus this file being
+  // imported last is enough. An `!important` here would win the same contest
+  // while making the next override in either direction harder to reason about.
   .toolbar,
   .explorer,
   .app__resizer,
@@ -66,14 +71,16 @@
   .doc__bar,
   .doc-outline,
   .modal-overlay {
-    display: none !important;
+    display: none;
   }
 
   // The copy controls are screen affordances; on paper they are empty boxes over
-  // the content they sit on.
-  .code-block__copy,
-  .mermaid-copy {
-    display: none !important;
+  // the content they sit on. **Qualified with `.markdown-body` because that is
+  // how their own rules are written** — `markdown.scss` nests both, so a bare
+  // `.mermaid-copy` is one class short and would lose the cascade and print.
+  .markdown-body .code-block__copy,
+  .markdown-body .mermaid-copy {
+    display: none;
   }
 
   // ---- 3. Reflow to the paper's width ---------------------------------------
@@ -105,10 +112,12 @@
   // Wrapping is safe here and would not be in `SourceView`, whose plain path
   // puts line numbers in a column a wrapped line slips out of step with.
   // Markdown code blocks carry no line numbers.
-  .markdown-body pre,
-  .markdown-body table,
-  .code-block {
-    overflow: visible !important;
+  // `pre.shiki` rather than `pre`: the rule that makes it scroll is written that
+  // way, so matching it is what wins without `!important`. `.code-block` sets no
+  // overflow of its own, so it is not listed — a rule that overrides nothing.
+  .markdown-body pre.shiki,
+  .markdown-body table {
+    overflow: visible;
   }
 
   .markdown-body pre {
@@ -149,6 +158,12 @@
   // readable outcome available; restoring the light tokens would mean emitting
   // `--shiki-light` from the pipeline, which is a change to what every code
   // block renders on screen and belongs to its own decision.
+  //
+  // **This is the one `!important` in the file, and it is forced rather than
+  // chosen.** The declaration it has to beat is itself `!important`
+  // (`markdown.scss` needs that to outrank Shiki's inline per-token colour), and
+  // only an important declaration can override an important one. Nothing about
+  // specificity or source order reaches it.
   //
   // `on-dark` is included *inside* each rule rather than around them: used at
   // the top level its `&` has no parent, and Sass emits `:scope` in its place —

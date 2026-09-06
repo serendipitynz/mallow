@@ -149,3 +149,26 @@ itself, which is what separated them from the print stylesheet.
   the harness confirms they render and that `break-inside: avoid` keeps the large
   one whole.
 <!-- SECTION:NOTES:END -->
+
+## Why the print stylesheet cannot recolour a mermaid diagram (measured 2026-09-06)
+
+Printing from a dark palette gives a diagram with black node fills and grey
+labels on otherwise-light paper. The palette override does not reach it, and the
+reason is not inline `style` attributes — it is specificity.
+
+`mermaid.initialize({ theme })` bakes the colours in at render time, and
+`compileCSS` (mermaid 11.16.0, `dist/mermaid.core.mjs`) prefixes **every rule it
+emits with the SVG's own id**, so the `<style>` element inside the SVG holds
+rules shaped like `#mermaid-svg-0 .node rect { fill: … }` — specificity
+**(1,1,1)**. An external rule cannot reach that: no number of classes outranks a
+single id, the id is generated (`mermaid-svg-${renderSeq++}`) so it cannot be
+written into a stylesheet, and `svg[id^="mermaid-svg-"]` is an attribute
+selector, which counts as a class rather than an id. Cascade layers do not help
+either — mermaid's `<style>` is unlayered, as is ours, so specificity still
+decides.
+
+**So a CSS fix would require `!important`, and it would also have to name
+mermaid's internal class names.** Both are costs the alternative avoids:
+rendering a second, light-themed copy for print needs neither, and needs no
+print-timing hook (there is none to rely on — decision-13). That is the option
+this task should take if the diagram's print appearance is to be fixed at all.
