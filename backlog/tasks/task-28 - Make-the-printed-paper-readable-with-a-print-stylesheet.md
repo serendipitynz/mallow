@@ -58,6 +58,7 @@ WKWebView, `pnpm tauri dev`, A4, default scale, all in
 | 3 | `paper-mac-{light,dark}-3.pdf` | 7 pages, with the diagrams drawn and the images present — **but shrunk to fit**, which is why its page count is not comparable with run 4's |
 | 4 | `paper-mac-{light,dark}-4.pdf` | **after the code-wrapping fix**: 12 pages at true size, and **truncated** — §10's image and everything after it are missing |
 | 5 | `paper-mac-{light,dark}-5.pdf` | **after removing `break-inside: avoid` from `img`**: 12 pages, truncated **at exactly the same point**. The removal did not help |
+| 6 | `paper-mac-{light,dark}-6.pdf` | **after removing every pagination constraint** (`break-inside`, `break-after`, `orphans`, `widows`): 12 pages, **the same cut point again** |
 
 **Run 4 answered one question and opened another.** The wrapping fix worked: the
 body prints at the size it has on screen instead of being shrunk to fit, which is
@@ -81,11 +82,45 @@ and macOS produces 12 in both runs. **So the shape to suspect is a page count or
 a content height decided somewhere other than where the pages are laid out** —
 not an element-specific rule. That is a hypothesis; nothing has measured it.
 
-**Every pagination constraint is removed in response** — `break-inside`,
+**Every pagination constraint was removed in response** — `break-inside`,
 `break-after`, `orphans`, `widows` — because a stylesheet cannot bisect them from
 here, they are all presentation, and what they may be costing is content
-(decision-6). **Run 6 is the test**, and if it still truncates the lever is not in
-this file.
+(decision-6). **Run 6 truncated in the same place, so the lever is not in this
+file.** Three stylesheets, one cut point.
+
+## The strongest lead is in wry, not in the stylesheet
+
+**A cut point that does not move when the stylesheet changes is not being decided
+by the stylesheet.** What does not change between runs 4, 5 and 6 is the window,
+and `wry-0.55.1/src/wkwebview/mod.rs:862-900` builds the print operation like
+this:
+
+```rust
+let print_operation = self.webview.printOperationWithPrintInfo(&print_info);
+print_operation.setCanSpawnSeparateThread(true);
+print_operation.runOperationModalForWindow_…(&window, None, None, null_mut())
+```
+
+**It never sets a frame.** `WKWebView.printOperation(with:)` hands back an
+operation whose view is the webview itself, and the pattern for printing content
+taller than the view is to size `printOperation.view.frame` to the full content
+before running it. wry does not, and `WebviewWindow::print()` exposes no hook to
+do it from mallow — this is exactly the layer decision-13 said mallow does not
+reach into.
+
+**That is a lead, not a cause.** What is verified is only that wry sets no frame;
+nothing has measured that this is why the tail is lost.
+
+**The discriminating test needs no code change.** If the view's geometry decides
+how much is printed, then printing the same document from a much taller window
+must produce a different number of pages. If it still produces 12, geometry is not
+it. One reprint answers it, and it is the cheapest thing left that could.
+
+**If geometry is confirmed, the fix leaves CSS entirely**: mallow would build its
+own `NSPrintOperation` on macOS with the frame set, which means `objc2-app-kit` as
+a new macOS-gated direct dependency and a second print path beside
+`WebviewWindow::print()` — a decision about dependencies and platform code rather
+than a detail.
 
 ## Two things run 5 established about how to measure at all
 
