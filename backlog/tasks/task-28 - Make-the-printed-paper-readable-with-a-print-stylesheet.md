@@ -35,7 +35,7 @@ TASK-27 reached the platform's print UI and measured what it puts on paper. On m
 - [x] #2 The content reflows to the paper's width rather than being cropped at it. Written as the requirement, since what imposes the width was never isolated - .doc max-width sits above A4's ~794 CSS px and is not it
 - [x] #3 No part of the app shell appears on the paper: toolbar, explorer, resizer, footer, the pinned doc bar, the outline, and the settings/update modal WITH its overlay, which erased the document rather than overlaying it
 - [x] #4 Paper is light on every palette, and printing from a dark palette produces readable ink rather than the faint text macOS measured
-- [ ] #5 break-inside: avoid is applied only where a split makes the element unreadable - images, SVG, mermaid, figure. Not to pre, table or blockquote, which split readably and cost a part-blank page when forced whole
+- [x] #5 break-inside: avoid is applied only where a split makes the element unreadable, which is img and .mermaid-rendered - NOT .mermaid, which is the <pre> holding a diagram's source and would be exactly the shape this rule excludes. figure and a bare svg are excluded too: html: false emits no <figure>, and the body's only other SVG is a GFM alert icon that cannot span a break. Not pre, table or blockquote, which split readably and cost a part-blank page when forced whole
 - [x] #6 The print stylesheet is a .scss imported last, never an inline <style> in index.html, which would add a hash to style-src and retire its unsafe-inline
 - [x] #7 Nothing in the file leaks outside @media print - .toolbar's will-change: transform in particular keeps its screen behaviour, since dropping it alone brings back the dropdown paint-order failure
 - [x] #8 @page carries a margin, since macOS zeroes the print operation's own margins and would otherwise put text at the paper's edge. No header/footer margin boxes - engine support is uneven and three different sheets is worse than none carrying a page number
@@ -55,10 +55,12 @@ WKWebView, `pnpm tauri dev`, A4, default scale, all in
 |---|---|---|
 | 1 | `paper-mac-{light,dark}.pdf`, `paper-mac-modal.pdf` | **before the stylesheet**: one page, the shell on the paper, dark printing faint, the modal erasing the document |
 | 2 | `paper-mac-{light,dark}-2.pdf` | **the stylesheet working**: 6 pages, no shell, reflowed, light on both palettes. mermaid and the images are still absent here — the diagrams were the TASK-29 bug and the images were the fixture's own defect, both fixed after this run |
-| 3 | `paper-mac-{light,dark}-3.pdf` | **the current result**: 7 pages, with the diagrams drawn and the images present |
+| 3 | `paper-mac-{light,dark}-3.pdf` | **the latest captured run**: 7 pages, with the diagrams drawn and the images present |
 
-**Run 3 is the current behaviour**; runs 1 and 2 are kept as the before and the
-intermediate. **Windows and Linux are unmeasured**, so AC #9 stays open, and
+**No run captures the current stylesheet.** Run 3 is the most recent and it
+predates the code-wrapping fix below, so **macOS has to be reprinted once more**
+before AC #1 can be judged there at all. Runs 1 and 2 are kept as the before and
+the intermediate. **Windows and Linux are unmeasured**, so AC #9 stays open, and
 `procedure.md` is at its second version because the first described the
 pre-stylesheet baseline and would have had those operators record a failure as
 expected.
@@ -72,7 +74,11 @@ the harness that changed the page count from 8 to 14 at the true size. **The
 macOS runs above predate that fix, so their page counts are not the ones a
 reprint will produce.**
 
-| | before | after |
+Comparing **run 1** (before the stylesheet) with **run 2** (the first run with
+it). Run 3 differs from run 2 only in the mermaid and image fixes, and no run
+carries the code-wrapping fix.
+
+| | run 1 | run 2 |
 |---|---|---|
 | pages | 1 | **6**, ending on §12 |
 | app shell on the paper | explorer, toolbar, footer | **none** |
@@ -110,15 +116,15 @@ being fixed here.
 Confirmed on screen, not inferred: the reporter's screenshot shows both failing
 in the app itself.
 
-- **mermaid prints as its own source.** `renderMermaid` replaces the
-  `<pre class="mermaid">` on success and leaves it in place on failure, so source
-  text on paper means the element was never replaced — and CSS cannot restore an
-  element that was. `_sandbox/samples/mermaid-min.{md,mmd}` are minimal probes
-  that separate "mermaid does not load at all" from "the markdown path only".
-  **Not this task's to fix**, but AC #5's `break-inside: avoid` on `.mermaid` is
-  untested until a diagram renders.
-- **The fixture's images could never have loaded, and that was my error in
-  TASK-27.** markdown-it runs with `html: false` and its `validateLink` drops
+- **mermaid printed as its own source in runs 1 and 2, and draws in run 3.**
+  `renderMermaid` replaces the `<pre class="mermaid">` on success and leaves it in
+  place on failure, so source text on paper means the element was never
+  replaced — and CSS cannot restore an element that was.
+  `_sandbox/samples/mermaid-min.{md,mmd}` are minimal probes made while
+  diagnosing it. It is **TASK-29**, filed separately, and reopening the document
+  is the workaround — which is what run 3 did. **Not this task's to fix.**
+- **The fixture's images could never have loaded in runs 1 and 2, and that was my
+  error in TASK-27.** markdown-it runs with `html: false` and its `validateLink` drops
   `asset:`, so **a relative path in a document does not reach the opened folder**
   — AGENTS says it as "media only loads for files chosen in the tree". The
   fixture asked for `media/logo.png` and got a broken image on screen and on

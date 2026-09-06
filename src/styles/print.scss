@@ -166,9 +166,12 @@
   // ---- 5. Page geometry and breaks ------------------------------------------
   // `@page` is the only place three engines can be given one voice. macOS is
   // measured and zeroes the print operation's own margins, which puts text at
-  // the paper's edge; Windows and Linux leave the paper to their print UI, so
-  // this margin composes with whatever that UI already reserved rather than
-  // fighting it. Header and footer margin boxes are deliberately absent —
+  // the paper's edge, and 16mm is written for that. **How this composes with
+  // Windows and Linux is unmeasured**: those print UIs reserve a margin of their
+  // own, and whether `@page` adds to it — leaving a doubled margin and a narrow
+  // column — or replaces it is what their reprint has to answer. Do not write
+  // that it composes until one of them has been printed.
+  // Header and footer margin boxes are deliberately absent —
   // engine support for them is uneven and three different sheets of paper is a
   // worse outcome than none carrying a page number.
   @page {

@@ -129,7 +129,7 @@ begin with, and what it buys is a page that can be read. Windows and Linux are
 unmeasured; if either does print the background, the ink argument returns for
 that platform and the rule already covers it.
 
-### Two questions stay open, and `@page` is not written before they are answered
+### `@page` is written for what macOS measured; headers and footers stay unanswered
 
 - **Margins — answered in part on 2026-09-06, and `@page` is now written.**
   The prohibition below stood while nothing was measured. macOS then measured it:
@@ -220,11 +220,22 @@ mallow. The screen and the sheet of paper are the only witnesses.
   `@media print`, which reaches the same paper without touching the screen's paint
   order at all.
 - **`break-inside: avoid` is applied only where a split makes the element
-  unreadable** — images, SVG, mermaid, `figure`. Not `pre`, `table` or
-  `blockquote`: those split readably (markdown-it emits `<thead>`, which engines
-  repeat on the continuing page), and forcing them whole costs paper — a 21-row
-  table half a page from the bottom went whole onto the next sheet and left half a
-  page blank.
+  unreadable**, which turned out to be two selectors: `img` and
+  `.mermaid-rendered`. **`.mermaid` is not one of them** — that is the `<pre>`
+  holding a diagram's source, which `renderMermaid` replaces on success, so
+  naming it would apply the rule to a `<pre>` and miss every diagram that drew.
+  `figure` and a bare `svg` are not listed either: `html: false` means nothing
+  emits a `<figure>`, and the body's only other SVG is a GFM alert icon that
+  cannot span a break. Not `pre`, `table` or `blockquote`: those split readably
+  (markdown-it emits `<thead>`, which engines repeat on the continuing page), and
+  forcing them whole costs paper — a 21-row table half a page from the bottom
+  went whole onto the next sheet and left half a page blank.
+- **Code wraps in print, and not wrapping it cost more than a lost line.**
+  `overflow: visible` does not wrap `white-space: pre`, so an over-wide code line
+  ran past the page — and content wider than the page makes the engine shrink the
+  whole document to fit, so every page carried smaller type than intended. Every
+  macOS run recorded before that fix was scaled down, which is why their page
+  counts are not comparable with a later reprint.
 - **Printing from a dark palette gives monochrome code, and that is a limitation
   rather than a choice.** Shiki's dark tokens are inline `--shiki-dark` custom
   properties applied with `!important`, which outranks the inline light colour
