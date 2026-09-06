@@ -290,3 +290,41 @@ mermaid's internal class names.** Both are costs the alternative avoids:
 rendering a second, light-themed copy for print needs neither, and needs no
 print-timing hook (there is none to rely on — decision-13). That is the option
 this task should take if the diagram's print appearance is to be fixed at all.
+
+## All three platforms measured (2026-09-07) — printing is clean on one of them
+
+| | macOS | Windows | Linux |
+|---|---|---|---|
+| print UI appears | yes, a window sheet | yes, WebView2's preview | yes, GTK's dialog — **in front of mallow**, so the `None` parent cost nothing here |
+| fires once | — | yes, one dialog | — |
+| app shell off the paper | yes | yes | not reached |
+| paper reaches the last section | **only after forcing a recalculation** | **yes**, 14 pages, §12 present | not reached |
+| app usable while the dialog is open | yes | yes | **no — "mallow is not responding", with Force Quit offered** |
+| marks mallow did not ask for | none | date, document title, URL and page numbers | — |
+
+Artefacts: `win/paper-win-light-1.pdf` + `win/image.png`, `lin/image (1).png` and
+`lin/image (2).png`.
+
+**The truncation is macOS-only.** Windows printed the same document complete at 14
+pages — the count the headless-Chrome harness gives for the same stylesheet — which
+is the cross-check that the stylesheet is right and the macOS print path is what
+is wrong.
+
+**Linux is the serious one, and it is not a paper problem.** The dialog opens and
+the compositor then reports mallow as not responding; the reporter was offered
+Force Quit and pressed Wait several times. `PrintOperation::run_dialog` is
+synchronous, and wry calls it on the main thread, so the window stops servicing
+events while it is up. Print stayed disabled — the only printer offered was
+`Print to File` and it does not appear selected, which is a separate and much
+smaller thing than the freeze. **Nothing about the paper was reached on Linux.**
+
+**Windows adds its own header and footer** — `9/7/26, 9:52 AM`, `mallow`, the URL
+and `14/14`. That is WebView2's, switchable by the reader under More settings, and
+not something CSS can suppress. The URL was `localhost:1420` because the run was
+`pnpm tauri dev`; a built app would print its own scheme instead. Worth naming
+because decision-13 says mallow prints no header or footer, and on Windows the
+platform prints one anyway.
+
+**All three defects sit in the same layer** — wry's implementation, reached through
+a `WebviewWindow::print()` that takes no arguments — and none of them is reachable
+from CSS or from Tauri's API.

@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-08-28 03:17'
-updated_date: '2026-09-06 02:29'
+updated_date: '2026-09-06 22:06'
 labels:
   - feature
 milestone: m-3
@@ -36,9 +36,9 @@ Printing rendered markdown was asked for, and nothing in the tree reaches a prin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 CmdOrCtrl+P in a markdown preview brings the platform print UI on screen on macOS, Windows and Linux - observed on screen on each, since print_window returns Ok(()) on macOS even where its respondsToSelector guard fails
+- [x] #1 CmdOrCtrl+P in a markdown preview brings the platform print UI on screen on macOS, Windows and Linux - observed on screen on each, since print_window returns Ok(()) on macOS even where its respondsToSelector guard fails
 - [ ] #2 CmdOrCtrl+P reaches no print call when the active view is not a markdown preview: covering the source half of the toggle and at least one non-markdown view. Written about the accelerator being inert, not about a disabled menu item - no menu item exists until TASK-12.4
-- [ ] #3 A fixture in _sandbox/samples/ spans several printed pages and puts a code block, a table, a mermaid diagram, an image and a heading both across a page break and clear of one, so the two states are comparable within one file
+- [x] #3 A fixture in _sandbox/samples/ spans several printed pages and puts a code block, a table, a mermaid diagram, an image and a heading both across a page break and clear of one, so the two states are comparable within one file
 - [ ] #4 The paper (or the PDF the print UI's own destination writes) is inspected on all three platforms and what it holds is recorded: whether the body reaches the last page or is clipped to what was on screen, and which shell elements appear on it
 - [x] #5 Both palettes are measured on at least one platform and whether a dark background reaches paper is recorded, so decision-13's light-only rule rests on an observation rather than on the ink argument alone
 - [ ] #6 Printing twice in one session on macOS is checked for the first print's margins persisting, since that route writes into the application-wide NSPrintInfo sharedPrintInfo
