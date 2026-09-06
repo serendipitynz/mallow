@@ -89,6 +89,7 @@ here, they are all presentation, and what they may be costing is content
 file.** Three stylesheets, one cut point.
 
 | 7 | `paper-mac-light-7.pdf` | **printed from a much taller window**: 12 pages, same cut, and the file is the same size as run 6's to the byte. Window geometry is not it |
+| 8 | `paper-mac-light-8.pdf` | **with the `@page` margin removed**: 12 pages and **§12 present**. The margin was the cause |
 
 ## What the runs eliminated, and the one hypothesis that predicts a number
 
@@ -111,10 +112,29 @@ counted pages. And **the print sheet's preview fits the whole document into the
 same 12 pages the saved file truncates at** — which is what a preview drawn at the
 counted geometry would look like.
 
-**The `@page` margin is removed as the test.** With it gone, count and layout
-agree at zero margins, so run 8 should reach §12 **at 12 pages**, with text at the
-paper's edge. If it truncates at 12 again, the margin is not it either and the
-hypothesis dies with one print.
+**Run 8 confirmed it.** With the `@page` margin gone the document reached §12 at
+12 pages, exactly as predicted, and the reporter's only remaining note was that
+the type read large. **The margin was the cause**, and four runs had been losing
+between one and a half and two pages to it.
+
+**So no `@page` margin of any kind, in either axis.** A horizontal one narrows the
+column, which makes the document taller, which loses the tail the same way. The
+horizontal inset moved to `padding` on `.doc` instead — ordinary layout, so the
+page count is computed with it applied and cannot disagree with what is laid out.
+**Vertical per-page margins have no equivalent**: padding gives a gap above the
+first page and below the last, not on the pages between. On macOS they are
+therefore zero, which is a wry-level consequence mallow cannot reach —
+`WebviewWindow::print()` offers no way to leave `NSPrintInfo`'s margins alone.
+
+The print body size is now 11pt rather than the screen's 16px, which is the
+reporter's observation acted on.
+
+**Two things follow for the remaining platforms.** The `@page` rule is omitted
+rather than set to `0`, so each print UI keeps its own vertical margin — meaning
+the horizontal inset **composes** with whatever Windows and Linux reserve, and
+their reprints are where that gets judged. And the harness overstates the vertical
+margin, because Chrome applies a default page margin where macOS applies none: on
+macOS the top and bottom of a page are flush.
 
 **If it is confirmed, the fix is not to put the margin back somewhere else in
 CSS** — any `@page` margin reintroduces the same mismatch. The margin would have

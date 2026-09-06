@@ -88,18 +88,25 @@
   // width was not isolated by that run, so this releases the caps and the
   // side-by-side grid rather than one named culprit, and the result has to be
   // reprinted to confirm.
+  // The horizontal margin lives here rather than in `@page`, and the note below
+  // `@page` says why. Padding is ordinary layout, so the page count is computed
+  // with it applied and cannot disagree with what is laid out.
   .doc {
     max-width: none;
     margin: 0;
-    padding: 0;
+    padding: 0 16mm;
   }
 
   .doc__body {
     display: block;
   }
 
+  // 16px is the screen size and reads large on paper; 11pt is ordinary body copy.
+  // Everything under it is sized in `em`, so this scales the document rather than
+  // just the paragraphs.
   .doc .markdown-body {
     max-width: none;
+    font-size: 11pt;
   }
 
   // Anything that scrolls on screen has to spill instead, or its overflow is
@@ -179,25 +186,46 @@
   }
 
   // ---- 5. Page geometry and breaks ------------------------------------------
-  // **No `@page` margin, and it is under test rather than settled.** 16mm was
-  // written here because macOS's route zeroes the print operation's own margins
-  // and text then sits at the paper's edge. It is removed because the arithmetic
-  // of the truncation fits it and nothing else so far has: wry sets
-  // `NSPrintInfo`'s margins to 0, so the engine counts pages against a full-bleed
-  // A4 (841.9pt); a 16mm margin leaves 751.2pt, which is 89.2% of it; 12 counted
-  // pages of content therefore need 13.45 to lay out, and 1.45 pages is what goes
-  // missing — the observed loss is §10's image, §11 and §12, between one and a
-  // half and two pages. It also explains what the earlier runs did: 1–3 were
-  // shrunk to fit and so were compressed back into the counted pages, and the
-  // print sheet's preview fits the whole document into the same 12 pages the
-  // saved file truncates at, which is what a preview drawn at the counted
-  // geometry would look like.
+  // **No `@page` margin, and this is settled by measurement rather than
+  // preferred.** 16mm was written here because macOS's route zeroes the print
+  // operation's own margins and text then sits at the paper's edge. It cost the
+  // end of the document.
   //
-  // **The prediction this makes is sharp, which is the point** — three earlier
-  // causes were named from correlation and two of them were wrong. With the
-  // margin gone, count and layout agree at zero margins, so the reprint should
-  // reach the last section **at 12 pages**, with text running to the paper's
-  // edge. If it truncates at 12 again, the margin is not it either.
+  // wry sets `NSPrintInfo`'s margins to 0, so the engine counts pages against a
+  // full-bleed A4 of 841.9pt while `@page { margin: 16mm }` lays them out at
+  // 751.2pt — 89.2% of it. Twelve counted pages of content then need 13.45 to
+  // lay out, and the 1.45 that do not fit are simply not printed. That was the
+  // prediction; the reprint that removed the margin reached the document's last
+  // section at 12 pages, and the four runs before it had lost §10's image, §11
+  // and §12 — between one and a half and two pages
+  // (`mac/paper-mac-light-{4..8}.pdf`).
+  //
+  // **So no `@page` margin of any kind, in either axis.** A horizontal margin
+  // narrows the column, which makes the document taller, which loses the tail
+  // the same way. What can be done instead is spacing *inside the flow*, where
+  // the page count sees it — hence the horizontal padding on `.doc` above.
+  // **Vertical per-page margins have no such equivalent**: padding gives a gap
+  // above the first page and below the last, not on the pages between. On macOS
+  // they are therefore zero, and that is a wry-level consequence mallow cannot
+  // reach — `WebviewWindow::print()` exposes no way to leave `NSPrintInfo`'s
+  // margins alone. Windows and Linux let their own print UI set margins and are
+  // unmeasured here.
+  //
+  // **The `@page` rule is omitted rather than written as `margin: 0`**, so each
+  // platform's print UI keeps whatever vertical margin it would use — which is
+  // decision-13's stance for Windows and Linux, and on macOS happens to be zero
+  // because wry zeroed it. Forcing `0` would take Chrome's and the other print
+  // UIs' sensible defaults away to no purpose.
+  //
+  // **The cost is that the horizontal inset composes with whatever those UIs
+  // reserve**, so Windows and Linux may print a wider side margin than intended.
+  // That is measurable on their reprints and is the thing to look at there;
+  // guessing a smaller value now would be tuning against an unmeasured platform.
+  //
+  // The harness overstates the vertical margin for the same reason: absent
+  // `@page`, Chrome applies a default page margin where macOS applies none. **The
+  // top and bottom of a macOS page are flush** — judge the vertical spacing on a
+  // reprint, not on `harness-*.pdf`.
   //
   // Header and footer margin boxes stay absent — engine support for them is
   // uneven and three different sheets of paper is a worse outcome than none
