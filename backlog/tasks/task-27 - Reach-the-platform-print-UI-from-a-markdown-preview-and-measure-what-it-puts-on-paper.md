@@ -37,18 +37,22 @@ Printing rendered markdown was asked for, and nothing in the tree reaches a prin
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 CmdOrCtrl+P in a markdown preview brings the platform print UI on screen - observed on screen rather than inferred from a return value, since print_window returns Ok(()) on macOS even where its respondsToSelector guard fails. Measured on all three (2026-09-07): a sheet on macOS, WebView2's preview on Windows, GTK's dialog on Linux in front of the window. NOTE: what the Linux measurement recorded is that the dialog appears; it also never returns, so the shipped build refuses to print there at all (decision-13) and no Linux user reaches that UI
-- [ ] #2 CmdOrCtrl+P reaches no print call when the active view is not a markdown preview: covering the source half of the toggle and at least one non-markdown view. Written about the accelerator being inert, not about a disabled menu item - no menu item exists until TASK-12.4
+- [ ] #2 CmdOrCtrl+P reaches no print call when the active view is not a markdown preview: covering the source half of the toggle and at least one non-markdown view. Written about the accelerator being inert, not about a disabled menu item - no menu item exists until TASK-12.4. Measured on macOS (source view, sales.csv, pom.xml: all inert). Moot on Linux, where print is refused outright. ONLY WINDOWS REMAINS, and the logic under it is `chord.ts`, which takes the platform as an argument and is unit-tested on both branches
 - [x] #3 A fixture in _sandbox/samples/ spans several printed pages and puts a code block, a table, a mermaid diagram, an image and a heading both across a page break and clear of one, so the two states are comparable within one file
-- [ ] #4 The paper (or the PDF the print UI's own destination writes) is inspected on all three platforms and what it holds is recorded: whether the body reaches the last page or is clipped to what was on screen, and which shell elements appear on it
+- [x] #4 The paper (or the PDF the print UI's own destination writes) is inspected on all three platforms and what it holds is recorded. Answered in full: macOS reaches the last page only when a printer switch refreshes the page count, Windows reaches it and carries WebView2's own header and footer, and Linux produces no paper at all because the dialog never returns - which is itself the recorded answer, and why the build now refuses there. No shell element appears on any of them
 - [x] #5 Both palettes are measured on at least one platform and whether a dark background reaches paper is recorded, so decision-13's light-only rule rests on an observation rather than on the ink argument alone
-- [ ] #6 Printing twice in one session on macOS is checked for the first print's margins persisting, since that route writes into the application-wide NSPrintInfo sharedPrintInfo
+- [ ] #6 WITHDRAWN 2026-09-07: this asked whether a first print's margins persist across a second, because wry writes them into the application-wide NSPrintInfo. It was asked to inform whether mallow should set @page margins. That question is answered by other means - @page margins are set, and the truncation that made them look dangerous turned out to be a stale page count, not the margins - and the macOS print path is being superseded by a direct PDF export rather than relied on. Spending a measurement round on it now buys nothing. Recorded rather than deleted
 - [x] #7 WITHDRAWN 2026-09-06: this said no @page rule and no @media print block is added here. The split it encoded - measure in one round, style in the next - produced a branch that reaches a print UI and prints an unusable page, which is not a deliverable. TASK-28 lands in the same PR, so the constraint no longer holds; recorded here rather than deleted
-- [ ] #8 The report says what TASK-28 has to do: which elements need break-inside/break-after, which shell elements need removing, and whether .doc-scroll has to be released
+- [x] #8 The report says what TASK-28 has to do. It did, and then said more than that: the height chain rather than .doc-scroll alone, the shell including the modal overlay, code wrapping, the light palette - and, past TASK-28's reach, that macOS loses the tail of a long document to a stale page count and that Linux hangs. The last two are why TASK-28 cannot close on the print path alone
 <!-- AC:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
+**Shipped in PR #48, merged 2026-09-06 as `aa42564`.** What that PR contains and
+what it deliberately leaves open is in TASK-28's notes and in decision-13; this
+task's own remaining criterion is #2 on Windows alone.
+
 ## macOS leg measured (2026-09-06) — the paper is one page, and the cause is in the app's own height chain
 
 macOS 26.6.2, WKWebView, `pnpm tauri dev`, A4, default scale, HEAD `8e8e79f`.

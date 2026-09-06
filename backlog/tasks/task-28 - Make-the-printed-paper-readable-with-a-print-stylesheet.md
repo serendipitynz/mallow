@@ -45,6 +45,13 @@ TASK-27 reached the platform's print UI and measured what it puts on paper. On m
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
+**Shipped in PR #48, merged 2026-09-06 as `aa42564`.** The stylesheet is done and
+measured; **AC #1 and #9 cannot close on the print path**, because macOS loses the
+tail of a long document to a stale page count and Linux is refused outright. Both
+are wry-level and neither is reachable from CSS. The direction taken (2026-09-07)
+is a direct PDF export as its own feature, which revises decision-13 — that work
+is what closes this task, and it is not filed yet.
+
 ## Reprinted on macOS (2026-09-06) — the paper is readable
 
 **Three runs, and each observation below belongs to one of them.** macOS 26.6.2,
