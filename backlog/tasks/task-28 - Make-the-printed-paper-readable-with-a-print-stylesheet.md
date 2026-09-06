@@ -55,12 +55,23 @@ WKWebView, `pnpm tauri dev`, A4, default scale, all in
 |---|---|---|
 | 1 | `paper-mac-{light,dark}.pdf`, `paper-mac-modal.pdf` | **before the stylesheet**: one page, the shell on the paper, dark printing faint, the modal erasing the document |
 | 2 | `paper-mac-{light,dark}-2.pdf` | **the stylesheet working**: 6 pages, no shell, reflowed, light on both palettes. mermaid and the images are still absent here — the diagrams were the TASK-29 bug and the images were the fixture's own defect, both fixed after this run |
-| 3 | `paper-mac-{light,dark}-3.pdf` | **the latest captured run**: 7 pages, with the diagrams drawn and the images present |
+| 3 | `paper-mac-{light,dark}-3.pdf` | 7 pages, with the diagrams drawn and the images present — **but shrunk to fit**, which is why its page count is not comparable with run 4's |
+| 4 | `paper-mac-{light,dark}-4.pdf` | **after the code-wrapping fix**: 12 pages at true size, and **truncated** — §10's image and everything after it are missing |
 
-**No run captures the current stylesheet.** Run 3 is the most recent and it
-predates the code-wrapping fix below, so **macOS has to be reprinted once more**
-before AC #1 can be judged there at all. Runs 1 and 2 are kept as the before and
-the intermediate. **Windows and Linux are unmeasured**, so AC #9 stays open, and
+**Run 4 answered one question and opened another.** The wrapping fix worked: the
+body prints at the size it has on screen instead of being shrunk to fit, which is
+why 7 pages became 12 for the same document. **But the paper no longer reaches
+the end.** Both light and dark stop at exactly the same place — §10's heading and
+its one-line intro, then a half-empty page, with the 512px image, §11 and §12
+absent. Run 3 reached §12; scaled down, that image fitted the space left on its
+page and was never pushed to a new one.
+
+**So AC #1 fails on macOS as of run 4**, and it fails for content loss rather than
+for layout. `break-inside: avoid` is removed from `img` in response — see the
+reasoning in `print.scss`, which turns on decision-6's rule rather than on a
+diagnosis: the cause is not established, no harness reproduces it (Chrome prints
+the image and everything after it), and what is established is that content
+disappears. **Run 5 is the test.** Windows and Linux stay unmeasured. **Windows and Linux are unmeasured**, so AC #9 stays open, and
 `procedure.md` is at its second version because the first described the
 pre-stylesheet baseline and would have had those operators record a failure as
 expected.

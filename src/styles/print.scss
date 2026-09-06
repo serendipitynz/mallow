@@ -199,8 +199,23 @@
   // bare `svg` are not listed: markdown-it runs with `html: false`, so nothing
   // emits a `<figure>`, and the only other SVG in the body is a GFM alert's
   // icon, which cannot span a page break.
+  //
+  // **`img` is deliberately not in this list, and losing content is why.** The
+  // macOS reprint of 2026-09-06 (`mac/paper-mac-{light,dark}-4.pdf`) stopped
+  // dead at the fixture's 512px image: the image, and both sections after it,
+  // are absent from the paper, identically in light and dark, with the last page
+  // half empty and ending where the image would begin. The run before it — the
+  // one the engine had shrunk to fit — printed the same image and reached the
+  // end, which fits: scaled down it fitted the space left on the page and was
+  // never pushed. **The cause is not established**, and no harness reproduces it
+  // (Chrome prints the image and everything after it). What is established is
+  // that content disappears, and decision-6's rule decides the rest for us —
+  // give up the presentation, never the content. A split image is the cost.
+  //
+  // `.mermaid-rendered` stays: the same reprint carried its diagrams and
+  // continued past them. That is not proof it is safe, only that it was not
+  // implicated. **Reconsider it here if a reprint ever truncates at a diagram.**
   .markdown-body {
-    img,
     .mermaid-rendered {
       break-inside: avoid;
     }
@@ -224,12 +239,14 @@
       widows: 3;
     }
 
-    // Images taller than the page would otherwise force a blank page before
-    // themselves under `break-inside: avoid`.
+    // `max-height` is gone with the rule it existed for: it kept an over-tall
+    // image from forcing a blank page ahead of itself under `break-inside:
+    // avoid`, and nothing measured how `vh` resolves in paged media on any of
+    // the three engines. Without that rule an over-tall image simply splits,
+    // which is the outcome this file now prefers anyway.
     img,
     .mermaid-rendered svg {
       max-width: 100%;
-      max-height: 100vh;
     }
   }
 }
