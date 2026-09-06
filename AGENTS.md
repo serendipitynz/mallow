@@ -365,7 +365,23 @@ hold rather than as an exhaustive style guide.
   `file.kind === 'markdown'` is true of the source half of the toggle, which must
   not print. **What the engine paginates is the whole `<body>`**, explorer and
   toolbar and footer and settings modal included, so the paper carries the app
-  shell until a print stylesheet lands; that stylesheet must go in a `.scss` and
+  shell until a print stylesheet lands — **and on macOS the shell is nearly all of
+  it** (measured 2026-09-06; Windows and Linux unmeasured). The paper came out as
+  **one A4 page**, the print sheet's own preview saying `Page 1 of 1` before any
+  user setting. **The cause is the app's height chain, not the print call**:
+  `html, body, #root { height: 100% }` → `.app { height: 100% }` →
+  `.app__body { flex: 1 1 auto; min-height: 0 }` →
+  `.doc-scroll { flex: 1 1 auto; min-height: 0; overflow: auto }` makes the
+  `<body>` exactly one viewport tall by construction, so pagination yields one
+  page whatever the document's length — **so a print stylesheet has to release
+  that whole chain, not just `.doc-scroll`**, and release the width too, since the
+  same run cropped the page horizontally rather than scaling it to the paper. Two
+  more things that run settled: **a dark palette prints as faint text on white**
+  (WebKit's default `print-color-adjust` drops the background, so the palette's
+  light ink lands on an unprinted ground — the light-only rule is legibility, not
+  ink), and **the settings modal erases the document rather than overlaying it**,
+  its viewport-covering backdrop printing as opaque white, so the removal has to
+  take the backdrop and not only the panel. That stylesheet must go in a `.scss` and
   **never as an inline `<style>` in `index.html`**, which would add a hash to
   `style-src` and retire its `'unsafe-inline'`, and it must neutralise
   `.toolbar`'s `will-change: transform` only inside `@media print`. **`@page` is

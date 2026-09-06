@@ -43,7 +43,10 @@ TASK-11.1 hit.
 - **What the engine paginates is the whole `<body>`** — explorer, toolbar, footer
   and settings modal included. The body worth printing is a part of it, and the
   size of that gap is the print-stylesheet work itself, which is why this decision
-  does not attempt it.
+  does not attempt it. **How large that gap turned out to be is in the
+  Consequences below**: measured on macOS, the `<body>` is one viewport tall by
+  construction, so the gap is not a margin around the document but nearly the
+  whole page.
 
 Two questions this decision deliberately leaves open are named at the end: page
 margins and headers/footers. Both are unanswerable before measurement, and margins
@@ -116,12 +119,15 @@ swap**, which is part of this decision and not a detail of it: the dark code
 background is emitted as an inline custom property, so a stylesheet that fixes the
 page palette and forgets the swap prints dark code blocks onto a light page.
 
-The reason is ink and legibility, and it is the one point here taken as a judgement
-ahead of its observation. So the measurement is required to cover **both palettes**
-— light and dark — and to record whether a dark background reaches paper at all.
-If it does not, this rule costs nothing and is kept for the code-block case; if it
-does, the observation is what the rule rests on. Either way the claim stops being
-an assumption.
+The reason was written as ink and legibility, and it was the one point here taken
+as a judgement ahead of its observation. **The observation (macOS, 2026-09-06) is
+stronger than the argument was, and it is legibility rather than economy.** The
+dark background did not reach paper at all — WebKit's default
+`print-color-adjust` drops it — so the palette's light ink landed on an unprinted
+white ground and the text came out faint. The rule therefore costs no ink to
+begin with, and what it buys is a page that can be read. Windows and Linux are
+unmeasured; if either does print the background, the ink argument returns for
+that platform and the rule already covers it.
 
 ### Two questions stay open, and `@page` is not written before they are answered
 
@@ -136,7 +142,12 @@ an assumption.
   of paper is a worse outcome than none of the three carrying a page number.
 
 Whether macOS's write into the application-wide `sharedPrintInfo` persists across
-two prints in one session is part of the same measurement.
+two prints in one session is part of the same measurement. **The first attempt
+(2026-09-06) did not settle it**: a setting changed on the first sheet was gone
+on the second, but the setting exercised was `pages per sheet`, which is not one
+of the four margins wry writes — so what it shows is that `NSPrintInfo` state
+does not obviously persist, not that the margins do not. It has to be re-run
+against a margin.
 
 ### Acceptance is judged on paper, never on the return value
 
@@ -165,11 +176,28 @@ mallow. The screen and the sheet of paper are the only witnesses.
   while a markdown preview is mounted, so the accelerator will fire under it. The
   fix belongs in `@media print` with the rest of the shell; widening the gate to
   ask about modals would make the one sentence above untrue of itself.
-- **`.doc-scroll` may clip the paper to what is on screen, and this is unmeasured.**
-  The scroll container's height is bounded by its flex parent. If it clips,
-  releasing it inside `@media print` is the print stylesheet's first job; if it does
-  not, nothing is needed. Either answer is an observation, not an inference from the
-  CSS.
+  **Measured on macOS: the modal does not overlay the document on paper, it
+  erases it** — its backdrop covers the viewport and printed as opaque white, so
+  the modal was essentially the whole page. The removal has to take the backdrop
+  and not only the panel.
+- **`.doc-scroll` clips the paper to what is on screen — measured on macOS
+  (2026-09-06), unmeasured on Windows and Linux.** The paper came out as a single
+  A4 page: the print sheet's own preview said `Page 1 of 1` before any user
+  setting, and the fixture's last-page marker was absent. **The cause is the app's
+  height chain rather than the print call** — `html, body, #root { height: 100% }`
+  → `.app { height: 100% }` → `.app__body { flex: 1 1 auto; min-height: 0 }` →
+  `.doc-scroll { flex: 1 1 auto; min-height: 0; overflow: auto }` makes the
+  `<body>` exactly one viewport tall by construction, so paginating it yields one
+  page whatever the document's length. **So releasing `.doc-scroll` alone is not
+  the print stylesheet's first job; releasing the whole chain is.** The same run
+  showed the page cropped horizontally as well — content laid out at window width
+  and cut at the paper's edge rather than scaled to it — so the width the shell
+  imposes has to be released too.
+- **The paper carries the app shell, and on macOS the shell is nearly all of
+  it.** The sentence above about `<body>` being what the engine paginates stands;
+  what the first measurement adds is proportion. The shell is not framing a
+  printed document — with the height chain in place there is no printed document
+  past the first screen to frame.
 - **A print stylesheet must not go into `index.html`.** An inline `<style>` there
   makes tauri-codegen add a hash to `style-src`, which retires its
   `'unsafe-inline'` and breaks Shiki, mermaid and every inline `style` attribute at
