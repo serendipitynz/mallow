@@ -131,11 +131,20 @@ that platform and the rule already covers it.
 
 ### Two questions stay open, and `@page` is not written before they are answered
 
-- **Margins.** Whether mallow sets `@page { margin }` or leaves the paper to the
-  print UI. Leaving it produces three different pages, because macOS's route zeroes
-  the print operation's own margins and the other two do not; setting it collides
-  with a layer CSS cannot see. `@page` is the only place one voice can be given to
-  three engines, which is exactly why it must not be written on a guess.
+- **Margins — answered in part on 2026-09-06, and `@page` is now written.**
+  The prohibition below stood while nothing was measured. macOS then measured it:
+  the print operation's own margins really are zero, so leaving the paper to the
+  print UI puts text at the sheet's edge there. `print.scss` ships
+  `@page { margin: 16mm }`, which is the one voice three engines can be given.
+  **What is still open is the interaction, not the value**: Windows and Linux let
+  their print UI reserve a margin of their own, and whether `@page` composes with
+  that or fights it is unmeasured. The original reasoning is kept below because it
+  is still why the value was not written before the first measurement.
+  > Whether mallow sets `@page { margin }` or leaves the paper to the print UI.
+  > Leaving it produces three different pages, because macOS's route zeroes the
+  > print operation's own margins and the other two do not; setting it collides
+  > with a layer CSS cannot see. `@page` is the only place one voice can be given
+  > to three engines, which is exactly why it must not be written on a guess.
 - **Headers and footers.** Page numbers, document name, date. `@page`'s margin
   boxes (`@top-center` and friends) have uneven engine support. **Where support is
   uneven, the answer falls to not printing them**, because three different sheets

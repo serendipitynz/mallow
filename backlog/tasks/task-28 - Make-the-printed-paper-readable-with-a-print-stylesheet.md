@@ -47,9 +47,30 @@ TASK-27 reached the platform's print UI and measured what it puts on paper. On m
 <!-- SECTION:NOTES:BEGIN -->
 ## Reprinted on macOS (2026-09-06) — the paper is readable
 
-macOS 26.6.2, WKWebView, `pnpm tauri dev`, A4, default scale.
-`_sandbox/handoff/task-27/mac/paper-mac-{light,dark}-2.pdf`.
-**Windows and Linux are still unmeasured**, so AC #9 stays open.
+**Three runs, and each observation below belongs to one of them.** macOS 26.6.2,
+WKWebView, `pnpm tauri dev`, A4, default scale, all in
+`_sandbox/handoff/task-27/mac/`.
+
+| run | files | what it shows |
+|---|---|---|
+| 1 | `paper-mac-{light,dark}.pdf`, `paper-mac-modal.pdf` | **before the stylesheet**: one page, the shell on the paper, dark printing faint, the modal erasing the document |
+| 2 | `paper-mac-{light,dark}-2.pdf` | **the stylesheet working**: 6 pages, no shell, reflowed, light on both palettes. mermaid and the images are still absent here — the diagrams were the TASK-29 bug and the images were the fixture's own defect, both fixed after this run |
+| 3 | `paper-mac-{light,dark}-3.pdf` | **the current result**: 7 pages, with the diagrams drawn and the images present |
+
+**Run 3 is the current behaviour**; runs 1 and 2 are kept as the before and the
+intermediate. **Windows and Linux are unmeasured**, so AC #9 stays open, and
+`procedure.md` is at its second version because the first described the
+pre-stylesheet baseline and would have had those operators record a failure as
+expected.
+
+**A later review found that all three runs were probably scaled down.** An
+over-wide line in a code block made the content wider than the page, and
+`overflow: visible` does not wrap `white-space: pre` — so the engine shrank the
+whole document to fit and the paper carried smaller text than intended. The
+stylesheet now wraps code in print (`pre-wrap` + `overflow-wrap: anywhere`); in
+the harness that changed the page count from 8 to 14 at the true size. **The
+macOS runs above predate that fix, so their page counts are not the ones a
+reprint will produce.**
 
 | | before | after |
 |---|---|---|
@@ -63,7 +84,7 @@ macOS 26.6.2, WKWebView, `pnpm tauri dev`, A4, default scale.
 The modal line is the one that had to be reported by someone looking at two
 files: the reporter said the modal print matched the normal one and therefore
 kept no separate PDF, which is the result — hiding `.modal-overlay` with the
-panel is what removed thewhite backdrop that had erased the document.
+panel is what removed the white backdrop that had erased the document.
 
 ## What the harness caught that reading would not have
 

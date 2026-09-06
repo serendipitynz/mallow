@@ -380,9 +380,13 @@ hold rather than as an exhaustive style guide.
   overrides beat the theme selectors on source order at equal specificity. It
   hides the toolbar outright rather than neutralising `will-change: transform`,
   which reaches the same paper without touching the screen's paint order; it
-  applies `break-inside: avoid` only to images, SVG, mermaid and `figure`, since
-  `pre`, `table` and `blockquote` split readably and forcing them whole leaves
-  part-blank pages; and **printing from a dark palette gives monochrome code**,
+  applies `break-inside: avoid` only to images and `.mermaid-rendered` — **the
+  rendered wrapper, not `.mermaid`, which is the `<pre>` holding the source** —
+  since `pre`, `table` and `blockquote` split readably and forcing them whole
+  leaves part-blank pages; **it wraps code in print** (`pre-wrap` +
+  `overflow-wrap: anywhere`), because `overflow: visible` does not wrap
+  `white-space: pre` and one over-wide line otherwise makes the engine shrink the
+  whole document to fit the page; and **printing from a dark palette gives monochrome code**,
   because Shiki's dark tokens are inline `--shiki-dark` values applied with
   `!important` over the inline light colour and CSS cannot un-apply a
   declaration. **Two traps it was written around, both found by printing rather

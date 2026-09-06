@@ -96,12 +96,24 @@
   }
 
   // Anything that scrolls on screen has to spill instead, or its overflow is
-  // simply absent from the paper.
+  // simply absent from the paper. **`overflow: visible` is not enough on a
+  // `<pre>`**: `white-space: pre` does not wrap, so a line longer than the page
+  // runs past the edge and its tail is lost, with no scrollbar to reach it. The
+  // pair below is what actually keeps a long line — `anywhere` because a code
+  // line can be one unbroken token with no break opportunity in it.
+  //
+  // Wrapping is safe here and would not be in `SourceView`, whose plain path
+  // puts line numbers in a column a wrapped line slips out of step with.
+  // Markdown code blocks carry no line numbers.
   .markdown-body pre,
   .markdown-body table,
-  .code-block,
-  .src-view pre.shiki {
+  .code-block {
     overflow: visible !important;
+  }
+
+  .markdown-body pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   // ---- 4. Paper is light on every palette -----------------------------------
@@ -151,15 +163,6 @@
     }
   }
 
-  .src-view pre.shiki {
-    @include on-dark {
-      &,
-      span {
-        color: inherit !important;
-      }
-    }
-  }
-
   // ---- 5. Page geometry and breaks ------------------------------------------
   // `@page` is the only place three engines can be given one voice. macOS is
   // measured and zeroes the print operation's own margins, which puts text at
@@ -185,11 +188,17 @@
   // Which of these an engine honours is engine-specific. Chrome is what the
   // harness measures; the three WebViews are unmeasured, and the reprint is
   // what says whether they took.
+  //
+  // **`.mermaid-rendered`, not `.mermaid`**: the latter is the `<pre>` holding a
+  // diagram's source, which `renderMermaid` replaces with the former on success.
+  // Naming `.mermaid` would apply this to a `<pre>` — the one shape the note
+  // above says not to — and miss every diagram that rendered. `figure` and a
+  // bare `svg` are not listed: markdown-it runs with `html: false`, so nothing
+  // emits a `<figure>`, and the only other SVG in the body is a GFM alert's
+  // icon, which cannot span a page break.
   .markdown-body {
-    figure,
     img,
-    .mermaid,
-    svg {
+    .mermaid-rendered {
       break-inside: avoid;
     }
 
@@ -215,7 +224,7 @@
     // Images taller than the page would otherwise force a blank page before
     // themselves under `break-inside: avoid`.
     img,
-    svg {
+    .mermaid-rendered svg {
       max-width: 100%;
       max-height: 100vh;
     }
