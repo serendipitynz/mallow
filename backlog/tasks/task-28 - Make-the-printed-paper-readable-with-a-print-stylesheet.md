@@ -88,6 +88,42 @@ here, they are all presentation, and what they may be costing is content
 (decision-6). **Run 6 truncated in the same place, so the lever is not in this
 file.** Three stylesheets, one cut point.
 
+| 7 | `paper-mac-light-7.pdf` | **printed from a much taller window**: 12 pages, same cut, and the file is the same size as run 6's to the byte. Window geometry is not it |
+
+## What the runs eliminated, and the one hypothesis that predicts a number
+
+Three causes were named from correlation and **three were wrong**: `.doc`'s
+`max-width` for the horizontal cropping (caught in review), `break-inside: avoid`
+on `img` (run 5), every pagination constraint together (run 6), and the view's
+geometry (run 7). A fourth guess of the same kind would not be worth printing.
+
+**The margin hypothesis is different because it predicts the size of the loss.**
+wry sets `NSPrintInfo`'s margins to 0 (verified in the pinned source), so the
+engine counts pages against a full-bleed A4 of 841.9pt. `@page { margin: 16mm }`
+leaves 751.2pt, **89.2%** of it. Twelve counted pages of content therefore need
+**13.45** to lay out, and **1.45 pages** is what falls off the end — and what is
+actually missing is §10's image, §11 and §12, between one and a half and two
+pages.
+
+It also accounts for the two things nothing else did. Runs 1–3 completed because
+the engine had shrunk them to fit, which compresses the layout back into the
+counted pages. And **the print sheet's preview fits the whole document into the
+same 12 pages the saved file truncates at** — which is what a preview drawn at the
+counted geometry would look like.
+
+**The `@page` margin is removed as the test.** With it gone, count and layout
+agree at zero margins, so run 8 should reach §12 **at 12 pages**, with text at the
+paper's edge. If it truncates at 12 again, the margin is not it either and the
+hypothesis dies with one print.
+
+**If it is confirmed, the fix is not to put the margin back somewhere else in
+CSS** — any `@page` margin reintroduces the same mismatch. The margin would have
+to reach `NSPrintInfo`, which is the print UI's to set and not mallow's, and that
+inverts decision-13's reasoning that `@page` is where three engines are given one
+voice.
+
+## The earlier lead in wry, now weaker
+
 ## The strongest lead is in wry, not in the stylesheet
 
 **A cut point that does not move when the stylesheet changes is not being decided
@@ -111,10 +147,10 @@ reach into.
 **That is a lead, not a cause.** What is verified is only that wry sets no frame;
 nothing has measured that this is why the tail is lost.
 
-**The discriminating test needs no code change.** If the view's geometry decides
-how much is printed, then printing the same document from a much taller window
-must produce a different number of pages. If it still produces 12, geometry is not
-it. One reprint answers it, and it is the cheapest thing left that could.
+**Run 7 answered it: geometry is not it.** The same document printed from a much
+taller window produced 12 pages with the same cut, and a file the same size as run
+6's to the byte. wry still sets no frame, and that is still true of the pinned
+source — it is simply not what is losing the tail.
 
 **If geometry is confirmed, the fix leaves CSS entirely**: mallow would build its
 own `NSPrintOperation` on macOS with the frame set, which means `objc2-app-kit` as

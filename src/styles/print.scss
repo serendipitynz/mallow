@@ -179,19 +179,29 @@
   }
 
   // ---- 5. Page geometry and breaks ------------------------------------------
-  // `@page` is the only place three engines can be given one voice. macOS is
-  // measured and zeroes the print operation's own margins, which puts text at
-  // the paper's edge, and 16mm is written for that. **How this composes with
-  // Windows and Linux is unmeasured**: those print UIs reserve a margin of their
-  // own, and whether `@page` adds to it — leaving a doubled margin and a narrow
-  // column — or replaces it is what their reprint has to answer. Do not write
-  // that it composes until one of them has been printed.
-  // Header and footer margin boxes are deliberately absent —
-  // engine support for them is uneven and three different sheets of paper is a
-  // worse outcome than none carrying a page number.
-  @page {
-    margin: 16mm;
-  }
+  // **No `@page` margin, and it is under test rather than settled.** 16mm was
+  // written here because macOS's route zeroes the print operation's own margins
+  // and text then sits at the paper's edge. It is removed because the arithmetic
+  // of the truncation fits it and nothing else so far has: wry sets
+  // `NSPrintInfo`'s margins to 0, so the engine counts pages against a full-bleed
+  // A4 (841.9pt); a 16mm margin leaves 751.2pt, which is 89.2% of it; 12 counted
+  // pages of content therefore need 13.45 to lay out, and 1.45 pages is what goes
+  // missing — the observed loss is §10's image, §11 and §12, between one and a
+  // half and two pages. It also explains what the earlier runs did: 1–3 were
+  // shrunk to fit and so were compressed back into the counted pages, and the
+  // print sheet's preview fits the whole document into the same 12 pages the
+  // saved file truncates at, which is what a preview drawn at the counted
+  // geometry would look like.
+  //
+  // **The prediction this makes is sharp, which is the point** — three earlier
+  // causes were named from correlation and two of them were wrong. With the
+  // margin gone, count and layout agree at zero margins, so the reprint should
+  // reach the last section **at 12 pages**, with text running to the paper's
+  // edge. If it truncates at 12 again, the margin is not it either.
+  //
+  // Header and footer margin boxes stay absent — engine support for them is
+  // uneven and three different sheets of paper is a worse outcome than none
+  // carrying a page number.
 
   // **Every pagination constraint is gone, and losing the end of the document is
   // why.** `break-inside: avoid`, `break-after: avoid`, `orphans` and `widows`
