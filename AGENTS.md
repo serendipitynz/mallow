@@ -86,7 +86,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `cmd /C start` re-parses by `cmd`'s rules rather than the ones `Command` quotes
   for.
 - `print.rs` — `print_window`, which hands the calling webview window to
-  `WebviewWindow::print()` (decision-13). Named for the window because the engine
+  `WebviewWindow::print()` (decision-13) **everywhere but Linux, where it refuses
+  without calling it**: measured 2026-09-07, the GTK dialog opens and never
+  returns — the compositor reports mallow as not responding, Wait does nothing,
+  the dialog's own Cancel cannot be pressed, and Force Quit is the only way out,
+  with a real printer configured and under a `--debug --no-bundle` build. The
+  guard is a `cfg` rather than a runtime platform test **because it must not be
+  able to fail open**; the Linux arm is not compiled on macOS or Windows, so
+  `cargo check` there says nothing about it. Named for the window because the engine
   paginates the whole `<body>`, so a name promising a document would be false at
   the boundary that matters, and a print stylesheet would not make it true. Not
   `cfg(desktop)`-gated though `print()` is, so a mobile build fails to compile
@@ -412,6 +419,18 @@ hold rather than as an exhaustive style guide.
   **No automated check sees any of this**: Biome and Vitest do not read SCSS, no
   harness opens a platform print dialog, and `src/probe/` measures with counters
   where the evidence here is a screenshot and a PDF.
+  **What the three platforms actually do differs more than the stylesheet does**
+  (measured 2026-09-07). Windows prints the whole document correctly and adds
+  WebView2's own header and footer — date, title, URL, page numbers — which the
+  reader can switch off and CSS cannot. macOS loses the end of a long document:
+  the print sheet computes a page count, the PDF export honours it, and a layout
+  needing more pages simply stops — **switching printers in the sheet forces the
+  recalculation and the export then matches**. That is why **no CSS value should
+  be tuned against a truncation**: removing `@page`'s margin, shrinking the type
+  and the engine's own shrink-to-fit all "fixed" it by bringing the required count
+  back under the stale one, and `_sandbox/handoff/task-27/mac/paper-mac-light-7a.pdf`
+  is the same stylesheet as `-7.pdf` printed complete once the count was refreshed.
+  Linux hangs, which is why `print_window` refuses there at all.
 - **Emoji.** Unicode emoji are wrapped in `<span class="emoji">` so CSS can put a
   colour-emoji stack (`$font-emoji`) in front for them alone. Without the wrapper
   the JP body font wins the fallback race for the few emoji it covers — `:ok:` is

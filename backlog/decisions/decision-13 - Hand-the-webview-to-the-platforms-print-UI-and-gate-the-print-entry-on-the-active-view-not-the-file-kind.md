@@ -78,6 +78,21 @@ paginates.
 The toolbar is rejected as an entry: printing is a file operation, the toolbar is
 already the busiest surface in the window, and no platform puts print there.
 
+**Linux is refused outright, added 2026-09-07 after measurement.** The GTK dialog
+opens and never returns: the compositor reports mallow as not responding, Wait does
+nothing, the dialog's own Cancel cannot be pressed, and Force Quit is the only way
+out. Reproduced with a real network printer configured and under a
+`--debug --no-bundle` build, so it is neither a missing-printer nor a dev-server
+artefact. `PrintOperation::run_dialog` is synchronous and wry calls it on the main
+thread, which is consistent with the window never servicing another event.
+
+**A feature that costs the user their session is worse than an absent one**, so
+`print_window` refuses on Linux at compile time — a `cfg`, not a runtime platform
+test, because a platform test that answered wrongly would hand back the hang. The
+frontend may stop offering the entry as well; that is a nicety and the Rust guard
+is the boundary. **The File menu's `Print…` has to be disabled on Linux too**,
+which is work for the task that adds the menu.
+
 **The menu item arrives with the File menu, not before it.** mallow's macOS menu
 today has `mallow` and `Edit` submenus and no `File` submenu at all, and the task
 that puts a File menu on all three platforms is where one more item costs a few
@@ -149,6 +164,11 @@ that platform and the rule already covers it.
   boxes (`@top-center` and friends) have uneven engine support. **Where support is
   uneven, the answer falls to not printing them**, because three different sheets
   of paper is a worse outcome than none of the three carrying a page number.
+  **This governs what mallow asks for, not what reaches the paper**: measured
+  2026-09-07, Windows prints WebView2's own header and footer — date, document
+  title, URL and page numbers — which the reader can switch off in the print UI
+  and CSS cannot suppress. So the three sheets differ anyway, on a layer this
+  decision does not reach.
 
 Whether macOS's write into the application-wide `sharedPrintInfo` persists across
 two prints in one session is part of the same measurement. **The first attempt

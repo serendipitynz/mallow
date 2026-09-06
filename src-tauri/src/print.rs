@@ -27,9 +27,37 @@
 //! would drop the command from the handler and turn a mobile build into a
 //! runtime "command not found", where leaving it out makes the same build fail
 //! to compile.
+//!
+//! **Linux is refused outright, and the reason is that the call does not
+//! return.** Measured 2026-09-07 on Ubuntu 24.04: the GTK dialog opens, the
+//! compositor reports mallow as not responding, and it never comes back — Wait
+//! does nothing, the dialog's own Cancel cannot be pressed, and Force Quit is
+//! the only way out. Reproduced with a real network printer configured and under
+//! `pnpm tauri build --debug --no-bundle`, so it is neither a missing-printer
+//! artefact nor a dev-server one. `PrintOperation::run_dialog` is synchronous and
+//! wry calls it on the main thread, which is consistent with the window never
+//! servicing another event.
+//!
+//! **The guard is here rather than in the frontend because it cannot fail open.**
+//! A `cfg` is resolved by the compiler; a `navigator.platform` test that returned
+//! something unexpected would hand the user a session they have to kill. The
+//! frontend may still stop offering the entry — that is a nicety, and this is the
+//! boundary.
 
 /// Open the platform's print UI for the window this was invoked from.
+#[cfg(not(target_os = "linux"))]
 #[tauri::command]
 pub fn print_window(window: tauri::WebviewWindow) -> Result<(), String> {
     window.print().map_err(|e| e.to_string())
+}
+
+/// Refused on Linux: see the module note. Deliberately never reaches
+/// `WebviewWindow::print()`.
+///
+/// **This arm is not compiled on macOS or Windows**, so `cargo check` on either
+/// says nothing about it — keep it trivial enough that reading it is enough.
+#[cfg(target_os = "linux")]
+#[tauri::command]
+pub fn print_window(_window: tauri::WebviewWindow) -> Result<(), String> {
+    Err("printing is disabled on Linux: the GTK print dialog does not return".to_string())
 }
