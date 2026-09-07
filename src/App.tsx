@@ -14,7 +14,7 @@ import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
-import { isPrintablePreview, printChordAction } from './lib/print';
+import { createPrintChordHandler, isPrintablePreview } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
 import { allowMediaDir, pathExists, pickFolder, printWindow } from './lib/tauri';
 import type { FileEntry } from './lib/types';
@@ -291,17 +291,11 @@ export default function App() {
      costs the user their session and `print_window` refusing in Rust would not
      have helped: a native binding never goes through `print_window`. */
   useEffect(() => {
-    const onMac = onMacPlatform();
-    const onKey = (e: KeyboardEvent) => {
-      const action = printChordAction(e, onMac, isPrintablePreview());
-      if (action === 'ignore') {
-        return;
-      }
-      e.preventDefault();
-      if (action === 'print') {
-        void printWindow().catch((err) => console.error('print failed', err));
-      }
-    };
+    const onKey = createPrintChordHandler({
+      onMac: onMacPlatform(),
+      isPrintable: isPrintablePreview,
+      print: () => void printWindow().catch((err) => console.error('print failed', err)),
+    });
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);

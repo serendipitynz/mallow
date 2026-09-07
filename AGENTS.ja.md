@@ -344,8 +344,12 @@ Comments と Functions の規約は機械的に検査されない。コメント
   印刷できないビューは何も登録しない形だった。**Windows ではそれがまさに `.csv` を
   印刷させた** — **WebView2 は自前の `Ctrl+P` を持つ**ので、**何も登録しないことは
   chord を不活性にするのではなく、プラットフォームへ譲ることだった**（2026-09-07 実測）。
-  いまは `MarkdownView` が条件を報告し、`lib/print` がフラグと 3 値の判定を持つ。
-  その `suppress` が、最初の設計に名前が無かった場合である。
+  いまは `MarkdownView` が条件を報告し、`lib/print` がフラグと 3 値の判定
+  （`suppress` が最初の設計に名前が無かった場合）と、**handler 自身を factory として**持つ。
+  factory にしたのは、**分類の仕方だけでなくイベントに対して何をするかを検査に載せるため** —
+  分類が正しくても handler が `preventDefault` を忘れれば同じバグになり、それがまさに
+  起きたことだった。**`App` の `addEventListener` の 1 行だけはどのテストも届かない**
+  （スイートは設計上 DOM 無しの Node で走る）。
   **Linux の chord を閉じるのもこれ** — Rust 側で `print_window` が拒否しても
   ネイティブ binding は止まらない（あれは `print_window` を通らない）。
   **エンジンがページ割りするのは `<body>` 全体**で、エクスプローラ・ツールバー・フッター・

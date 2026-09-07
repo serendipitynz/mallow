@@ -48,3 +48,43 @@ export function printChordAction(event: ChordEvent, onMac: boolean, printable: b
   }
   return printable ? 'print' : 'suppress';
 }
+
+/** The part of a `KeyboardEvent` the handler needs. A real one satisfies it, so
+ *  `addEventListener('keydown', …)` takes the handler as-is; an object literal
+ *  satisfies it too, which is what lets the wiring be tested under Node. */
+export interface PrintChordEvent extends ChordEvent {
+  preventDefault(): void;
+}
+
+/** The `keydown` handler itself, built rather than inlined so that **what it does
+ *  with the event is covered and not just how it classifies one**.
+ *
+ *  That distinction is the whole reason this exists: the classifier can be
+ *  perfectly right while the handler forgets to call `preventDefault`, and the
+ *  bug this module was written for was exactly a chord that reached the platform.
+ *  A test that only asserts `suppress` would stay green through that.
+ *
+ *  `isPrintable` is a function rather than a boolean because the handler outlives
+ *  every view: it is registered once and has to read the flag at the moment the
+ *  key is pressed, not at the moment it was built.
+ *
+ *  **What this does not cover is the `addEventListener` call itself.** The suite
+ *  runs under Node with no DOM by design, so nothing here can dispatch a real
+ *  `keydown`; that one line in `App` is held by review.
+ */
+export function createPrintChordHandler(deps: {
+  onMac: boolean;
+  isPrintable: () => boolean;
+  print: () => void;
+}): (event: PrintChordEvent) => void {
+  return (event) => {
+    const action = printChordAction(event, deps.onMac, deps.isPrintable());
+    if (action === 'ignore') {
+      return;
+    }
+    event.preventDefault();
+    if (action === 'print') {
+      deps.print();
+    }
+  };
+}

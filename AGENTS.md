@@ -375,8 +375,12 @@ hold rather than as an exhaustive style guide.
   that is exactly what let a `.csv` be printed — **WebView2 carries its own
   `Ctrl+P`**, so registering nothing concedes the chord to the platform instead of
   making it inert (measured 2026-09-07). `MarkdownView` now reports the condition
-  and `lib/print` holds the flag and the three-way decision, whose `suppress` case
-  is the one the first design had no name for. It is also what closes the chord on
+  and `lib/print` holds the flag, the three-way decision — whose `suppress` case is
+  the one the first design had no name for — and the handler itself as a factory,
+  **so that what it does with the event is covered and not only how it classifies
+  one**: a classifier can be right while the handler forgets `preventDefault`, and
+  that is precisely the bug. **The `addEventListener` call in `App` is the one line
+  no test reaches** — the suite runs under Node with no DOM by design. It is also what closes the chord on
   Linux, where `print_window` refusing in Rust would not stop a native binding —
   that never goes through `print_window`. **What the engine paginates is the whole `<body>`**, explorer and
   toolbar and footer and settings modal included, so the paper carries the app

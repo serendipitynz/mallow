@@ -117,9 +117,13 @@ states, and `Print…` must be disabled in one of them; separately, one kind no
 longer implies one view — a `.plist` picks its view from its text and `html` owns a
 rendered/source toggle. The condition is therefore evaluated against the view that
 is mounted and the state it is in, which in practice means `MarkdownView` being
-mounted with its `mode` at `preview`. Putting the accelerator inside that component
-is what makes the condition structural rather than a copy of it kept in sync: a
-view that cannot be printed does not register an entry.
+mounted with its `mode` at `preview`. **That view reports the condition; it does
+not own the accelerator.** The first implementation put the accelerator inside it,
+on the reading that "a view that cannot be printed registers no entry" makes the
+condition structural rather than a copy kept in sync — and the correction below
+says why that is false. **Do not move the handler back into the view**: the
+condition living with the view and the chord living with the app are two separate
+things, and only the first was ever the point.
 
 **Where no menu item exists yet, the accelerator is simply inert** — pressing it
 reaches no print call. "Disabled" describes how the menu item looks, and there is
