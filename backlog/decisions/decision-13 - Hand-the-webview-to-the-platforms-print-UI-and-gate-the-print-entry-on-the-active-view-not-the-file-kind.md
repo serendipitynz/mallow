@@ -67,6 +67,16 @@ nor the release notes may use a phrase that reads as a mallow PDF feature** — 
 capability is real and the reader should be told it exists, but told where it
 lives.
 
+> **The "no PDF export" clause is superseded by decision-14 (2026-09-07).** Its
+> premise was that the platform's print UI is a working path to paper; TASK-27
+> then measured that path as clean on one platform of three, defective on macOS
+> and refused on Linux. mallow now writes PDF itself, through the print pipeline
+> rather than through the print dialog. **The rest of this decision is unchanged
+> and decision-14 rests on it** — the print call, the three routes, the gate on
+> the active view, the Linux refusal and the stylesheet all stand. What also
+> stands is the warning inside the superseded clause: the bare phrase "PDF
+> output" is still refused, because two different things answer to it now.
+
 The command is named **`print_window`**, not `print_document`. Its argument is the
 webview window and its effect is on the whole `<body>`; a name promising a document
 would be false at the boundary that matters most here, and would stay false after a
