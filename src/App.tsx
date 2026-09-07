@@ -8,13 +8,15 @@ import { UpdateDialog } from './components/UpdateDialog';
 import { Viewer } from './components/Viewer';
 import { useFileTree } from './hooks/useFileTree';
 import { useUpdater } from './hooks/useUpdater';
+import { onMacPlatform } from './lib/chord';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
+import { createPrintChordHandler, isPrintablePreview } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
-import { allowMediaDir, pathExists, pickFolder } from './lib/tauri';
+import { allowMediaDir, pathExists, pickFolder, printWindow } from './lib/tauri';
 import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
 
@@ -273,6 +275,27 @@ export default function App() {
         setSettingsOpen(true);
       }
     };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  /* ---- Print (decision-13) --------------------------------------------------
+     Registered for the life of the app and **always** consuming the chord, even
+     where printing is refused. That is the correction Windows forced: the handler
+     used to live in `MarkdownView`, so a view that could not print registered
+     nothing — and WebView2's own `Ctrl+P` then printed the view anyway, measured
+     with a `.csv` on screen. Registering nothing does not make a chord inert; it
+     concedes it to the platform.
+
+     It also closes the chord on Linux, where reaching the platform's print path
+     costs the user their session and `print_window` refusing in Rust would not
+     have helped: a native binding never goes through `print_window`. */
+  useEffect(() => {
+    const onKey = createPrintChordHandler({
+      onMac: onMacPlatform(),
+      isPrintable: isPrintablePreview,
+      print: () => void printWindow().catch((err) => console.error('print failed', err)),
+    });
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);

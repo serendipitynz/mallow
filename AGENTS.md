@@ -367,10 +367,22 @@ hold rather than as an exhaustive style guide.
   has run, and Linux's dialog has a `None` parent so it need not be in front of
   mallow. **The entry is gated on the active view, never on `file.kind`**
   (decision-13): `Print…` is disabled unless the active view is markdown in
-  preview, and the accelerator therefore lives inside `MarkdownView`, where being
-  mounted with `mode` at `preview` *is* that condition rather than a copy of it —
-  `file.kind === 'markdown'` is true of the source half of the toggle, which must
-  not print. **What the engine paginates is the whole `<body>`**, explorer and
+  preview — `file.kind === 'markdown'` is true of the source half of the toggle,
+  which must not print. **The `keydown` handler is registered once for the life of
+  the app and always consumes the chord, even where printing is refused**, and
+  that is a correction rather than a preference: it used to live inside
+  `MarkdownView` so that an unprintable view registered nothing, and on Windows
+  that is exactly what let a `.csv` be printed — **WebView2 carries its own
+  `Ctrl+P`**, so registering nothing concedes the chord to the platform instead of
+  making it inert (measured 2026-09-07). `MarkdownView` now reports the condition
+  and `lib/print` holds the flag, the three-way decision — whose `suppress` case is
+  the one the first design had no name for — and the handler itself as a factory,
+  **so that what it does with the event is covered and not only how it classifies
+  one**: a classifier can be right while the handler forgets `preventDefault`, and
+  that is precisely the bug. **The `addEventListener` call in `App` is the one line
+  no test reaches** — the suite runs under Node with no DOM by design. It is also what closes the chord on
+  Linux, where `print_window` refusing in Rust would not stop a native binding —
+  that never goes through `print_window`. **What the engine paginates is the whole `<body>`**, explorer and
   toolbar and footer and settings modal included, so the paper carries the app
   shell until a print stylesheet lands — **and on macOS the shell is nearly all of
   it** (measured 2026-09-06; Windows and Linux unmeasured). The paper came out as
