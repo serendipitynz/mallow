@@ -337,10 +337,17 @@ Comments と Functions の規約は機械的に検査されない。コメント
   guard が偽なら何もせず成功を返す。Windows は eval した JS が走る前に返り、Linux の
   ダイアログは親が `None` なので mallow の前面にあるとは限らない。
   **入口の判定はアクティブなビューで書き、`file.kind` では書かない**（decision-13）:
-  `Print…` はアクティブなビューが markdown の preview でないとき disabled であり、
-  だからアクセラレータは `MarkdownView` の中にある — mount されていて `mode` が `preview`
-  であること自体がその条件で、条件の写しを別に持たない。`file.kind === 'markdown'` は
-  トグルのソース側でも真になり、そこは印刷してはいけない。
+  `Print…` はアクティブなビューが markdown の preview でないとき disabled になる。
+  `file.kind === 'markdown'` はトグルのソース側でも真になり、そこは印刷してはいけない。
+  **`keydown` の handler はアプリの生存期間に 1 度だけ登録し、印刷を拒否する場面でも
+  必ず chord を消費する** — これは好みではなく訂正である。以前は `MarkdownView` の中にあり、
+  印刷できないビューは何も登録しない形だった。**Windows ではそれがまさに `.csv` を
+  印刷させた** — **WebView2 は自前の `Ctrl+P` を持つ**ので、**何も登録しないことは
+  chord を不活性にするのではなく、プラットフォームへ譲ることだった**（2026-09-07 実測）。
+  いまは `MarkdownView` が条件を報告し、`lib/print` がフラグと 3 値の判定を持つ。
+  その `suppress` が、最初の設計に名前が無かった場合である。
+  **Linux の chord を閉じるのもこれ** — Rust 側で `print_window` が拒否しても
+  ネイティブ binding は止まらない（あれは `print_window` を通らない）。
   **エンジンがページ割りするのは `<body>` 全体**で、エクスプローラ・ツールバー・フッター・
   設定モーダルを含む。印刷用スタイルが入るまで紙にはアプリの外殻が乗る —
   **そして macOS では外殻が紙のほぼ全部だった**（2026-09-06 実測。Windows と Linux は未実測）。

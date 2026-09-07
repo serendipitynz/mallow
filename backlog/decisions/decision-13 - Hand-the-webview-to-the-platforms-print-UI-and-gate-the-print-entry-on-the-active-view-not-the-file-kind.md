@@ -127,6 +127,27 @@ nothing on screen to grey out until the File menu lands; an acceptance criterion
 written before then has to be written about the accelerator doing nothing, not
 about an appearance.
 
+**But inert is something the app has to do, not something it gets by not
+acting — corrected 2026-09-07 after Windows.** The first implementation put the
+`keydown` handler inside the printable view, on the reading that "a view that
+cannot be printed registers no entry" makes the condition structural. It does not:
+**WebView2 carries its own `Ctrl+P`**, so with a `.csv` on screen — a table view,
+registering nothing — the chord opened WebView2's print preview and offered to
+print the table. Nothing in mallow ran. **Registering no handler does not make a
+chord inert; it concedes the chord to the platform.**
+
+So the handler is registered once for the life of the app and **always** consumes
+the chord, deciding separately whether to print. The condition is still the
+sentence above and still lives with the view that can satisfy it — the view
+reports it, the handler reads it (`lib/print`). The three outcomes are named
+rather than left as a boolean, because **`suppress` is the case the first design
+had no word for**.
+
+**This is also what closes the chord on Linux.** `print_window` refusing there
+does not help against a native binding, which never goes through `print_window` —
+whether WebKitGTK has one is unmeasured, and suppressing the chord means it does
+not have to be.
+
 ### Paper is printed light, on every palette
 
 `@media print` pins the light palette and **disables Shiki's `--shiki-dark`
