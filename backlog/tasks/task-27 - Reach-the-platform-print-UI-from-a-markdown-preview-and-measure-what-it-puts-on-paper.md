@@ -3,10 +3,10 @@ id: TASK-27
 title: >-
   Reach the platform print UI from a markdown preview and measure what it puts
   on paper
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-08-28 03:17'
-updated_date: '2026-09-06 22:06'
+updated_date: '2026-09-07 06:54'
 labels:
   - feature
 milestone: m-3
@@ -37,7 +37,7 @@ Printing rendered markdown was asked for, and nothing in the tree reaches a prin
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 CmdOrCtrl+P in a markdown preview brings the platform print UI on screen - observed on screen rather than inferred from a return value, since print_window returns Ok(()) on macOS even where its respondsToSelector guard fails. Measured on all three (2026-09-07): a sheet on macOS, WebView2's preview on Windows, GTK's dialog on Linux in front of the window. NOTE: what the Linux measurement recorded is that the dialog appears; it also never returns, so the shipped build refuses to print there at all (decision-13) and no Linux user reaches that UI
-- [ ] #2 CmdOrCtrl+P reaches no print call when the active view is not a markdown preview: covering the source half of the toggle and at least one non-markdown view. FAILED ON WINDOWS 2026-09-07: with sales.csv open, Ctrl+P opened WebView2's print preview and offered to print the table. The handler lived in the printable view, so an unprintable one registered nothing - and WebView2 has its own Ctrl+P, so registering nothing conceded the chord to the platform rather than making it inert. Fixed by registering the handler for the life of the app and always consuming the chord (lib/print). Re-check on Windows is what closes this
+- [x] #2 CmdOrCtrl+P reaches no print call when the active view is not a markdown preview: covering the source half of the toggle and at least one non-markdown view. FAILED ON WINDOWS 2026-09-07 first: with sales.csv open, Ctrl+P opened WebView2's print preview and offered to print the table. The handler lived in the printable view, so an unprintable one registered nothing - and WebView2 has its own Ctrl+P, so registering nothing conceded the chord to the platform rather than making it inert. Fixed in PR #49 by registering the handler for the life of the app and always consuming the chord (lib/print). Re-measured on Windows the same day: sales.csv + Ctrl+P does nothing, and a markdown preview + Ctrl+P opens exactly one print UI - which is also what shows preventDefault stops WebView2's own binding rather than racing it
 - [x] #3 A fixture in _sandbox/samples/ spans several printed pages and puts a code block, a table, a mermaid diagram, an image and a heading both across a page break and clear of one, so the two states are comparable within one file
 - [x] #4 The paper (or the PDF the print UI's own destination writes) is inspected on all three platforms and what it holds is recorded. Answered in full: macOS reaches the last page only when a printer switch refreshes the page count, Windows reaches it and carries WebView2's own header and footer, and Linux produces no paper at all because the dialog never returns - which is itself the recorded answer, and why the build now refuses there. No shell element appears on any of them
 - [x] #5 Both palettes are measured on at least one platform and whether a dark background reaches paper is recorded, so decision-13's light-only rule rests on an observation rather than on the ink argument alone
