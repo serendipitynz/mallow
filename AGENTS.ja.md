@@ -484,9 +484,13 @@ Comments と Functions の規約は機械的に検査されない。コメント
   止まり、**macOS は `CFURLGetFSRef was passed a URL which has no scheme` をログに出して
   何も書かずに成功を返した** — `fileURLWithPath:` は相対パスから相対 NSURL を作る。
   保存ダイアログは常に絶対パスで答えるので、これはそれ以外の呼び出し元のための処理である。
-  **Windows 分岐の初コンパイルは CI ランナーで、そこで落ちた**: webview2-com のマクロは
-  完了ハンドラの引数を closure が見る前に変換する（`HRESULT` → `windows::core::Result<()>`、
-  `BOOL` → `bool`）ので、素直に書いた `hr.ok()` と `written.as_bool()` はどちらも誤りだった。
+  **Windows 分岐の初コンパイルは CI ランナーで、そこで 2 度落ちた**: webview2-com の
+  マクロは完了ハンドラの引数を closure が見る前に変換する（`HRESULT` →
+  `windows::core::Result<()>`、`BOOL` → `bool`）ので素直に書いた `hr.ok()` と
+  `written.as_bool()` はどちらも誤りで、さらに sender は handler 用に clone が要る
+  （同期の失敗経路も同じ sender で報告するため）。**どちらも macOS からも
+  CI の ubuntu Rust ジョブからも見えない** — 紙のジョブがこのファイルを 3 環境で
+  コンパイルする理由がそれである。
   **この分岐と書き出しが共有する事項が 2 つある。** 書き出しは直列化する
   （Rust 側はコマンドが試みるロック、フロント側は chord が読むフラグ）—
   macOS では実行中に 2 つ目の `NSPrintOperation` を作ると

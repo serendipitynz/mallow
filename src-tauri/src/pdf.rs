@@ -357,6 +357,11 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
     // `hr.ok()` and `written.as_bool()` do not compile here. Measured by CI on
     // 2026-09-08, which is the first time this arm was compiled anywhere: neither
     // `cargo check` on macOS nor the ubuntu Rust job reaches it.
+    // Cloned because both paths report and only one of them runs: the handler
+    // takes ownership of its copy, and the synchronous failure below still needs a
+    // sender. A `Sender` clone is another handle on the same channel, so whichever
+    // path fires answers the same waiting command.
+    let failed = report.clone();
     let handler = PrintToPdfCompletedHandler::create(Box::new(move |result, written| {
         let outcome = result.map_err(|e| e.to_string()).and_then(|()| {
             if written {
@@ -375,7 +380,7 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
     {
         // The handler is not invoked when the call itself fails, so nothing else
         // would report this.
-        let _ = report.try_send(Err(e.to_string()));
+        let _ = failed.try_send(Err(e.to_string()));
     }
 }
 
