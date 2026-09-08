@@ -1,5 +1,6 @@
 mod commands;
 mod editors;
+mod pdf;
 mod print;
 mod watch;
 
@@ -86,6 +87,7 @@ pub fn run() {
             editors::reveal_in_os,
             editors::open_in_default_app,
             print::print_window,
+            pdf::write_window_pdf,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
