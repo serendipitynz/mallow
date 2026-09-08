@@ -129,11 +129,17 @@ jobs:
           set -euo pipefail
           changed=$(git diff --name-only "origin/$BASE...HEAD")
           echo "changed files:"; echo "$changed"
-          # What can change the paper: the stylesheet that paginates it, the three
-          # platform arms that write it, the view it is made from, the mode that
-          # produces it without a person, the script that measures it, and this
-          # workflow.
-          if echo "$changed" | grep -qE '^(src/styles/print\.scss|src-tauri/src/(pdf|unattended)\.rs|src-tauri/build\.rs|src/lib/(pdf-export|markdown-preview|build-flags|render-signal)\.ts|src/components/MarkdownView\.tsx|src/App\.tsx|src/unattended/|scripts/paper/|vite\.config\.ts|\.github/workflows/check\.yml)'; then
+          # **Deliberately coarse.** The first version of this listed the files
+          # that obviously make the paper — the print stylesheet, the three
+          # platform arms, MarkdownView — and review pointed out two it had
+          # already missed (`src/styles/markdown.scss`, which is most of what the
+          # paper looks like, and `src-tauri/src/lib.rs`, which registers the
+          # command). Any list of that shape drifts the same way, and its failure
+          # is silent: a paper regression merges unmeasured. So the frontend, the
+          # Rust sources and the dependency manifests are all in, and what stays
+          # out is documentation, the backlog and the other workflows — which is
+          # most of what this repository's pull requests actually touch.
+          if echo "$changed" | grep -qE '^(src/|src-tauri/(src/|build\.rs|Cargo\.(toml|lock)|tauri\.conf\.json)|scripts/paper/|package\.json|pnpm-lock\.yaml|vite\.config\.ts|\.github/workflows/check\.yml)'; then
             echo 'paper=true' >> "$GITHUB_OUTPUT"
           else
             echo 'paper=false' >> "$GITHUB_OUTPUT"
@@ -250,17 +256,24 @@ jobs:
           mkdir -p paper
           run_export() {
             if [ "${{ matrix.platform }}" = "linux" ]; then
-              xvfb-run -a "$MALLOW_BIN" --document scripts/paper/print-pagebreaks.md --out "$1" --theme "$2"
+              xvfb-run -a "$MALLOW_BIN" --document "$PWD/scripts/paper/print-pagebreaks.md" --out "$1" --theme "$2"
             else
-              "$MALLOW_BIN" --document scripts/paper/print-pagebreaks.md --out "$1" --theme "$2"
+              "$MALLOW_BIN" --document "$PWD/scripts/paper/print-pagebreaks.md" --out "$1" --theme "$2"
             fi
           }
           status=0
           for theme in light dark; do
-            pdf="paper/paper-${{ matrix.platform }}-$theme.pdf"
+            # Absolute, because a relative destination is written by no platform:
+            # Linux refuses it and macOS reports success having written nothing.
+            pdf="$PWD/paper/paper-${{ matrix.platform }}-$theme.pdf"
             echo "### ${{ matrix.platform }} / $theme" >> "$GITHUB_STEP_SUMMARY"
-            if ! run_export "$pdf" "$theme"; then
-              echo "the unattended export failed (exit $?) — no paper to measure" >> "$GITHUB_STEP_SUMMARY"
+            # The exporter's own code, captured rather than read from `$?` after
+            # an `if !`, where it is always the negation and every failure would
+            # be reported as 0 — the one number this line exists to carry.
+            exported=0
+            run_export "$pdf" "$theme" || exported=$?
+            if [ "$exported" -ne 0 ]; then
+              echo "the unattended export failed (exit $exported) — no paper to measure" >> "$GITHUB_STEP_SUMMARY"
               status=1
               continue
             fi

@@ -18,10 +18,10 @@
  *  `setTheme`, and no watcher is started.
  */
 import { invoke } from '@tauri-apps/api/core';
-import { fileEntryFromPath } from '../lib/file';
-import { dirname } from '../lib/path';
+import { fileEntryFromPath, kindFromName } from '../lib/file';
+import { basename, dirname } from '../lib/path';
 import { nextRenderSettled } from '../lib/render-signal';
-import { allowMediaDir, writeWindowPdf } from '../lib/tauri';
+import { allowMediaDir, pathExists, writeWindowPdf } from '../lib/tauri';
 import type { FileEntry } from '../lib/types';
 
 /** What the Rust side parsed out of the command line. */
@@ -56,6 +56,25 @@ function finish(code: number, message = ''): void {
   void invoke('unattended_finish', { code, message });
 }
 
+/** Why this document cannot be exported, or null.
+ *
+ *  **Checked before anything waits.** Without it a missing file and a `.csv` both
+ *  end the same way: no markdown preview ever mounts, so nothing reports a render,
+ *  and the run spends the full minute before failing as "never rendered" — which
+ *  says the paper timed out when the truth is that the argument was wrong. Split
+ *  out of the flow because the two cases are worth testing and the flow is not
+ *  testable under Node. */
+export function documentProblem(path: string, exists: boolean): string | null {
+  if (!exists) {
+    return `${path} does not exist`;
+  }
+  const kind = kindFromName(basename(path));
+  if (kind !== 'markdown') {
+    return `${path} is ${kind === null ? 'not a file kind mallow opens' : `a ${kind} document`}, and only markdown has a paper`;
+  }
+  return null;
+}
+
 export async function runUnattendedExport(app: AppSeam): Promise<void> {
   let request: Request;
   try {
@@ -70,11 +89,12 @@ export async function runUnattendedExport(app: AppSeam): Promise<void> {
   // change the reader's theme.
   document.documentElement.dataset.theme = request.theme;
 
-  const entry = fileEntryFromPath(request.document);
-  if (!entry) {
-    finish(EXIT_BAD_REQUEST, `${request.document} is not a file kind mallow opens`);
+  const problem = documentProblem(request.document, await pathExists(request.document));
+  if (problem) {
+    finish(EXIT_BAD_REQUEST, problem);
     return;
   }
+  const entry = fileEntryFromPath(request.document) as FileEntry;
 
   const folder = dirname(request.document);
   try {

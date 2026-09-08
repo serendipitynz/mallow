@@ -33,6 +33,8 @@ const FIXTURE = resolve(here, 'print-pagebreaks.md');
 const FIXTURE_ORIGIN = resolve(repoRoot, '_sandbox', 'samples', 'print-pagebreaks.md');
 
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024;
+const PLATFORMS = ['macos', 'windows', 'linux'];
+const THEMES = ['light', 'dark'];
 
 const POPPLER_HINT = `poppler is required (pdfinfo, pdftotext):
   macOS    brew install poppler
@@ -64,6 +66,15 @@ function parseArgs(argv) {
   args.pdf = rest[0];
   args.os ??= { darwin: 'macos', win32: 'windows' }[process.platform] ?? 'linux';
   args.theme ??= 'light';
+  // An unknown platform is not a platform with no baseline: it would silently
+  // skip the type-size check *and* the Windows header check and report PASS, so a
+  // typo in the CI matrix would read as a good paper.
+  if (!PLATFORMS.includes(args.os)) {
+    fail(3, `--os must be one of ${PLATFORMS.join(', ')} — not ${args.os}`);
+  }
+  if (!THEMES.includes(args.theme)) {
+    fail(3, `--theme must be one of ${THEMES.join(', ')} — not ${args.theme}`);
+  }
   return args;
 }
 
