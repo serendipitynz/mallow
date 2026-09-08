@@ -4,7 +4,7 @@ title: Write PDF from the print pipeline so a page can leave mallow on every pla
 status: In Progress
 assignee: []
 created_date: '2026-09-07 08:55'
-updated_date: '2026-09-08 09:32'
+updated_date: '2026-09-08 09:59'
 labels:
   - feature
 milestone: m-3
@@ -31,7 +31,6 @@ So mallow writes the PDF itself, through each platform's print *pipeline* rather
 **Nothing automated will verify the paper.** No harness opens a print pipeline, and the headless-Chrome harness in `_sandbox/handoff/task-27/harness/` reproduces none of the three engines — its control run paginates the unstyled page into 16, so it never had the failure TASK-27 chased. What can be automated is the chord decision, which is where TASK-27's tests ended up after review found that a green suite had covered the classifier and not what the handler does with the event.
 
 **AMENDED 2026-09-08: the first sentence lost its premise and the paragraph is rewritten here rather than deleted, because what it says about the Chrome harness is still true.** `write_window_pdf` means mallow can put a PDF through the print pipeline itself, so producing the paper no longer needs a person at the keyboard. Three things replace the sentence, and they are three because they are different code with different ways of failing: the **unattended export** (a build-time mode that opens the document its command line names and writes the PDF after the render settles), the **paper measurement** (`scripts/paper/measure-paper.mjs`, which reads the countable half of the procedure off one PDF and decides pass or fail), and the **paper CI job** (which runs both on three OS runners and keeps the PDFs). **What stays with a person**: whether the type reads comfortably and how a straddling table looks, and AC #2, #3, #4 and #6 — the entry, the chord, the gate and the absence of a print UI, none of which the unattended export goes through. The headless-Chrome harness is still no substitute for any of it: its control run paginates the unstyled page into 16, so it never had the failure TASK-27 chased.
-
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -298,4 +297,45 @@ pageRange・paper・4 辺の余白（**`WKPrintingView` はヘッダ・フッタ
 指示書は `_sandbox/handoff/task-30/unattended-export.md`）に移す — あれが入れば
 人手なしに紙を作って測れるので、**この手当ての確認が実機往復を 1 回も使わない。**
 計器と同じ値が要るなら、無人書き出しの側に置き直す。
+
+## 2 本目の PR（2026-09-08）— 計器が入り、その初回が 2 つの欠陥を見つけた
+
+**PR は 2 本**: **#50**（実装。[P1] 3 件 → 修正 → APPROVED → CI 発の 2 件を追加修正 →
+再び APPROVED）と **#51**（無人書き出し・紙の計測・紙の CI ジョブ。#50 に stacked）。
+**どちらも未マージ。**
+
+**手元での成果 — 余白の手当ての検証に実機往復を 1 回も使わなかった。**
+無人書き出しが書いた紙は **14 ページ・ページ箱 `504 × 750`・語の高さ中央値 18.55**
+（基準は印刷経路の完走版 18.56、差 0.1%）。**0.847 倍の縮小は消え、幾何は印刷経路の
+正しい紙と一致**した。dark も同値。紙は `mac/pdf-mac-{light,dark}-5.pdf`、
+相対パス修正後の再確認が `pdf-mac-light-6.pdf`。
+
+**紙の CI ジョブの初回実行が、手元では見つからない 2 件を出した。**
+
+1. **Windows 分岐がコンパイルできていなかった**（`pdf.rs`）。webview2-com のマクロは
+   完了ハンドラの引数を closure が見る前に変換する — `ClosureArg for HRESULT` は
+   `windows::core::Result<()>`、`ClosureArg for BOOL` は `bool` を出す — ので、
+   `hr.ok()` と `written.as_bool()` はどちらも存在しないメソッドの呼び出しだった。
+   **あの分岐がどこかでコンパイルされた初めての機会がこの CI ジョブ**であり、
+   「Windows の分岐はどの自動検査でもコンパイルされない」と書いていた穴が
+   そのまま現実になっていた。
+2. **相対パスの保存先が、環境ごとに違う壊れ方をし、片方は沈黙した。** CI が
+   `paper/x.pdf` を渡したところ、Linux は
+   `The pathname … is not an absolute path` で停止し、**macOS は
+   `CFURLGetFSRef was passed a URL which has no scheme` をログに出して
+   何も書かずに成功を返した**（`fileURLWithPath:` が相対 NSURL を作る）。
+   **`write_window_pdf` の中で絶対パスへ正規化**したので、保存ダイアログ以外の
+   すべての呼び出し元が守られる。テスト 2 件。
+
+**紙の計測が既知の紙で検算できることも確認した**: 印刷経路の完走版 PASS、
+末尾が落ちた紙は「最後の節」で FAIL、0.847 倍の紙は倍率で FAIL。
+
+**レビューで直した 3 件（#51）**: paths フィルタが狭すぎた（列挙は同じ形で古び、
+**失敗が沈黙**するので粗くした）、悪い文書で 60 秒待ってから「描画に届かない」と
+言っていた（待つ前に exit 3 で拒否し種類を名指し）、未知の `--os` が倍率と
+Windows のヘッダ検査を両方飛ばして PASS を返しえた（閉じた集合に）。
+
+**まだ人間に残るもの**: AC #2・#3・#4・#6、合格した紙の目視、
+**Windows と Linux の紙**（1 回目は Windows がコンパイルで、Linux と macOS が
+相対パスで落ちたので、まだ 1 枚も出ていない）、AC #9。
 <!-- SECTION:NOTES:END -->
