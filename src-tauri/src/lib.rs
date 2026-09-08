@@ -2,13 +2,53 @@ mod commands;
 mod editors;
 mod pdf;
 mod print;
+#[cfg(unattended)]
+mod unattended;
 mod watch;
 
 use tauri::Emitter;
 
+/// The command list, written once. `invoke_handler` takes a value built by a
+/// macro, so an unattended build cannot add its two commands without either this
+/// or a second copy of every other command's path — and a copy is the thing this
+/// repository has already been bitten by once (the extension→kind mapping).
+macro_rules! app_handler {
+    ($($extra:path),*) => {
+        tauri::generate_handler![
+            commands::read_dir_tree,
+            commands::read_file,
+            commands::path_exists,
+            commands::allow_media_dir,
+            watch::start_watch,
+            watch::stop_watch,
+            editors::detect_editors,
+            editors::open_in_editor,
+            editors::reveal_in_os,
+            editors::open_in_default_app,
+            print::print_window,
+            pdf::write_window_pdf
+            $(, $extra)*
+        ]
+    };
+}
+
+#[cfg(not(unattended))]
+fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
+    app_handler!()
+}
+
+#[cfg(unattended)]
+fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
+    app_handler!(unattended::unattended_request, unattended::unattended_finish)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    #[cfg(unattended)]
+    let request = unattended::request_or_exit();
+
+    #[allow(clippy::let_and_return)]
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -76,20 +116,14 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            commands::read_dir_tree,
-            commands::read_file,
-            commands::path_exists,
-            commands::allow_media_dir,
-            watch::start_watch,
-            watch::stop_watch,
-            editors::detect_editors,
-            editors::open_in_editor,
-            editors::reveal_in_os,
-            editors::open_in_default_app,
-            print::print_window,
-            pdf::write_window_pdf,
-        ])
+        .invoke_handler(handler());
+
+    // The request is managed state rather than a global, so the command that
+    // hands it to the frontend reads it the way every other command reads state.
+    #[cfg(unattended)]
+    let builder = builder.manage(request);
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

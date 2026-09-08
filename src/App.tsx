@@ -8,6 +8,7 @@ import { UpdateDialog } from './components/UpdateDialog';
 import { Viewer } from './components/Viewer';
 import { useFileTree } from './hooks/useFileTree';
 import { useUpdater } from './hooks/useUpdater';
+import { UNATTENDED } from './lib/build-flags';
 import { onMacPlatform } from './lib/chord';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
@@ -138,6 +139,19 @@ export default function App() {
   // ---- Session restore + settings (on launch) -------------------------------
   useEffect(() => {
     let disposed = false;
+
+    /* An unattended build opens the document its command line named instead, and
+       reads no settings at all — the store it would read is the installed app's,
+       and a measurement run must leave a reader's session where it found it. The
+       condition is a build-time constant, so an ordinary bundle contains neither
+       this branch nor the module it imports (`lib/build-flags`). */
+    if (UNATTENDED) {
+      void import('./unattended/run').then(({ runUnattendedExport }) =>
+        runUnattendedExport({ openTree, select: setSelected }),
+      );
+      return;
+    }
+
     (async () => {
       const s = await loadSettings();
       if (disposed) {
@@ -191,6 +205,11 @@ export default function App() {
 
   // ---- Filesystem watch (debounced) -----------------------------------------
   useEffect(() => {
+    // Nothing watches during an unattended export: the document is read once and
+    // the process ends, so a watcher could only fire after the paper is written.
+    if (UNATTENDED) {
+      return;
+    }
     let unlisten: (() => void) | undefined;
     let disposed = false;
     const changed = new Set<string>();
