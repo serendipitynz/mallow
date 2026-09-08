@@ -5,6 +5,8 @@ import { defineConfig, type Plugin } from 'vite';
 const host = process.env.TAURI_DEV_HOST;
 // @ts-expect-error process is a nodejs global
 const probe = process.env.MALLOW_PROBE === '1';
+// @ts-expect-error process is a nodejs global
+const unattended = process.env.MALLOW_UNATTENDED === '1';
 
 // Served at the app origin so `script-src 'self'` permits it. TASK-7 uses it to
 // measure the sandbox on its own: an inline script would be refused by the CSP
@@ -45,6 +47,16 @@ function probeEntry(): Plugin {
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: probe ? [react(), probeEntry()] : [react()],
+
+  // The unattended export's switch, read by `lib/build-flags`. A constant rather
+  // than a runtime check because that is what lets the ordinary bundle carry none
+  // of the mode: `if (UNATTENDED)` becomes `if (false)` here and the branch, the
+  // dynamic import inside it and everything that import reaches are dropped.
+  // `build.rs` reads the same variable for the Rust half, so the two cannot be
+  // switched on apart.
+  define: {
+    __MALLOW_UNATTENDED__: JSON.stringify(unattended),
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
