@@ -980,8 +980,11 @@ hold rather than as an exhaustive style guide.
   two runners execute them. Page count and paper
   size are recorded, not judged — a runner's Japanese fonts paginate differently.
   Whether the type reads comfortably, and how a table that straddles a break
-  actually looks, stay with whoever opens the PDF. Requires poppler
-  (`pdfinfo`, `pdftotext`).
+  actually looks, stay with whoever opens the PDF. **Requires poppler's**
+  `pdfinfo` and `pdftotext`, and it checks: the Windows runner carries Xpdf's
+  `pdftotext`, which has no `-bbox`, so the first run there ended in a usage
+  screen rather than a measurement. An instrument that cannot tell whose
+  implementation it has reports the wrong thing confidently.
 - End-to-end: `pnpm tauri dev` (GUI) or `pnpm tauri build`.
 - CI (`.github/workflows/check.yml`) runs exactly this list on pull requests and
   on pushes to `main` — `biome ci`, `pnpm build`, `pnpm test`, `cargo fmt

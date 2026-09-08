@@ -19,7 +19,7 @@
 // export uses, so a CI step can tell "the paper is wrong" from "the instrument is
 // not here".
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -96,6 +96,30 @@ function parseArgs(argv) {
 function fail(code, message) {
   process.stderr.write(`${message}\n`);
   process.exit(code);
+}
+
+/** That the `pdftotext` on PATH is poppler's, and not another program with the
+ *  same name.
+ *
+ *  **Measured on a CI runner**: it carries Xpdf's `pdftotext` 4.06, which has no
+ *  `-bbox`, so the measurement ended in a usage screen and an exit code that says
+ *  nothing about the paper. An instrument that cannot tell whose implementation it
+ *  is reports the wrong thing confidently, which is worse than not running. */
+function requirePoppler() {
+  // `spawnSync` rather than `execFileSync`, because **poppler prints its banner
+  // on stderr and exits 0** — reading stdout alone finds an empty string and
+  // rejects the very implementation this is looking for.
+  const probe = spawnSync('pdftotext', ['-v'], { encoding: 'utf8' });
+  if (probe.error?.code === 'ENOENT') {
+    fail(3, `pdftotext not found.\n${POPPLER_HINT}`);
+  }
+  const version = `${probe.stdout ?? ''}${probe.stderr ?? ''}`;
+  if (!/poppler/i.test(version)) {
+    fail(
+      3,
+      `the pdftotext on PATH is not poppler's, so it has no -bbox to measure with:\n${version.trim()}\n${POPPLER_HINT}`,
+    );
+  }
 }
 
 function poppler(tool, toolArgs) {
@@ -176,6 +200,7 @@ if (!existsSync(args.pdf)) {
   fail(3, `no such PDF: ${args.pdf}`);
 }
 checkFixtureCopy();
+requirePoppler();
 
 const info = poppler('pdfinfo', [args.pdf]);
 const bbox = poppler('pdftotext', ['-bbox', args.pdf, '-']);

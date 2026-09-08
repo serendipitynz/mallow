@@ -859,8 +859,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   コンパイルが通ること（このジョブがあの分岐で捕まえた欠陥は 2 つともコンパイルエラー
   だった）で、テスト自体は環境に依らないので他の 2 ランナーが実行する。総ページ数と用紙サイズは判定せず記録する — ランナーの
   日本語フォントは別物で、ページ割りが変わるからである。**文字が読みやすいか、
-  ページ境界を跨いだ表がどう見えるかは、PDF を開く人に残る。** poppler
-  （`pdfinfo`・`pdftotext`）が要る。
+  ページ境界を跨いだ表がどう見えるかは、PDF を開く人に残る。** **poppler の** `pdfinfo`・`pdftotext` が要り、**それであることを確認する** —
+  Windows のランナーは Xpdf の `pdftotext` を持っており、あれには `-bbox` が無いので、
+  あそこでの初回は計測ではなく usage 画面で終わった。**どの実装を握っているか分からない
+  計器は、間違ったことを自信を持って報告する。**
 - エンドツーエンド: `pnpm tauri dev`（GUI）または `pnpm tauri build`。
 - CI（`.github/workflows/check.yml`）が pull request と `main` への push で
   ちょうどこの一覧を走らせる — `biome ci`・`pnpm build`・`pnpm test`・
