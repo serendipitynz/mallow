@@ -971,7 +971,11 @@ hold rather than as an exhaustive style guide.
   from and a person has to call it right first — **and it says so loudly**, since a
   permanent skip is a check that never runs. `baseline.json`'s `_required` list is
   what ends that state: a key on it with no entry fails instead of skipping, and a
-  key goes on it at the same time as its number.
+  key goes on it at the same time as its number. **As of 2026-09-09 only
+  `ci-macos` is accepted** — the Linux runner's paper starts its text at 18pt
+  where every other paper starts at 16mm, so `@page` is not reaching that arm and
+  its type size is measured but not judged; the Windows runner's paper has no
+  defect recorded against it and is simply not accepted yet.
   **Windows builds the unattended tests without running them**: the test
   executable exits with `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) from
   `target/debug/deps`, where the WebView2 loader beside the app is not. The
