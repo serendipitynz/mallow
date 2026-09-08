@@ -1,7 +1,7 @@
 /** Thin typed wrappers around the Rust commands and Tauri plugin APIs. */
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { message as messageDialog, open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { type ReadResult, toReadError } from './read-error';
 import type { EditorInfo, FileEntry } from './types';
 
@@ -73,4 +73,32 @@ export function openInDefaultApp(path: string): Promise<void> {
  *  having appeared — macOS returns success where its own guard declines. */
 export function printWindow(): Promise<void> {
   return invoke('print_window');
+}
+
+/** Ask the reader where the PDF should go; returns null if they cancelled.
+ *
+ *  decision-14 puts this ahead of the write rather than choosing a location: a
+ *  file appearing somewhere the reader did not name is worse than one keystroke
+ *  more. */
+export async function pickPdfDestination(defaultPath?: string): Promise<string | null> {
+  const chosen = await saveDialog({ defaultPath, filters: [{ name: 'PDF', extensions: ['pdf'] }] });
+  return chosen ?? null;
+}
+
+/** Write this window's PDF to `path` through the platform's print pipeline, with
+ *  no print UI (decision-14 and `src-tauri/src/pdf.rs`). Named for the window for
+ *  the reason `printWindow` is: the engine paginates the whole `<body>`, and
+ *  `@media print` changes what is painted rather than what is paginated.
+ *
+ *  Unlike `printWindow`, resolving does mean the platform reported the file
+ *  written — which is what makes it worth telling the reader when it rejects. */
+export function writeWindowPdf(path: string): Promise<void> {
+  return invoke('write_window_pdf', { path });
+}
+
+/** Put a failure in front of the reader. Used where the app cannot leave one in a
+ *  view — an export writes a file the reader named, so silence would read as
+ *  success. */
+export async function showErrorDialog(title: string, text: string): Promise<void> {
+  await messageDialog(text, { title, kind: 'error' });
 }

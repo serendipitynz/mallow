@@ -128,6 +128,9 @@ const ja: Dict = {
   updateInstalledHint: 'アプリを手動で再起動すると、新しいバージョンで開きます。',
   updateInstallFailed: '更新は導入されませんでした。',
   updateInstallFailedHint: '取り消した場合も、通信や書き込みに失敗した場合も、この結果になります。',
+  // PDF export
+  pdfExportFailedTitle: 'PDF を書き出せませんでした',
+  pdfExportFailed: 'PDF の書き出しに失敗しました。\n\n{error}',
 };
 
 const en: Dict = {
@@ -243,6 +246,9 @@ const en: Dict = {
   updateInstalledHint: 'Restart the app by hand to open it on the new version.',
   updateInstallFailed: 'The update was not installed.',
   updateInstallFailedHint: 'Cancelling, and a failed transfer or write, both end here.',
+  // PDF export
+  pdfExportFailedTitle: 'The PDF was not written',
+  pdfExportFailed: 'The PDF export failed.\n\n{error}',
 };
 
 const messages: Record<Lang, Dict> = { ja, en };

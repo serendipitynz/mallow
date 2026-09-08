@@ -64,7 +64,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
-  download accumulator), `file`, `path`, `tauri` (invoke wrappers), `types`.
+  download accumulator), `chord` (accelerator matching plus the app-wide chord
+  handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
+  `Export as PDF…` share), `print` / `pdf-export` (each entry's key, gate and
+  reason), `file`, `path`, `tauri` (invoke wrappers), `types`.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
   `markdown`, `config`, `source`, `html`, `table`, `xml`.
 
@@ -98,6 +101,15 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   the boundary that matters, and a print stylesheet would not make it true. Not
   `cfg(desktop)`-gated though `print()` is, so a mobile build fails to compile
   rather than reporting a missing command at runtime.
+- `pdf.rs` — `write_window_pdf`, which writes the calling window's PDF through
+  each platform's print *pipeline* with **no print UI on screen** (decision-14):
+  an `NSPrintOperation` with `NSPrintSaveJob` on macOS, WebView2's `PrintToPdf` on
+  Windows, WebKitGTK's `print()` (never `run_dialog()`) on Linux. It exists because
+  printing is clean on one platform out of three, and it is a second entry rather
+  than a replacement — **on Linux it is the only way a page leaves mallow.** Named
+  for the window for the reason `print_window` is. The three arms carry the one
+  thing to check first on each: whether `@media print` applies (see the gotcha
+  below), which is why macOS does not use `WKWebView.createPDF`.
 - `lib.rs` — plugin registration (opener, dialog, store, window-state,
   updater, process — none `cfg(desktop)`-gated, per decision-11), the
   `invoke_handler`, and (macOS only) a native app menu whose Settings… item
@@ -374,12 +386,16 @@ hold rather than as an exhaustive style guide.
   `MarkdownView` so that an unprintable view registered nothing, and on Windows
   that is exactly what let a `.csv` be printed — **WebView2 carries its own
   `Ctrl+P`**, so registering nothing concedes the chord to the platform instead of
-  making it inert (measured 2026-09-07). `MarkdownView` now reports the condition
-  and `lib/print` holds the flag, the three-way decision — whose `suppress` case is
-  the one the first design had no name for — and the handler itself as a factory,
-  **so that what it does with the event is covered and not only how it classifies
-  one**: a classifier can be right while the handler forgets `preventDefault`, and
-  that is precisely the bug. **The `addEventListener` call in `App` is the one line
+  making it inert (measured 2026-09-07). `MarkdownView` now reports the condition,
+  `lib/markdown-preview` holds the flag, and `lib/chord` holds the three-way
+  decision — whose `suppress` case is the one the first design had no name for —
+  and the handler itself as a factory, **so that what it does with the event is
+  covered and not only how it classifies one**: a classifier can be right while
+  the handler forgets `preventDefault`, and that is precisely the bug. `lib/print`
+  is what is left once those move out: the key, the gate it reads, and the reason
+  it gates. **The mechanism is shared with PDF export's chord and the flag is the
+  same one**, which is what keeps the two entries enabling and disabling together
+  (decision-14) rather than drifting. **The `addEventListener` call in `App` is the one line
   no test reaches** — the suite runs under Node with no DOM by design. It is also what closes the chord on
   Linux, where `print_window` refusing in Rust would not stop a native binding —
   that never goes through `print_window`. **What the engine paginates is the whole `<body>`**, explorer and
@@ -438,7 +454,8 @@ hold rather than as an exhaustive style guide.
   (measured 2026-09-07). Windows prints the whole document correctly and adds
   WebView2's own header and footer — date, title, URL, page numbers — which the
   reader can switch off and CSS cannot. macOS loses the end of a long document:
-  the print sheet computes a page count, the PDF export honours it, and a layout
+  the print sheet computes a page count, the PDF written by its own destination
+  honours it, and a layout
   needing more pages simply stops — **switching printers in the sheet forces the
   recalculation and the export then matches**. That is why **no CSS value should
   be tuned against a truncation**: removing `@page`'s margin, shrinking the type
@@ -446,6 +463,101 @@ hold rather than as an exhaustive style guide.
   back under the stale one, and `_sandbox/handoff/task-27/mac/paper-mac-light-7a.pdf`
   is the same stylesheet as `-7.pdf` printed complete once the count was refreshed.
   Linux hangs, which is why `print_window` refuses there at all.
+- **PDF export is a second route to paper, not a fix to the first one, and the
+  two entries are side by side** (decision-14). `write_window_pdf` writes the file
+  through each platform's print pipeline with **no print UI at any point**, which
+  is what sidesteps all three of printing's defects at once — and on Linux it is
+  the only way a page leaves mallow at all. **The bare phrase "PDF output" names
+  neither thing usefully**: `PDF export` is what mallow writes, `the print UI's
+  PDF destination` is an entry inside the platform's own dialog, and both exist as
+  of v0.8.0. **Whether `@media print` applies is the criterion each platform's
+  implementation is judged by, and it is a property of the API rather than of the
+  platform** — a PDF carrying the explorer and the toolbar is the failure to look
+  for, because `styles/print.scss` would then be inert. That is why macOS builds
+  an `NSPrintOperation` with `NSPrintSaveJob` instead of calling
+  `WKWebView.createPDF`, which renders the view as it stands: the print pipeline
+  applies the stylesheet by construction. **`runOperation()` is the one call that
+  arm must not use, and that is measured**: 2026-09-07 it pegged a core, stopped
+  answering, and wrote a 318 MB PDF of 4,022,381 objects with no trailer — millions
+  of pages whose content streams were 11 compressed bytes each, which is to say
+  empty. It is a known WebKit behaviour and not a fault in the document:
+  `printOperationWithPrintInfo:` draws blank under `runOperation`, and the
+  operation has to go through `runOperationModalForWindow:` instead — **which
+  shows no modal with both panels off and the disposition set to save**. So the
+  outcome arrives at a delegate, which is why that arm defines a class
+  (`MallowPdfExportObserver`) and keeps it alive itself: **AppKit does not retain
+  a `didRunSelector` delegate**, and it is swept on the next export rather than in
+  the callback, where dropping the last reference would free the receiver
+  mid-message. **A fresh `NSPrintInfo` is not degenerate** — measured the same day,
+  it and the shared one both report A4 595×842 with imageable bounds 559×783 — so
+  the paper needs no setting and the runaway was never about the page rect. **The print view's frame is deliberately
+  not seeded**, which reverses what every dialog-free recipe does: seeding it from
+  the webview's bounds produced a page laid out at the paper's own size and then
+  scaled by 0.847 into the `@page` margin box — measured 2026-09-07 from the clip
+  rects, `504×713` against the print route's `504×750` at scale 1, which is
+  `@page { margin: 16mm }` acting as a shrink rather than as a margin. That frame
+  was the only geometric difference from wry's route, whose paper was measured
+  correct, so **this arm now differs from that route in the disposition and the
+  panels alone**. What the recipes are about is a webview with no frame of its
+  own; mallow's is on screen. **The print info is not where any of this came
+  from** — measured the same day, a fresh one and the shared one are identical
+  down to the dictionary: A4 595×842, all four margins 0, `NSScalingFactor` 1,
+  pagination Clip/Automatic, and no header-and-footer key at all. All three routes
+  report asynchronously now, so **a platform that never reports leaves the command
+  pending** — a silence, not a hang, since none of them blocks the main thread. **The print info is built fresh rather
+  than taken from `sharedPrintInfo()`** — wry mutates that application-wide
+  singleton on every print, and a stale page count is the kind of state it would
+  hold — but **that is a hypothesis about the truncation and not a fix**: the cause
+  was never isolated, so a complete export is not evidence for it and a truncated
+  one is not a regression against it. **The four `NSPrintInfo` margins are zeroed**
+  so `@page` is the only thing insetting the text block, which is also the geometry
+  the stylesheet was measured against. **The gate is printing's sentence with a
+  different reason**: `Export as PDF…` is disabled unless the active view is
+  markdown in preview because **the print stylesheet is markdown-only**, so a
+  later request to export other views is a request to widen the stylesheet, not
+  the entry (decision-6 makes the source view where that starts). **The chord is
+  consumed even where the export is refused**, on printing's measured rule — and
+  whether any engine binds `Ctrl+E` is unmeasured, which consuming it makes moot.
+  **The Linux arm asks GTK what its print-to-file printer is called, and the
+  English literal is only a fallback.** WebKit resolves the printer by matching
+  `gtk_printer_get_name` and GTK's file backend names its printer through gettext,
+  so `"Print to File"` is printer-not-found on a Japanese desktop — which on Linux
+  means no page leaves mallow at all, since printing is refused there. **gtk-rs
+  binds none of this**: gtk-sys 0.18 carries `GtkPrintSettings` and nothing of
+  `GtkPrinter`, so `pdf.rs`'s `gtk_printers` declares the four symbols itself
+  against libgtk-3, which the `gtk` crate already links — a dependency-free
+  `extern` block rather than a dependency. **What picks the file backend out is
+  virtual *and* PDF-capable**, not the name being looked for: a CUPS queue that
+  writes PDF is a real printer to GTK and reports `is_virtual` false.
+  **The destination is made absolute before any of the three arms sees it**, and
+  that is measured rather than defensive: handed `paper/x.pdf`, Linux said
+  `The pathname … is not an absolute path` and stopped, while **macOS logged
+  `CFURLGetFSRef was passed a URL which has no scheme` and reported success having
+  written nothing** — `fileURLWithPath:` makes a relative NSURL out of a relative
+  path. The save dialog always answers absolute, so this is about every other
+  caller. **The Windows arm's first compile was a CI runner**, and it took
+  two rounds there: webview2-com's macro converts the completion handler's
+  arguments before the closure sees them (`HRESULT` becomes
+  `windows::core::Result<()>`, `BOOL` becomes `bool`), so the obvious `hr.ok()`
+  and `written.as_bool()` are both wrong; and the sender has to be cloned for the
+  handler, because the synchronous failure path reports through it too. **Neither
+  is visible from macOS or from CI's ubuntu Rust job**, which is the whole reason
+  the paper job compiles this file on three platforms.
+  **Two more things this arm and the export share.** Exports are serialized, in
+  Rust by a lock the command tries and in the frontend by a flag the chord reads,
+  because on macOS a second `NSPrintOperation` while one is running raises
+  `NSPrintOperationExistsException` — an Objective-C exception crossing back into
+  Rust ends the process rather than returning an error, and the export shows no UI
+  of its own, so the window takes keystrokes throughout. And **whatever the save
+  dialog answered is what gets written**: appending `.pdf` afterwards would name a
+  file the dialog never confirmed, and its overwrite prompt is per-name — rfd's
+  GTK dialog turns overwrite confirmation on but does not add the filter's
+  extension, so a reader who types `report` is asked about `report` and would
+  silently lose a `report.pdf` beside it.
+  **Nothing automated sees the paper here either**, and one gap is worse than
+  printing's: the Windows arm compiles under neither `cargo check` in CI (the Rust
+  job is ubuntu) nor locally on macOS, so its first compile is the platform
+  measurement round.
 - **Emoji.** Unicode emoji are wrapped in `<span class="emoji">` so CSS can put a
   colour-emoji stack (`$font-emoji`) in front for them alone. Without the wrapper
   the JP body font wins the fallback race for the few emoji it covers — `:ok:` is
@@ -823,8 +935,10 @@ hold rather than as an exhaustive style guide.
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
   `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
-  `chord` (accelerator matching, which takes the platform as an argument so it
-  needs no `navigator`), and `custom-emoji`
+  `chord` (accelerator matching plus the app-wide handler — both take the platform
+  as an argument so neither needs `navigator`), `markdown-preview`, `print` and
+  `pdf-export` (each chord's key, gate and what the handler does with the event,
+  including that the two open and close together), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument

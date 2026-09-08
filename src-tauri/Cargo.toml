@@ -32,6 +32,47 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 notify = "8"
 
+# Platform code for PDF export (decision-14). Tauri exposes none of the three
+# PDF APIs, so each platform's arm reaches for its own bindings — and only its
+# own: these are `[target.'cfg(...)']` sections rather than optional features so
+# a build on one platform cannot pull another's.
+#
+# The macOS set is four crates because the call spans four of them: the WKWebView
+# type that owns `printOperationWithPrintInfo:`, the AppKit print classes, the
+# Foundation types the saving URL is written as, and objc2 itself for the
+# selector check. Windows needs the WebView2 completion-handler helper plus the
+# `Interface` cast and `PCWSTR` from windows-core — `windows` itself is not
+# needed. Linux needs webkit2gtk's print operation and gtk's `PrintSettings`,
+# which webkit2gtk takes but does not re-export.
+#
+# All of them are already in the dependency graph through tauri and wry, so what
+# this adds is `THIRD-PARTY-NOTICES.md` entries rather than compilation — but only
+# while the objc2 crates keep `default-features = false`. Their defaults enable
+# every class the framework has (objc2-app-kit alone lists hundreds), which is
+# more than wry asks for, so taking the defaults pulls whole crates into the build
+# and into the notices for classes nothing here touches.
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = { version = "0.6", default-features = false, features = ["std"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSPrintInfo",
+  "NSPrintOperation",
+  "NSResponder",
+  "NSView",
+  "NSWindow",
+] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSDictionary", "NSString", "NSURL"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "WKWebView", "objc2-app-kit"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+webview2-com = "0.38"
+windows-core = "0.61"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+webkit2gtk = "2.0"
+
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }

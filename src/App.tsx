@@ -14,9 +14,18 @@ import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
-import { createPrintChordHandler, isPrintablePreview } from './lib/print';
+import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
+import { createPrintChordHandler } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
-import { allowMediaDir, pathExists, pickFolder, printWindow } from './lib/tauri';
+import {
+  allowMediaDir,
+  pathExists,
+  pickFolder,
+  pickPdfDestination,
+  printWindow,
+  showErrorDialog,
+  writeWindowPdf,
+} from './lib/tauri';
 import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
 
@@ -293,12 +302,50 @@ export default function App() {
   useEffect(() => {
     const onKey = createPrintChordHandler({
       onMac: onMacPlatform(),
-      isPrintable: isPrintablePreview,
       print: () => void printWindow().catch((err) => console.error('print failed', err)),
     });
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  /* ---- PDF export (decision-14) ---------------------------------------------
+     A second route to paper that never opens a print UI, which is what lets it
+     sidestep printing's three platform defects — and on Linux it is the only way
+     a page leaves mallow at all, since `print_window` refuses there.
+
+     The chord is registered and consumed on the same terms as printing's, for the
+     same measured reason (`lib/chord`), and the gate is the same sentence for a
+     different one (`lib/pdf-export`). The destination is the reader's: nothing
+     here writes to a location they did not name. */
+  const exportPdf = useCallback(
+    () =>
+      runExclusiveExport(async () => {
+        const open = selectedRef.current;
+        const chosen = await pickPdfDestination(open ? pdfDestinationFor(open.path) : undefined);
+        if (!chosen) {
+          return;
+        }
+        try {
+          // **Whatever the dialog answered is what gets written.** An extension
+          // added afterwards would be a path the dialog never confirmed, and its
+          // overwrite prompt is per-name: a reader who types `report` is asked
+          // about `report` and would silently lose a `report.pdf` beside it. The
+          // default name already carries `.pdf`, so this only gives up renaming
+          // what the reader deliberately typed instead.
+          await writeWindowPdf(chosen);
+        } catch (err) {
+          console.error('PDF export failed', err);
+          void showErrorDialog(t('pdfExportFailedTitle'), t('pdfExportFailed', { error: String(err) }));
+        }
+      }),
+    [t],
+  );
+
+  useEffect(() => {
+    const onKey = createPdfExportChordHandler({ onMac: onMacPlatform(), exportPdf: () => void exportPdf() });
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [exportPdf]);
 
   // ---- Explorer resize ------------------------------------------------------
   const [dragging, setDragging] = useState(false);
