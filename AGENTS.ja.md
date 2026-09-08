@@ -479,6 +479,14 @@ Comments と Functions の規約は機械的に検査されない。コメント
   **ファイルバックエンドを選び出すのは「virtual かつ PDF を受ける」の組**であって、
   探している名前ではない — PDF を書く CUPS のキューは GTK にとって実在のプリンタで、
   `is_virtual` は偽になる。
+  **保存先は 3 つの分岐のどれが見るより先に絶対パスへ直す。** これは用心ではなく実測で、
+  `paper/x.pdf` を渡したとき Linux は `The pathname … is not an absolute path` と言って
+  止まり、**macOS は `CFURLGetFSRef was passed a URL which has no scheme` をログに出して
+  何も書かずに成功を返した** — `fileURLWithPath:` は相対パスから相対 NSURL を作る。
+  保存ダイアログは常に絶対パスで答えるので、これはそれ以外の呼び出し元のための処理である。
+  **Windows 分岐の初コンパイルは CI ランナーで、そこで落ちた**: webview2-com のマクロは
+  完了ハンドラの引数を closure が見る前に変換する（`HRESULT` → `windows::core::Result<()>`、
+  `BOOL` → `bool`）ので、素直に書いた `hr.ok()` と `written.as_bool()` はどちらも誤りだった。
   **この分岐と書き出しが共有する事項が 2 つある。** 書き出しは直列化する
   （Rust 側はコマンドが試みるロック、フロント側は chord が読むフラグ）—
   macOS では実行中に 2 つ目の `NSPrintOperation` を作ると
