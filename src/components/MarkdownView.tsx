@@ -3,9 +3,9 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } fr
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
+import { setMarkdownPreviewActive } from '../lib/markdown-preview';
 import { renderMermaid } from '../lib/mermaid';
 import { readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
-import { setPrintablePreview } from '../lib/print';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
@@ -116,25 +116,26 @@ export function MarkdownView({ source }: { source: string }) {
     scroller.style.setProperty('--doc-bar-height', `${bar.getBoundingClientRect().height}px`);
   });
 
-  /* decision-13: `Print…` is disabled unless the active view is markdown in
-     preview, and being mounted with `mode` at `preview` *is* that condition — so
-     this reports the condition rather than keeping a copy of it. It cannot be
-     written as `file.kind === 'markdown'`: that is true of the source half of
-     this toggle, which must not print.
+  /* `Print…` (decision-13) and `Export as PDF…` (decision-14) are both disabled
+     unless the active view is markdown in preview, and being mounted with `mode`
+     at `preview` *is* that condition — so this reports the condition rather than
+     either entry keeping a copy of it. It cannot be written as
+     `file.kind === 'markdown'`: that is true of the source half of this toggle,
+     which neither entry may act on.
 
-     **The keydown handler is not here, and that is a correction rather than a
-     preference.** It used to be, on the reasoning that a view which cannot be
-     printed should register no entry. On Windows that is what let a `.csv` be
-     printed: WebView2 has its own `Ctrl+P`, so registering nothing hands the
-     chord to the platform instead of making it inert. The handler now lives in
-     `App` for the life of the app and suppresses the chord unconditionally —
-     see `lib/print`. */
+     **The keydown handlers are not here, and that is a correction rather than a
+     preference.** Printing's used to be, on the reasoning that a view which
+     cannot be printed should register no entry. On Windows that is what let a
+     `.csv` be printed: WebView2 has its own `Ctrl+P`, so registering nothing
+     hands the chord to the platform instead of making it inert. Both handlers now
+     live in `App` for the life of the app and consume their chord
+     unconditionally — see `lib/chord`. */
   useEffect(() => {
     if (mode !== 'preview') {
       return;
     }
-    setPrintablePreview(true);
-    return () => setPrintablePreview(false);
+    setMarkdownPreviewActive(true);
+    return () => setMarkdownPreviewActive(false);
   }, [mode]);
 
   const headings = result?.headings ?? [];
