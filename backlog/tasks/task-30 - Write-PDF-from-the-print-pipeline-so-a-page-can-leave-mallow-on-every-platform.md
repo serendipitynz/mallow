@@ -4,7 +4,7 @@ title: Write PDF from the print pipeline so a page can leave mallow on every pla
 status: In Progress
 assignee: []
 created_date: '2026-09-07 08:55'
-updated_date: '2026-09-08 08:51'
+updated_date: '2026-09-08 10:54'
 labels:
   - feature
 milestone: m-3
@@ -29,19 +29,25 @@ So mallow writes the PDF itself, through each platform's print *pipeline* rather
 **The gate is printing's sentence with a different reason behind it.** `Export as PDF…` is disabled unless the active view is markdown in preview — but not because the body worth exporting is markdown, which is printing's reason. It is because **the print stylesheet is markdown-only**: a PDF of a table view or an XML tree would be paginated by rules written for `.markdown-body`, and nothing has looked at that paper. **A later request to export other views is therefore a request to widen the stylesheet, not the entry** (decision-6 makes the source view the natural place to start).
 
 **Nothing automated will verify the paper.** No harness opens a print pipeline, and the headless-Chrome harness in `_sandbox/handoff/task-27/harness/` reproduces none of the three engines — its control run paginates the unstyled page into 16, so it never had the failure TASK-27 chased. What can be automated is the chord decision, which is where TASK-27's tests ended up after review found that a green suite had covered the classifier and not what the handler does with the event.
+
+**AMENDED 2026-09-08: the first sentence lost its premise and the paragraph is rewritten here rather than deleted, because what it says about the Chrome harness is still true.** `write_window_pdf` means mallow can put a PDF through the print pipeline itself, so producing the paper no longer needs a person at the keyboard. Three things replace the sentence, and they are three because they are different code with different ways of failing: the **unattended export** (a build-time mode that opens the document its command line names and writes the PDF after the render settles), the **paper measurement** (`scripts/paper/measure-paper.mjs`, which reads the countable half of the procedure off one PDF and decides pass or fail), and the **paper CI job** (which runs both on three OS runners and keeps the PDFs). **What stays with a person**: whether the type reads comfortably and how a straddling table looks, and AC #2, #3, #4 and #6 — the entry, the chord, the gate and the absence of a print UI, none of which the unattended export goes through. The headless-Chrome harness is still no substitute for any of it: its control run paginates the unstyled page into 16, so it never had the failure TASK-27 chased.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Whether @media print applies is verified on each platform BEFORE its implementation is called done, because a PDF carrying the explorer and the toolbar is the failure to look for and TASK-28's stylesheet is inert if it does not apply. On macOS this is what decides between NSPrintOperation with a save disposition and WKWebView.createPDF - decision-14 intends the former for exactly this reason
+- [ ] #1 AMENDED 2026-09-08: the verification carries the paper measurement's output; a person adds only what a number cannot say. Whether @media print applies is verified on each platform BEFORE its implementation is called done, because a PDF carrying the explorer and the toolbar is the failure to look for and TASK-28's stylesheet is inert if it does not apply. On macOS this is what decides between NSPrintOperation with a save disposition and WKWebView.createPDF - decision-14 intends the former for exactly this reason
 - [ ] #2 File > Export as PDF... and CmdOrCtrl+E both reach the export, and the destination is chosen by the reader through a save dialog rather than written to a default location. AMENDED 2026-09-07: no File submenu exists on any platform yet - mallow's macOS menu carries mallow and Edit only - so the accelerator is the whole entry here, exactly as TASK-27 left printing's, and TASK-12.4 adds both items when it builds the menu on all three. What that costs is that the disabled appearance of AC #4 has nothing to appear on, so #4 is about the chord being inert; what it buys is that the menu file is touched once rather than twice, which is the choice the handoff doc already made for Print....
 - [ ] #3 The CmdOrCtrl+E handler consumes the chord even where the export is refused, the way the print chord does. Registering nothing concedes a chord to the platform - that is what let WebView2 print a .csv in TASK-27 - and whether any engine binds Ctrl+E is unmeasured, which consuming it makes moot
 - [ ] #4 Export as PDF... is disabled unless the active view is markdown in preview - the same sentence as Print..., recorded with its own reason (the print stylesheet is markdown-only) rather than as a copy of printing's
-- [ ] #5 A PDF written on macOS, Windows and Linux each reaches the document's last page and carries no part of the app shell. This is the criterion TASK-28's AC #1 and #9 could not meet on the print path
+- [ ] #5 AMENDED 2026-09-08: measured by scripts/paper/measure-paper.mjs and reported with its output, a person adding the visual reading. A PDF written on macOS, Windows and Linux each reaches the document's last page and carries no part of the app shell. This is the criterion TASK-28's AC #1 and #9 could not meet on the print path
 - [ ] #6 No platform print UI appears at any point in the export - not a sheet, not a preview, not a dialog. On Linux that is also what keeps the export away from the hang that made print_window refuse there
 - [x] #7 The Rust command is write_window_pdf, named for the window for the reason print_window is not print_document: the engine paginates the whole body and @media print only changes what is painted
 - [x] #8 The new platform dependencies are the smallest set that works, one per platform and each behind its own cfg, and pnpm notices is regenerated because THIRD-PARTY-NOTICES.md is bundled
 - [ ] #9 Whether the macOS export also avoids the stale page count is recorded as an observation either way. decision-14 prefers this API partly because a fresh NSPrintInfo may avoid it, and that is a hypothesis - the cause was never isolated, so a clean export is not proof and a truncated one is not a regression
+- [ ] #10 The unattended export is a build-time mode: a build without MALLOW_UNATTENDED=1 contains none of it, it writes nothing in the settings store an installed mallow shares, it waits for the render to settle as an event rather than on a timer, and it reports through exit codes (0 wrote, 1 the export refused, 2 never rendered, 3 unusable arguments)
+- [ ] #11 The paper measurement decides the checks a number can settle - the last section is present, no app shell string is on the paper, the type is within tolerance of the platform's baseline, the file is under the size cap, and on Windows no WebView2 header or footer - while page count and paper size are recorded rather than judged; its pure half is covered by pnpm test, and it refuses to measure against a fixture that carries one of its own shell markers
+- [ ] #12 The paper CI job writes and measures light and dark paper on macOS, Windows and Linux, keeps the PDFs and the JSON as artifacts, and puts the tables in the run summary. A platform with no baseline records its type size instead of failing, because the first paper is what a baseline is made from and a person has to call it right first
+- [ ] #13 AGENTS.md and AGENTS.ja.md name the paper job and the paper measurement in Verifying changes, and check.yml runs exactly what they name - the rule that the documented list and the enforced list cannot drift apart
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -291,4 +297,114 @@ pageRange・paper・4 辺の余白（**`WKPrintingView` はヘッダ・フッタ
 指示書は `_sandbox/handoff/task-30/unattended-export.md`）に移す — あれが入れば
 人手なしに紙を作って測れるので、**この手当ての確認が実機往復を 1 回も使わない。**
 計器と同じ値が要るなら、無人書き出しの側に置き直す。
+
+## 2 本目の PR（2026-09-08）— 計器が入り、その初回が 2 つの欠陥を見つけた
+
+**PR は 2 本**: **#50**（実装。[P1] 3 件 → 修正 → APPROVED → CI 発の 2 件を追加修正 →
+再び APPROVED）と **#51**（無人書き出し・紙の計測・紙の CI ジョブ。#50 に stacked）。
+**どちらも未マージ。**
+
+**手元での成果 — 余白の手当ての検証に実機往復を 1 回も使わなかった。**
+無人書き出しが書いた紙は **14 ページ・ページ箱 `504 × 750`・語の高さ中央値 18.55**
+（基準は印刷経路の完走版 18.56、差 0.1%）。**0.847 倍の縮小は消え、幾何は印刷経路の
+正しい紙と一致**した。dark も同値。紙は `mac/pdf-mac-{light,dark}-5.pdf`、
+相対パス修正後の再確認が `pdf-mac-light-6.pdf`。
+
+**紙の CI ジョブの初回実行が、手元では見つからない 2 件を出した。**
+
+1. **Windows 分岐がコンパイルできていなかった**（`pdf.rs`）。webview2-com のマクロは
+   完了ハンドラの引数を closure が見る前に変換する — `ClosureArg for HRESULT` は
+   `windows::core::Result<()>`、`ClosureArg for BOOL` は `bool` を出す — ので、
+   `hr.ok()` と `written.as_bool()` はどちらも存在しないメソッドの呼び出しだった。
+   **あの分岐がどこかでコンパイルされた初めての機会がこの CI ジョブ**であり、
+   「Windows の分岐はどの自動検査でもコンパイルされない」と書いていた穴が
+   そのまま現実になっていた。
+2. **相対パスの保存先が、環境ごとに違う壊れ方をし、片方は沈黙した。** CI が
+   `paper/x.pdf` を渡したところ、Linux は
+   `The pathname … is not an absolute path` で停止し、**macOS は
+   `CFURLGetFSRef was passed a URL which has no scheme` をログに出して
+   何も書かずに成功を返した**（`fileURLWithPath:` が相対 NSURL を作る）。
+   **`write_window_pdf` の中で絶対パスへ正規化**したので、保存ダイアログ以外の
+   すべての呼び出し元が守られる。テスト 2 件。
+
+**紙の計測が既知の紙で検算できることも確認した**: 印刷経路の完走版 PASS、
+末尾が落ちた紙は「最後の節」で FAIL、0.847 倍の紙は倍率で FAIL。
+
+**レビューで直した 3 件（#51）**: paths フィルタが狭すぎた（列挙は同じ形で古び、
+**失敗が沈黙**するので粗くした）、悪い文書で 60 秒待ってから「描画に届かない」と
+言っていた（待つ前に exit 3 で拒否し種類を名指し）、未知の `--os` が倍率と
+Windows のヘッダ検査を両方飛ばして PASS を返しえた（閉じた集合に）。
+
+**まだ人間に残るもの**: AC #2・#3・#4・#6、合格した紙の目視、
+**Windows と Linux の紙**（1 回目は Windows がコンパイルで、Linux と macOS が
+相対パスで落ちたので、まだ 1 枚も出ていない）、AC #9。
+
+## レビュー 3 ラウンドで残った 1 件は、人に返す種類のものだった（2026-09-08）
+
+**#51 は 3 ラウンド回した**（[P1] 1 + [P2] 3 + [P3] 1 → [P1] 4 → [P1] 2）。
+**そのうち機械が決められないものが 1 つ残る。**
+
+**紙の CI ジョブが 2 回の実行で見つけたもの（どれも手元では見えない）:**
+
+1. **Windows のコンパイルエラー 2 件**（`pdf.rs`）— 引数の型（webview2-com のマクロが
+   `HRESULT` → `Result<()>`、`BOOL` → `bool` に変換する）と、sender の所有権（E0382。
+   handler が奪うので同期の失敗経路用に clone が要る）。**どちらも #50 で修正。**
+2. **相対パスの保存先** — Linux は明示エラー、**macOS は何も書かずに成功を返す**。
+   `write_window_pdf` の中で絶対パスへ正規化（#50）。
+3. **Windows のテスト実行ファイルが起動しない** — `0xc0000139`
+   （STATUS_ENTRYPOINT_NOT_FOUND）。lib のテストバイナリは `target/debug/deps` から
+   起動し、アプリの隣の WebView2 ローダがそこに無い。**Windows はビルドのみ**
+   （`cargo test --no-run`）にした。あの環境で重要なのはコンパイルが通ることで、
+   実際このジョブが捕まえた 2 件はどちらもコンパイルエラーだった。
+4. **Linux は初めて紙を出し、合格した** — プリンタ名の GTK 列挙がランナーで通った。
+   この分岐でいちばん自信の無かった箇所である。
+
+**レビュアーが見つけた、自力では直さなかったであろう欠陥:**
+**基準値をプラットフォームで持ち、手元の数字を CI ランナーに当てていた。**
+ランナーの macOS は同じ文書を 21.00 と測る（手元は 18.56）。**その差の中で、
+このタスクが追ってきた 0.847 倍の縮小は 17.79 = 4.2% 差となり、許容 5% を通る。**
+つまり**間違った機械の基準は、検査が存在する理由そのものの欠陥を通す**。
+キーを環境名にし（CI は `ci-<platform>`）、性質をテストで固定した。
+
+**残る 1 件は人に返した。** 3 環境の `ci-*` 基準値は、**誰かがランナーの紙を開いて
+「この文字サイズで正しい」と言うところから**しか来ない。仕組みだけ入れてある:
+`baseline.json` の **`_required`** に載っているキーはエントリが無ければ**落ちる**、
+まだ許される飛ばしは `NOT CHECKED: … so a scaled paper would pass here` と出す。
+**私が artifact を読んで数字を打ち込むのは、`_required` が終わらせようとしている
+「誰も見ていない」状態そのものなので、やらなかった。**
+
+**次の一手（維持者）**: #50 → #51 の順にマージ。紙のジョブの artifact を開いて
+3 環境の紙を確認し、正しければ `baseline.json` に `ci-macos` / `ci-linux` /
+`ci-windows` の数字と `_required` を同時に足す（各 1 行）。
+
+## 3 環境で紙が出た（2026-09-08、CI run 34216957411）— そして Linux の紙に余白が無い
+
+**紙の CI ジョブが 3 環境とも green**。6 枚（3 環境 × 2 テーマ）の計測がすべて合格した。
+**Windows が書き出しまで到達したのは、poppler のバイナリを PATH 順に任せず名指しにしてから** —
+ランナー自身の Xpdf `pdftotext`（`-bbox` を持たない）が、poppler のディレクトリを
+前に置いても答え続けていた。
+
+| | ページ | 用紙 | 本文の x | 語の高さ中央値 | サイズ |
+|---|---|---|---|---|---|
+| macOS ランナー | 15 | 612×792 (Letter) | 45.4–557.8 | 21.00 | 314 KB |
+| Windows ランナー | 14 | 612×792 (Letter) | 45.0–561.5 | 15.45 | 543 KB |
+| Linux ランナー | 13 | 595×842 (A4) | **18.0**–568.7 | 33.28 | **4.4 MB** |
+| この機械 | 14 | 595×842 (A4) | 45.4–545.8 | 18.55 | 293 KB |
+
+**新しい所見: Linux の紙に 16mm の余白が無い。** 本文が x=18pt から始まる（他はすべて
+45.4pt = 16mm）。**フォント差ではなく bbox の事実**で、`@page { margin: 16mm }` が
+あの分岐に届いていない。macOS ランナーのページ箱は `45.4 45.4 521 700` = Letter から
+4 辺 16mm・倍率 1 なので、同じスタイルシートがあちらでは効いている。Linux だけ 4.4 MB
+（他は 300〜540 KB）も同じ方向を指す。**原因未特定。当て推量で直していない。**
+
+**中央値はランナー間で比較できない** — フォント代替が違い `pdftotext` の語の切り方も
+変わる（macOS ランナーでは `ここまでが` が 1 語にならない）。**Linux の文字サイズは
+この表からは判定できず、人が PDF を見る必要がある。** 基準値を環境ごとに持つ理由そのもの。
+
+**macOS と Windows は Letter**（ランナーの既定用紙）。いま `ci-macos` の基準を取ると
+Letter の値になる。**書き出しは用紙サイズを指定する引数を持たない** — 必要なら
+無人書き出しに `--paper` を足す話になる。
+
+**受け入れの判断は人に残る。** 読み: macOS と Windows は幾何が正しく見え、基準値の
+候補になる。**Linux は余白が無い理由が分かるまで受け入れない。**
 <!-- SECTION:NOTES:END -->

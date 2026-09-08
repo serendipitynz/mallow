@@ -67,7 +67,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share), `print` / `pdf-export` (each entry's key, gate and
-  reason), `file`, `path`, `tauri` (invoke wrappers), `types`.
+  reason), `build-flags` (the unattended switch Vite substitutes), `render-signal`
+  (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
+  wrappers), `types`.
+- `unattended/` — the unattended export's driver (TASK-30), reached only from
+  `if (UNATTENDED)` in `App` and absent from an ordinary bundle.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin), `global`, `app`,
   `markdown`, `config`, `source`, `html`, `table`, `xml`.
 
@@ -946,12 +950,57 @@ hold rather than as an exhaustive style guide.
   should still fail in 5s).
 - Backend: `cargo fmt --check`, `cargo check` and `cargo test` inside
   `src-tauri/`. The `commands` module has unit tests (a small self-cleaning
-  temp-dir helper, no `tempfile` dep).
+  temp-dir helper, no `tempfile` dep). **`unattended.rs`'s tests are
+  `cfg(unattended)`**, so a plain `cargo test` never compiles them — the paper job
+  runs `MALLOW_UNATTENDED=1 cargo test`, and that is the only place they run.
+- **The paper** (TASK-30): `MALLOW_UNATTENDED=1 pnpm tauri build --debug
+  --no-bundle --no-sign` produces a binary that opens one document and writes its
+  PDF with nobody at the keyboard —
+  `./src-tauri/target/debug/mallow --document scripts/paper/print-pagebreaks.md
+  --out paper.pdf --theme light` — and
+  `node scripts/paper/measure-paper.mjs paper.pdf --os macos --theme light` says
+  whether that paper is right. **It answers only what a number can settle**: the
+  last section is there, no shell string reached the page, the type is within 5%
+  of **its own environment's** baseline in `scripts/paper/baseline.json`, the file
+  is not a runaway, and on Windows WebView2 added no header or footer. **The
+  baseline is keyed by environment rather than by platform, and that is measured
+  rather than tidy**: this machine's macOS paper measures 18.56 where the CI
+  runner's measures 21.00, and against the wrong one of those the 0.847 shrink
+  this task chased comes out 4.2% off — inside the tolerance. A key with no entry
+  is recorded and never failed, because the first paper is what a baseline is made
+  from and a person has to call it right first — **and it says so loudly**, since a
+  permanent skip is a check that never runs. `baseline.json`'s `_required` list is
+  what ends that state: a key on it with no entry fails instead of skipping, and a
+  key goes on it at the same time as its number. **As of 2026-09-09 only
+  `ci-macos` is accepted** — the Linux runner's paper starts its text at 18pt
+  where every other paper starts at 16mm, so `@page` is not reaching that arm and
+  its type size is measured but not judged; the Windows runner's paper has no
+  defect recorded against it and is simply not accepted yet.
+  **Windows builds the unattended tests without running them**: the test
+  executable exits with `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) from
+  `target/debug/deps`, where the WebView2 loader beside the app is not. The
+  compile is what matters most there — both defects this job has caught in that
+  arm were compile errors — and the tests are platform-independent, so the other
+  two runners execute them. Page count and paper
+  size are recorded, not judged — a runner's Japanese fonts paginate differently.
+  Whether the type reads comfortably, and how a table that straddles a break
+  actually looks, stay with whoever opens the PDF. **Requires poppler's**
+  `pdfinfo` and `pdftotext`, and it checks: the Windows runner carries Xpdf's
+  `pdftotext`, which has no `-bbox`, so the first run there ended in a usage
+  screen rather than a measurement. An instrument that cannot tell whose
+  implementation it has reports the wrong thing confidently.
 - End-to-end: `pnpm tauri dev` (GUI) or `pnpm tauri build`.
 - CI (`.github/workflows/check.yml`) runs exactly this list on pull requests and
   on pushes to `main` — `biome ci`, `pnpm build`, `pnpm test`, `cargo fmt
   --check`, `cargo check`, `cargo test` — so what is documented here and what is
   enforced cannot drift apart. Add a check here and in that workflow together.
+  Its third job, `paper`, runs the two paper commands above on macOS, Windows and
+  Linux in both themes and keeps the PDFs as artifacts. **It is not on every pull
+  request** — three OS Rust builds cost several times the other two jobs, so a
+  `paper-paths` job diffs against the base and the matrix runs only when the
+  paper's own inputs changed, or on `workflow_dispatch`. It is also **the only
+  place `pdf.rs`'s Windows and macOS arms are compiled by CI at all**, the other
+  Rust job being ubuntu.
 
 ## Releasing (macOS signing)
 

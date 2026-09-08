@@ -1,11 +1,13 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { UNATTENDED } from '../lib/build-flags';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { setMarkdownPreviewActive } from '../lib/markdown-preview';
 import { renderMermaid } from '../lib/mermaid';
 import { readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
+import { notifyRenderSettled } from '../lib/render-signal';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
@@ -65,7 +67,30 @@ export function MarkdownView({ source }: { source: string }) {
     }
 
     enhanceCodeBlocks(article);
-    void renderMermaid(article);
+    const mermaid = renderMermaid(article);
+
+    /* The unattended export needs to know when this article stops changing, and
+       nothing else does — so both the wait and the report are inside the branch
+       an ordinary build drops (`lib/build-flags`). What it waits for is the two
+       things that arrive after the HTML: mermaid replacing its own `<pre>`, and
+       the images loading. A timer instead would sometimes print a diagram's
+       source, which is indistinguishable from TASK-29's bug on the paper. */
+    if (UNATTENDED) {
+      void (async () => {
+        await mermaid.catch(() => {});
+        await Promise.all(
+          [...article.querySelectorAll('img')].map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise<void>((resolve) => {
+                  img.addEventListener('load', () => resolve(), { once: true });
+                  img.addEventListener('error', () => resolve(), { once: true });
+                }),
+          ),
+        );
+        notifyRenderSettled();
+      })();
+    }
 
     const onClick = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest('a');

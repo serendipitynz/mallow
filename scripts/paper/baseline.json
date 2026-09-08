@@ -1,0 +1,20 @@
+{
+  "_why": "The type size a person has looked at and called correct, as the median word height in points on page 2 of print-pagebreaks.md. **Keyed by environment, not by platform**: two machines running the same OS substitute different fonts for this document, so a number from one is not a measurement of the other. A key with no entry is recorded and never failed — the first paper is what a baseline is made from, and only after someone opens it and says the type is right. `ci-*` keys belong to the GitHub runners; a bare platform name is a local machine's.",
+  "_required_why": "Keys listed in _required must have an entry: a missing one fails the measurement instead of skipping it. That is what stops the bootstrap state — where a scaled paper passes because nothing is checking — from becoming permanent. A key goes in here at the same time as its number.",
+  "_required": [
+    "ci-macos"
+  ],
+  "_how_to_add": "Run the paper job, download the artifact, open the PDF, and only if the type is the size the print stylesheet intends, copy that run's recorded median word height in here with a note saying which run it came from.",
+  "macos": {
+    "medianWordHeight": 18.56,
+    "from": "the print route's own paper (task-27 paper-mac-light-7a.pdf), which is the size the print stylesheet was designed against; matched by the unattended export's paper on the same machine, 2026-09-08"
+  },
+  "ci-macos": {
+    "medianWordHeight": 21.0,
+    "from": "the macOS runner's own paper, accepted by the maintainer 2026-09-09 from run 34216957411 (paper-macos-light/dark, US Letter 612x792, 15 pages, text block 45.4-557.8 = the 16mm @page margin at scale 1). Letter rather than A4 because that is the runner's default paper: if that ever changes, this number changes with it."
+  },
+  "_not_accepted": {
+    "ci-linux": "not accepted 2026-09-09: the Linux paper's text starts at x=18pt where every other paper starts at 45.4pt, so @page's 16mm margin is not reaching that arm. Recorded in TASK-30; the paper is measured and reported but its type size is not checked until that is understood.",
+    "ci-windows": "not accepted 2026-09-09. No defect is recorded against it — the geometry looks right (Letter, 14 pages, text block 45.0-561.5, no WebView2 header or footer) — so this is a judgement withheld rather than a fault found."
+  }
+}

@@ -66,7 +66,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   積算）、`chord`（アクセラレータの一致判定と、アプリ全体の chord handler・その 3 値）、
   `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲート）、
   `print` / `pdf-export`（各入口のキー・ゲート・理由）、
+  `build-flags`（Vite が置き換える無人書き出しのスイッチ）、
+  `render-signal`（描画済みの本文が変化し終わった時点）、
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
+- `unattended/` — 無人書き出しのドライバ（TASK-30）。`App` の `if (UNATTENDED)` からしか
+  到達せず、通常のバンドルには入らない。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
   `markdown`、`config`、`source`、`html`、`table`、`xml`。
 
@@ -830,11 +834,48 @@ Comments と Functions の規約は機械的に検査されない。コメント
   5 秒で落ちてほしい）。
 - バックエンド: `src-tauri/` 内で `cargo fmt --check`・`cargo check`・`cargo test`。
   `commands` モジュールにユニットテストがある（`tempfile` 依存を避けた
-  自己クリーンアップ式の temp-dir ヘルパー）。
+  自己クリーンアップ式の temp-dir ヘルパー）。**`unattended.rs` のテストは
+  `cfg(unattended)`** なので素の `cargo test` では 1 度もコンパイルされない —
+  紙のジョブが `MALLOW_UNATTENDED=1 cargo test` を走らせ、そこだけが実行場所である。
+- **紙**（TASK-30）: `MALLOW_UNATTENDED=1 pnpm tauri build --debug --no-bundle --no-sign`
+  で、文書を 1 つ開いて人手なしに PDF を書くバイナリができる —
+  `./src-tauri/target/debug/mallow --document scripts/paper/print-pagebreaks.md
+  --out paper.pdf --theme light` — そして
+  `node scripts/paper/measure-paper.mjs paper.pdf --os macos --theme light` が
+  その紙の合否を言う。**答えるのは数で決まることだけ**である: 最後の節があること、
+  外殻の文字列が紙に出ていないこと、文字の大きさが `scripts/paper/baseline.json` の
+  **その環境自身**の基準から 5% 以内であること、暴走サイズでないこと、Windows では
+  WebView2 のヘッダ・フッタが無いこと。**基準は環境ごとに持つ。これは整頓ではなく実測で**、
+  この機械の macOS の紙は 18.56、CI ランナーの同じ文書は 21.00 で、**間違った方を当てると
+  このタスクが追った 0.847 倍の縮小が 4.2% 差に収まり、許容内で通ってしまう**。
+  エントリの無いキーは記録するだけで落とさない — 最初の紙が基準を作る回で、
+  人がそれを見て正しいと言うのが先だからである。**ただし大きな声で言う** —
+  飛ばしっぱなしの検査は 2 度と走らない検査だからで、`baseline.json` の `_required`
+  がその状態を終わらせる仕掛けである（載っているキーにエントリが無ければ、
+  飛ばさずに落ちる。キーは数字と同時に載せる）。**2026-09-09 時点で受け入れ済みは
+  `ci-macos` だけ** — Linux ランナーの紙は本文が 18pt から始まり（他はすべて 16mm）
+  `@page` があの分岐に届いていないので、文字サイズは測るが判定しない。Windows
+  ランナーの紙には欠陥の記録は無く、単にまだ受け入れていない。
+  **Windows は無人モードのテストをビルドするだけで実行しない**: テスト実行ファイルは
+  `target/debug/deps` から起動して `0xc0000139`（STATUS_ENTRYPOINT_NOT_FOUND）で落ちる
+  — アプリの隣にある WebView2 のローダがそこには無いためである。あそこで最も重要なのは
+  コンパイルが通ること（このジョブがあの分岐で捕まえた欠陥は 2 つともコンパイルエラー
+  だった）で、テスト自体は環境に依らないので他の 2 ランナーが実行する。総ページ数と用紙サイズは判定せず記録する — ランナーの
+  日本語フォントは別物で、ページ割りが変わるからである。**文字が読みやすいか、
+  ページ境界を跨いだ表がどう見えるかは、PDF を開く人に残る。** **poppler の** `pdfinfo`・`pdftotext` が要り、**それであることを確認する** —
+  Windows のランナーは Xpdf の `pdftotext` を持っており、あれには `-bbox` が無いので、
+  あそこでの初回は計測ではなく usage 画面で終わった。**どの実装を握っているか分からない
+  計器は、間違ったことを自信を持って報告する。**
 - エンドツーエンド: `pnpm tauri dev`（GUI）または `pnpm tauri build`。
 - CI（`.github/workflows/check.yml`）が pull request と `main` への push で
   ちょうどこの一覧を走らせる — `biome ci`・`pnpm build`・`pnpm test`・
-  `cargo fmt --check`・`cargo check`・`cargo test`。ここに書いてあるものと
+  `cargo fmt --check`・`cargo check`・`cargo test`。**3 つ目のジョブ `paper`** は
+  上の 2 コマンドを macOS・Windows・Linux で light と dark の両方に対して走らせ、
+  PDF を artifact に残す。**毎 PR では走らない** — 3 環境の Rust ビルドは他の 2 ジョブの
+  数倍かかるので、`paper-paths` ジョブが base との差分を見て、紙に関わる入力が
+  変わったときと `workflow_dispatch` のときだけ matrix が回る。**CI が `pdf.rs` の
+  Windows と macOS の分岐をコンパイルする唯一の場所**でもある（もう 1 つの Rust
+  ジョブは ubuntu なので）。ここに書いてあるものと
   強制されるものが乖離しないようにするためなので、**検査を足すときは
   この一覧とそのワークフローを同時に直す。**
 

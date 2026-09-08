@@ -19,6 +19,10 @@ on:
   push:
     branches:
       - main
+  # The paper job is the only thing `workflow_dispatch` is here for: it is the
+  # switch that produces a platform's first paper, which is what a baseline is
+  # made from.
+  workflow_dispatch:
 
 # Both jobs only read the checkout. Set the floor here while this is the
 # repository's first check workflow, rather than inheriting the default scope.
@@ -102,3 +106,216 @@ jobs:
       - name: Tests
         working-directory: src-tauri
         run: cargo test
+
+  # Whether this pull request touches anything the paper depends on. A job of its
+  # own because GitHub's `paths:` filter is per-workflow, not per-job — putting the
+  # paper's paths at the top would stop the two jobs above from running on every
+  # other change, which is the opposite of what they are for. `git diff` against
+  # the base needs no third-party action to do it.
+  paper-paths:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      paper: ${{ steps.filter.outputs.paper }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The rule lives in a script rather than in a `grep` here, because its
+      # wrong answer is silent — too narrow and a paper regression merges
+      # unmeasured — and a rule in a file can be tested. `scripts/paper/
+      # affects-paper.test.mjs` is that test.
+      - id: filter
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          git diff --name-only "origin/$BASE...HEAD" > changed.txt
+          echo "changed files:"; cat changed.txt
+          if node scripts/paper/affects-paper.mjs --list < changed.txt; then
+            echo 'paper=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'paper=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---- The paper ------------------------------------------------------------
+  # Builds the unattended export on all three platforms, writes the fixture's PDF
+  # in both themes, and measures it. **This is not a replacement for a person
+  # opening the paper** — it measures what a number can settle (the document
+  # reached its end, no app shell, the type is the size it was, the file is not a
+  # runaway) and leaves the rest, so a person only opens papers that already
+  # passed.
+  #
+  # It also compiles `src-tauri/src/pdf.rs` on Windows and macOS, which nothing
+  # else here does: the two jobs above are ubuntu, so before this job the Windows
+  # arm's first compile was whoever measured it by hand.
+  #
+  # **Not on every pull request.** Three OS Rust builds cost several times what
+  # the two jobs above do, so this runs when the paper's own inputs change, or on
+  # demand. Not on `main` pushes either — paper is looked at in a pull request.
+  paper:
+    needs: paper-paths
+    # `!cancelled()` rather than `always()`, and rather than nothing at all: the
+    # filter job does not run on a manual dispatch, and a skipped dependency skips
+    # its dependents unless the condition says otherwise.
+    if: >-
+      !cancelled() &&
+      (github.event_name == 'workflow_dispatch' || needs.paper-paths.outputs.paper == 'true')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macos
+          - os: windows-latest
+            platform: windows
+          - os: ubuntu-latest
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    # TASK-24's lesson, applied before it can happen here: an install step with no
+    # ceiling can hold a runner until the workflow's own limit.
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # release.yml's list plus what a paper needs: a display to open a window on,
+      # Japanese fonts for a fixture written in Japanese, and poppler to measure
+      # with. Without the fonts the text is tofu, which measures as a paper rather
+      # than as a missing font.
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xvfb \
+            fonts-noto-cjk \
+            poppler-utils
+
+      - name: Install poppler (macOS)
+        if: matrix.platform == 'macos'
+        run: brew install poppler
+
+      # Pinned release rather than a package manager: the runner's package
+      # indexes name and version poppler differently over time, and a measurement
+      # that cannot run is indistinguishable from a paper that failed.
+      - name: Install poppler (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $url = 'https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip'
+          Invoke-WebRequest -Uri $url -OutFile poppler.zip
+          Expand-Archive -Path poppler.zip -DestinationPath $env:RUNNER_TEMP\poppler
+          # Found rather than assumed: a guessed folder name that no longer exists
+          # adds nothing to PATH and says nothing, and the runner already carries an
+          # Xpdf `pdftotext` that would then answer instead — which is how this step
+          # first failed, with a usage screen rather than a measurement.
+          $bin = (Get-ChildItem -Path "$env:RUNNER_TEMP\poppler" -Recurse -Filter pdftotext.exe |
+                  Select-Object -First 1).Directory.FullName
+          if (-not $bin) { throw "the poppler archive contained no pdftotext.exe" }
+          Write-Host "poppler bin: $bin"
+          # **Named, not merely put on PATH.** Prepending this directory was not
+          # enough: the runner's own Xpdf `pdftotext` still answered, and Xpdf has
+          # no `-bbox`. `POPPLER_BIN` tells the measurement which binaries to run,
+          # which is a question PATH order should not be deciding.
+          "POPPLER_BIN=$bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: paper-${{ matrix.platform }}
+
+      - run: pnpm install --frozen-lockfile
+
+      # The unattended export's own tests are `cfg(unattended)`, so the `cargo
+      # test` in the job above never compiles them. This is the only place they
+      # are built at all.
+      #
+      # **Windows builds them and does not run them**, and that is a measured
+      # limitation rather than a preference: the test executable exits with
+      # `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) before reaching any test,
+      # because a lib test binary links what the app links and starts from
+      # `target/debug/deps`, where the WebView2 loader beside the app is not. What
+      # matters most here is that the file compiles for Windows — the two errors
+      # this job has already caught were both compile errors — and the tests
+      # themselves are platform-independent argument and path checks that the
+      # other two runners execute.
+      - name: Unattended-mode Rust tests
+        working-directory: src-tauri
+        env:
+          MALLOW_UNATTENDED: '1'
+        run: cargo test ${{ matrix.platform == 'windows' && '--no-run' || '' }}
+
+      - name: Build the unattended export
+        env:
+          MALLOW_UNATTENDED: '1'
+        run: pnpm tauri build --debug --no-bundle --no-sign
+
+      - name: Write and measure the paper
+        shell: bash
+        env:
+          MALLOW_BIN: ${{ matrix.platform == 'windows' && 'src-tauri/target/debug/mallow.exe' || 'src-tauri/target/debug/mallow' }}
+        run: |
+          set -euo pipefail
+          mkdir -p paper
+          run_export() {
+            if [ "${{ matrix.platform }}" = "linux" ]; then
+              xvfb-run -a "$MALLOW_BIN" --document "$PWD/scripts/paper/print-pagebreaks.md" --out "$1" --theme "$2"
+            else
+              "$MALLOW_BIN" --document "$PWD/scripts/paper/print-pagebreaks.md" --out "$1" --theme "$2"
+            fi
+          }
+          status=0
+          for theme in light dark; do
+            # Absolute, because a relative destination is written by no platform:
+            # Linux refuses it and macOS reports success having written nothing.
+            pdf="$PWD/paper/paper-${{ matrix.platform }}-$theme.pdf"
+            echo "### ${{ matrix.platform }} / $theme" >> "$GITHUB_STEP_SUMMARY"
+            # The exporter's own code, captured rather than read from `$?` after
+            # an `if !`, where it is always the negation and every failure would
+            # be reported as 0 — the one number this line exists to carry.
+            exported=0
+            run_export "$pdf" "$theme" || exported=$?
+            if [ "$exported" -ne 0 ]; then
+              echo "the unattended export failed (exit $exported) — no paper to measure" >> "$GITHUB_STEP_SUMMARY"
+              status=1
+              continue
+            fi
+            # `ci-<platform>` and not `<platform>`: a baseline belongs to the
+            # environment that produced it, and this runner's fonts measure the
+            # fixture differently from any laptop's. Using a laptop's number here
+            # would not merely fail good paper — review showed it would pass the
+            # 0.847 shrink this whole task chased.
+            measure() {
+              node scripts/paper/measure-paper.mjs "$pdf" \
+                --os ${{ matrix.platform }} --theme "$theme" \
+                --baseline-key "ci-${{ matrix.platform }}" "$@"
+            }
+            measure --json > "paper/paper-${{ matrix.platform }}-$theme.json" || status=1
+            measure >> "$GITHUB_STEP_SUMMARY" || true
+          done
+          exit $status
+
+      # Uploaded whether the measurement passed or failed: a failing paper is the
+      # one worth opening.
+      - name: Keep the paper
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-${{ matrix.platform }}
+          path: paper/
+          retention-days: 14

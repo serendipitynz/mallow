@@ -10,7 +10,7 @@
       "src/**/*.ts",
       "src/**/*.tsx",
       "src/**/*.test.ts",
-      "scripts/*.mjs",
+      "scripts/**/*.mjs",
       "vite.config.ts",
       "vitest.config.ts",
       "package.json",
