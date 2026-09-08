@@ -4,7 +4,7 @@ title: Write PDF from the print pipeline so a page can leave mallow on every pla
 status: In Progress
 assignee: []
 created_date: '2026-09-07 08:55'
-updated_date: '2026-09-08 10:54'
+updated_date: '2026-09-08 20:53'
 labels:
   - feature
 milestone: m-3
@@ -39,15 +39,15 @@ So mallow writes the PDF itself, through each platform's print *pipeline* rather
 - [ ] #2 File > Export as PDF... and CmdOrCtrl+E both reach the export, and the destination is chosen by the reader through a save dialog rather than written to a default location. AMENDED 2026-09-07: no File submenu exists on any platform yet - mallow's macOS menu carries mallow and Edit only - so the accelerator is the whole entry here, exactly as TASK-27 left printing's, and TASK-12.4 adds both items when it builds the menu on all three. What that costs is that the disabled appearance of AC #4 has nothing to appear on, so #4 is about the chord being inert; what it buys is that the menu file is touched once rather than twice, which is the choice the handoff doc already made for Print....
 - [ ] #3 The CmdOrCtrl+E handler consumes the chord even where the export is refused, the way the print chord does. Registering nothing concedes a chord to the platform - that is what let WebView2 print a .csv in TASK-27 - and whether any engine binds Ctrl+E is unmeasured, which consuming it makes moot
 - [ ] #4 Export as PDF... is disabled unless the active view is markdown in preview - the same sentence as Print..., recorded with its own reason (the print stylesheet is markdown-only) rather than as a copy of printing's
-- [ ] #5 AMENDED 2026-09-08: measured by scripts/paper/measure-paper.mjs and reported with its output, a person adding the visual reading. A PDF written on macOS, Windows and Linux each reaches the document's last page and carries no part of the app shell. This is the criterion TASK-28's AC #1 and #9 could not meet on the print path
+- [x] #5 AMENDED 2026-09-08: measured by scripts/paper/measure-paper.mjs and reported with its output, a person adding the visual reading. A PDF written on macOS, Windows and Linux each reaches the document's last page and carries no part of the app shell. This is the criterion TASK-28's AC #1 and #9 could not meet on the print path
 - [ ] #6 No platform print UI appears at any point in the export - not a sheet, not a preview, not a dialog. On Linux that is also what keeps the export away from the hang that made print_window refuse there
 - [x] #7 The Rust command is write_window_pdf, named for the window for the reason print_window is not print_document: the engine paginates the whole body and @media print only changes what is painted
 - [x] #8 The new platform dependencies are the smallest set that works, one per platform and each behind its own cfg, and pnpm notices is regenerated because THIRD-PARTY-NOTICES.md is bundled
 - [ ] #9 Whether the macOS export also avoids the stale page count is recorded as an observation either way. decision-14 prefers this API partly because a fresh NSPrintInfo may avoid it, and that is a hypothesis - the cause was never isolated, so a clean export is not proof and a truncated one is not a regression
-- [ ] #10 The unattended export is a build-time mode: a build without MALLOW_UNATTENDED=1 contains none of it, it writes nothing in the settings store an installed mallow shares, it waits for the render to settle as an event rather than on a timer, and it reports through exit codes (0 wrote, 1 the export refused, 2 never rendered, 3 unusable arguments)
-- [ ] #11 The paper measurement decides the checks a number can settle - the last section is present, no app shell string is on the paper, the type is within tolerance of the platform's baseline, the file is under the size cap, and on Windows no WebView2 header or footer - while page count and paper size are recorded rather than judged; its pure half is covered by pnpm test, and it refuses to measure against a fixture that carries one of its own shell markers
-- [ ] #12 The paper CI job writes and measures light and dark paper on macOS, Windows and Linux, keeps the PDFs and the JSON as artifacts, and puts the tables in the run summary. A platform with no baseline records its type size instead of failing, because the first paper is what a baseline is made from and a person has to call it right first
-- [ ] #13 AGENTS.md and AGENTS.ja.md name the paper job and the paper measurement in Verifying changes, and check.yml runs exactly what they name - the rule that the documented list and the enforced list cannot drift apart
+- [x] #10 The unattended export is a build-time mode: a build without MALLOW_UNATTENDED=1 contains none of it, it writes nothing in the settings store an installed mallow shares, it waits for the render to settle as an event rather than on a timer, and it reports through exit codes (0 wrote, 1 the export refused, 2 never rendered, 3 unusable arguments)
+- [x] #11 The paper measurement decides the checks a number can settle - the last section is present, no app shell string is on the paper, the type is within tolerance of the platform's baseline, the file is under the size cap, and on Windows no WebView2 header or footer - while page count and paper size are recorded rather than judged; its pure half is covered by pnpm test, and it refuses to measure against a fixture that carries one of its own shell markers
+- [x] #12 The paper CI job writes and measures light and dark paper on macOS, Windows and Linux, keeps the PDFs and the JSON as artifacts, and puts the tables in the run summary. A platform with no baseline records its type size instead of failing, because the first paper is what a baseline is made from and a person has to call it right first
+- [x] #13 AGENTS.md and AGENTS.ja.md name the paper job and the paper measurement in Verifying changes, and check.yml runs exactly what they name - the rule that the documented list and the enforced list cannot drift apart
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -407,4 +407,58 @@ Letter の値になる。**書き出しは用紙サイズを指定する引数�
 
 **受け入れの判断は人に残る。** 読み: macOS と Windows は幾何が正しく見え、基準値の
 候補になる。**Linux は余白が無い理由が分かるまで受け入れない。**
+
+## 2 本とも main に入った（2026-09-08）
+
+**#50** は `4d0a151`、**#51** は `b4c33a4`。main は `b4c33a4`。
+**#51 は 5 ラウンド目で APPROVED**（上限 3 からの逸脱 2 回は、4 回目が「記録を現 head に
+合わせるため」、5 回目が「残った [P1] の可否判断そのものをレビュアーに委ねるため」）。
+**レビュアーの最終判断**: 一部だけ required の基準値は受け入れ可 — macOS は倍率を実際に
+強制し、Linux と Windows は「検査していない」ことを毎回明示するから。
+
+**AC #10・#11・#12・#13 を Done にした**（無人書き出し・紙の計測・紙の CI ジョブ・
+記録と check.yml の同時更新。どれも main に入り、CI で動いている）。
+
+**AC #1・#5 は機械の側だけ満たしている。** 6 枚とも `reaches-last-section` と
+`no-app-shell` が合格しており、**「最後のページまで届き、外殻が乗っていない」は 3 環境で
+機械が確認した**。閉じていない理由は 2 つ:
+- **AC #1 は「`@media print` が当たるか」を問うており、Linux の答えが「一部」である。**
+  外殻は消えるが `@page` の 16mm 余白が届いていない（本文が x=18pt から始まる）。
+  **観測としては記録済みで、実装が done と言える状態ではない。**
+- **AC #5 の改訂文は「人が目視の所見を添える」ことを含む。** 維持者は 3 枚を見て
+  **macOS だけを基準値として受け入れた**（Windows は欠陥の記録なしで判断保留、
+  Linux は余白のため保留）。**Windows と Linux の目視所見は未記録。**
+
+**基準値の現状**: `ci-macos` = 21.00 のみ `_required`。**この検査は armed で、
+判別力も確認済み**（手元の倍率 18.55 の紙は 11.7% 差で落ちる）。
+
+**次の 3 つが残る**: Linux の余白（原因未特定・export 側の作業）、
+`ci-windows` / `ci-linux` の基準値、AC #2・#3・#4・#6 と AC #9 の手による実測。
+
+## 3 環境の紙が受け入れられ、倍率検査が armed になった（2026-09-09）
+
+**維持者が 3 枚とも「出力結果は問題ない」と判断した。** これで:
+
+- **AC #5 を Done にした。** 機械の側（6 枚とも `reaches-last-section` と `no-app-shell`）は
+  2026-09-08 の run 34216957411 で満たしており、**改訂文が求める「人が目視の所見を添える」も
+  3 環境そろった。**
+- **`baseline.json` は 3 環境とも埋まり、`_required` に 3 キーとも載った** —
+  `ci-macos` 21.00 / `ci-windows` 15.45 / `ci-linux` 33.28。**倍率検査は 3 環境で armed。**
+  レビュアーが最後まで [P1] にしていた「飛ばされたままなら 0.847 倍の紙が通る」状態は消えた。
+- **`ci-linux` の note には欠陥が書いてある** — 本文が x=18pt から始まる紙の倍率を
+  固定しているので、TASK-31 が体裁を動かしたら取り直す。
+
+**AC #1 は開けたまま。** 6 枚に外殻が無いので `@media print` は当たっているが、
+**Linux では `@page` の余白が届いていない**（本文が 45.4pt ではなく 18pt から）。
+**Linux についての答えは「一部」であり、それが分かるまでこの AC は閉じない。**
+
+**Linux の余白は TASK-31 として起票した**（`bug`、**milestone 未割当 = m-3 では対応しない**。
+維持者判断 2026-09-09「一旦は許容」）。対応表は
+`referent-table/referent-table-task-31-linux-page-margin.md` に先行して確定させた —
+**「余白」が 3 層（`@page` / 印刷操作側 / 印字可能領域）に分かれ、観測されたのは
+「本文がどこから始まるか」だけで、どの層が決めたかは未特定**だからである。
+macOS で同じ形の断定を 1 度誤っているので、断定形を禁じてある。
+
+**TASK-30 に残るのは AC #1・#2・#3・#4・#6・#9** — うち #2・#3・#4・#6・#9 は
+`procedure.md` の §2・§4・§6 を人が踏む回で、#1 は TASK-31 が答える。
 <!-- SECTION:NOTES:END -->
