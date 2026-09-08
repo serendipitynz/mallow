@@ -533,6 +533,17 @@ hold rather than as an exhaustive style guide.
   `extern` block rather than a dependency. **What picks the file backend out is
   virtual *and* PDF-capable**, not the name being looked for: a CUPS queue that
   writes PDF is a real printer to GTK and reports `is_virtual` false.
+  **The destination is made absolute before any of the three arms sees it**, and
+  that is measured rather than defensive: handed `paper/x.pdf`, Linux said
+  `The pathname … is not an absolute path` and stopped, while **macOS logged
+  `CFURLGetFSRef was passed a URL which has no scheme` and reported success having
+  written nothing** — `fileURLWithPath:` makes a relative NSURL out of a relative
+  path. The save dialog always answers absolute, so this is about every other
+  caller. **The Windows arm's first compile was a CI runner**, and it did not
+  compile: webview2-com's macro converts the completion handler's arguments before
+  the closure sees them (`HRESULT` becomes `windows::core::Result<()>`, `BOOL`
+  becomes `bool`), so the obvious `hr.ok()` and `written.as_bool()` are both
+  wrong there.
   **Two more things this arm and the export share.** Exports are serialized, in
   Rust by a lock the command tries and in the frontend by a flag the chord reads,
   because on macOS a second `NSPrintOperation` while one is running raises
