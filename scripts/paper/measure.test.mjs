@@ -217,3 +217,47 @@ describe('a baseline belongs to the environment that produced it', () => {
     expect(scaleOf(paper(21.0, 'ci-macos', laptopOnly))).toMatchObject({ skipped: true });
   });
 });
+
+/* Bootstrap has to end. With no `ci-*` entries the scale check skips on every
+   runner, which is right for the first paper and wrong forever after: review
+   pointed out that a 0.847 regression passes while it lasts. */
+describe('a required baseline cannot be skipped', () => {
+  const paper = (baseline, key = 'ci-macos') =>
+    judgePaper({
+      os: 'macos',
+      key,
+      bytes: 1000,
+      maxBytes: 10 * 1024 * 1024,
+      pages: 14,
+      pageSize: 'A4',
+      words: [
+        { page: 1, text: '§1', x0: 0, y0: 0, x1: 10, y1: 10 },
+        { page: 2, text: 'body', x0: 0, y0: 0, x1: 10, y1: 21 },
+        { page: 3, text: '12. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
+      ],
+      baseline,
+    });
+  const scaleOf = (result) => result.checks.find((check) => check.id === 'scale');
+
+  it('fails when the key is required and absent', () => {
+    const result = paper({ _required: ['ci-macos'] });
+    expect(result.ok).toBe(false);
+    expect(scaleOf(result).detail).toContain('listed as required');
+  });
+
+  // Before a person has accepted that environment's first paper there is nothing
+  // to compare against, so this skips — but it must say what is not being checked.
+  it('skips loudly when the key is not required yet', () => {
+    const result = paper({ _required: [] });
+    expect(result.ok).toBe(true);
+    expect(scaleOf(result)).toMatchObject({ skipped: true });
+    expect(scaleOf(result).detail).toContain('NOT CHECKED');
+  });
+
+  it('checks normally once the key has both an entry and a requirement', () => {
+    const result = paper({ _required: ['ci-macos'], 'ci-macos': { medianWordHeight: 21.0 } });
+    expect(scaleOf(result).ok).toBe(true);
+    expect(scaleOf(result).skipped).toBeFalsy();
+    expect(scaleOf(result).detail).toContain('baseline 21.00');
+  });
+});

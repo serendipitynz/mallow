@@ -180,11 +180,20 @@ export function judgePaper({ os, key, bytes, maxBytes, pages, pageSize, words, b
   ];
 
   if (expected === null) {
+    // **A missing baseline is a hole, and it has to say so.** Skipping is right
+    // during bootstrap — the first paper is what a baseline is made from — but a
+    // silent skip is a check that never runs again: review pointed out that with
+    // no `ci-*` entries a 0.847 regression passes on every runner. So a key the
+    // file lists as required fails instead, and one that is not yet required says
+    // out loud what is not being checked.
+    const required = (baseline?._required ?? []).includes(key);
     checks.push({
       id: 'scale',
-      ok: true,
-      skipped: true,
-      detail: `no baseline for ${key} yet — recorded ${fmt(height)}, and a person has to call this paper right before it becomes one`,
+      ok: !required,
+      skipped: !required,
+      detail: required
+        ? `${key} is listed as required in baseline.json but has no entry — measured ${fmt(height)}, and nothing is checking the type size`
+        : `NOT CHECKED: no baseline for ${key} yet, so a scaled paper would pass here. Measured ${fmt(height)}; a person opens this paper and, if the type is right, adds the number and the key to baseline.json`,
     });
   } else {
     const drift = height === null ? null : Math.abs(height - expected) / expected;

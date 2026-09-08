@@ -968,7 +968,16 @@ hold rather than as an exhaustive style guide.
   runner's measures 21.00, and against the wrong one of those the 0.847 shrink
   this task chased comes out 4.2% off — inside the tolerance. A key with no entry
   is recorded and never failed, because the first paper is what a baseline is made
-  from and a person has to call it right first. Page count and paper
+  from and a person has to call it right first — **and it says so loudly**, since a
+  permanent skip is a check that never runs. `baseline.json`'s `_required` list is
+  what ends that state: a key on it with no entry fails instead of skipping, and a
+  key goes on it at the same time as its number.
+  **Windows builds the unattended tests without running them**: the test
+  executable exits with `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) from
+  `target/debug/deps`, where the WebView2 loader beside the app is not. The
+  compile is what matters most there — both defects this job has caught in that
+  arm were compile errors — and the tests are platform-independent, so the other
+  two runners execute them. Page count and paper
   size are recorded, not judged — a runner's Japanese fonts paginate differently.
   Whether the type reads comfortably, and how a table that straddles a break
   actually looks, stay with whoever opens the PDF. Requires poppler

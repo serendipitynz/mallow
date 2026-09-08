@@ -229,12 +229,23 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # The unattended export's own tests are `cfg(unattended)`, so the `cargo
-      # test` in the job above never compiles them. This is the only place they run.
+      # test` in the job above never compiles them. This is the only place they
+      # are built at all.
+      #
+      # **Windows builds them and does not run them**, and that is a measured
+      # limitation rather than a preference: the test executable exits with
+      # `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) before reaching any test,
+      # because a lib test binary links what the app links and starts from
+      # `target/debug/deps`, where the WebView2 loader beside the app is not. What
+      # matters most here is that the file compiles for Windows — the two errors
+      # this job has already caught were both compile errors — and the tests
+      # themselves are platform-independent argument and path checks that the
+      # other two runners execute.
       - name: Unattended-mode Rust tests
         working-directory: src-tauri
         env:
           MALLOW_UNATTENDED: '1'
-        run: cargo test
+        run: cargo test ${{ matrix.platform == 'windows' && '--no-run' || '' }}
 
       - name: Build the unattended export
         env:

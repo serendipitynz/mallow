@@ -1,5 +1,7 @@
 {
   "_why": "The type size a person has looked at and called correct, as the median word height in points on page 2 of print-pagebreaks.md. **Keyed by environment, not by platform**: two machines running the same OS substitute different fonts for this document, so a number from one is not a measurement of the other. A key with no entry is recorded and never failed — the first paper is what a baseline is made from, and only after someone opens it and says the type is right. `ci-*` keys belong to the GitHub runners; a bare platform name is a local machine's.",
+  "_required_why": "Keys listed in _required must have an entry: a missing one fails the measurement instead of skipping it. That is what stops the bootstrap state — where a scaled paper passes because nothing is checking — from becoming permanent. A key goes in here at the same time as its number.",
+  "_required": [],
   "_how_to_add": "Run the paper job, download the artifact, open the PDF, and only if the type is the size the print stylesheet intends, copy that run's recorded median word height in here with a note saying which run it came from.",
   "macos": {
     "medianWordHeight": 18.56,
