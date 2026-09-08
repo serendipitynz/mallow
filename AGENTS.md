@@ -539,11 +539,14 @@ hold rather than as an exhaustive style guide.
   `CFURLGetFSRef was passed a URL which has no scheme` and reported success having
   written nothing** — `fileURLWithPath:` makes a relative NSURL out of a relative
   path. The save dialog always answers absolute, so this is about every other
-  caller. **The Windows arm's first compile was a CI runner**, and it did not
-  compile: webview2-com's macro converts the completion handler's arguments before
-  the closure sees them (`HRESULT` becomes `windows::core::Result<()>`, `BOOL`
-  becomes `bool`), so the obvious `hr.ok()` and `written.as_bool()` are both
-  wrong there.
+  caller. **The Windows arm's first compile was a CI runner**, and it took
+  two rounds there: webview2-com's macro converts the completion handler's
+  arguments before the closure sees them (`HRESULT` becomes
+  `windows::core::Result<()>`, `BOOL` becomes `bool`), so the obvious `hr.ok()`
+  and `written.as_bool()` are both wrong; and the sender has to be cloned for the
+  handler, because the synchronous failure path reports through it too. **Neither
+  is visible from macOS or from CI's ubuntu Rust job**, which is the whole reason
+  the paper job compiles this file on three platforms.
   **Two more things this arm and the export share.** Exports are serialized, in
   Rust by a lock the command tries and in the frontend by a flag the chord reads,
   because on macOS a second `NSPrintOperation` while one is running raises
