@@ -37,6 +37,16 @@ const DEFAULT_MAX_BYTES = 10 * 1024 * 1024;
 const PLATFORMS = ['macos', 'windows', 'linux'];
 const THEMES = ['light', 'dark'];
 
+/** Where poppler's binaries are, when PATH is not the right place to ask.
+ *
+ *  A CI runner carries Xpdf's `pdftotext` and answered with it even after
+ *  poppler's directory was prepended to PATH, so which implementation runs is a
+ *  question PATH order should not be deciding. Unset locally, where `pdftotext`
+ *  on PATH is the one the reader installed. */
+function tool(name) {
+  return process.env.POPPLER_BIN ? resolve(process.env.POPPLER_BIN, name) : name;
+}
+
 const POPPLER_HINT = `poppler is required (pdfinfo, pdftotext):
   macOS    brew install poppler
   Linux    sudo apt-get install -y poppler-utils
@@ -109,7 +119,7 @@ function requirePoppler() {
   // `spawnSync` rather than `execFileSync`, because **poppler prints its banner
   // on stderr and exits 0** — reading stdout alone finds an empty string and
   // rejects the very implementation this is looking for.
-  const probe = spawnSync('pdftotext', ['-v'], { encoding: 'utf8' });
+  const probe = spawnSync(tool('pdftotext'), ['-v'], { encoding: 'utf8' });
   if (probe.error?.code === 'ENOENT') {
     fail(3, `pdftotext not found.\n${POPPLER_HINT}`);
   }
@@ -122,14 +132,14 @@ function requirePoppler() {
   }
 }
 
-function poppler(tool, toolArgs) {
+function poppler(name, toolArgs) {
   try {
-    return execFileSync(tool, toolArgs, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    return execFileSync(tool(name), toolArgs, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   } catch (error) {
     if (error.code === 'ENOENT') {
-      fail(3, `${tool} not found.\n${POPPLER_HINT}`);
+      fail(3, `${name} not found.\n${POPPLER_HINT}`);
     }
-    fail(3, `${tool} could not read the PDF: ${error.message}`);
+    fail(3, `${name} could not read the PDF: ${error.message}`);
   }
 }
 

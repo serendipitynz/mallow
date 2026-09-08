@@ -218,6 +218,11 @@ jobs:
                   Select-Object -First 1).Directory.FullName
           if (-not $bin) { throw "the poppler archive contained no pdftotext.exe" }
           Write-Host "poppler bin: $bin"
+          # **Named, not merely put on PATH.** Prepending this directory was not
+          # enough: the runner's own Xpdf `pdftotext` still answered, and Xpdf has
+          # no `-bbox`. `POPPLER_BIN` tells the measurement which binaries to run,
+          # which is a question PATH order should not be deciding.
+          "POPPLER_BIN=$bin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - uses: pnpm/action-setup@v4
