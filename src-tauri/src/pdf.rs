@@ -79,6 +79,7 @@ pub async fn write_window_pdf(
     let Ok(_running) = lock.0.try_lock() else {
         return Err("an export is already running".to_string());
     };
+    let path = absolute_destination(&path)?;
     let (report, mut done) = channel::<Result<(), String>>(1);
     window
         .with_webview(move |webview| write_pdf(webview, path, report))
@@ -87,6 +88,28 @@ pub async fn write_window_pdf(
         .await
         .unwrap_or_else(|| Err("the PDF export ended without reporting an outcome".to_string()))?;
     Ok(())
+}
+
+/// The destination as an absolute path, because a relative one fails differently
+/// on each platform and on one of them it fails silently.
+///
+/// Measured 2026-09-08 in CI, which ran the export with `paper/x.pdf`: Linux said
+/// `The pathname "paper/x.pdf" is not an absolute path` and stopped, while macOS
+/// logged `CFURLGetFSRef was passed a URL which has no scheme` and reported
+/// success having written nothing — `fileURLWithPath:` builds a relative NSURL
+/// from a relative path, and the print pipeline has nowhere to put the file. The
+/// save dialog always answers with an absolute path, so this is about every other
+/// caller, starting with the unattended export.
+///
+/// Resolved against the process's working directory without touching the disk:
+/// the file does not exist yet, and following symlinks would be a different
+/// promise from the one the caller made.
+fn absolute_destination(path: &str) -> Result<String, String> {
+    let absolute = std::path::absolute(path).map_err(|e| format!("{path} is not a usable destination: {e}"))?;
+    absolute
+        .to_str()
+        .map(str::to_string)
+        .ok_or_else(|| format!("{} is not valid UTF-8", absolute.display()))
 }
 
 /// macOS: an `NSPrintOperation` with `NSPrintSaveJob`, so the PDF is written
@@ -328,9 +351,15 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
     // outlive it — but it does have to be a NUL-terminated wide string, which a
     // Rust `String` is not.
     let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
-    let handler = PrintToPdfCompletedHandler::create(Box::new(move |hr, written| {
-        let outcome = hr.ok().map_err(|e| e.to_string()).and_then(|()| {
-            if written.as_bool() {
+    // **The closure does not receive an `HRESULT` and a `BOOL`.** webview2-com's
+    // macro converts them first — `ClosureArg for HRESULT` yields
+    // `windows::core::Result<()>` and `ClosureArg for BOOL` yields `bool` — so
+    // `hr.ok()` and `written.as_bool()` do not compile here. Measured by CI on
+    // 2026-09-08, which is the first time this arm was compiled anywhere: neither
+    // `cargo check` on macOS nor the ubuntu Rust job reaches it.
+    let handler = PrintToPdfCompletedHandler::create(Box::new(move |result, written| {
+        let outcome = result.map_err(|e| e.to_string()).and_then(|()| {
+            if written {
                 Ok(())
             } else {
                 Err("the print pipeline reported no file written".to_string())
@@ -471,6 +500,27 @@ mod gtk_printers {
             gtk_enumerate_printers(take_file_backend, (&mut found as *mut Option<String>).cast(), None, 1);
         }
         found
+    }
+}
+
+#[cfg(test)]
+mod destination_tests {
+    use super::absolute_destination;
+
+    // A relative destination is what CI handed the export, and macOS answered by
+    // writing nothing and reporting success.
+    #[test]
+    fn makes_a_relative_destination_absolute() {
+        let resolved = absolute_destination("paper/out.pdf").unwrap();
+        assert!(std::path::Path::new(&resolved).is_absolute(), "{resolved} is not absolute");
+        assert!(resolved.ends_with("out.pdf"), "{resolved} lost the file name");
+    }
+
+    #[test]
+    fn leaves_an_absolute_destination_alone() {
+        let already = std::env::current_dir().unwrap().join("out.pdf");
+        let resolved = absolute_destination(already.to_str().unwrap()).unwrap();
+        assert_eq!(std::path::Path::new(&resolved), already);
     }
 }
 
