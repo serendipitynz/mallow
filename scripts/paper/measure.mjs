@@ -128,9 +128,21 @@ export function webView2ChromeFound(words) {
   return found;
 }
 
-/** How far the type may drift from the size a human last called correct.
- *  Wide enough that a font substitution between runners does not fail a good
- *  paper, narrow enough that the 0.847 shrink this task chased would not pass. */
+/** How far the type may drift from the size a human last called correct **on the
+ *  same machine**.
+ *
+ *  **A baseline belongs to the environment that produced it, and the first
+ *  version of this file did not say so.** It carried one number for macOS, taken
+ *  from a laptop, and the CI runner's fonts make the same document measure 21.00
+ *  against that 18.56. Review did the arithmetic that matters: the 0.847 shrink
+ *  this task chased would measure 17.79 on that runner, which is 4.2% from 18.56
+ *  — inside this tolerance. **A baseline from the wrong machine does not merely
+ *  fail good paper; it passes the exact defect the check exists for.** So the key
+ *  names the environment, not the platform.
+ *
+ *  5% is then wide enough that nothing but a real scale change moves it, and
+ *  narrow enough that 0.847 cannot hide: against its own environment's baseline
+ *  that shrink is 15% off. */
 export const SCALE_TOLERANCE = 0.05;
 
 /** The judgement itself: which checks failed, and what to record either way.
@@ -142,11 +154,11 @@ export const SCALE_TOLERANCE = 0.05;
  *  A missing baseline is not a failure either — the first run on a platform is
  *  the run that produces one, and a person has to look at that paper before its
  *  number means anything. */
-export function judgePaper({ os, bytes, maxBytes, pages, pageSize, words, baseline }) {
+export function judgePaper({ os, key, bytes, maxBytes, pages, pageSize, words, baseline }) {
   const text = words.map((word) => word.text).join('');
   const spaced = words.map((word) => word.text).join(' ');
   const height = medianWordHeight(words, 2);
-  const expected = baseline?.[os]?.medianWordHeight ?? null;
+  const expected = baseline?.[key]?.medianWordHeight ?? null;
   const shell = markersPresent(spaced, SHELL_MARKERS);
 
   const checks = [
@@ -172,7 +184,7 @@ export function judgePaper({ os, bytes, maxBytes, pages, pageSize, words, baseli
       id: 'scale',
       ok: true,
       skipped: true,
-      detail: `no baseline for ${os} yet — recorded ${fmt(height)}, and a person has to call this paper right before it becomes one`,
+      detail: `no baseline for ${key} yet — recorded ${fmt(height)}, and a person has to call this paper right before it becomes one`,
     });
   } else {
     const drift = height === null ? null : Math.abs(height - expected) / expected;

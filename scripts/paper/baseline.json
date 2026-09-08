@@ -1,4 +1,8 @@
 {
-  "_why": "The type size a person has looked at and called correct, per OS, as the median word height in points on page 2 of print-pagebreaks.md. A platform with no entry here is measured and recorded but never failed: the first run is what produces the number, and only after someone opens that paper and says the type is right. macOS's 18.56 is the print route's own paper (task-27 paper-mac-light-7a.pdf), which is the size the print stylesheet was designed against.",
-  "macos": { "medianWordHeight": 18.56, "from": "task-27/mac/paper-mac-light-7a.pdf, print route, called correct 2026-09-07" }
+  "_why": "The type size a person has looked at and called correct, as the median word height in points on page 2 of print-pagebreaks.md. **Keyed by environment, not by platform**: two machines running the same OS substitute different fonts for this document, so a number from one is not a measurement of the other. A key with no entry is recorded and never failed — the first paper is what a baseline is made from, and only after someone opens it and says the type is right. `ci-*` keys belong to the GitHub runners; a bare platform name is a local machine's.",
+  "_how_to_add": "Run the paper job, download the artifact, open the PDF, and only if the type is the size the print stylesheet intends, copy that run's recorded median word height in here with a note saying which run it came from.",
+  "macos": {
+    "medianWordHeight": 18.56,
+    "from": "the print route's own paper (task-27 paper-mac-light-7a.pdf), which is the size the print stylesheet was designed against; matched by the unattended export's paper on the same machine, 2026-09-08"
+  }
 }

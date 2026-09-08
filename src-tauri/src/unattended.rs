@@ -66,12 +66,37 @@ pub fn parse(args: &[String]) -> Result<Request, String> {
     }
 }
 
+/// Whether the document is something that can be opened, checked here because
+/// this side can stat a path and the frontend cannot.
+///
+/// **Existing is not enough.** A *directory* named `report.md` exists, passes a
+/// name check, and then fails to be read — at which point no markdown preview
+/// mounts, nothing reports a render, and the run spends its whole timeout before
+/// failing as "never rendered", which says the paper hung when the truth is that
+/// the argument was wrong. Whether it is *markdown* stays with the frontend,
+/// where the extension→kind mapping's TypeScript half lives.
+pub fn document_problem(path: &str) -> Option<String> {
+    let path = std::path::Path::new(path);
+    match std::fs::metadata(path) {
+        Err(_) => Some(format!("{} does not exist", path.display())),
+        Ok(meta) if meta.is_dir() => Some(format!("{} is a directory", path.display())),
+        Ok(meta) if !meta.is_file() => Some(format!("{} is not a regular file", path.display())),
+        Ok(_) => None,
+    }
+}
+
 /// The parsed request, or exit 3 — called from `run()` before the app is built,
 /// so a mistyped command line costs no window.
 pub fn request_or_exit() -> Request {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match parse(&args) {
-        Ok(request) => request,
+        Ok(request) => match document_problem(&request.document) {
+            None => request,
+            Some(problem) => {
+                eprintln!("unattended export: {problem}");
+                std::process::exit(3);
+            }
+        },
         Err(message) => {
             eprintln!("unattended export: {message}");
             eprintln!("usage: mallow --document <markdown> --out <pdf> [--theme light|dark]");
@@ -125,6 +150,30 @@ mod tests {
         assert!(parse(&args(&["--document", "a.md"])).is_err());
         assert!(parse(&args(&["--out", "a.pdf"])).is_err());
         assert!(parse(&args(&["--document"])).is_err());
+    }
+
+    /// A directory named like a document is the case an existence check passes
+    /// and a read fails, which without this costs the run its whole timeout and
+    /// reports the wrong reason.
+    #[test]
+    fn refuses_a_directory_that_is_named_like_a_document() {
+        let dir = std::env::temp_dir().join(format!("mallow-unattended-dir-{}.md", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let problem = super::document_problem(dir.to_str().unwrap());
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert!(problem.unwrap().contains("is a directory"));
+    }
+
+    #[test]
+    fn refuses_a_document_that_is_not_there_and_accepts_one_that_is() {
+        let file = std::env::temp_dir().join(format!("mallow-unattended-file-{}.md", std::process::id()));
+        assert!(super::document_problem(file.to_str().unwrap())
+            .unwrap()
+            .contains("does not exist"));
+        std::fs::write(&file, "# hi\n").unwrap();
+        let problem = super::document_problem(file.to_str().unwrap());
+        std::fs::remove_file(&file).unwrap();
+        assert!(problem.is_none(), "{problem:?}");
     }
 
     // The binary is launched with whatever else the platform adds, so unknown

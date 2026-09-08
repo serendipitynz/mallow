@@ -113,6 +113,7 @@ describe('judgePaper', () => {
     pages: 14,
     pageSize: '595 x 842 pts (A4)',
     words,
+    key: 'macos',
     baseline: { macos: { medianWordHeight: 18.56 } },
   };
 
@@ -154,10 +155,10 @@ describe('judgePaper', () => {
   /* A platform's first run is what produces its baseline, and only after a person
      has opened that paper — so no baseline records the number and passes. */
   it('records the size without failing where the platform has no baseline', () => {
-    const result = judgePaper({ ...base, os: 'linux', baseline: {} });
+    const result = judgePaper({ ...base, os: 'linux', key: 'ci-linux', baseline: {} });
     expect(result.ok).toBe(true);
     expect(check(result, 'scale')).toMatchObject({ skipped: true });
-    expect(check(result, 'scale').detail).toContain('no baseline for linux');
+    expect(check(result, 'scale').detail).toContain('no baseline for ci-linux');
   });
 
   // The 318 MB of blank pages that started this, stopped by a number.
@@ -171,7 +172,7 @@ describe('judgePaper', () => {
     expect(
       judgePaper({ ...base, words: withChrome, baseline: {} }).checks.some((c) => c.id === 'no-webview2-chrome'),
     ).toBe(false);
-    const windows = judgePaper({ ...base, os: 'windows', words: withChrome, baseline: {} });
+    const windows = judgePaper({ ...base, os: 'windows', key: 'ci-windows', words: withChrome, baseline: {} });
     expect(check(windows, 'no-webview2-chrome').ok).toBe(false);
   });
 
@@ -179,5 +180,40 @@ describe('judgePaper', () => {
     const result = judgePaper({ ...base, pages: 12 });
     expect(result.ok).toBe(true);
     expect(result.records.pages).toBe(12);
+  });
+});
+
+/* The finding this keying exists for: a baseline taken on a laptop was being
+   applied to a CI runner, whose fonts measure the same document at 21.00. Against
+   18.56 the 0.847 shrink measures 17.79 — 4.2% off, inside the tolerance — so the
+   wrong baseline would have passed the exact defect the check is for. */
+describe('a baseline belongs to the environment that produced it', () => {
+  const words = (height) => [
+    { page: 1, text: '§1', x0: 0, y0: 0, x1: 10, y1: 10 },
+    { page: 2, text: 'body', x0: 0, y0: 0, x1: 10, y1: height },
+    { page: 3, text: '12. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
+  ];
+  const paper = (height, key, baseline) =>
+    judgePaper({
+      os: 'macos',
+      key,
+      bytes: 1000,
+      maxBytes: 10 * 1024 * 1024,
+      pages: 14,
+      pageSize: 'A4',
+      words: words(height),
+      baseline,
+    });
+  const scaleOf = (result) => result.checks.find((check) => check.id === 'scale');
+
+  it('passes the runner’s own good paper and fails its shrunk one', () => {
+    const runner = { 'ci-macos': { medianWordHeight: 21.0 } };
+    expect(scaleOf(paper(21.0, 'ci-macos', runner)).ok).toBe(true);
+    expect(scaleOf(paper(21.0 * 0.847, 'ci-macos', runner)).ok).toBe(false);
+  });
+
+  it('does not reach for another environment’s number', () => {
+    const laptopOnly = { macos: { medianWordHeight: 18.56 } };
+    expect(scaleOf(paper(21.0, 'ci-macos', laptopOnly))).toMatchObject({ skipped: true });
   });
 });

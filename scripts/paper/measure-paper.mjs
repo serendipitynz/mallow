@@ -11,6 +11,7 @@
 // Usage:
 //   node scripts/paper/measure-paper.mjs <pdf> [--os macos|windows|linux]
 //                                        [--theme light|dark] [--json]
+//                                        [--baseline-key <key>]
 //                                        [--baseline <path>] [--max-bytes <n>]
 //
 // Exit codes: 0 every check passed, 1 a check failed, 3 it could not measure
@@ -48,7 +49,13 @@ function parseArgs(argv) {
     const arg = argv[i];
     if (arg === '--json') {
       args.json = true;
-    } else if (arg === '--os' || arg === '--theme' || arg === '--baseline' || arg === '--max-bytes') {
+    } else if (
+      arg === '--os' ||
+      arg === '--theme' ||
+      arg === '--baseline' ||
+      arg === '--baseline-key' ||
+      arg === '--max-bytes'
+    ) {
       i += 1;
       const value = argv[i];
       if (value === undefined) {
@@ -56,6 +63,8 @@ function parseArgs(argv) {
       }
       if (arg === '--max-bytes') {
         args.maxBytes = Number(value);
+      } else if (arg === '--baseline-key') {
+        args.key = value;
       } else {
         args[arg.slice(2)] = value;
       }
@@ -75,6 +84,12 @@ function parseArgs(argv) {
   if (!THEMES.includes(args.theme)) {
     fail(3, `--theme must be one of ${THEMES.join(', ')} — not ${args.theme}`);
   }
+  // **The key is the environment, not the platform.** Two machines running the
+  // same OS substitute different fonts for this document, so a baseline taken on
+  // one is not a measurement of the other — and a wrong baseline is worse than
+  // none, because it can pass the very shrink the check is for. CI passes
+  // `ci-<platform>`; a local run defaults to the platform and keeps its own.
+  args.key ??= args.os;
   return args;
 }
 
@@ -139,7 +154,7 @@ function render(result, args) {
   const { records } = result;
   const extent = records.textExtentX;
   return [
-    `**${args.os} / ${args.theme}** — ${result.ok ? 'PASS' : 'FAIL'}`,
+    `**${args.os} / ${args.theme}** (baseline \`${args.key}\`) — ${result.ok ? 'PASS' : 'FAIL'}`,
     '',
     '| | check | detail |',
     '|---|---|---|',
@@ -166,6 +181,7 @@ const info = poppler('pdfinfo', [args.pdf]);
 const bbox = poppler('pdftotext', ['-bbox', args.pdf, '-']);
 const result = judgePaper({
   os: args.os,
+  key: args.key,
   bytes: statSync(args.pdf).size,
   maxBytes: args.maxBytes,
   pages: pagesOf(info),
@@ -176,7 +192,7 @@ const result = judgePaper({
 
 process.stdout.write(
   args.json
-    ? `${JSON.stringify({ os: args.os, theme: args.theme, pdf: args.pdf, ...result }, null, 2)}\n`
+    ? `${JSON.stringify({ os: args.os, theme: args.theme, baselineKey: args.key, pdf: args.pdf, ...result }, null, 2)}\n`
     : `${render(result, args)}\n`,
 );
 process.exit(result.ok ? 0 : 1);

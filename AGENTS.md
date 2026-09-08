@@ -961,8 +961,14 @@ hold rather than as an exhaustive style guide.
   `node scripts/paper/measure-paper.mjs paper.pdf --os macos --theme light` says
   whether that paper is right. **It answers only what a number can settle**: the
   last section is there, no shell string reached the page, the type is within 5%
-  of the platform's baseline in `scripts/paper/baseline.json`, the file is not a
-  runaway, and on Windows WebView2 added no header or footer. Page count and paper
+  of **its own environment's** baseline in `scripts/paper/baseline.json`, the file
+  is not a runaway, and on Windows WebView2 added no header or footer. **The
+  baseline is keyed by environment rather than by platform, and that is measured
+  rather than tidy**: this machine's macOS paper measures 18.56 where the CI
+  runner's measures 21.00, and against the wrong one of those the 0.847 shrink
+  this task chased comes out 4.2% off — inside the tolerance. A key with no entry
+  is recorded and never failed, because the first paper is what a baseline is made
+  from and a person has to call it right first. Page count and paper
   size are recorded, not judged — a runner's Japanese fonts paginate differently.
   Whether the type reads comfortably, and how a table that straddles a break
   actually looks, stay with whoever opens the PDF. Requires poppler

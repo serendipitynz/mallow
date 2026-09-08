@@ -122,24 +122,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The rule lives in a script rather than in a `grep` here, because its
+      # wrong answer is silent — too narrow and a paper regression merges
+      # unmeasured — and a rule in a file can be tested. `scripts/paper/
+      # affects-paper.test.mjs` is that test.
       - id: filter
         env:
           BASE: ${{ github.base_ref }}
         run: |
           set -euo pipefail
-          changed=$(git diff --name-only "origin/$BASE...HEAD")
-          echo "changed files:"; echo "$changed"
-          # **Deliberately coarse.** The first version of this listed the files
-          # that obviously make the paper — the print stylesheet, the three
-          # platform arms, MarkdownView — and review pointed out two it had
-          # already missed (`src/styles/markdown.scss`, which is most of what the
-          # paper looks like, and `src-tauri/src/lib.rs`, which registers the
-          # command). Any list of that shape drifts the same way, and its failure
-          # is silent: a paper regression merges unmeasured. So the frontend, the
-          # Rust sources and the dependency manifests are all in, and what stays
-          # out is documentation, the backlog and the other workflows — which is
-          # most of what this repository's pull requests actually touch.
-          if echo "$changed" | grep -qE '^(src/|src-tauri/(src/|build\.rs|Cargo\.(toml|lock)|tauri\.conf\.json)|scripts/paper/|package\.json|pnpm-lock\.yaml|vite\.config\.ts|\.github/workflows/check\.yml)'; then
+          git diff --name-only "origin/$BASE...HEAD" > changed.txt
+          echo "changed files:"; cat changed.txt
+          if node scripts/paper/affects-paper.mjs --list < changed.txt; then
             echo 'paper=true' >> "$GITHUB_OUTPUT"
           else
             echo 'paper=false' >> "$GITHUB_OUTPUT"
@@ -277,10 +271,18 @@ jobs:
               status=1
               continue
             fi
-            node scripts/paper/measure-paper.mjs "$pdf" --os ${{ matrix.platform }} --theme "$theme" \
-              --json > "paper/paper-${{ matrix.platform }}-$theme.json" || status=1
-            node scripts/paper/measure-paper.mjs "$pdf" --os ${{ matrix.platform }} --theme "$theme" \
-              >> "$GITHUB_STEP_SUMMARY" || true
+            # `ci-<platform>` and not `<platform>`: a baseline belongs to the
+            # environment that produced it, and this runner's fonts measure the
+            # fixture differently from any laptop's. Using a laptop's number here
+            # would not merely fail good paper — review showed it would pass the
+            # 0.847 shrink this whole task chased.
+            measure() {
+              node scripts/paper/measure-paper.mjs "$pdf" \
+                --os ${{ matrix.platform }} --theme "$theme" \
+                --baseline-key "ci-${{ matrix.platform }}" "$@"
+            }
+            measure --json > "paper/paper-${{ matrix.platform }}-$theme.json" || status=1
+            measure >> "$GITHUB_STEP_SUMMARY" || true
           done
           exit $status
 
