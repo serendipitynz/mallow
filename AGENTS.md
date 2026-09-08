@@ -518,11 +518,28 @@ hold rather than as an exhaustive style guide.
   the entry (decision-6 makes the source view where that starts). **The chord is
   consumed even where the export is refused**, on printing's measured rule — and
   whether any engine binds `Ctrl+E` is unmeasured, which consuming it makes moot.
-  **The Linux arm's weak point is the printer name**: WebKit resolves the printer
-  by matching `gtk_printer_get_name`, GTK's file backend names its printer through
-  gettext, and gtk-rs 0.18 binds neither `GtkPrinter` nor `gtk_enumerate_printers`
-  — so `"Print to File"` is a name that may not be the name, the miss surfaces as
-  a printer-not-found error the reader sees, and the fix if it happens is `gtk-sys`.
+  **The Linux arm asks GTK what its print-to-file printer is called, and the
+  English literal is only a fallback.** WebKit resolves the printer by matching
+  `gtk_printer_get_name` and GTK's file backend names its printer through gettext,
+  so `"Print to File"` is printer-not-found on a Japanese desktop — which on Linux
+  means no page leaves mallow at all, since printing is refused there. **gtk-rs
+  binds none of this**: gtk-sys 0.18 carries `GtkPrintSettings` and nothing of
+  `GtkPrinter`, so `pdf.rs`'s `gtk_printers` declares the four symbols itself
+  against libgtk-3, which the `gtk` crate already links — a dependency-free
+  `extern` block rather than a dependency. **What picks the file backend out is
+  virtual *and* PDF-capable**, not the name being looked for: a CUPS queue that
+  writes PDF is a real printer to GTK and reports `is_virtual` false.
+  **Two more things this arm and the export share.** Exports are serialized, in
+  Rust by a lock the command tries and in the frontend by a flag the chord reads,
+  because on macOS a second `NSPrintOperation` while one is running raises
+  `NSPrintOperationExistsException` — an Objective-C exception crossing back into
+  Rust ends the process rather than returning an error, and the export shows no UI
+  of its own, so the window takes keystrokes throughout. And **whatever the save
+  dialog answered is what gets written**: appending `.pdf` afterwards would name a
+  file the dialog never confirmed, and its overwrite prompt is per-name — rfd's
+  GTK dialog turns overwrite confirmation on but does not add the filter's
+  extension, so a reader who types `report` is asked about `report` and would
+  silently lose a `report.pdf` beside it.
   **Nothing automated sees the paper here either**, and one gap is worse than
   printing's: the Windows arm compiles under neither `cargo check` in CI (the Rust
   job is ubuntu) nor locally on macOS, so its first compile is the platform

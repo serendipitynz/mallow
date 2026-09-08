@@ -38,7 +38,22 @@
 //! drop the command from the handler and turn a mobile build into a runtime
 //! "command not found", where leaving it out fails to compile instead.
 
-use tauri::async_runtime::{channel, Sender};
+use tauri::async_runtime::{channel, Mutex, Sender};
+
+/// Serializes exports, because a second one started while the first is still
+/// running is not merely wasteful on macOS: `NSPrintOperation` raises
+/// `NSPrintOperationExistsException` when one is already in progress, and an
+/// Objective-C exception crossing back into Rust takes the process down rather
+/// than returning an error.
+///
+/// It refuses rather than queues. A queued second export would write the same
+/// document to the same path a moment later, which is not what a reader who
+/// pressed the chord twice is asking for, and a refusal is a message they can
+/// see. The frontend keeps its own guard so the common double-press never gets
+/// this far; this one is for every other caller, and the unattended export that
+/// TASK-30's second PR adds is the first of those.
+#[derive(Default)]
+pub struct ExportLock(Mutex<()>);
 
 /// Where a platform arm reports its outcome. Only Linux and Windows actually
 /// need the indirection — both of their calls complete after returning — but all
@@ -56,7 +71,14 @@ type Report = Sender<Result<(), String>>;
 /// silence rather than a hang: none of the three blocks the main thread, so the
 /// window keeps answering and the reader can try again.
 #[tauri::command]
-pub async fn write_window_pdf(window: tauri::WebviewWindow, path: String) -> Result<(), String> {
+pub async fn write_window_pdf(
+    window: tauri::WebviewWindow,
+    lock: tauri::State<'_, ExportLock>,
+    path: String,
+) -> Result<(), String> {
+    let Ok(_running) = lock.0.try_lock() else {
+        return Err("an export is already running".to_string());
+    };
     let (report, mut done) = channel::<Result<(), String>>(1);
     window
         .with_webview(move |webview| write_pdf(webview, path, report))
@@ -332,15 +354,13 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
 /// `run_dialog()`, which is both what applies the print stylesheet and what keeps
 /// this away from the dialog that never returns (decision-13).
 ///
-/// **The printer name is the part to look at first if this fails.** WebKit
-/// resolves the printer by matching `gtk_printer_get_name`, and GTK's file backend
-/// names its printer through gettext — so `"Print to File"` is the name on an
-/// English desktop and may not be on another. Nothing here can enumerate printers
-/// to find it instead: gtk-rs 0.18 binds neither `GtkPrinter` nor
-/// `gtk_enumerate_printers`, so that fix would mean reaching for `gtk-sys`. What
-/// makes this an acceptable state rather than a guess is that WebKit reports the
-/// miss as a printer-not-found error, which reaches the reader through the
-/// caller's own failure path.
+/// **The printer is asked for by name, and the name is not `"Print to File"`
+/// everywhere.** WebKit resolves the printer by matching `gtk_printer_get_name`,
+/// and GTK's file backend names its printer through gettext, so the English
+/// literal is printer-not-found on a Japanese desktop — where this export is the
+/// only way a page leaves mallow at all. So the name is read back from GTK
+/// itself (`gtk_printers`), and the literal is only the fallback for an
+/// enumeration that finds nothing.
 #[cfg(target_os = "linux")]
 fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Report) {
     use std::cell::RefCell;
@@ -356,7 +376,7 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
     };
 
     let settings = gtk::PrintSettings::new();
-    settings.set_printer("Print to File");
+    settings.set_printer(&gtk_printers::file_backend_name().unwrap_or_else(|| "Print to File".to_string()));
     settings.set("output-uri", Some(uri.as_str()));
     settings.set("output-file-format", Some("pdf"));
 
@@ -385,6 +405,73 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
     });
 
     operation.print();
+}
+
+/// Which printer GTK's file backend registered, asked of GTK rather than assumed.
+///
+/// **The four symbols are declared here because gtk-rs does not bind them.**
+/// gtk-sys 0.18 carries `GtkPrintSettings` and nothing of `GtkPrinter`, so there
+/// is no safe wrapper to call and no crate to add that would supply one — these
+/// live in libgtk-3, which the `gtk` crate already links, so declaring them costs
+/// a dependency-free `extern` block rather than a dependency.
+#[cfg(target_os = "linux")]
+mod gtk_printers {
+    use std::ffi::{c_char, c_int, c_void, CStr};
+
+    /// Returns non-zero to stop the enumeration, per `GtkPrinterFunc`.
+    type PrinterFunc = unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int;
+
+    extern "C" {
+        fn gtk_enumerate_printers(
+            func: PrinterFunc,
+            data: *mut c_void,
+            destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+            wait: c_int,
+        );
+        fn gtk_printer_get_name(printer: *mut c_void) -> *const c_char;
+        fn gtk_printer_is_virtual(printer: *mut c_void) -> c_int;
+        fn gtk_printer_accepts_pdf(printer: *mut c_void) -> c_int;
+    }
+
+    /// **Virtual *and* PDF-capable is what picks the file backend out**, rather
+    /// than the name it is being looked up to find. A queue that writes PDF
+    /// through CUPS is a real printer to GTK and reports `is_virtual` false, so
+    /// the pair does not match it.
+    ///
+    /// # Safety
+    ///
+    /// Called by GTK with one of its own `GtkPrinter`s and the `data` pointer
+    /// handed to `gtk_enumerate_printers`, which is the `Option<String>` below.
+    unsafe extern "C" fn take_file_backend(printer: *mut c_void, data: *mut c_void) -> c_int {
+        if gtk_printer_is_virtual(printer) == 0 || gtk_printer_accepts_pdf(printer) == 0 {
+            return 0;
+        }
+        let name = gtk_printer_get_name(printer);
+        if name.is_null() {
+            return 0;
+        }
+        let Ok(name) = CStr::from_ptr(name).to_str() else {
+            return 0;
+        };
+        *(data as *mut Option<String>) = Some(name.to_string());
+        1
+    }
+
+    /// The name of GTK's print-to-file printer in this locale, or `None` where no
+    /// virtual PDF printer is registered at all.
+    ///
+    /// Enumeration waits, which runs a nested main loop — the same thing GTK does
+    /// for a modal dialog, and the reason this must stay on the main thread the
+    /// export already runs on.
+    pub(super) fn file_backend_name() -> Option<String> {
+        let mut found: Option<String> = None;
+        // SAFETY: `found` outlives the call because the wait flag makes it
+        // synchronous, and the callback is the only writer.
+        unsafe {
+            gtk_enumerate_printers(take_file_backend, (&mut found as *mut Option<String>).cast(), None, 1);
+        }
+        found
+    }
 }
 
 #[cfg(all(test, target_os = "macos"))]

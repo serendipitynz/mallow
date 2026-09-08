@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { ChordEvent, HandledChordEvent } from './chord';
 import { setMarkdownPreviewActive } from './markdown-preview';
-import { createPdfExportChordHandler, PDF_EXPORT_CHORD_KEY, pdfDestinationFor, withPdfExtension } from './pdf-export';
+import { createPdfExportChordHandler, PDF_EXPORT_CHORD_KEY, pdfDestinationFor, runExclusiveExport } from './pdf-export';
 import { createPrintChordHandler } from './print';
 
 function harness(onMac = true) {
@@ -119,15 +119,61 @@ describe('pdfDestinationFor', () => {
   });
 });
 
-describe('withPdfExtension', () => {
-  // The dialog's filter is not a guarantee: where a name can be typed, what comes
-  // back is what was typed.
-  it('adds the extension the dialog may not have', () => {
-    expect(withPdfExtension('/docs/report')).toBe('/docs/report.pdf');
+/* On macOS a second export while the first is running raises
+   NSPrintOperationExistsException, which takes the process down rather than
+   returning an error - and the export shows no UI of its own, so the window keeps
+   taking keystrokes throughout. */
+describe('runExclusiveExport', () => {
+  function deferred() {
+    let release = () => {};
+    const promise = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return { promise, release };
+  }
+
+  it('runs the export when nothing else is running', async () => {
+    let ran = 0;
+    await expect(
+      runExclusiveExport(async () => {
+        ran += 1;
+      }),
+    ).resolves.toBe('ran');
+    expect(ran).toBe(1);
   });
 
-  it('leaves one that is already there, in either case', () => {
-    expect(withPdfExtension('/docs/report.pdf')).toBe('/docs/report.pdf');
-    expect(withPdfExtension('/docs/report.PDF')).toBe('/docs/report.PDF');
+  it('skips a second export while the first is still running', async () => {
+    const first = deferred();
+    let started = 0;
+    const running = runExclusiveExport(async () => {
+      started += 1;
+      await first.promise;
+    });
+
+    await expect(
+      runExclusiveExport(async () => {
+        started += 1;
+      }),
+    ).resolves.toBe('skipped');
+    expect(started).toBe(1);
+
+    first.release();
+    await expect(running).resolves.toBe('ran');
+  });
+
+  it('lets the next export through once the first finishes', async () => {
+    await runExclusiveExport(async () => {});
+    await expect(runExclusiveExport(async () => {})).resolves.toBe('ran');
+  });
+
+  // A rejected export must not lock the entry for the rest of the session, which
+  // is what would happen if the flag were cleared on the success path alone.
+  it('clears the flag when the export rejects', async () => {
+    await expect(
+      runExclusiveExport(async () => {
+        throw new Error('the pipeline refused');
+      }),
+    ).rejects.toThrow('the pipeline refused');
+    await expect(runExclusiveExport(async () => {})).resolves.toBe('ran');
   });
 });

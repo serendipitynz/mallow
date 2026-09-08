@@ -47,9 +47,30 @@ export function pdfDestinationFor(documentPath: string): string {
   return dir ? join(dir, file) : file;
 }
 
-/** The chosen path with a `.pdf` extension, since the dialog's filter does not
- *  guarantee one: on the platforms whose save dialog lets a name be typed, what
- *  comes back is what was typed. */
-export function withPdfExtension(path: string): string {
-  return path.toLowerCase().endsWith('.pdf') ? path : `${path}.pdf`;
+/** Runs `exportPdf` unless one is already running, and answers which happened.
+ *
+ *  **A second export started while the first is still going is not merely
+ *  wasteful.** On macOS `NSPrintOperation` raises
+ *  `NSPrintOperationExistsException` when one is already in progress, and an
+ *  Objective-C exception crossing back into Rust takes the process down rather
+ *  than returning an error — and the export is asynchronous with no UI of its
+ *  own, so the window keeps taking keystrokes for the whole of it. The Rust
+ *  command refuses a concurrent export as well; this is what keeps the common
+ *  double-press from turning into an error dialog rather than nothing at all.
+ *
+ *  The flag is cleared in `finally`, so a rejected export does not lock the
+ *  entry for the rest of the session. */
+let exportRunning = false;
+
+export async function runExclusiveExport(exportPdf: () => Promise<void>): Promise<'ran' | 'skipped'> {
+  if (exportRunning) {
+    return 'skipped';
+  }
+  exportRunning = true;
+  try {
+    await exportPdf();
+    return 'ran';
+  } finally {
+    exportRunning = false;
+  }
 }

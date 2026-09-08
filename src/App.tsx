@@ -14,7 +14,7 @@ import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { ancestorDirs, isInside } from './lib/path';
-import { createPdfExportChordHandler, pdfDestinationFor, withPdfExtension } from './lib/pdf-export';
+import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
 import {
@@ -317,19 +317,29 @@ export default function App() {
      same measured reason (`lib/chord`), and the gate is the same sentence for a
      different one (`lib/pdf-export`). The destination is the reader's: nothing
      here writes to a location they did not name. */
-  const exportPdf = useCallback(async () => {
-    const open = selectedRef.current;
-    const chosen = await pickPdfDestination(open ? pdfDestinationFor(open.path) : undefined);
-    if (!chosen) {
-      return;
-    }
-    try {
-      await writeWindowPdf(withPdfExtension(chosen));
-    } catch (err) {
-      console.error('PDF export failed', err);
-      void showErrorDialog(t('pdfExportFailedTitle'), t('pdfExportFailed', { error: String(err) }));
-    }
-  }, [t]);
+  const exportPdf = useCallback(
+    () =>
+      runExclusiveExport(async () => {
+        const open = selectedRef.current;
+        const chosen = await pickPdfDestination(open ? pdfDestinationFor(open.path) : undefined);
+        if (!chosen) {
+          return;
+        }
+        try {
+          // **Whatever the dialog answered is what gets written.** An extension
+          // added afterwards would be a path the dialog never confirmed, and its
+          // overwrite prompt is per-name: a reader who types `report` is asked
+          // about `report` and would silently lose a `report.pdf` beside it. The
+          // default name already carries `.pdf`, so this only gives up renaming
+          // what the reader deliberately typed instead.
+          await writeWindowPdf(chosen);
+        } catch (err) {
+          console.error('PDF export failed', err);
+          void showErrorDialog(t('pdfExportFailedTitle'), t('pdfExportFailed', { error: String(err) }));
+        }
+      }),
+    [t],
+  );
 
   useEffect(() => {
     const onKey = createPdfExportChordHandler({ onMac: onMacPlatform(), exportPdf: () => void exportPdf() });
