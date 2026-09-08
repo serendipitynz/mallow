@@ -63,7 +63,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
-  積算）、`file`、`path`、`tauri`（invoke ラッパ）、`types`。
+  積算）、`chord`（アクセラレータの一致判定と、アプリ全体の chord handler・その 3 値）、
+  `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲート）、
+  `print` / `pdf-export`（各入口のキー・ゲート・理由）、
+  `file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
   `markdown`、`config`、`source`、`html`、`table`、`xml`。
 
@@ -95,6 +98,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   偽になり、印刷用スタイルが入っても真にはならない。`print()` 自体は `cfg(desktop)` だが
   こちらは括らない。括るとモバイルビルドが実行時の「コマンドが無い」になり、
   括らなければコンパイルが落ちる。
+- `pdf.rs` — `write_window_pdf`。呼び出し元ウィンドウの PDF を、各環境の印刷
+  **パイプライン**を通して書く。**印刷 UI は一切出さない**（decision-14）。macOS は
+  `NSPrintSaveJob` を設定した `NSPrintOperation`、Windows は WebView2 の `PrintToPdf`、
+  Linux は WebKitGTK の `print()`（`run_dialog()` ではない）。**印刷が完走するのは
+  3 環境のうち 1 つだけ**だから存在する機能で、印刷を置き換えるのではなく並存する入口である
+  — **Linux ではこれが紙への唯一の道**になる。`print_window` と同じ理由でウィンドウで命名した。
+  3 つの分岐が共通に抱える確認事項は **`@media print` が当たるか**で（下の落とし穴を見る）、
+  それが macOS で `WKWebView.createPDF` を採らない理由でもある。
 - `lib.rs` — プラグイン登録（opener, dialog, store, window-state, updater, process。
   decision-11 によりどれも `cfg(desktop)` で括らない）、`invoke_handler`、
   および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
@@ -344,11 +355,14 @@ Comments と Functions の規約は機械的に検査されない。コメント
   印刷できないビューは何も登録しない形だった。**Windows ではそれがまさに `.csv` を
   印刷させた** — **WebView2 は自前の `Ctrl+P` を持つ**ので、**何も登録しないことは
   chord を不活性にするのではなく、プラットフォームへ譲ることだった**（2026-09-07 実測）。
-  いまは `MarkdownView` が条件を報告し、`lib/print` がフラグと 3 値の判定
-  （`suppress` が最初の設計に名前が無かった場合）と、**handler 自身を factory として**持つ。
+  いまは `MarkdownView` が条件を報告し、`lib/markdown-preview` がフラグを持ち、
+  `lib/chord` が 3 値の判定（`suppress` が最初の設計に名前が無かった場合）と、
+  **handler 自身を factory として**持つ。
   factory にしたのは、**分類の仕方だけでなくイベントに対して何をするかを検査に載せるため** —
   分類が正しくても handler が `preventDefault` を忘れれば同じバグになり、それがまさに
-  起きたことだった。**`App` の `addEventListener` の 1 行だけはどのテストも届かない**
+  起きたことだった。`lib/print` に残るのは、それらを出したあとの残り — キーと、読むゲートと、
+  ゲートする理由である。**仕組みは PDF 書き出しの chord と共有し、フラグも同一**で、
+  それが 2 つの入口を一緒に有効・無効にし続ける（decision-14）根拠になっている。**`App` の `addEventListener` の 1 行だけはどのテストも届かない**
   （スイートは設計上 DOM 無しの Node で走る）。
   **Linux の chord を閉じるのもこれ** — Rust 側で `print_window` が拒否しても
   ネイティブ binding は止まらない（あれは `print_window` を通らない）。
@@ -401,13 +415,67 @@ Comments と Functions の規約は機械的に検査されない。コメント
   **3 環境の挙動の差は、スタイルシートの差よりずっと大きい**（2026-09-07 実測）。
   Windows は文書を最後まで正しく刷り、WebView2 自身のヘッダ・フッタ（日付・文書名・URL・
   ページ番号）を足す — 読み手は消せるが CSS では消せない。macOS は長い文書の末尾を失う:
-  印刷シートがページ数を数え、PDF 書き出しがその数に従い、それより多くのページを要する
-  組版はそこで止まる。**シートでプリンタを切り替えると再計算が走り、書き出しが組版と一致する。**
+  印刷シートがページ数を数え、**印刷 UI の PDF 出力先**が書く PDF がその数に従い、
+  それより多くのページを要する組版はそこで止まる。**シートでプリンタを切り替えると再計算が走り、書き出しが組版と一致する。**
   だから **切断を根拠に CSS の値を調整してはならない** — `@page` の余白を外すのも、
   文字を小さくするのも、エンジン自身の縮小も、すべて「必要なページ数を古い数の下へ戻す」
   という同じ偶然で「直った」ように見えていた。
   `_sandbox/handoff/task-27/mac/paper-mac-light-7a.pdf` は `-7.pdf` と同じスタイルシートで、
   数え直しを強制しただけで完走している。Linux はハングするので、`print_window` はそこでは拒否する。
+- **PDF 書き出しは紙への 2 本目の道であり、1 本目の修正ではない。2 つの入口は並存する**
+  （decision-14）。`write_window_pdf` は各環境の印刷パイプラインを通してファイルを書き、
+  **どの時点でも印刷 UI を出さない**。それが印刷の 3 つの欠陥をまとめて迂回する理由であり、
+  **Linux では紙への唯一の道**になる。**「PDF 出力」という語はどちらとも読めるので使わない** —
+  **mallow が書くものが `PDF 書き出し`**、**プラットフォームのダイアログの中にある選択肢が
+  `印刷 UI の PDF 出力先`** で、v0.8.0 では両方が存在する。**各環境の実装が合格かどうかを
+  決めるのは `@media print` が当たるかで、それは環境の性質ではなく API の性質である** —
+  紙にエクスプローラとツールバーが乗るのが探すべき失敗で、そうなっていれば
+  `styles/print.scss` が無効だということである。だから macOS では、画面の描画をそのまま
+  PDF にする `WKWebView.createPDF` ではなく `NSPrintSaveJob` の `NSPrintOperation` を組む
+  — 印刷パイプラインなら構造上スタイルシートが当たる。**その分岐が使ってはいけない呼び出しが
+  `runOperation()` で、これは読みではなく実測である**: 2026-09-07、CPU を 1 コア食い潰して
+  応答しなくなり、**trailer の無い 318 MB・4,022,381 オブジェクトの PDF** を書いた —
+  content stream が圧縮 11 バイト、つまり空のページが数百万枚である。文書側の不具合ではなく
+  既知の WebKit の挙動で、`printOperationWithPrintInfo:` は `runOperation` の下では白紙を描き、
+  代わりに `runOperationModalForWindow:` を通す必要がある — **パネル 2 つを off にし
+  disposition を save にしてあるので、modal は出ない。** 結果はデリゲートに届くので、
+  この分岐だけクラス（`MallowPdfExportObserver`）を定義し、**AppKit は
+  `didRunSelector` のデリゲートを retain しない**ので自前で生かしておく。掃除は
+  コールバックの中ではなく次回の書き出し時に行う — 自分のメソッドの中で最後の参照を
+  落とすと、メッセージ処理中に受信者が解放される。**新しい `NSPrintInfo` は退化していない** —
+  同日の実測で、新規も共有も A4 595×842・imageable 559×783 だった — ので用紙は設定不要で、
+  暴走はページ矩形の問題ではなかった。**印刷ビューの frame は意図的に初期化しない** —
+  ダイアログ無しのレシピはどれも webview の bounds で初期化するが、そうすると
+  **ページ全体が用紙サイズで組まれ 0.847 倍に縮小されて `@page` の余白枠へ収まった紙**が
+  出た（2026-09-07、clip 矩形で実測。`504×713` 対 印刷経路の `504×750`＝倍率 1。
+  つまり `@page { margin: 16mm }` が余白ではなく縮小として効いていた）。
+  あの frame が、紙が正しいと実測されている wry の経路との唯一の幾何学的な差分だったので
+  外した — **この分岐はいま disposition とパネルの 2 点でだけあの経路と違う。**
+  レシピが言っているのは frame を持たない webview の話で、mallow のそれは画面上にある。
+  **印刷情報はこの件の出どころではない** — 同日の実測で、新規と共有は辞書レベルまで同一
+  （A4 595×842・4 辺の余白 0・`NSScalingFactor` 1・pagination Clip/Automatic・
+  ヘッダフッタのキーは存在しない）。 3 環境すべて非同期で報告するので、
+  **報告しないプラットフォームではコマンドが pending のまま残る** — どれもメインスレッドを
+  塞がないので、ハングではなく沈黙である。**`NSPrintInfo` は
+  `sharedPrintInfo()` ではなく毎回新しく作る** — wry は印刷ごとにあのアプリ全体の
+  シングルトンを書き換えており、古いページ数はまさにそこに残りうる状態である —
+  **ただしこれは切断についての仮説であって修正ではない**。原因は特定されていないので、
+  完走した書き出しはその根拠にならず、切断した書き出しもこれに対する退行ではない。
+  **4 つの `NSPrintInfo` 余白は 0 にする**ので、本文を内側へ寄せるのは `@page` だけになり、
+  それが印刷用スタイルを実測したときの体裁でもある。**ゲートは印刷と同一の 1 文で、
+  理由は別**: `Export as PDF…` がアクティブなビューが markdown の preview でないとき
+  disabled なのは、**印刷用スタイルが markdown 専用**だからである。だから他のビューを
+  書き出したいという要求は、入口ではなくスタイルシートを広げる要求になる
+  （decision-6 によりソースビューがその出発点）。**chord は書き出しを拒否する場面でも
+  消費する** — 印刷が実測で確定させた規則で、**どのエンジンが `Ctrl+E` を持つかは未実測**、
+  消費すればそれを問う必要が無くなる。**Linux の分岐の弱点はプリンタ名である**:
+  WebKit は `gtk_printer_get_name` の一致でプリンタを解決し、GTK のファイルバックエンドは
+  そのプリンタ名を gettext 経由で付け、gtk-rs 0.18 は `GtkPrinter` も
+  `gtk_enumerate_printers` も束ねていない — つまり `"Print to File"` は名前でない可能性が
+  ある名前で、外れれば printer-not-found のエラーとして読み手に見え、直すなら `gtk-sys` に
+  降りることになる。**ここでも紙を見る自動検査は無い**。しかも印刷より悪い穴が 1 つある:
+  **Windows の分岐は CI の `cargo check`（Rust ジョブは ubuntu）でも macOS 上のローカルでも
+  コンパイルされない**ので、初回のコンパイルが実機測定の回になる。
 - **絵文字。** Unicode 絵文字は `<span class="emoji">` で包み、そこだけカラー絵文字
   フォント（`$font-emoji`）を先頭にしたスタックを当てる。包まないと、本文の日本語
   フォントが持っている一部の絵文字でフォールバック競争に勝ってしまう — `:ok:` は
@@ -724,7 +792,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
   `frontmatter`・`title`・`path`・`delimited`・`xml-tree`・
   `heading`＝座標変換のみ。`findHeading` は DOM のグローバルを要するため対象外・
-  `chord`＝アクセラレータの一致判定。プラットフォームを引数で受けるので `navigator` を要しない・
+  `chord`＝アクセラレータの一致判定とアプリ全体の handler。どちらもプラットフォームを
+  引数で受けるので `navigator` を要しない・
+  `markdown-preview`・`print`・`pdf-export`＝各 chord のキー・ゲートと、
+  イベントに対して handler が何をするか（2 つが一緒に開閉することを含む）・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
