@@ -1,0 +1,4 @@
+{
+  "_why": "The type size a person has looked at and called correct, per OS, as the median word height in points on page 2 of print-pagebreaks.md. A platform with no entry here is measured and recorded but never failed: the first run is what produces the number, and only after someone opens that paper and says the type is right. macOS's 18.56 is the print route's own paper (task-27 paper-mac-light-7a.pdf), which is the size the print stylesheet was designed against.",
+  "macos": { "medianWordHeight": 18.56, "from": "task-27/mac/paper-mac-light-7a.pdf, print route, called correct 2026-09-07" }
+}

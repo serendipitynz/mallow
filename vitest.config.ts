@@ -6,6 +6,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // `scripts/**` is here for the paper measurement, whose pure half is plain
+    // `.mjs` because the script that calls it is: a `.ts` module would need a
+    // build step to be reachable from a Node script run straight out of the repo.
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
   },
 });
