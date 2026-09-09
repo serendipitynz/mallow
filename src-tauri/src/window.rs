@@ -26,6 +26,19 @@ pub struct InitialLocation {
     pub file: Option<String>,
 }
 
+/// What a created window was told at creation.
+///
+/// **A window created empty is not the same thing as a window nothing created**,
+/// and flattening the two costs New Window its whole specification: with a folder
+/// in the stored session, a window that reported "nothing was deposited" would
+/// fall back to that session and open a duplicate of it. So the outer option says
+/// whether this window was created by `open_window`, and `location` says whether
+/// it was given somewhere to open.
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+pub struct WindowInit {
+    pub location: Option<InitialLocation>,
+}
+
 /// label → the location that window is to open, deposited when the label is
 /// allocated and removed by that window's own `take_window_init`.
 ///
@@ -71,8 +84,13 @@ impl WindowInitRegistry {
         Ok(())
     }
 
-    fn take(&self, label: &str) -> Result<Option<InitialLocation>, String> {
-        Ok(self.0.lock().map_err(|e| e.to_string())?.remove(label).flatten())
+    fn take(&self, label: &str) -> Result<Option<WindowInit>, String> {
+        Ok(self
+            .0
+            .lock()
+            .map_err(|e| e.to_string())?
+            .remove(label)
+            .map(|location| WindowInit { location }))
     }
 
     fn discard(&self, label: &str) {
@@ -203,9 +221,10 @@ pub fn open_window(
     create_window(&app, location, label, Some(window))
 }
 
-/// Take this window's initial location. Answers it once and `null` afterwards.
+/// Take what this window was told at creation. Answers it once, and `null`
+/// afterwards and for a window `open_window` did not create.
 #[tauri::command]
-pub fn take_window_init(window: Window, state: State<WindowInitRegistry>) -> Result<Option<InitialLocation>, String> {
+pub fn take_window_init(window: Window, state: State<WindowInitRegistry>) -> Result<Option<WindowInit>, String> {
     state.take(window.label())
 }
 
@@ -257,17 +276,28 @@ mod tests {
     fn an_initial_location_is_answered_once_and_then_gone() {
         let registry = WindowInitRegistry::default();
         let label = registry.reserve(&live(&["main"]), location("/docs")).unwrap();
-        assert_eq!(registry.take(&label).unwrap(), location("/docs"));
+        assert_eq!(registry.take(&label).unwrap(), Some(WindowInit { location: location("/docs") }));
         assert_eq!(registry.take(&label).unwrap(), None);
     }
 
+    /// The distinction New Window rests on: a window created empty answers that it
+    /// was created and given nowhere, where a window nothing created answers
+    /// nothing at all. Flatten the two and an empty New Window falls back to the
+    /// stored session and opens a duplicate of the last folder.
     #[test]
-    fn an_empty_window_reserves_its_slot_and_is_handed_nothing() {
+    fn a_window_created_empty_is_not_a_window_nothing_created() {
         let registry = WindowInitRegistry::default();
         let label = registry.reserve(&live(&["main"]), None).unwrap();
         assert_eq!(label, "w1");
-        assert_eq!(registry.take(&label).unwrap(), None);
-        // Taken, so the slot is free again for the next creation.
+        assert_eq!(registry.take(&label).unwrap(), Some(WindowInit { location: None }));
+        assert_eq!(registry.take("main").unwrap(), None);
+    }
+
+    #[test]
+    fn an_empty_window_frees_its_slot_once_it_has_taken_its_entry() {
+        let registry = WindowInitRegistry::default();
+        let label = registry.reserve(&live(&["main"]), None).unwrap();
+        registry.take(&label).unwrap();
         assert_eq!(registry.reserve(&live(&["main"]), None).unwrap(), "w1");
     }
 
@@ -277,7 +307,7 @@ mod tests {
         registry.reserve_label("w4", location("/notes")).unwrap();
         // The reservation still holds the slot against an interactive creation.
         assert_eq!(registry.reserve(&live(&[]), None).unwrap(), "w1");
-        assert_eq!(registry.take("w4").unwrap(), location("/notes"));
+        assert_eq!(registry.take("w4").unwrap(), Some(WindowInit { location: location("/notes") }));
     }
 
     #[test]

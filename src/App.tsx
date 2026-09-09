@@ -32,6 +32,7 @@ import {
 } from './lib/tauri';
 import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
+import { locationToOpenAtMount } from './lib/window-init';
 
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 180;
@@ -211,10 +212,11 @@ export default function App() {
         return;
       }
 
-      /* The initial location a creating window deposited, taken exactly once.
-         A window created with one opens it *instead of* the stored session: the
-         session is what a window falls back to, not something that overrides the
-         folder the window was just asked to show.
+      /* What this window was told at creation, taken exactly once. A created
+         window opens what it was handed and nothing else — including nothing at
+         all, for New Window; the session is what a window nothing created falls
+         back to. `lib/window-init` holds that decision and why the two are not
+         one answer.
 
          Nothing here writes `lastFolder` / `lastFile` back. That pair cannot
          express a window set at all — a created window writing to it would
@@ -222,19 +224,15 @@ export default function App() {
          session, which is also where this path gains its `report_window_content`
          call. */
       const init = await takeWindowInit().catch((e) => {
-        console.error('Failed to take the initial location', e);
+        console.error("Failed to take this window's initialization", e);
         return null;
       });
       if (disposed) {
         return;
       }
-      if (init) {
-        await openLocation(init.folder, init.file, () => disposed);
-        return;
-      }
-
-      if (s.lastFolder && (await pathExists(s.lastFolder))) {
-        await openLocation(s.lastFolder, s.lastFile ?? null, () => disposed);
+      const target = locationToOpenAtMount(init, s);
+      if (target && (await pathExists(target.folder))) {
+        await openLocation(target.folder, target.file, () => disposed);
       }
     })()
       .catch((e) => console.error('Session restore failed', e))

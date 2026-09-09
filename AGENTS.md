@@ -69,7 +69,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share), `print` / `pdf-export` / `new-window` (each entry's key,
-  gate and reason — the last has no gate), `build-flags` (the unattended switch Vite substitutes), `render-signal`
+  gate and reason — the last has no gate), `window-init` (what a
+  window opens at mount, given what it was told at creation and what the session
+  remembers), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
 - `unattended/` — the unattended export's driver (TASK-30), reached only from
@@ -988,6 +990,14 @@ hold rather than as an exhaustive style guide.
   `WindowInitRegistry`, whose value is `None` for a window opened empty, and it is
   released by `take_window_init`, by a failed build, and by the `Destroyed` hook
   for a window that never reached its mount.
+- **A window created empty is not a window nothing created, and reading the two as
+  one answer costs New Window its whole specification.** `take_window_init` answers
+  `{ location }` for a window `open_window` built and `null` for one it did not, so
+  the created-empty case is `{ location: null }` — flatten it to `null` and an
+  empty New Window falls through to the stored session and opens a duplicate of
+  the last folder, which is the one thing New Window exists not to do. The branch
+  lives in `lib/window-init` rather than inside `App`'s mount effect, because that
+  is where it was got wrong and nothing inside an effect can reach it.
 - **The initial location is taken exactly once, and a WebView reload is not a new
   window.** `open_window` deposits `{ folder, file }` under the label and the
   created window removes it at mount, so **after a devtools reload the window
@@ -1033,7 +1043,9 @@ hold rather than as an exhaustive style guide.
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
   `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
   `chord` (accelerator matching plus the app-wide handler — both take the platform
-  as an argument so neither needs `navigator`), `markdown-preview`, `print`,
+  as an argument so neither needs `navigator`), `window-init` (which of
+  the three creation states a window is in, and what each opens),
+  `markdown-preview`, `print`,
   `pdf-export` and `new-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), and `custom-emoji`

@@ -41,3 +41,10 @@ export interface InitialLocation {
   folder: string;
   file: string | null;
 }
+
+/** What a window was told at creation, answered once by `take_window_init`. It is
+ *  `null` for a window `open_window` did not create — the launch window, and any
+ *  window that has already taken its entry. */
+export interface WindowInit {
+  location: InitialLocation | null;
+}

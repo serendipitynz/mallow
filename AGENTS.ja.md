@@ -868,6 +868,13 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `WindowInitRegistry` のエントリそのもので、空で開くウィンドウでは値が `None` になる。
   解放は `take_window_init`・build の失敗・mount に到達しなかったウィンドウの
   `Destroyed` フックの 3 経路。
+- **空で作られたウィンドウと、何にも作られていないウィンドウは別物であり、1 つの答えとして
+  読むと New Window の仕様が丸ごと失われる。** `take_window_init` は `open_window` が
+  作ったウィンドウには `{ location }` を、そうでないウィンドウには `null` を返す。
+  空で作られた場合は `{ location: null }` であって、これを `null` に潰すと空の
+  New Window が保存済みセッションへ落ちて直前のフォルダの複製を開く — New Window が
+  まさにそうしないために存在する動作である。この分岐は `App` の mount 効果の中ではなく
+  `lib/window-init` に置いた。そこが誤った場所であり、効果の中には何も届かないから。
 - **initial location はちょうど 1 回だけ取られ、WebView のリロードは新しいウィンドウでは
   ない。** `open_window` がラベルの下に `{ folder, file }` を置き、作られたウィンドウが
   mount で取り除くので、**devtools のリロード後はウィンドウが location を開き直さず
@@ -911,6 +918,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `heading`＝座標変換のみ。`findHeading` は DOM のグローバルを要するため対象外・
   `chord`＝アクセラレータの一致判定とアプリ全体の handler。どちらもプラットフォームを
   引数で受けるので `navigator` を要しない・
+  `window-init`＝ウィンドウが 3 つの生成状態のどれにいて、それぞれ何を開くか・
   `markdown-preview`・`print`・`pdf-export`・`new-window`＝各 chord のキー・ゲートと、
   イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
   New Window には閉じるゲートが無いことを含む）・

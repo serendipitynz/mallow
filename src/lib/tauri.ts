@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { message as messageDialog, open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { type ReadResult, toReadError } from './read-error';
-import type { EditorInfo, FileEntry, InitialLocation } from './types';
+import type { EditorInfo, FileEntry, InitialLocation, WindowInit } from './types';
 
 /** Set the native window title (fire-and-forget; errors are logged). */
 export function setWindowTitle(title: string): void {
@@ -113,9 +113,12 @@ export function openWindow(location?: InitialLocation): Promise<string> {
   return invoke<string>('open_window', { location: location ?? null, label: null });
 }
 
-/** Take this window's initial location. Answers it once and null afterwards —
- *  including after a WebView reload, which is why a reloaded window comes back
- *  empty (see `src-tauri/src/window.rs`). */
-export function takeWindowInit(): Promise<InitialLocation | null> {
-  return invoke<InitialLocation | null>('take_window_init');
+/** Take what this window was told at creation. Answers it once and null
+ *  afterwards — and null for a window `open_window` did not create, which is why
+ *  a reloaded window comes back empty (see `src-tauri/src/window.rs`).
+ *
+ *  Null and `{ location: null }` are different answers, and `lib/window-init`
+ *  holds what each one means. */
+export function takeWindowInit(): Promise<WindowInit | null> {
+  return invoke<WindowInit | null>('take_window_init');
 }
