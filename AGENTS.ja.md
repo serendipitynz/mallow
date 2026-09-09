@@ -38,6 +38,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   幅/左右、セッション復元、設定モーダルの開閉（フッターのボタン・`menu:settings`
   イベント・`Cmd/Ctrl+,` ショートカットのいずれからも開く）、起動時の更新確認
   （セッション復元の後ろへ遅らせる。`autoCheckUpdates` 設定で切れる）。
+  フォルダに辿り着く 3 経路 — フォルダ選択・保存済みセッション・作られたウィンドウが
+  受け取る initial location — は `openLocation` という 1 つの手順を通る。
+  mount 時の効果はセッションを読む前に `take_window_init` へ initial location を要求する。
 - `hooks/useFileTree.ts` — ファイルツリーの集中管理（展開集合・子マップ・`refresh`・
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
 - `hooks/useUpdater.ts` — 更新確認・導入の同意・再起動（tauri-plugin-updater +
@@ -82,9 +85,17 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `watch.rs` — `notify` の再帰ウォッチャで、ウィンドウごとに 1 つ持つ。
   watcher registry（`WatcherRegistry`。ウィンドウラベルをキーにする）がハンドルを保持し、
   `start_watch` は呼び出したウィンドウの分だけを差し替え、`stop_watch` はその分だけを外す。
-  閉じたウィンドウの分は `lib.rs` のアプリ全体の `WindowEvent::Destroyed` フックが落とすので、
+  閉じたウィンドウの分は `lib.rs` のアプリ全体の `WindowEvent::Destroyed` フックが
+  （受け取られなかった initial location と一緒に）落とすので、
   設定ファイルのウィンドウと実行時に作ったウィンドウが同じ経路を通る。`fs:change` の emit は
   `emit_to` で行う — **それだけでは何も分離しない**ので、下の gotcha を読む。
+- `window.rs` — `open_window` / `take_window_init` と、その 2 つが location を
+  受け渡す `WindowInitRegistry`。`open_window(location, label)` は設定ファイルの
+  ウィンドウの `WindowConfig` を clone してラベルだけ上書きしてウィンドウを作るので、
+  作られたウィンドウは設定のサイズ・最小サイズ・タイトルを手で写すことなく持つ。
+  `label` は TASK-12.7 の復元経路だけが渡す。その経路には呼び出し元のウィンドウが
+  無いので、素の関数 `create_window` を呼ぶ。スロットの再利用・1 回だけの受け渡し・
+  ずらし規則は下の gotcha にある。
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` を `std::process` で実装（OS ごとに `cfg` で分岐）。
   最後のものはファイルをその種別に登録された OS のハンドラへ渡す。
@@ -843,6 +854,51 @@ Comments と Functions の規約は機械的に検査されない。コメント
   どのウィンドウが許可したフォルダもすべてのウィンドウから読める。しかも
   許可を求めたウィンドウが閉じても許可は残る — スコープに削除の API が無い。
   ツリーで利用者が選んだファイルしか描かないビューアにとって、どちらも欠陥ではない。
+- **作られたウィンドウのラベルはスロットであり、付いてくる geometry がその代償である。**
+  `open_window` は生きているウィンドウが持たず、作成中の予約も無い最小の `w<n>` を取る —
+  builder が拒否するのは現に使用中のラベルだけなので（tauri-2.11.3
+  `src/manager/window.rs:70-72`）、閉じたウィンドウのスロットの再利用は正当である。
+  単調増加のカウンタの方が単純だが、ここでは誤りで、理由は 2 つとも TASK-12.7 から来る:
+  window-state のファイルと restored session はどちらもラベルをキーにするので、
+  増え続けるカウンタは開いたウィンドウの数だけ両方を太らせ、復元されたウィンドウに
+  元の geometry を返せなくなる。**受け入れる帰結は、新しいウィンドウがそのスロットを
+  最後に持っていたウィンドウの記憶された geometry を引き継ぐこと。**
+  **ラベルはウィンドウが存在する前に予約する。** `webview_windows()` は build 済みの
+  ウィンドウしか列挙しないので、同時に 2 つ作ると同じ `w<n>` が渡ってしまう。予約とは
+  `WindowInitRegistry` のエントリそのもので、空で開くウィンドウでは値が `None` になる。
+  解放は `take_window_init`・build の失敗・mount に到達しなかったウィンドウの
+  `Destroyed` フックの 3 経路。
+- **initial location はちょうど 1 回だけ取られ、WebView のリロードは新しいウィンドウでは
+  ない。** `open_window` がラベルの下に `{ folder, file }` を置き、作られたウィンドウが
+  mount で取り除くので、**devtools のリロード後はウィンドウが location を開き直さず
+  空で戻る。** これはパスを URL に載せないことの代償である。退けた代替
+  （`index.html?folder=<encoded>`）はリロードを越えて残るが、任意のファイルパスを
+  URL エンコードに通し、WebView が読み込んだアドレスに残す。機構自体は確定していて
+  （TASK-12 の用語がこれを前提に書かれている）、TASK-13.4 が広げるのは運ぶ中身だけ —
+  ファイル側が一覧＋どれがアクティブか、になる。
+- **新しいウィンドウを spawner からずらすかは位置の比較で決める。「このスロットに
+  記憶された geometry があるか」は訊けないし、ほぼ即座に真でなくなる。**
+  tauri-plugin-window-state は `WindowState` と `WindowStateCache` を private に持ち
+  （`src/lib.rs:76`・`:109`）、window-ready で見たラベルすべてに既定の state を入れ
+  （`:437-445`）、`RunEvent::Exit` でキャッシュ全体を書く（`:501-504`）ので、
+  一度使われたスロットは以後ずっとエントリを持つ。それを見る判定は、そのスロットの
+  「史上初の使用」でしかずらさない。だから `offset_when_stacked_on` は作られた
+  ウィンドウの outer position を spawner のそれと比べ、一致したときだけ動かす。
+  **それが復元後の位置を読むことを保証するのは thread affinity ではなく順序である**:
+  プラグインの復元は `on_window_ready` から走り、tauri はそれを
+  `Window::run_on_main_thread` 経由で配送する（tauri-2.11.3
+  `src/manager/window.rs:113-118`）。比較を投げる先は同じキューで、復元の方が先に
+  入っている — 呼び出しが既にメインスレッドなら両方ともインライン、そうでなければ
+  event proxy を通って FIFO（tauri-runtime-wry-2.11.3 `src/lib.rs:239-248`）。
+  **ラベルが渡されなかった場合、つまり対話的な経路にだけ効く**: 復元経路には spawner が
+  無く、利用者が意図して重ねたウィンドウは重なったまま戻らなければならない。
+  **プラグインの `map_label` でラベルを畳まないこと**（`src/lib.rs:377`） —
+  全ウィンドウが 1 つの geometry を共有することになり、復元された集合が最もそうであっては
+  ならない状態になる。
+- **最後のウィンドウを閉じるとアプリは終了する。macOS を含め全環境で同じ。**
+  macOS の作法はメニューバーだけ残して生き続けることだが、見落としではなく選ばなかった:
+  メニューバーのみの状態は「フォーカスされたウィンドウが無い状態で New Window が動く」
+  ことを要求し、TASK-12.4 のメニューイベントの配送を複雑にする。
 - 独自 Rust コマンドと core イベントは capabilities の許可不要。plugin/core API のみが
   ゲートされる（`src-tauri/capabilities/default.json` 参照）。
 
@@ -855,8 +911,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `heading`＝座標変換のみ。`findHeading` は DOM のグローバルを要するため対象外・
   `chord`＝アクセラレータの一致判定とアプリ全体の handler。どちらもプラットフォームを
   引数で受けるので `navigator` を要しない・
-  `markdown-preview`・`print`・`pdf-export`＝各 chord のキー・ゲートと、
-  イベントに対して handler が何をするか（2 つが一緒に開閉することを含む）・
+  `markdown-preview`・`print`・`pdf-export`・`new-window`＝各 chord のキー・ゲートと、
+  イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
+  New Window には閉じるゲートが無いことを含む）・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
@@ -865,7 +922,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   5 秒で落ちてほしい）。
 - バックエンド: `src-tauri/` 内で `cargo fmt --check`・`cargo check`・`cargo test`。
   `commands` モジュールにユニットテストがある（`tempfile` 依存を避けた
-  自己クリーンアップ式の temp-dir ヘルパー）。**`unattended.rs` のテストは
+  自己クリーンアップ式の temp-dir ヘルパー）。`watch` の registry と、`window` の
+  ラベル採番・initial location の受け渡しも GUI なしで検査する。後者ができるのは
+  `reserve` が生きているラベルの集合をアプリに訊かず引数で受けるから。
+  **`unattended.rs` のテストは
   `cfg(unattended)`** なので素の `cargo test` では 1 度もコンパイルされない —
   紙のジョブが `MALLOW_UNATTENDED=1 cargo test` を走らせ、そこだけが実行場所である。
 - **紙**（TASK-30）: `MALLOW_UNATTENDED=1 pnpm tauri build --debug --no-bundle --no-sign`

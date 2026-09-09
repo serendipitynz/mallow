@@ -38,7 +38,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   width/side, session restore, settings-modal open state (footer button, the
   `menu:settings` event, and the Cmd/Ctrl+, shortcut all open it), and the
   launch update check (deferred behind session restore; the `autoCheckUpdates`
-  preference turns it off).
+  preference turns it off). `openLocation` is the one sequence the picker, the
+  stored session and a created window's initial location all take; the mount
+  effect asks `take_window_init` for that location before it reads the session.
 - `hooks/useFileTree.ts` — centralized lazy file-tree state (expanded set, children
   map, `refresh`, `expandPaths`). The tree components are controlled by this.
 - `hooks/useUpdater.ts` — the update check, the install consent and the relaunch
@@ -66,8 +68,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
-  `Export as PDF…` share), `print` / `pdf-export` (each entry's key, gate and
-  reason), `build-flags` (the unattended switch Vite substitutes), `render-signal`
+  `Export as PDF…` share), `print` / `pdf-export` / `new-window` (each entry's key,
+  gate and reason — the last has no gate), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
 - `unattended/` — the unattended export's driver (TASK-30), reached only from
@@ -83,10 +85,19 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - `watch.rs` — `notify` recursive watcher, one per window. The watcher registry
   (`WatcherRegistry`, keyed by window label) holds the handles; `start_watch`
   replaces and `stop_watch` removes only the calling window's entry, and the
-  app-level `WindowEvent::Destroyed` hook in `lib.rs` drops a closed window's, so
+  app-level `WindowEvent::Destroyed` hook in `lib.rs` drops a closed window's
+  (alongside its undelivered initial location), so
   the configured window and the ones created at runtime go through one path. The
   `fs:change` event goes out with `emit_to` — see the gotcha below, since that
   alone isolates nothing.
+- `window.rs` — `open_window` / `take_window_init`, and the `WindowInitRegistry`
+  the pair hands a location through. `open_window(location, label)` builds one
+  window by cloning the configured window's own `WindowConfig` and overwriting its
+  label, so a created window carries the configured size, minimums and title
+  without any field being copied by hand. `label` is absent for every caller but
+  TASK-12.7's restore path, which supplies one; `create_window` is the plain
+  function that path calls, since it has no spawning window. See the gotcha below
+  for the slot reuse, the take-once handover and the cascade rule.
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
@@ -961,6 +972,56 @@ hold rather than as an exhaustive style guide.
   readable by all of them, and a grant outlives the window that asked for it —
   the scope has no removal API. Neither is a defect for a viewer that only
   renders files the user picked in a tree.
+- **A created window's label is a slot, and the geometry that comes with it is
+  the price.** `open_window` takes the lowest `w<n>` no live window holds and no
+  creation in flight has claimed — the builder rejects only a label currently in
+  use (tauri-2.11.3 `src/manager/window.rs:70-72`), so reusing a closed window's
+  slot is legal. A monotonic counter would be simpler and is wrong here for two
+  reasons that both come from TASK-12.7: the window-state file and the restored
+  session are keyed by label, so a counter climbing forever leaves both growing
+  with every window ever opened, and a restored window could not be handed back
+  the geometry it had. **The consequence to accept is that a new window inherits
+  the remembered geometry of whichever window last held its slot.**
+  **The label is reserved before its window exists**, because `webview_windows()`
+  does not list a window until it is built — two creations in flight would
+  otherwise be handed the same `w<n>`. The reservation *is* the entry in
+  `WindowInitRegistry`, whose value is `None` for a window opened empty, and it is
+  released by `take_window_init`, by a failed build, and by the `Destroyed` hook
+  for a window that never reached its mount.
+- **The initial location is taken exactly once, and a WebView reload is not a new
+  window.** `open_window` deposits `{ folder, file }` under the label and the
+  created window removes it at mount, so **after a devtools reload the window
+  comes back empty rather than reopening its location.** That is the price of
+  keeping paths out of the URL: the rejected alternative
+  (`index.html?folder=<encoded>`) survives a reload but puts arbitrary filesystem
+  paths through URL encoding and leaves them in the address the WebView loaded.
+  The mechanism is settled — TASK-12's vocabulary is written in terms of it —
+  and TASK-13.4 widens only what it carries, the file half becoming a list plus
+  which entry is active.
+- **A new window is offset off its spawner by comparing positions, not by asking
+  whether the slot has remembered geometry — that question cannot be asked and
+  stops being true almost immediately.** tauri-plugin-window-state keeps
+  `WindowState` and `WindowStateCache` private (`src/lib.rs:76`, `:109`), inserts a
+  default state for every label it sees at window-ready (`:437-445`) and writes the
+  whole cache at `RunEvent::Exit` (`:501-504`) — so a slot used once has an entry
+  forever after, and a check on it would offset only on a slot's first ever use.
+  `offset_when_stacked_on` therefore compares the created window's outer position
+  with the spawner's and moves it only when the two are equal. **What makes that
+  read a restored position is ordering, not thread affinity**: the plugin restores
+  from `on_window_ready`, which tauri dispatches through `Window::run_on_main_thread`
+  (tauri-2.11.3 `src/manager/window.rs:113-118`), the same queue the comparison is
+  posted to and posted to first — inline for both when the caller is already on the
+  main thread, FIFO through the event proxy when it is not
+  (tauri-runtime-wry-2.11.3 `src/lib.rs:239-248`). **It applies only where no label
+  was supplied**, that is to the interactive paths: the restore path has no spawner,
+  and windows the user deliberately stacked must come back stacked. **Do not
+  collapse labels with the plugin's `map_label`** (`src/lib.rs:377`) — it gives
+  every window one shared geometry, which is exactly what a restored set must not
+  have.
+- **Closing the last window exits the app, on every platform including macOS.**
+  The platform convention there is to stay alive with only the menu bar, and that
+  is declined rather than overlooked: a menu-bar-only state needs New Window to
+  work with no window focused, which complicates TASK-12.4's menu-event routing.
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 
@@ -972,9 +1033,10 @@ hold rather than as an exhaustive style guide.
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
   `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
   `chord` (accelerator matching plus the app-wide handler — both take the platform
-  as an argument so neither needs `navigator`), `markdown-preview`, `print` and
-  `pdf-export` (each chord's key, gate and what the handler does with the event,
-  including that the two open and close together), and `custom-emoji`
+  as an argument so neither needs `navigator`), `markdown-preview`, `print`,
+  `pdf-export` and `new-window` (each chord's key, gate and what the handler does
+  with the event — including that `Print…` and `Export as PDF…` open and close
+  together, and that New Window has no gate to close), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
@@ -982,7 +1044,10 @@ hold rather than as an exhaustive style guide.
   should still fail in 5s).
 - Backend: `cargo fmt --check`, `cargo check` and `cargo test` inside
   `src-tauri/`. The `commands` module has unit tests (a small self-cleaning
-  temp-dir helper, no `tempfile` dep). **`unattended.rs`'s tests are
+  temp-dir helper, no `tempfile` dep); `watch`'s registry and `window`'s label
+  allocation and initial-location handover are covered without a GUI, the latter
+  because `reserve` takes the set of live labels as an argument rather than asking
+  the app for it. **`unattended.rs`'s tests are
   `cfg(unattended)`**, so a plain `cargo test` never compiles them — the paper job
   runs `MALLOW_UNATTENDED=1 cargo test`, and that is the only place they run.
 - **The paper** (TASK-30): `MALLOW_UNATTENDED=1 pnpm tauri build --debug
