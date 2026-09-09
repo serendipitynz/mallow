@@ -79,8 +79,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   を素の `std::fs` で実装（fs プラグインは使わない）。ユーザーが選んだ任意フォルダを
   スコープ設定なしで扱える。`allow_media_dir` は開いたフォルダに asset protocol の
   スコープを広げ、その中の画像/PDF/動画を `convertFileSrc` で表示できるようにする。
-- `watch.rs` — `notify` の再帰ウォッチャ。`fs:change` イベント（パス配列）を emit。
-  ウォッチャは `WatcherState` が保持。
+- `watch.rs` — `notify` の再帰ウォッチャで、ウィンドウごとに 1 つ持つ。
+  watcher registry（`WatcherRegistry`。ウィンドウラベルをキーにする）がハンドルを保持し、
+  `start_watch` は呼び出したウィンドウの分だけを差し替え、`stop_watch` はその分だけを外す。
+  閉じたウィンドウの分は `lib.rs` のアプリ全体の `WindowEvent::Destroyed` フックが落とすので、
+  設定ファイルのウィンドウと実行時に作ったウィンドウが同じ経路を通る。`fs:change` の emit は
+  `emit_to` で行う — **それだけでは何も分離しない**ので、下の gotcha を読む。
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` を `std::process` で実装（OS ごとに `cfg` で分岐）。
   最後のものはファイルをその種別に登録された OS のハンドラへ渡す。
@@ -812,6 +816,33 @@ Comments と Functions の規約は機械的に検査されない。コメント
   なっているだけである** — 依存を足さず、文面からの推測もせずに位置が得られる限り
   それを出す（decision-12）。JSON には strict なパーサが既に木の中にあり、XML には無い。
   よって別の理由で XML パーサが入る日が来れば、XML も位置を出す義務を負う。
+- **ウィンドウごとのイベント配送は 2 つで 1 組であり、Rust 側だけでは
+  「できたように見えて壊れている」状態になる。** `watch.rs` は
+  `emit_to(label, …)` で `fs:change` を emit し、`lib/watch.ts` は
+  `getCurrentWebviewWindow().listen` で受ける。`EventTarget::Any` で登録された
+  リスナは emit 側が何で絞ったかにかかわらずマッチする —
+  `match_any_or_filter` が filter を見る前に `Any` で短絡する
+  （tauri 2.11.3 `src/event/listener.rs:305-311`） — そして
+  `@tauri-apps/api` の素の `listen()` はまさにその target で登録するので、
+  Rust がどれだけ狭く emit しても他のウィンドウの変更を受け続ける。
+  **これは一律の規則ではない**: 全ウィンドウへ届けたいイベントは同じ `Any` の
+  挙動に乗るので、リスナの target はイベントごとの判断である。registry は
+  **ハンドルの型に対してジェネリック**にしてあり、insert / replace / remove を
+  GUI なしで検査できる — 自分の drop を報告する probe ハンドルを使う。drop は
+  registry から見た「watch が止まった」状態そのものであり、
+  `RecommendedWatcher` は自分が drop されたことを報告できない。
+- **capability のウィンドウ一覧は glob であり、`w*` と一緒に `main` も持つ。**
+  `capabilities/default.json` はウィンドウラベルで plugin API をゲートするので、
+  この一覧に載らないラベルのウィンドウは `store:default`（設定が永続化されない）・
+  `dialog:default`（Open… が何もしない）・`opener:default`（外部リンクが死ぬ）・
+  `core:window:allow-set-title`（タイトルが文書を追わなくなる）を失う —
+  **そのウィンドウだけで**。だから単一ウィンドウの動作確認では捕まらない。
+  `main` は全ウィンドウが `w<n>` ラベルで作られるようになるまで残す。
+  **asset protocol のスコープにはウィンドウごとの項目が要らない**:
+  `allow_media_dir` はアプリ全体の 1 つのスコープを加算的に広げるので、
+  どのウィンドウが許可したフォルダもすべてのウィンドウから読める。しかも
+  許可を求めたウィンドウが閉じても許可は残る — スコープに削除の API が無い。
+  ツリーで利用者が選んだファイルしか描かないビューアにとって、どちらも欠陥ではない。
 - 独自 Rust コマンドと core イベントは capabilities の許可不要。plugin/core API のみが
   ゲートされる（`src-tauri/capabilities/default.json` 参照）。
 

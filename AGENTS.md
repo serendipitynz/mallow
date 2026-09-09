@@ -80,8 +80,13 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   via plain `std::fs` (NOT the fs plugin), so any user-picked folder works without
   scope config. `allow_media_dir` widens the asset-protocol scope to an opened
   folder so its image/pdf/video files can be rendered via `convertFileSrc`.
-- `watch.rs` — `notify` recursive watcher; emits the `fs:change` event (list of
-  paths). The watcher handle lives in `WatcherState`.
+- `watch.rs` — `notify` recursive watcher, one per window. The watcher registry
+  (`WatcherRegistry`, keyed by window label) holds the handles; `start_watch`
+  replaces and `stop_watch` removes only the calling window's entry, and the
+  app-level `WindowEvent::Destroyed` hook in `lib.rs` drops a closed window's, so
+  the configured window and the ones created at runtime go through one path. The
+  `fs:change` event goes out with `emit_to` — see the gotcha below, since that
+  alone isolates nothing.
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
@@ -929,6 +934,33 @@ hold rather than as an exhaustive style guide.
   without inferring it (decision-12). JSON has a second strict parser in the tree
   already; XML has none, so if one ever arrives for another reason, XML is obliged
   to start reporting a position too.
+- **Per-window event delivery is a pair, and the Rust half alone looks done
+  while still being broken.** `watch.rs` emits `fs:change` with
+  `emit_to(label, …)` and `lib/watch.ts` listens through
+  `getCurrentWebviewWindow().listen`. A listener registered with
+  `EventTarget::Any` matches whatever the emitter filtered on —
+  `match_any_or_filter` short-circuits on `Any` before consulting the filter
+  (tauri 2.11.3 `src/event/listener.rs:305-311`) — and the plain `listen()` in
+  `@tauri-apps/api` registers exactly that target, so a window would keep
+  receiving every other window's changes however narrowly Rust emits. **It is not
+  a blanket rule**: an event meant to reach every window relies on that same
+  behaviour of `Any`, so the listener's target is a per-event decision. The
+  registry is **generic over the handle type** so insert / replace / remove are
+  testable without a GUI — a probe handle reports its own drop, which is what a
+  stopped watch looks like from the registry's side, and a `RecommendedWatcher`
+  cannot report that it was dropped.
+- **The capability window list is a glob, and it carries `main` as well as
+  `w*`.** `capabilities/default.json` gates plugin APIs by window label, so a
+  window labelled outside that list loses `store:default` (settings do not
+  persist), `dialog:default` (Open… does nothing), `opener:default` (external
+  links dead) and `core:window:allow-set-title` (the title stops tracking the
+  document) — **only in that window**, which is why a single-window smoke test
+  cannot catch it. `main` stays until every window is created under a `w<n>`
+  label. **The asset-protocol scope needs no per-window entry**: `allow_media_dir`
+  widens one app-global scope additively, so a folder granted by any window is
+  readable by all of them, and a grant outlives the window that asked for it —
+  the scope has no removal API. Neither is a defect for a viewer that only
+  renders files the user picked in a tree.
 - Custom Rust commands and core events are NOT gated by capabilities; only
   plugin/core APIs are (see `src-tauri/capabilities/default.json`).
 
