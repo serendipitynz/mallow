@@ -1,10 +1,10 @@
 ---
 id: TASK-32
 title: Tell a first-time builder what the build needs before pnpm tauri build
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-09 17:46'
-updated_date: '2026-09-09 05:55'
+updated_date: '2026-09-09 07:37'
 labels:
   - documentation
 dependencies: []
@@ -66,4 +66,17 @@ README.md の `## Development` と README.ja.md の `## 開発` に、コマン�
 **検証** — `pnpm lint` (biome check: 108 files, no fixes)、`pnpm test` (25 files / 346 tests passed)、`pnpm build` (成功。500 kB のチャンク警告は既存) がいずれも通る。Markdown は Biome の対象外なので README 自体を機械的に検査するものはなく、AC を満たしているかは本文を読んで判断している。日本語版が英語版と同じ内容・同じ長さであることも同様に目視。
 
 **未計測のまま残したもの** — 前提条件を満たさない状態から実際にビルドを通し直す再現は macOS のこの 1 台でしか行われておらず (Description の 2026-09-09 の計測)、Windows・Linux で `pnpm tauri build` が同じ文言で止まるかは確認していない。エラー行の引用はその計測に基づく。
+
+**レビュー 1 巡目 (Claude Code CLI, [P3] 4 件) を受けた修正 — `8008f0b`。** [P1]/[P2] はなく、任意の取り込み。指摘の事実確認を先に行い、2 件とも裏を取った: 同梱の `@tauri-apps/cli` 2.11.4 のネイティブバイナリには引用した `failed to run 'cargo metadata' …` と `"rustc" could not be found, did you install Rust?` の**両方**が入っており (`strings` で確認)、macOS 1 台の計測から片方を「その文言」と断定していたのは事実だった。`package.json:15` の `packageManager: pnpm@11.9.0` も実在。
+
+- 停止の原因を `cargo` または `rustc` の不在 (プラットフォームを問わない一般的事実) に帰属させ、引用行は「ここで出たメッセージ」という観測の記述に変えた。検索可能な文字列はそのまま残るので AC #3 は保持され、主張は AC #5 が要求する範囲より狭くなった。2 番目の文言は README に引用していない — 確認できたのはバイナリに文字列が含まれることであって出力の観測ではなく、引用すれば未計測の主張を別の未計測の主張に置き換えるだけになる。
+- Rust の項目を「このリポジトリに **Rust** のバージョン指定はありません」に絞り、pnpm の項目で `package.json` の pin を明示した。`11.9.0` を転記していないのは `package.json:15` に対して古びないため。pnpm 10 以降の自動切り替えの挙動は未検証なので書いていない。
+- `cargo check` をコマンドブロックの `cargo test` の手前に追加した (本文が 4 コマンドを名前で挙げる AC #2 を保ったまま、ブロックとの食い違いを解消する方向)。
+- 箇条書きに導入句 (`You need:` / 「必要なもの:」) を追加した。
+
+2 巡目は残存指摘なしで APPROVED (`8008f0b` に紐付けて記録)。レビュアーが「修正不要」として記録した 1 点はこのタスクの範囲外: ledger の `updated_date` が UTC・`created_date` がローカル時刻で書かれており全タスクファイルで混在している (Backlog CLI 側の挙動)。手を入れていない。
+
+**milestone は未設定のままにした** — frontmatter に `milestone:` がなく、active な唯一の milestone m-2 (v0.7.0) は既に出荷済みで、TASK-24 / 29 / 31 も未設定。未設定がこのリポジトリで確立した状態と判断した。
+
+PR #53 は 2026-09-09 にマージ (merge commit `c9aab94`)。
 <!-- SECTION:NOTES:END -->
