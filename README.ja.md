@@ -172,12 +172,36 @@ mallow は**未信頼の**文書を安全に開くことを前提にしており
 
 ## 開発
 
+`pnpm install` が対象とするのはフロントエンドだけで、`pnpm tauri dev`・
+`pnpm tauri build`・`cargo check`・`cargo test` はいずれも Rust ツールチェインを
+土台にしています。必要なもの:
+
+- [rustup](https://rustup.rs) で導入した stable の Rust ツールチェイン（`cargo` が
+  `PATH` にあること）。このリポジトリに Rust のバージョン指定はありません。
+- Node.js と、`package.json` が指定するバージョンの pnpm。
+- 各プラットフォームのシステム依存。
+  [Tauri v2 の前提条件](https://v2.tauri.app/start/prerequisites/)を出典として、
+  macOS では Xcode Command Line Tools、Windows と Linux ではそのページが挙げる
+  パッケージです。
+
+`PATH` にツールチェインがないと、`pnpm tauri build` はコマンド側の問題ではなく
+`cargo` または `rustc` の不在で停止します。ここで出たメッセージは
+`failed to run 'cargo metadata' command to get workspace directory: … No such file or directory (os error 2)`
+でした。
+
+ローカルの `pnpm tauri build` は、`TAURI_SIGNING_PRIVATE_KEY` が未設定のときにも
+停止します。`pnpm tauri build --no-sign` が contributor 向けの経路で（コード署名も
+同時にスキップするため、リリース用の経路ではありません）、`pnpm tauri dev` は署名を
+まったく必要としません。手順は
+[AGENTS.ja.md](AGENTS.ja.md#署名付きの自己更新更新チャネル)にあります。
+
 ```sh
 pnpm install
 pnpm tauri dev      # 開発起動（ホットリロード）
 pnpm tauri build    # リリースビルド（.app / .dmg などを生成）
 pnpm build          # フロントの型チェック + バンドルのみ
 pnpm test           # フロントのユニットテスト（Vitest）
+cargo check         # Rust の型チェック（src-tauri/ 内で実行）
 cargo test          # Rust のユニットテスト（src-tauri/ 内で実行）
 
 # アプリアイコンの再生成（元画像から各サイズ/形式を生成）
