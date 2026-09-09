@@ -1,12 +1,13 @@
 ---
 id: TASK-12.1
 title: Give every window its own filesystem watch and capability grant
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-02 21:13'
-updated_date: '2026-08-02 22:39'
+updated_date: '2026-09-09 02:05'
 labels:
   - feature
+milestone: m-3
 dependencies: []
 parent_task_id: TASK-12
 priority: high
@@ -45,13 +46,13 @@ Getting this wrong fails in a way a single-window smoke test cannot catch: the l
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 watch.rs keeps a watcher registry keyed by window label; start_watch and stop_watch affect only the calling window's entry
-- [ ] #2 A destroyed window's watcher is dropped from the registry via an app-level WindowEvent::Destroyed hook, covering the launch window and created windows through the same code path
-- [ ] #3 cargo test covers insert / replace / remove on the watcher registry
-- [ ] #4 The registry is testable without a GUI: either it is generic over the handle type or the test watches a temp dir with the self-cleaning helper commands.rs already uses; the choice is stated
-- [ ] #5 capabilities/default.json lists both main and the w* glob, and a created window can persist settings, open the folder dialog, open external links and set its title
-- [ ] #6 fs:change is delivered per window: Rust emits with emit_to and src/lib/watch.ts listens through getCurrentWebviewWindow().listen, since a plain listen() ignores the emitter's filter
-- [ ] #7 Verification of a second window's capability grant is deferred to TASK-12.2, or this task adds a throwaway window-creation path to prove it; which one is stated
+- [x] #1 watch.rs keeps a watcher registry keyed by window label; start_watch and stop_watch affect only the calling window's entry
+- [x] #2 A destroyed window's watcher is dropped from the registry via an app-level WindowEvent::Destroyed hook, covering the launch window and created windows through the same code path
+- [x] #3 cargo test covers insert / replace / remove on the watcher registry
+- [x] #4 The registry is testable without a GUI: either it is generic over the handle type or the test watches a temp dir with the self-cleaning helper commands.rs already uses; the choice is stated
+- [x] #5 capabilities/default.json lists both main and the w* glob, and a created window can persist settings, open the folder dialog, open external links and set its title
+- [x] #6 fs:change is delivered per window: Rust emits with emit_to and src/lib/watch.ts listens through getCurrentWebviewWindow().listen, since a plain listen() ignores the emitter's filter
+- [x] #7 Verification of a second window's capability grant is deferred to TASK-12.2, or this task adds a throwaway window-creation path to prove it; which one is stated
 <!-- AC:END -->
 
 ## Definition of Done
@@ -60,3 +61,53 @@ Getting this wrong fails in a way a single-window smoke test cannot catch: the l
 - [ ] #2 Two windows watching overlapping folders (a parent and its subfolder) each refresh their own tree, and closing one leaves the other's watch alive
 - [ ] #3 pnpm build and pnpm test pass as well, since the listener change touches src/lib/watch.ts
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## The two choices the AC asks to be stated
+
+**AC #4 — the registry is generic over the handle type, not tested against a real
+watcher on a temp dir.** `WatcherRegistry<W>` holds `Mutex<HashMap<String, W>>`
+and the app manages `WatcherState = WatcherRegistry<RecommendedWatcher>`, so the
+call sites keep one name while the tests instantiate it with a probe handle that
+reports its own drop. Dropping a handle *is* what stops a watch, and a
+`RecommendedWatcher` cannot report that it was dropped — the temp-dir option
+could only show that a path is no longer reported, which is a weaker claim
+reached by a slower test. Four tests cover it: a second label does not displace
+the first, replacing one label drops only that label's previous handle, removing
+one label leaves the others, and removing an absent label is not an error (a
+window destroyed before it opened a folder, and a `stop_watch` arriving after the
+destroyed hook already cleared the entry).
+
+**AC #7 — verification of a second window's capability grant is deferred to
+TASK-12.2.** Nothing creates a window yet, and TASK-12.2 is the next row of the
+chain, so a throwaway creation path would be written and deleted in consecutive
+sessions. `["main", "w*"]` is in place and the glob is confirmed against
+tauri-utils-2.9.3 (`src/acl/capability.rs`: window entries are matched as glob
+patterns), but the four permissions a mislabelled window would lose are observed
+in TASK-12.2's round. DoD #2 (two windows on overlapping folders) is deferred for
+the same reason.
+
+## What was verified by reading rather than by running
+
+The per-window delivery pair, at the pinned versions: `emit_to(label, …)` yields
+`EventTarget::AnyLabel { label }` (tauri 2.11.3 `src/event/mod.rs:97-102`), which
+`filter_target` matches against `EventTarget::WebviewWindow { label }`
+(`src/manager/mod.rs:604-611`), and `getCurrentWebviewWindow().listen` registers
+exactly that target (`@tauri-apps/api/webviewWindow.js:130-131`). `fs:change` is
+not in `localTauriEvents` (`['tauri://created', 'tauri://error']`), so it is not
+swallowed by the wrapper's local-event path and does reach `listen`.
+
+`tauri::WindowEvent::Destroyed` exists at `src/app.rs:123` and is raised from the
+runtime event loop (`src/app.rs:2541-2547`), so the app-level
+`Builder::on_window_event` hook sees it for every window.
+
+## Single-window behaviour is unchanged but needs one visual check
+
+With one window the emit target is `main` and the listener registers
+`WebviewWindow { label: 'main' }`, so live reload and tree refresh should behave
+exactly as before. Nothing automated covers it — the suite runs under Node with
+no DOM — so a `pnpm tauri dev` round that edits an open document and adds a file
+to the open folder is the check.
+<!-- SECTION:NOTES:END -->
