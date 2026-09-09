@@ -30,3 +30,14 @@ export interface EditorInfo {
   id: string;
   label: string;
 }
+
+/** Where a created window opens: the folder, and the file to select inside it.
+ *
+ *  Deposited by `open_window` and taken exactly once by the created window's own
+ *  `takeWindowInit` at mount. The file half becomes an ordered list plus which
+ *  entry is active once one window can hold several documents (TASK-13.4); what
+ *  changes then is what this carries, not how it is handed over. */
+export interface InitialLocation {
+  folder: string;
+  file: string | null;
+}

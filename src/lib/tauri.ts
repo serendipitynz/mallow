@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { message as messageDialog, open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { type ReadResult, toReadError } from './read-error';
-import type { EditorInfo, FileEntry } from './types';
+import type { EditorInfo, FileEntry, InitialLocation } from './types';
 
 /** Set the native window title (fire-and-forget; errors are logged). */
 export function setWindowTitle(title: string): void {
@@ -101,4 +101,21 @@ export function writeWindowPdf(path: string): Promise<void> {
  *  success. */
 export async function showErrorDialog(title: string, text: string): Promise<void> {
   await messageDialog(text, { title, kind: 'error' });
+}
+
+/** Create a window, opening `location` at mount when one is given, and answer the
+ *  label it was given. Absent means an empty window — New Window does not
+ *  duplicate this window's folder.
+ *
+ *  The command also takes a label, which only the restore path supplies and which
+ *  it supplies from Rust, so nothing here needs to name one. */
+export function openWindow(location?: InitialLocation): Promise<string> {
+  return invoke<string>('open_window', { location: location ?? null, label: null });
+}
+
+/** Take this window's initial location. Answers it once and null afterwards —
+ *  including after a WebView reload, which is why a reloaded window comes back
+ *  empty (see `src-tauri/src/window.rs`). */
+export function takeWindowInit(): Promise<InitialLocation | null> {
+  return invoke<InitialLocation | null>('take_window_init');
 }
