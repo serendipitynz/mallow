@@ -57,6 +57,12 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(watch::WatcherState::default())
         .manage(pdf::ExportLock::default())
+        .on_window_event(|window, event| {
+            // A closed window must not leave its watch running.
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                watch::drop_window_watch(window);
+            }
+        })
         .on_menu_event(|app, event| {
             // The frontend opens its settings modal in response to this event.
             if event.id().as_ref() == "settings" {
