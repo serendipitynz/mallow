@@ -1,10 +1,10 @@
 ---
 id: TASK-28
 title: Make the printed paper readable with a print stylesheet
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-06 03:02'
-updated_date: '2026-09-06 03:26'
+updated_date: '2026-09-08 23:30'
 labels:
   - feature
 milestone: m-3
@@ -31,7 +31,7 @@ TASK-27 reached the platform's print UI and measured what it puts on paper. On m
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The rendered markdown reaches the last page of the paper on all three platforms - the height chain is released, not just .doc-scroll, since the body is one viewport tall by construction and .doc-scroll alone still sits inside it
+- [x] #1 The rendered markdown reaches the last page of the paper on all three platforms - the height chain is released, not just .doc-scroll, since the body is one viewport tall by construction and .doc-scroll alone still sits inside it
 - [x] #2 The content reflows to the paper's width rather than being cropped at it. Written as the requirement, since what imposes the width was never isolated - .doc max-width sits above A4's ~794 CSS px and is not it
 - [x] #3 No part of the app shell appears on the paper: toolbar, explorer, resizer, footer, the pinned doc bar, the outline, and the settings/update modal WITH its overlay, which erased the document rather than overlaying it
 - [x] #4 Paper is light on every palette, and printing from a dark palette produces readable ink rather than the faint text macOS measured
@@ -39,7 +39,7 @@ TASK-27 reached the platform's print UI and measured what it puts on paper. On m
 - [x] #6 The print stylesheet is a .scss imported last, never an inline <style> in index.html, which would add a hash to style-src and retire its unsafe-inline
 - [x] #7 Nothing in the file leaks outside @media print - .toolbar's will-change: transform in particular keeps its screen behaviour, since dropping it alone brings back the dropdown paint-order failure
 - [x] #8 @page carries a margin, since macOS zeroes the print operation's own margins and would otherwise put text at the paper's edge. No header/footer margin boxes - engine support is uneven and three different sheets is worse than none carrying a page number
-- [ ] #9 Reprinted on macOS, Windows and Linux, and the paper is readable on each. The headless-Chrome harness is not this: its control run shows Chrome paginates the unstyled page into 16, so it never had the failure being fixed
+- [x] #9 Reprinted on macOS, Windows and Linux, and the paper is readable on each. The headless-Chrome harness is not this: its control run shows Chrome paginates the unstyled page into 16, so it never had the failure being fixed
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -298,6 +298,32 @@ itself, which is what separated them from the print stylesheet.
   paper. The images are now `data:` URIs, which `validateLink` does carry, and
   the harness confirms they render and that `break-inside: avoid` keeps the large
   one whole.
+
+## 閉じた紙は印刷経路のものではない（2026-09-09）
+
+**AC #1 と #9 は、印刷経路のままでは閉じられなかった** — macOS は古いページ数で末尾を落とし、
+Linux は `print_window` が拒否する。m-3 指示書はそこで
+「**TASK-30 の紙が 3 環境で合格した回に、TASK-28 の AC #1・#9 を PDF 書き出しの紙で
+判定して閉じる**」と決めていた。その紙が 2026-09-09 にそろったので、その形で閉じる。
+
+**AC #1（本文が 3 環境とも最後のページまで届く）** — `scripts/paper/measure-paper.mjs` の
+`reaches-last-section` が 3 環境の紙すべてで合格した。維持者の実機:
+macOS 14 ページ（A4）・Windows 14 ページ（Letter）・Linux 13 ページ（Letter）、
+どれも `12. 最後の節` を含む。CI ランナーの 6 枚（3 環境 × 2 テーマ）も同じ。
+**このスタイルシートが解いた高さの連鎖がそのまま効いている** — 解けていなければ
+どの紙も 1 ページで終わる。
+
+**AC #9（3 環境で刷り直し、どれも読める紙であること）** — 維持者が 3 環境の紙を見て
+受け入れた（2026-09-09）。**`no-app-shell` も 3 環境すべてで合格**しており、
+外殻の UI 文字列は 1 つも紙に出ていない。
+
+**判定に使った紙は `_sandbox/handoff/task-30/{mac,win,lin}/` にある**（git の外）。
+**紙が読めることを機械が見張る仕組みは main にある** — `scripts/paper/` と
+check.yml の `paper` ジョブで、このスタイルシートが将来動いたときに気づける。
+
+**残す注意 1 つ**: **Linux の紙だけ `@page` の 16mm が届いていない**（本文が x=18pt から
+始まる）。**このタスクの AC はどれもそれを問うていない**ので閉じるのを妨げないが、
+体裁としては 3 環境で同じではない。**TASK-31** が持つ。
 <!-- SECTION:NOTES:END -->
 
 ## Why the print stylesheet cannot recolour a mermaid diagram (measured 2026-09-06)

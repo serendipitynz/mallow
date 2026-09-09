@@ -1,10 +1,10 @@
 ---
 id: TASK-30
 title: Write PDF from the print pipeline so a page can leave mallow on every platform
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-07 08:55'
-updated_date: '2026-09-08 20:53'
+updated_date: '2026-09-08 23:30'
 labels:
   - feature
 milestone: m-3
@@ -35,15 +35,15 @@ So mallow writes the PDF itself, through each platform's print *pipeline* rather
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 AMENDED 2026-09-08: the verification carries the paper measurement's output; a person adds only what a number cannot say. Whether @media print applies is verified on each platform BEFORE its implementation is called done, because a PDF carrying the explorer and the toolbar is the failure to look for and TASK-28's stylesheet is inert if it does not apply. On macOS this is what decides between NSPrintOperation with a save disposition and WKWebView.createPDF - decision-14 intends the former for exactly this reason
-- [ ] #2 File > Export as PDF... and CmdOrCtrl+E both reach the export, and the destination is chosen by the reader through a save dialog rather than written to a default location. AMENDED 2026-09-07: no File submenu exists on any platform yet - mallow's macOS menu carries mallow and Edit only - so the accelerator is the whole entry here, exactly as TASK-27 left printing's, and TASK-12.4 adds both items when it builds the menu on all three. What that costs is that the disabled appearance of AC #4 has nothing to appear on, so #4 is about the chord being inert; what it buys is that the menu file is touched once rather than twice, which is the choice the handoff doc already made for Print....
-- [ ] #3 The CmdOrCtrl+E handler consumes the chord even where the export is refused, the way the print chord does. Registering nothing concedes a chord to the platform - that is what let WebView2 print a .csv in TASK-27 - and whether any engine binds Ctrl+E is unmeasured, which consuming it makes moot
-- [ ] #4 Export as PDF... is disabled unless the active view is markdown in preview - the same sentence as Print..., recorded with its own reason (the print stylesheet is markdown-only) rather than as a copy of printing's
+- [x] #1 AMENDED 2026-09-08: the verification carries the paper measurement's output; a person adds only what a number cannot say. Whether @media print applies is verified on each platform BEFORE its implementation is called done, because a PDF carrying the explorer and the toolbar is the failure to look for and TASK-28's stylesheet is inert if it does not apply. On macOS this is what decides between NSPrintOperation with a save disposition and WKWebView.createPDF - decision-14 intends the former for exactly this reason
+- [x] #2 File > Export as PDF... and CmdOrCtrl+E both reach the export, and the destination is chosen by the reader through a save dialog rather than written to a default location. AMENDED 2026-09-07: no File submenu exists on any platform yet - mallow's macOS menu carries mallow and Edit only - so the accelerator is the whole entry here, exactly as TASK-27 left printing's, and TASK-12.4 adds both items when it builds the menu on all three. What that costs is that the disabled appearance of AC #4 has nothing to appear on, so #4 is about the chord being inert; what it buys is that the menu file is touched once rather than twice, which is the choice the handoff doc already made for Print....
+- [x] #3 The CmdOrCtrl+E handler consumes the chord even where the export is refused, the way the print chord does. Registering nothing concedes a chord to the platform - that is what let WebView2 print a .csv in TASK-27 - and whether any engine binds Ctrl+E is unmeasured, which consuming it makes moot
+- [x] #4 Export as PDF... is disabled unless the active view is markdown in preview - the same sentence as Print..., recorded with its own reason (the print stylesheet is markdown-only) rather than as a copy of printing's
 - [x] #5 AMENDED 2026-09-08: measured by scripts/paper/measure-paper.mjs and reported with its output, a person adding the visual reading. A PDF written on macOS, Windows and Linux each reaches the document's last page and carries no part of the app shell. This is the criterion TASK-28's AC #1 and #9 could not meet on the print path
-- [ ] #6 No platform print UI appears at any point in the export - not a sheet, not a preview, not a dialog. On Linux that is also what keeps the export away from the hang that made print_window refuse there
+- [x] #6 No platform print UI appears at any point in the export - not a sheet, not a preview, not a dialog. On Linux that is also what keeps the export away from the hang that made print_window refuse there
 - [x] #7 The Rust command is write_window_pdf, named for the window for the reason print_window is not print_document: the engine paginates the whole body and @media print only changes what is painted
 - [x] #8 The new platform dependencies are the smallest set that works, one per platform and each behind its own cfg, and pnpm notices is regenerated because THIRD-PARTY-NOTICES.md is bundled
-- [ ] #9 Whether the macOS export also avoids the stale page count is recorded as an observation either way. decision-14 prefers this API partly because a fresh NSPrintInfo may avoid it, and that is a hypothesis - the cause was never isolated, so a clean export is not proof and a truncated one is not a regression
+- [x] #9 Whether the macOS export also avoids the stale page count is recorded as an observation either way. decision-14 prefers this API partly because a fresh NSPrintInfo may avoid it, and that is a hypothesis - the cause was never isolated, so a clean export is not proof and a truncated one is not a regression
 - [x] #10 The unattended export is a build-time mode: a build without MALLOW_UNATTENDED=1 contains none of it, it writes nothing in the settings store an installed mallow shares, it waits for the render to settle as an event rather than on a timer, and it reports through exit codes (0 wrote, 1 the export refused, 2 never rendered, 3 unusable arguments)
 - [x] #11 The paper measurement decides the checks a number can settle - the last section is present, no app shell string is on the paper, the type is within tolerance of the platform's baseline, the file is under the size cap, and on Windows no WebView2 header or footer - while page count and paper size are recorded rather than judged; its pure half is covered by pnpm test, and it refuses to measure against a fixture that carries one of its own shell markers
 - [x] #12 The paper CI job writes and measures light and dark paper on macOS, Windows and Linux, keeps the PDFs and the JSON as artifacts, and puts the tables in the run summary. A platform with no baseline records its type size instead of failing, because the first paper is what a baseline is made from and a person has to call it right first
@@ -461,4 +461,37 @@ macOS で同じ形の断定を 1 度誤っているので、断定形を禁じ�
 
 **TASK-30 に残るのは AC #1・#2・#3・#4・#6・#9** — うち #2・#3・#4・#6・#9 は
 `procedure.md` の §2・§4・§6 を人が踏む回で、#1 は TASK-31 が答える。
+
+## 手による実測がそろい、13 の AC がすべて閉じた（2026-09-09）
+
+**維持者が `procedure.md` の §2・§4・§6 を 3 環境で踏んだ。** 紙は
+`mac/print-pagebreaks-{1,2}.pdf`・`win/print-pagebreaks.pdf`・`lin/print-pagebreaks.pdf`。
+
+**AC #9 — 古いページ数は書き出しに届いていない（macOS、§6）。**
+1 回目と、**印刷シートを出してキャンセルした後の 2 回目**が、測れる値すべてで一致した:
+14 ページ / A4 / §12 あり / 本文 x 45.4–547.2 / 語の高さ 18.55 / 291,229 バイト。
+（バイト単位の差分 1 か所は PDF が毎回書く `/ID` とタイムスタンプで、内容ではない。）
+decision-14 が期待した側の結果だが、**AC #9 の但し書きどおり仮説の証明ではなく観測である** —
+原因は特定されていない。
+
+**AC #2・#3・#4・#6 — 3 環境で人が確認した。** Windows と Linux は維持者の報告、
+macOS の §4（`.csv` とソース表示で `Cmd+E` が何も起こさない）も同日に確認。
+**AC #2 は改訂どおり「アクセラレータがこの回の入口全体」で閉じる** — `File` サブメニューは
+どの環境にも無く、項目は TASK-12.4 が置く。
+
+**AC #1 — 3 環境とも「`@media print` は当たる」で閉じた。訂正を含む。**
+2026-09-08 の記録は「Linux の答えは一部」と書いていた。**それは誤りで、`@media print` と
+`@page` を混ぜていた** — TASK-31 の対応表が禁じた混同（「余白」が 3 層ある）そのものである。
+AC #1 が問うのは `@media print` が当たるかで、探すべき失敗として「紙にエクスプローラと
+ツールバーが乗ること」を名指ししている。**3 環境とも外殻はゼロ、高さの連鎖は解けて末尾まで
+組まれ、文字は印刷用の大きさ**である。つまりスタイルシートはどこでも inert ではない。
+**`@page` の余白はページボックスの別機構**（WebKitGTK の対応が別途不完全）であり、
+**Linux でそれが届かない件は TASK-31 が持つ。**
+
+**紙の計測でキーを間違えた記録**: 維持者の Windows 機の紙を `ci-windows`（GitHub ランナーの
+基準）で測って落とした。**環境ごとのキーはまさにこれを言い分けるためにある** —
+`--baseline-key windows` で測り直すと記録のみになる（31.20。ランナーは 15.45）。
+
+**`@page` が届かないのはランナーだけではなかった** — 維持者の実機 Linux の紙も
+本文が x=18.0 から始まる（Letter、13 ページ）。TASK-31 の裏づけが 1 つ増えた。
 <!-- SECTION:NOTES:END -->
