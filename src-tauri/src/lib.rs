@@ -5,6 +5,7 @@ mod print;
 #[cfg(unattended)]
 mod unattended;
 mod watch;
+mod window;
 
 use tauri::Emitter;
 
@@ -26,7 +27,9 @@ macro_rules! app_handler {
             editors::reveal_in_os,
             editors::open_in_default_app,
             print::print_window,
-            pdf::write_window_pdf
+            pdf::write_window_pdf,
+            window::open_window,
+            window::take_window_init
             $(, $extra)*
         ]
     };
@@ -57,10 +60,13 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(watch::WatcherState::default())
         .manage(pdf::ExportLock::default())
+        .manage(window::WindowInitRegistry::default())
         .on_window_event(|window, event| {
-            // A closed window must not leave its watch running.
+            // A closed window must leave neither its watch running nor its
+            // slot reserved by an initial location nothing will ever take.
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 watch::drop_window_watch(window);
+                crate::window::drop_window_init(window);
             }
         })
         .on_menu_event(|app, event| {
