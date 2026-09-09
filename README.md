@@ -187,6 +187,28 @@ Markdown document never becomes live DOM and an HTML one does:
 
 ## Development
 
+`pnpm install` covers the frontend only; the Rust toolchain is what
+`pnpm tauri dev`, `pnpm tauri build`, `cargo check` and `cargo test` all rest
+on.
+
+- A stable Rust toolchain installed via [rustup](https://rustup.rs), with
+  `cargo` on `PATH`. This repository pins no version of its own.
+- Node.js and pnpm.
+- Your platform's system dependencies, per
+  [Tauri v2's prerequisites](https://v2.tauri.app/start/prerequisites/) — the
+  Xcode Command Line Tools on macOS, and the Windows and Linux packages that
+  page lists.
+
+Without a toolchain on `PATH`, `pnpm tauri build` stops with
+`failed to run 'cargo metadata' command to get workspace directory: … No such file or directory (os error 2)`;
+that is the missing toolchain rather than a broken command.
+
+A local `pnpm tauri build` also stops when `TAURI_SIGNING_PRIVATE_KEY` is
+unset. `pnpm tauri build --no-sign` is the contributor path — it skips code
+signing as well, so it is not a release path — and `pnpm tauri dev` needs no
+signing at all;
+[AGENTS.md](AGENTS.md#signed-self-update-the-update-channel) is the runbook.
+
 ```sh
 pnpm install
 pnpm tauri dev      # run in dev (hot reload)
