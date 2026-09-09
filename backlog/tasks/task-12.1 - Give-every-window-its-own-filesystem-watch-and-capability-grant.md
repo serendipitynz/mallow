@@ -1,10 +1,10 @@
 ---
 id: TASK-12.1
 title: Give every window its own filesystem watch and capability grant
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 21:13'
-updated_date: '2026-09-09 02:05'
+updated_date: '2026-09-09 03:35'
 labels:
   - feature
 milestone: m-3
@@ -57,9 +57,9 @@ Getting this wrong fails in a way a single-window smoke test cannot catch: the l
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 cargo check and cargo test pass in src-tauri
+- [x] #1 cargo check and cargo test pass in src-tauri
 - [ ] #2 Two windows watching overlapping folders (a parent and its subfolder) each refresh their own tree, and closing one leaves the other's watch alive
-- [ ] #3 pnpm build and pnpm test pass as well, since the listener change touches src/lib/watch.ts
+- [x] #3 pnpm build and pnpm test pass as well, since the listener change touches src/lib/watch.ts
 <!-- DOD:END -->
 
 ## Implementation Notes
@@ -110,4 +110,22 @@ With one window the emit target is `main` and the listener registers
 exactly as before. Nothing automated covers it — the suite runs under Node with
 no DOM — so a `pnpm tauri dev` round that edits an open document and adds a file
 to the open folder is the check.
+
+## The visual check, and what it did not cover
+
+Measured 2026-09-09 by the maintainer on macOS / WKWebView (`pnpm tauri dev`,
+one window): editing the open document live-reloads it, and adding a file to the
+open folder refreshes the tree. Behaviour-neutral for the single-window case,
+which is what it had to be — the emit target is `main` and the listener
+registers `WebviewWindow { label: 'main' }`.
+
+**Windows and Linux are unmeasured**, and worth one look in TASK-12.2's round
+since the second window arrives there anyway. This is not decision-9's family —
+a Tauri event listener goes through the injected IPC (`plugin:event|listen`),
+not DOM event dispatch inside a sandboxed frame — but "not that family" is a
+reading, not a measurement.
+
+**DoD #2 is left unchecked on purpose.** Two windows on overlapping folders
+cannot be observed until something creates a window, so it rides AC #7's
+deferral to TASK-12.2 rather than being satisfied here.
 <!-- SECTION:NOTES:END -->
