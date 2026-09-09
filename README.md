@@ -189,19 +189,20 @@ Markdown document never becomes live DOM and an HTML one does:
 
 `pnpm install` covers the frontend only; the Rust toolchain is what
 `pnpm tauri dev`, `pnpm tauri build`, `cargo check` and `cargo test` all rest
-on.
+on. You need:
 
 - A stable Rust toolchain installed via [rustup](https://rustup.rs), with
-  `cargo` on `PATH`. This repository pins no version of its own.
-- Node.js and pnpm.
+  `cargo` on `PATH`. This repository pins no Rust version of its own.
+- Node.js, and pnpm at the version `package.json` pins.
 - Your platform's system dependencies, per
   [Tauri v2's prerequisites](https://v2.tauri.app/start/prerequisites/) — the
   Xcode Command Line Tools on macOS, and the Windows and Linux packages that
   page lists.
 
-Without a toolchain on `PATH`, `pnpm tauri build` stops with
-`failed to run 'cargo metadata' command to get workspace directory: … No such file or directory (os error 2)`;
-that is the missing toolchain rather than a broken command.
+Without a toolchain on `PATH`, `pnpm tauri build` stops on the missing `cargo`
+or `rustc` rather than on anything wrong with the command. The message seen here
+was
+`failed to run 'cargo metadata' command to get workspace directory: … No such file or directory (os error 2)`.
 
 A local `pnpm tauri build` also stops when `TAURI_SIGNING_PRIVATE_KEY` is
 unset. `pnpm tauri build --no-sign` is the contributor path — it skips code
@@ -215,6 +216,7 @@ pnpm tauri dev      # run in dev (hot reload)
 pnpm tauri build    # release build (produces .app / .dmg, etc.)
 pnpm build          # frontend type-check + bundle only
 pnpm test           # frontend unit tests (Vitest)
+cargo check         # Rust type-check (run inside src-tauri/)
 cargo test          # Rust unit tests (run inside src-tauri/)
 
 # Regenerate the app icons from the master image
