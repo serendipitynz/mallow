@@ -4,7 +4,7 @@ title: Create windows and hand each one its initial location
 status: In Review
 assignee: []
 created_date: '2026-08-02 21:13'
-updated_date: '2026-09-09 23:06'
+updated_date: '2026-09-10 05:07'
 labels:
   - feature
 milestone: m-3
@@ -180,4 +180,32 @@ or created by this task:
   watch alive.
 - **TASK-12.1's carry-over: Windows and Linux** — single-window behaviour, still
   measured on macOS only.
+
+## The manual round, and the one platform it caught (2026-09-10)
+
+Measured by the maintainer. **macOS: DoD #2, the second window's capability grant
+and the overlapping-folders check all pass.** Linux: single-window behaviour
+unchanged. **Windows failed, and failed in a way only Windows could:** `Ctrl+N`
+opened a white window that could not even be closed.
+
+**The cause is documented on the function this task calls.** tauri-2.11.3's
+`WebviewWindowBuilder::from_config` says it deadlocks when used in a synchronous
+command or an event handler (`src/webview/webview_window.rs:114-116`, wry#583),
+because WebView2 creation pumps the message loop — and a synchronous command body
+runs inside a WebView2 handler, since tauri v2's desktop IPC is a `fetch` to
+`ipc:` rather than a `postMessage`. `open_window` is now `async`, which is the fix
+the doc names.
+
+**Two things worth keeping.** The doc names *event handlers* in the same breath,
+so **TASK-12.4's `on_menu_event` is the next place this can be reintroduced** — a
+New Window menu item must hand off rather than build inline. And the cascade rule
+needed no change at all: it was written against the order two closures reach the
+main-thread queue rather than against the command being synchronous, and
+`attach_window` posts the plugin's restore inside `build()` whichever thread
+`build()` ran on (`src/window/mod.rs:408-419`).
+
+**What this says about the round itself: two platforms passing said nothing.** The
+defect was in the one call every platform makes, and it was invisible on two of
+the three — the same shape as TASK-12.1's capability grant, which is invisible in
+the first window.
 <!-- SECTION:NOTES:END -->
