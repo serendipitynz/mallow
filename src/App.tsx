@@ -14,21 +14,25 @@ import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/
 import { fileEntryFromPath } from './lib/file';
 import { useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
+import { createNewWindowChordHandler } from './lib/new-window';
 import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
 import {
   allowMediaDir,
+  openWindow,
   pathExists,
   pickFolder,
   pickPdfDestination,
   printWindow,
   showErrorDialog,
+  takeWindowInit,
   writeWindowPdf,
 } from './lib/tauri';
 import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
+import { locationToOpenAtMount } from './lib/window-init';
 
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 180;
@@ -70,6 +74,38 @@ export default function App() {
     void saveSetting('lastFile', entry.path);
   }, []);
 
+  /** Show `folder`, and select `file` inside it when the location carries one.
+   *
+   *  One function because the three ways a window arrives at a folder — the
+   *  picker, the stored session, and the initial location a creating window
+   *  deposited (`take_window_init`) — have to agree on the order: the asset-scope
+   *  grant is awaited before the tree opens, so a media file selected straight
+   *  after cannot build its asset URL before the asset protocol is allowed to
+   *  serve it.
+   *
+   *  `cancelled` is read after every await rather than taken as a boolean: the
+   *  sequence outlives several of them, and a window unmounted midway must not
+   *  go on to select a file. */
+  const openLocation = useCallback(
+    async (folder: string, file: string | null, cancelled: () => boolean) => {
+      await allowMediaDir(folder).catch((e) => console.error('Failed to allow media dir', e));
+      if (cancelled()) {
+        return;
+      }
+      await openTree(folder);
+      startWatch(folder).catch((e) => console.error('Failed to start watch', e));
+      if (!file || !isInside(folder, file) || !(await pathExists(file))) {
+        return;
+      }
+      await expandPaths(ancestorDirs(folder, file));
+      const entry = fileEntryFromPath(file);
+      if (!cancelled() && entry) {
+        setSelected(entry);
+      }
+    },
+    [openTree, expandPaths],
+  );
+
   const openFolder = useCallback(async () => {
     const dir = await pickFolder();
     if (!dir) {
@@ -78,12 +114,15 @@ export default function App() {
     setSelected(null);
     void saveSetting('lastFolder', dir);
     void saveSetting('lastFile', undefined);
-    // Await the scope grant so a media file selected right after cannot build its
-    // asset URL before the asset protocol is allowed to serve it.
-    await allowMediaDir(dir).catch((e) => console.error('Failed to allow media dir', e));
-    await openTree(dir);
-    startWatch(dir).catch((e) => console.error('Failed to start watch', e));
-  }, [openTree]);
+    await openLocation(dir, null, () => false);
+  }, [openLocation]);
+
+  /** New Window opens empty rather than duplicating this window's folder: a
+   *  window opened to compare against something is opened on a different folder,
+   *  and the recent-folder list is one click away once TASK-12.3 has it. */
+  const newWindow = useCallback(() => {
+    void openWindow().catch((e) => console.error('Failed to open a window', e));
+  }, []);
 
   // ---- Custom emoji ---------------------------------------------------------
   // Applying the set rebuilds the markdown pipeline, and any open document
@@ -173,23 +212,27 @@ export default function App() {
         return;
       }
 
-      if (s.lastFolder && (await pathExists(s.lastFolder))) {
-        // Await the scope grant before restoring the selection below, so a
-        // restored media file cannot build its asset URL and latch a load error
-        // before the asset protocol is allowed to serve it.
-        await allowMediaDir(s.lastFolder).catch((e) => console.error('Failed to allow media dir', e));
-        if (disposed) {
-          return;
-        }
-        await openTree(s.lastFolder);
-        startWatch(s.lastFolder).catch((e) => console.error('Failed to start watch', e));
-        if (s.lastFile && isInside(s.lastFolder, s.lastFile) && (await pathExists(s.lastFile))) {
-          await expandPaths(ancestorDirs(s.lastFolder, s.lastFile));
-          const restored = fileEntryFromPath(s.lastFile);
-          if (!disposed && restored) {
-            setSelected(restored);
-          }
-        }
+      /* What this window was told at creation, taken exactly once. A created
+         window opens what it was handed and nothing else — including nothing at
+         all, for New Window; the session is what a window nothing created falls
+         back to. `lib/window-init` holds that decision and why the two are not
+         one answer.
+
+         Nothing here writes `lastFolder` / `lastFile` back. That pair cannot
+         express a window set at all — a created window writing to it would
+         overwrite the spawner's — and TASK-12.7 replaces it with the restored
+         session, which is also where this path gains its `report_window_content`
+         call. */
+      const init = await takeWindowInit().catch((e) => {
+        console.error("Failed to take this window's initialization", e);
+        return null;
+      });
+      if (disposed) {
+        return;
+      }
+      const target = locationToOpenAtMount(init, s);
+      if (target && (await pathExists(target.folder))) {
+        await openLocation(target.folder, target.file, () => disposed);
       }
     })()
       .catch((e) => console.error('Session restore failed', e))
@@ -201,7 +244,7 @@ export default function App() {
     return () => {
       disposed = true;
     };
-  }, [openTree, expandPaths, applyEmojiDir]);
+  }, [openTree, openLocation, applyEmojiDir]);
 
   // ---- Filesystem watch (debounced) -----------------------------------------
   useEffect(() => {
@@ -365,6 +408,17 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [exportPdf]);
+
+  /* ---- New Window (TASK-12.2) ----------------------------------------------
+     Registered and consumed on the same terms as the other two chords and for the
+     same measured reason (`lib/chord`), with no gate: a new window depends on
+     nothing that is currently displayed. The menu item beside it is TASK-12.4's,
+     on the split TASK-30 took — the chord ships with the mechanism. */
+  useEffect(() => {
+    const onKey = createNewWindowChordHandler({ onMac: onMacPlatform(), newWindow });
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [newWindow]);
 
   // ---- Explorer resize ------------------------------------------------------
   const [dragging, setDragging] = useState(false);

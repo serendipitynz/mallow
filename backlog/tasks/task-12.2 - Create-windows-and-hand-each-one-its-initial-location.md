@@ -1,12 +1,13 @@
 ---
 id: TASK-12.2
 title: Create windows and hand each one its initial location
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-02 21:13'
-updated_date: '2026-08-02 22:39'
+updated_date: '2026-09-10 05:07'
 labels:
   - feature
+milestone: m-3
 dependencies:
   - TASK-12.1
 parent_task_id: TASK-12
@@ -59,16 +60,152 @@ Tauri exits the app when the last window closes. On macOS the platform conventio
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 open_window(location, label) is settled with both parameters: it allocates the lowest free w<n> when no label is given, and accepts one for the restore path
-- [ ] #2 A created window carries the width, height, minimum sizes and title from the configured window, so it is indistinguishable from a configured one before a document is opened
-- [ ] #3 A window created with an initial location opens it at mount: media scope granted before the tree opens, tree opened, watch started, and the file selected when the location carries one (TASK-13.4 widens that half to a list without changing the mechanism)
-- [ ] #4 take_window_init is the handover mechanism; its consumed-on-reload behaviour and the slot-reuse geometry consequence are stated in code comments
-- [ ] #5 Window geometry stays keyed per label; map_label is not used, and the window-state file stays bounded by the number of windows open at once
-- [ ] #6 The cascade rule is one of the two recorded options and does not depend on asking the plugin whether a slot has remembered geometry; a new window never lands exactly on top of its spawner
+- [x] #1 open_window(location, label) is settled with both parameters: it allocates the lowest free w<n> when no label is given, and accepts one for the restore path
+- [x] #2 A created window carries the width, height, minimum sizes and title from the configured window, so it is indistinguishable from a configured one before a document is opened
+- [x] #3 A window created with an initial location opens it at mount: media scope granted before the tree opens, tree opened, watch started, and the file selected when the location carries one (TASK-13.4 widens that half to a list without changing the mechanism)
+- [x] #4 take_window_init is the handover mechanism; its consumed-on-reload behaviour and the slot-reuse geometry consequence are stated in code comments
+- [x] #5 Window geometry stays keyed per label; map_label is not used, and the window-state file stays bounded by the number of windows open at once
+- [x] #6 The cascade rule is one of the two recorded options and does not depend on asking the plugin whether a slot has remembered geometry; a new window never lands exactly on top of its spawner
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 pnpm build, pnpm test, cargo check and cargo test pass
+- [x] #1 pnpm build, pnpm test, cargo check and cargo test pass
 - [ ] #2 Three windows opened in sequence each land visible and distinct; closing the middle one and opening another reuses its slot rather than allocating a new one
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## What shipped
+
+`src-tauri/src/window.rs` holds `open_window` / `take_window_init` and the
+`WindowInitRegistry` they hand a location through; `src/lib/new-window.ts` holds
+the `CmdOrCtrl+N` chord that reaches `open_window`; `App.tsx`'s mount effect asks
+for an initial location before it reads the stored session, and the three ways a
+window arrives at a folder now run one `openLocation` sequence.
+
+## The cascade rule: option 1, with "after" pinned by ordering rather than by thread
+
+The recorded choice is the first of the two — compare the created window's outer
+position with the spawner's and offset only on a collision — because the second
+couples mallow to the plugin's file format. What the task left open was how to
+know the comparison reads a *restored* position, and it offered two ways: state
+that `open_window` is synchronous, or hang the comparison off the first `Moved`.
+**Neither was taken, and both were rejected for a reason.**
+
+- "A synchronous command runs on the main thread" is three inferences deep at
+  these versions and the failure is silent. Tauri v2's desktop IPC is not
+  `postMessage` but a `fetch` to the `ipc:` custom protocol
+  (tauri-2.11.3 `scripts/ipc-protocol.js`: `canUseCustomProtocol` is true on
+  every non-Android target), so the thread a command body runs on is the thread
+  each engine dispatches a custom-protocol handler on — three answers, none of
+  them measured here.
+- **The first `Moved` never arrives for a slot with no remembered geometry.**
+  `restore_state` only touches position inside
+  `if let Some(state) = c.get(label).filter(|s| s != &&WindowState::default())`
+  (tauri-plugin-window-state-2.4.1 `src/lib.rs:181-209`), so a slot being used
+  for the first time emits no `Moved` at all, and a comparison hung off one would
+  never run in exactly the case where the OS chose the position.
+
+What is used instead: the comparison is posted to the created window's own
+`run_on_main_thread`, which is the same queue tauri posts the plugin's
+`window_created` to (`src/manager/window.rs:113-118`) and it was posted first —
+during `build()`, which has already returned. `send_user_message` runs a task
+inline when the caller is on the main thread and sends it through the event proxy
+otherwise (tauri-runtime-wry-2.11.3 `src/lib.rs:239-248`), and both paths preserve
+that order. **So the ordering holds whatever thread the command body runs on**,
+which is what the two offered options were each trying to buy on one side only.
+
+The offset is `28` logical pixels scaled by the window's own scale factor, applied
+only when the two outer positions are exactly equal — which is the sentence AC #6
+asks for, and no more: two windows a few pixels apart are left where they are.
+
+## Closing the last window
+
+Recorded as asked: the current behaviour is kept, so closing the last window exits
+the app on macOS too. A menu-bar-only state would need New Window to work with no
+window focused, which is TASK-12.4's menu-event routing made harder for a
+convention this app has never followed. Written into AGENTS' gotchas rather than
+left implicit.
+
+## `CmdOrCtrl+N` is in this task, and that is a scope call
+
+Nothing in the app could create a window, so **DoD #2 was not observable without
+an entry point** — and TASK-12.1 already deferred its own DoD #2 here rather than
+build a throwaway one. The split taken is the one TASK-30 took for
+`Export as PDF…`: **the chord ships with the mechanism, the menu item with the
+menu** (TASK-12.4, which the handoff already lists as owing one). It follows
+`lib/chord`'s rule — registered once for the life of the app and always consumed,
+because registering nothing concedes a chord to the engine rather than making it
+inert. Unlike `Print…` and `Export as PDF…` it has no gate: a new window depends
+on nothing that is currently displayed, so `suppress` is unreachable here.
+
+## What this task deliberately does not do
+
+- **`report_window_content` is not called.** TASK-12.7 owns that command, and its
+  own text states the rule as a predicate over "a window's displayed content
+  changed" precisely so this path is picked up there rather than named here.
+- **The initial-location path does not write `lastFolder` / `lastFile`.** The pair
+  cannot express a window set, so a created window writing to it would overwrite
+  the spawner's entry; TASK-12.7 replaces it with the restored session. The folder
+  picker still writes the pair, unchanged, in whichever window it runs.
+- **`main` is untouched.** TASK-12.7 sets `"create": false` and drops `main` from
+  the capability list; until then the launch window keeps that label, and
+  `w<n>` allocation ignores it because it is not that shape.
+
+## What was verified by reading rather than by running
+
+At the pinned versions: `WindowConfig` derives `Clone` and its `label` is a public
+field (tauri-utils-2.9.3 `src/config.rs:1910-1921`); `WindowBuilder::from_config`
+reads `label: config.label.clone()` and nothing reads `create`
+(tauri-2.11.3 `src/window/mod.rs:256-286`), so cloning the configured window and
+overwriting one field is enough to carry size, minimums, title and url;
+`prepare_window` rejects only a label currently in the live map
+(`src/manager/window.rs:70-72`), so reusing a closed window's slot is legal.
+
+## Still owed: the manual round
+
+`cargo check` / `cargo test` / `tsc` / `vite build` / `vitest` / `biome ci` all
+pass, and none of them can see a window appear. Outstanding, all of it inherited
+or created by this task:
+
+- **DoD #2** — three windows in sequence land visible and distinct; closing the
+  middle one and opening another reuses its slot rather than allocating a new one.
+- **TASK-12.1's carry-over: the second window's capability grant** — in a window
+  labelled `w1`, settings persist, `Open…` opens, an external link opens the
+  browser, and the title tracks the document.
+- **TASK-12.1's carry-over: overlapping folders** — two windows on a parent and
+  its child each refresh only their own tree, and closing one leaves the other's
+  watch alive.
+- **TASK-12.1's carry-over: Windows and Linux** — single-window behaviour, still
+  measured on macOS only.
+
+## The manual round, and the one platform it caught (2026-09-10)
+
+Measured by the maintainer. **macOS: DoD #2, the second window's capability grant
+and the overlapping-folders check all pass.** Linux: single-window behaviour
+unchanged. **Windows failed, and failed in a way only Windows could:** `Ctrl+N`
+opened a white window that could not even be closed.
+
+**The cause is documented on the function this task calls.** tauri-2.11.3's
+`WebviewWindowBuilder::from_config` says it deadlocks when used in a synchronous
+command or an event handler (`src/webview/webview_window.rs:114-116`, wry#583),
+because WebView2 creation pumps the message loop — and a synchronous command body
+runs inside a WebView2 handler, since tauri v2's desktop IPC is a `fetch` to
+`ipc:` rather than a `postMessage`. `open_window` is now `async`, which is the fix
+the doc names.
+
+**Two things worth keeping.** The doc names *event handlers* in the same breath,
+so **TASK-12.4's `on_menu_event` is the next place this can be reintroduced** — a
+New Window menu item must hand off rather than build inline. And the cascade rule
+needed no change at all: it was written against the order two closures reach the
+main-thread queue rather than against the command being synchronous, and
+`attach_window` posts the plugin's restore inside `build()` whichever thread
+`build()` ran on (`src/window/mod.rs:408-419`).
+
+**What this says about the round itself: two platforms passing said nothing.** The
+defect was in the one call every platform makes, and it was invisible on two of
+the three — the same shape as TASK-12.1's capability grant, which is invisible in
+the first window.
+<!-- SECTION:NOTES:END -->
