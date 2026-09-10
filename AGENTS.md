@@ -989,7 +989,16 @@ hold rather than as an exhaustive style guide.
   otherwise be handed the same `w<n>`. The reservation *is* the entry in
   `WindowInitRegistry`, whose value is `None` for a window opened empty, and it is
   released by `take_window_init`, by a failed build, and by the `Destroyed` hook
-  for a window that never reached its mount.
+  for a window that never reached its mount. **The live windows are read inside
+  that reservation's lock and not before it**, which matters only because
+  `open_window` is `async` and two creations genuinely overlap: read beforehand,
+  the set can be stale by exactly the amount that defeats it — the other creation
+  finishing *and* its window taking its pending entry, leaving its label in
+  neither half of the check, so the second `Cmd/Ctrl+N` is handed a label already
+  in use and opens nothing. Under one lock the halves cover each other, because
+  **a label leaves `pending` only once it is observable in `live`** (`build`
+  inserts into the manager's map before any frontend can call `take_window_init`)
+  **or once it can never be** (the failed-build path).
 - **Creating a window from a synchronous command deadlocks on Windows, and the
   symptom is a white window that cannot even be closed.** tauri-2.11.3 says it on
   the function itself (`src/webview/webview_window.rs:114-116`, wry#583): WebView2

@@ -66,9 +66,25 @@ impl WindowInitRegistry {
     /// and cost more: the window-state file and the restored session are both
     /// keyed by label, so both would grow with every window ever opened, and a
     /// restored window could not be handed back the geometry it had.
-    fn reserve(&self, live: &HashSet<String>, location: Option<InitialLocation>) -> Result<String, String> {
+    ///
+    /// **`live` is a closure so the live windows are read under this lock rather
+    /// than before it.** `open_window` is `async`, so two of these genuinely run
+    /// at once; a set read beforehand can be stale by exactly the amount that
+    /// matters — the other creation finishing *and* its window taking its pending
+    /// entry, leaving its label in neither half of the check. The second press of
+    /// `Cmd/Ctrl+N` would then be handed a label already in use and open no window
+    /// at all. Under one lock the two halves cover each other, because **a label
+    /// leaves `pending` only once it is observable in `live`** — `build` inserts
+    /// the window into the manager's map before any frontend can call
+    /// `take_window_init` — **or once it can never be**, which is the failed-build
+    /// path through `discard`.
+    fn reserve(
+        &self,
+        live: impl FnOnce() -> HashSet<String>,
+        location: Option<InitialLocation>,
+    ) -> Result<String, String> {
         let mut pending = self.0.lock().map_err(|e| e.to_string())?;
-        let label = free_label(live, &pending)?;
+        let label = free_label(&live(), &pending)?;
         pending.insert(label.clone(), location);
         Ok(label)
     }
@@ -194,10 +210,8 @@ pub fn create_window(
             registry.reserve_label(&label, location)?;
             label
         }
-        None => {
-            let live: HashSet<String> = app.webview_windows().into_keys().collect();
-            registry.reserve(&live, location)?
-        }
+        // Read inside the reservation rather than here: see `reserve`.
+        None => registry.reserve(|| app.webview_windows().into_keys().collect(), location)?,
     };
 
     match build_window(app, &label) {
@@ -267,7 +281,7 @@ mod tests {
     #[test]
     fn the_first_created_window_is_w1_beside_the_configured_main() {
         let registry = WindowInitRegistry::default();
-        assert_eq!(registry.reserve(&live(&["main"]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
     }
 
     #[test]
@@ -275,8 +289,47 @@ mod tests {
         let registry = WindowInitRegistry::default();
         // `webview_windows()` lists neither yet: the reservation is what keeps two
         // creations in flight at once from being handed the same slot.
-        assert_eq!(registry.reserve(&live(&["main"]), None).unwrap(), "w1");
-        assert_eq!(registry.reserve(&live(&["main"]), None).unwrap(), "w2");
+        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w2");
+    }
+
+    /// The interleaving `async` made reachable: two `Cmd/Ctrl+N` presses race, the
+    /// first finishes and its window takes its pending entry, and the second is
+    /// still on its way in. A live-window set read before the lock would have been
+    /// taken when `w1` was neither live nor pending, so the second creation would
+    /// have been handed `w1` and failed to build.
+    #[test]
+    fn a_creation_cannot_be_handed_a_label_another_creation_has_already_built() {
+        let registry = WindowInitRegistry::default();
+        let first = registry.reserve(|| live(&["main"]), None).unwrap();
+        assert_eq!(first, "w1");
+        // `build` put w1 in the manager's map, and only then could its window mount
+        // and take the entry — that order is what makes the two halves cover each
+        // other.
+        let world = live(&["main", "w1"]);
+        registry.take(&first).unwrap();
+        assert_eq!(registry.reserve(|| world.clone(), None).unwrap(), "w2");
+    }
+
+    /// What the test above rests on, stated on its own: the set is read when the
+    /// slot is taken. Mutating the world after the closure is built and before
+    /// `reserve` runs is what a concurrent creation does, and the reservation has
+    /// to see it.
+    #[test]
+    fn the_live_windows_are_read_when_the_slot_is_taken_and_read_once() {
+        use std::cell::RefCell;
+
+        let registry = WindowInitRegistry::default();
+        let world = RefCell::new(live(&["main"]));
+        let reads = RefCell::new(0);
+        let observe = || {
+            *reads.borrow_mut() += 1;
+            world.borrow().clone()
+        };
+
+        world.borrow_mut().insert("w1".to_string());
+        assert_eq!(registry.reserve(observe, None).unwrap(), "w2");
+        assert_eq!(*reads.borrow(), 1, "the live windows were not read exactly once");
     }
 
     #[test]
@@ -286,13 +339,13 @@ mod tests {
         registry.take("w2").unwrap();
         registry.take("w3").unwrap();
         // w2 was closed, so it is no longer live and no longer pending.
-        assert_eq!(registry.reserve(&live(&["main", "w1", "w3"]), None).unwrap(), "w2");
+        assert_eq!(registry.reserve(|| live(&["main", "w1", "w3"]), None).unwrap(), "w2");
     }
 
     #[test]
     fn an_initial_location_is_answered_once_and_then_gone() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(&live(&["main"]), location("/docs")).unwrap();
+        let label = registry.reserve(|| live(&["main"]), location("/docs")).unwrap();
         assert_eq!(registry.take(&label).unwrap(), Some(WindowInit { location: location("/docs") }));
         assert_eq!(registry.take(&label).unwrap(), None);
     }
@@ -304,7 +357,7 @@ mod tests {
     #[test]
     fn a_window_created_empty_is_not_a_window_nothing_created() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(&live(&["main"]), None).unwrap();
+        let label = registry.reserve(|| live(&["main"]), None).unwrap();
         assert_eq!(label, "w1");
         assert_eq!(registry.take(&label).unwrap(), Some(WindowInit { location: None }));
         assert_eq!(registry.take("main").unwrap(), None);
@@ -313,9 +366,9 @@ mod tests {
     #[test]
     fn an_empty_window_frees_its_slot_once_it_has_taken_its_entry() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(&live(&["main"]), None).unwrap();
+        let label = registry.reserve(|| live(&["main"]), None).unwrap();
         registry.take(&label).unwrap();
-        assert_eq!(registry.reserve(&live(&["main"]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
     }
 
     #[test]
@@ -323,15 +376,15 @@ mod tests {
         let registry = WindowInitRegistry::default();
         registry.reserve_label("w4", location("/notes")).unwrap();
         // The reservation still holds the slot against an interactive creation.
-        assert_eq!(registry.reserve(&live(&[]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&[]), None).unwrap(), "w1");
         assert_eq!(registry.take("w4").unwrap(), Some(WindowInit { location: location("/notes") }));
     }
 
     #[test]
     fn a_window_that_failed_to_build_frees_its_slot_again() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(&live(&["main"]), location("/docs")).unwrap();
+        let label = registry.reserve(|| live(&["main"]), location("/docs")).unwrap();
         registry.discard(&label);
-        assert_eq!(registry.reserve(&live(&["main"]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
     }
 }
