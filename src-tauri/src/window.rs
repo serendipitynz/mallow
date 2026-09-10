@@ -143,10 +143,12 @@ fn build_window(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
 /// check on it would offset only on a slot's first ever use.
 ///
 /// **Why it reads a restored position rather than the pre-restore one:** ordering,
-/// not thread affinity. The plugin restores from `on_window_ready`, which tauri
-/// dispatches through the same main-thread queue this closure is posted to, and it
-/// was posted first — so it has already run whether the caller is on the main
-/// thread (both inline) or not (both through the event proxy).
+/// not thread affinity. The plugin restores from `on_window_ready`, which
+/// `attach_window` posts through the same main-thread queue this closure is posted
+/// to — and it posts it inside `build()` (tauri-2.11.3 `src/window/mod.rs:408-419`),
+/// so it is queued first whichever thread `build()` was called on: both inline
+/// when that is the main thread, both through the event proxy when it is not.
+/// **That is what let `open_window` become `async` without this having to change.**
 ///
 /// **It applies only to the interactive paths.** The restore path supplies its own
 /// label and passes no spawner: it has none, and windows the user deliberately
@@ -169,6 +171,17 @@ fn offset_when_stacked_on(created: WebviewWindow, spawner: Window) {
 ///
 /// Separate from the command so the restore path (TASK-12.7) can create windows
 /// from Rust, where there is no calling window to be the spawner.
+///
+/// **Never call this from a synchronous command or from an event handler.**
+/// On Windows `from_config` deadlocks there (tauri-2.11.3
+/// `src/webview/webview_window.rs:114-116`, wry#583): WebView2 creation pumps the
+/// message loop, and reached from inside a WebView2 handler that loop is already
+/// on the stack — measured 2026-09-10, the created window painted white and could
+/// not even be closed, while macOS and Linux were unaffected. `open_window` is
+/// `async` for that reason and no other. **The `on_menu_event` handler TASK-12.4
+/// adds is the next place this can be reintroduced**, since the doc names event
+/// handlers alongside synchronous commands; hand off to
+/// `tauri::async_runtime::spawn` there rather than building inline.
 pub fn create_window(
     app: &AppHandle,
     location: Option<InitialLocation>,
@@ -211,8 +224,12 @@ pub fn create_window(
 /// `label` is absent for every caller but the restore path, which supplies one
 /// (see `create_window`). It is part of the signature from the start so that path
 /// does not have to change a command that has already been reviewed.
+///
+/// **`async` is load-bearing on Windows and is not about latency** — see
+/// `create_window`. Being off the WebView2 handler also means two of these can be
+/// in flight at once, which is what the label reservation in `reserve` is for.
 #[tauri::command]
-pub fn open_window(
+pub async fn open_window(
     app: AppHandle,
     window: Window,
     location: Option<InitialLocation>,

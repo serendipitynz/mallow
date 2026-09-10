@@ -990,6 +990,20 @@ hold rather than as an exhaustive style guide.
   `WindowInitRegistry`, whose value is `None` for a window opened empty, and it is
   released by `take_window_init`, by a failed build, and by the `Destroyed` hook
   for a window that never reached its mount.
+- **Creating a window from a synchronous command deadlocks on Windows, and the
+  symptom is a white window that cannot even be closed.** tauri-2.11.3 says it on
+  the function itself (`src/webview/webview_window.rs:114-116`, wry#583): WebView2
+  creation pumps the message loop, so reached from inside a WebView2 handler —
+  which is where a synchronous command body runs, since tauri v2's desktop IPC is
+  a `fetch` to `ipc:` — that loop is already on the stack. Measured 2026-09-10:
+  `Ctrl+N` opened a blank unresponsive window on Windows while macOS and Linux
+  were unaffected, **so a two-platform round says nothing about this**.
+  `open_window` is `async` for that reason and no other, and **the doc names event
+  handlers in the same breath as synchronous commands** — the `on_menu_event`
+  handler TASK-12.4 adds is the next place it can be reintroduced, so a menu item
+  has to hand off rather than build inline. The cascade rule survived the change
+  untouched because it was written against queue order rather than against the
+  command being synchronous.
 - **A window created empty is not a window nothing created, and reading the two as
   one answer costs New Window its whole specification.** `take_window_init` answers
   `{ location }` for a window `open_window` built and `null` for one it did not, so
