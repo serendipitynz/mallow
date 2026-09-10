@@ -1,10 +1,10 @@
 ---
 id: TASK-12.2
 title: Create windows and hand each one its initial location
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 21:13'
-updated_date: '2026-09-10 05:07'
+updated_date: '2026-09-10 06:14'
 labels:
   - feature
 milestone: m-3
@@ -71,7 +71,7 @@ Tauri exits the app when the last window closes. On macOS the platform conventio
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 pnpm build, pnpm test, cargo check and cargo test pass
-- [ ] #2 Three windows opened in sequence each land visible and distinct; closing the middle one and opening another reuses its slot rather than allocating a new one
+- [x] #2 Three windows opened in sequence each land visible and distinct; closing the middle one and opening another reuses its slot rather than allocating a new one
 <!-- DOD:END -->
 
 ## Implementation Notes
@@ -208,4 +208,12 @@ main-thread queue rather than against the command being synchronous, and
 defect was in the one call every platform makes, and it was invisible on two of
 the three — the same shape as TASK-12.1's capability grant, which is invisible in
 the first window.
+
+## Windows re-measured, and the round closed (2026-09-10)
+
+The maintainer re-ran all four checks on Windows against `b425cb2` and reported no
+problems, so **DoD #2 and TASK-12.1's three carried-over checks are closed on all
+three platforms**. The deadlock and the label race it uncovered are both fixed and
+both have their reasoning recorded — in the code, in AGENTS' gotchas, and in the
+milestone history.
 <!-- SECTION:NOTES:END -->
