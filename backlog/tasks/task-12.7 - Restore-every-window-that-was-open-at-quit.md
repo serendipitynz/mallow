@@ -1,10 +1,10 @@
 ---
 id: TASK-12.7
 title: Restore every window that was open at quit
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 21:24'
-updated_date: '2026-09-11 04:46'
+updated_date: '2026-09-11 11:04'
 labels:
   - feature
 milestone: m-3
@@ -105,8 +105,28 @@ So rename the `main` entry to the label of the first restored window, in the sam
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 pnpm build, pnpm test, cargo check and cargo test pass
-- [ ] #2 The Windows and Linux quit path (closing the last window) is exercised, or explicitly recorded as unverified with the reason
-- [ ] #3 Closing one window while others are open and then quitting restores one fewer window
-- [ ] #4 On macOS, Cmd+Q with three windows restores three; closing them one at a time down to the last restores one
+- [x] #1 pnpm build, pnpm test, cargo check and cargo test pass
+- [x] #2 The Windows and Linux quit path (closing the last window) is exercised, or explicitly recorded as unverified with the reason
+- [x] #3 Closing one window while others are open and then quitting restores one fewer window
+- [x] #4 On macOS, Cmd+Q with three windows restores three; closing them one at a time down to the last restores one
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The manual round, 2026-09-11, all three platforms:
+
+- macOS, ⌘Q with three windows on three folders — all three came back, each on
+  its own folder, size and position (DoD #4, first half).
+- macOS, closing them one at a time down to the last — one came back (DoD #3 and
+  #4, second half). **Closed with the window's close button, because ⌘W does not
+  close a window**, which is a gap rather than a defect here: the macOS menu
+  carries only the `mallow` and `Edit` submenus, so there is no `Close` item and
+  never was one. TASK-12 assigns the `CmdOrCtrl+W` binding to TASK-12.4, and
+  decision-4 has TASK-13.3 move it to Close Tab afterwards. Both halves of DoD
+  #4 were exercised all the same — what the last-window rule answers for is the
+  window being destroyed, not which gesture destroyed it.
+- Windows and Linux, closing the last window — the quit path that emits
+  `ExitRequested` from inside the `Destroyed` handling, which is the one macOS
+  cannot stand in for. Both restored (DoD #2).
+<!-- SECTION:NOTES:END -->
