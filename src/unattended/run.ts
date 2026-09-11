@@ -11,11 +11,12 @@
  *  measure the paper — AC #1, #5 and #9 — and says nothing about the entry, the
  *  chord, the gate or the absence of a print UI, which stay with a person.
  *
- *  **It writes nothing a reader owns.** The settings store holds `lastFolder`,
- *  `lastFile` and the rest under the same identifier an installed mallow uses, so
- *  a run of this must not touch it: the document is opened directly rather than
+ *  **It writes nothing a reader owns.** The settings store holds the restored
+ *  session and the rest under the same identifier an installed mallow uses, so a
+ *  run of this must not touch it: the document is opened directly rather than
  *  through `selectFile`, the theme is applied to `<html>` rather than through
- *  `setTheme`, and no watcher is started.
+ *  `setTheme`, no watcher is started, and nothing reports what this window shows.
+ *  An unattended build registers no session on the Rust side either.
  */
 import { invoke } from '@tauri-apps/api/core';
 import { fileEntryFromPath, kindFromName } from '../lib/file';
