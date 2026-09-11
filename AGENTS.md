@@ -100,6 +100,20 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   TASK-12.7's restore path, which supplies one; `create_window` is the plain
   function that path calls, since it has no spawning window. See the gotcha below
   for the slot reuse, the take-once handover and the cascade rule.
+- `recent.rs` — `record_recent` / `list_recent` / `clear_recent`, which own
+  `recentFolders` in settings.json (newest first, capped at 10, folder paths
+  only) through tauri-plugin-store's Rust API. **Rust owns the list because
+  recording is a read-modify-write**: from JS the read, the splice and the write
+  are three steps with no lock between them, so two windows recording at once
+  lose an entry — and the submenu that reads it is built in Rust anyway
+  (TASK-12.4). `RecentLock` is that lock, since the store locks around `get` and
+  around `set` but not around the decision in between. `with_recorded` is the
+  pure ordering / dedupe / cap function, and `folders_from` the pure read of a
+  stored value; both are unit-tested with no app handle. **Two spellings of one
+  folder are two entries** — comparison is on the string the dialog returned,
+  because case-insensitivity is a property of the volume rather than of the OS.
+  **Pruning entries whose folder is gone is deliberately absent**: it touches the
+  filesystem and belongs at submenu build time, and nothing prunes on read.
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
