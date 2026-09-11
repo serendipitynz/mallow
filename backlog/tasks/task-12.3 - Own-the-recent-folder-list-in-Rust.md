@@ -4,7 +4,7 @@ title: Own the recent-folder list in Rust
 status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-11 03:28'
+updated_date: '2026-09-11 03:52'
 labels:
   - feature
 milestone: m-3
@@ -63,6 +63,6 @@ A `Clear Recent` item at the bottom of the submenu, below a separator, emptying 
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 cargo check and cargo test pass; pnpm build and pnpm test pass
-- [ ] #2 Opening folders from two windows in turn produces one correctly ordered list with no lost entries
+- [x] #1 cargo check and cargo test pass; pnpm build and pnpm test pass
+- [x] #2 Opening folders from two windows in turn produces one correctly ordered list with no lost entries
 <!-- DOD:END -->
