@@ -1,12 +1,13 @@
 ---
 id: TASK-12.3
 title: Own the recent-folder list in Rust
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-08-03 01:20'
+updated_date: '2026-09-11 03:28'
 labels:
   - feature
+milestone: m-3
 dependencies: []
 parent_task_id: TASK-12
 priority: high
@@ -53,11 +54,11 @@ A `Clear Recent` item at the bottom of the submenu, below a separator, emptying 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 recentFolders is persisted in settings.json, newest first, capped, holding folder paths only
-- [ ] #2 Recording an already-listed folder moves it to the front instead of duplicating it, and the oldest entry is dropped at the cap
-- [ ] #3 Ordering, dedupe and cap live in a pure function with cargo test coverage; case-insensitive filesystems are handled by a stated decision, not by silent normalisation
-- [ ] #4 record_recent and list_recent exist as Rust commands, and the frontend records a folder wherever a window starts showing one — alongside report_window_content where that already exists, without removing it
-- [ ] #5 A code comment records that the Rust and JS store handles are the same instance and that the later side's options are dropped silently
+- [x] #1 recentFolders is persisted in settings.json, newest first, capped, holding folder paths only
+- [x] #2 Recording an already-listed folder moves it to the front instead of duplicating it, and the oldest entry is dropped at the cap
+- [x] #3 Ordering, dedupe and cap live in a pure function with cargo test coverage; case-insensitive filesystems are handled by a stated decision, not by silent normalisation
+- [x] #4 record_recent and list_recent exist as Rust commands, and the frontend records a folder wherever a window starts showing one — alongside report_window_content where that already exists, without removing it
+- [x] #5 A code comment records that the Rust and JS store handles are the same instance and that the later side's options are dropped silently
 <!-- AC:END -->
 
 ## Definition of Done
