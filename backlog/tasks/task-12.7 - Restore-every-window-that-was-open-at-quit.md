@@ -1,12 +1,13 @@
 ---
 id: TASK-12.7
 title: Restore every window that was open at quit
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-02 21:24'
-updated_date: '2026-08-03 01:16'
+updated_date: '2026-09-11 04:46'
 labels:
   - feature
+milestone: m-3
 dependencies:
   - TASK-12.2
 parent_task_id: TASK-12
@@ -89,17 +90,17 @@ So rename the `main` entry to the label of the first restored window, in the sam
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 settings.json holds a windows key with one entry per open window (label, folder, files, active) where files is a list and active names one of its entries, ordered least-recently-focused first; it is owned and written by Rust, and lastFolder / lastFile are gone
-- [ ] #2 An entry is dropped on destroy only when the window map is non-empty at that point (the dying window is already removed), and window enumeration uses webview_windows() rather than the unstable Manager::get_focused_window family
-- [ ] #3 RunEvent::Exit flushes the live set and calls Store::save() synchronously, since the store plugin's own Exit save has already run by then and autoSave's debounce never fires
-- [ ] #4 tauri.conf.json sets create: false, every window is created in setup with its own label, and the capability window list drops main
-- [ ] #5 Launch creates one window per saved entry in saved order with its label and initial location, leaving the last one focused
-- [ ] #6 A missing folder yields an empty window rather than a dropped one; a missing file yields its folder with nothing selected; an absent windows key yields one empty window; whether a folder-less window is restored is decided and stated
-- [ ] #7 The number of restored windows is capped, dropping from the least-recently-focused end, and the cap is stated with its per-window cost (a Shiki WASM highlighter and a mermaid instance per WebView)
-- [ ] #8 Whichever keys the install actually carries are migrated into a single-entry windows list on first launch and all of them are then deleted: lastFolder / lastFile, or lastFolder / lastFiles / lastActive if TASK-13.4 landed first
-- [ ] #9 How often the live set reaches disk is decided and stated, so a crash does not lose more than today's single-folder behaviour does
-- [ ] #10 report_window_content(folder, file) exists and is called whenever a window's displayed folder or file changes — the folder picker, a handed-over or restored initial location, and TASK-12.5's Open Recent replace — and focus changes reorder the entries
-- [ ] #11 The one-time migration also renames the main entry in .window-state.json to the first restored window's label, so an existing install keeps its size and position and no dead label is left behind
+- [x] #1 settings.json holds a windows key with one entry per open window (label, folder, files, active) where files is a list and active names one of its entries, ordered least-recently-focused first; it is owned and written by Rust, and lastFolder / lastFile are gone
+- [x] #2 An entry is dropped on destroy only when the window map is non-empty at that point (the dying window is already removed), and window enumeration uses webview_windows() rather than the unstable Manager::get_focused_window family
+- [x] #3 RunEvent::Exit flushes the live set and calls Store::save() synchronously, since the store plugin's own Exit save has already run by then and autoSave's debounce never fires
+- [x] #4 tauri.conf.json sets create: false, every window is created in setup with its own label, and the capability window list drops main
+- [x] #5 Launch creates one window per saved entry in saved order with its label and initial location, leaving the last one focused
+- [x] #6 A missing folder yields an empty window rather than a dropped one; a missing file yields its folder with nothing selected; an absent windows key yields one empty window; whether a folder-less window is restored is decided and stated
+- [x] #7 The number of restored windows is capped, dropping from the least-recently-focused end, and the cap is stated with its per-window cost (a Shiki WASM highlighter and a mermaid instance per WebView)
+- [x] #8 Whichever keys the install actually carries are migrated into a single-entry windows list on first launch and all of them are then deleted: lastFolder / lastFile, or lastFolder / lastFiles / lastActive if TASK-13.4 landed first
+- [x] #9 How often the live set reaches disk is decided and stated, so a crash does not lose more than today's single-folder behaviour does
+- [x] #10 report_window_content(folder, file) exists and is called whenever a window's displayed folder or file changes — the folder picker, a handed-over or restored initial location, and TASK-12.5's Open Recent replace — and focus changes reorder the entries
+- [x] #11 The one-time migration also renames the main entry in .window-state.json to the first restored window's label, so an existing install keeps its size and position and no dead label is left behind
 <!-- AC:END -->
 
 ## Definition of Done
