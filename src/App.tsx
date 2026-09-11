@@ -27,6 +27,7 @@ import {
   pickPdfDestination,
   printWindow,
   recordRecent,
+  reportWindowContent,
   showErrorDialog,
   takeWindowInit,
   writeWindowPdf,
@@ -72,14 +73,13 @@ export default function App() {
 
   const selectFile = useCallback((entry: FileEntry) => {
     setSelected(entry);
-    void saveSetting('lastFile', entry.path);
   }, []);
 
   /** Show `folder`, and select `file` inside it when the location carries one.
    *
-   *  One function because the three ways a window arrives at a folder — the
-   *  picker, the stored session, and the initial location a creating window
-   *  deposited (`take_window_init`) — have to agree on the order: the asset-scope
+   *  One function because the ways a window arrives at a folder — the picker and
+   *  the initial location a creating or restoring window deposited
+   *  (`take_window_init`) — have to agree on the order: the asset-scope
    *  grant is awaited before the tree opens, so a media file selected straight
    *  after cannot build its asset URL before the asset protocol is allowed to
    *  serve it.
@@ -91,10 +91,11 @@ export default function App() {
     async (folder: string, file: string | null, cancelled: () => boolean) => {
       /* Recorded here rather than at each entry because this function is
          already the one sequence all of them take, so TASK-12.5's Open Recent
-         replace is covered by the same line. It does not stand in for
-         `lastFolder` — the two record different facts, and TASK-12.7 is what
-         retires that pair. An unattended export reaches none of this, so a
-         measurement run still leaves the reader's session where it found it. */
+         replace is covered by the same line. It is not what the restored session
+         reads — the recent list and the window set record different facts, and
+         the restored session is reported by the effect below. An unattended
+         export reaches none of this, so a measurement run still leaves the
+         reader's session where it found it. */
       void recordRecent(folder).catch((e) => console.error('Failed to record the recent folder', e));
       await allowMediaDir(folder).catch((e) => console.error('Failed to allow media dir', e));
       if (cancelled()) {
@@ -120,8 +121,6 @@ export default function App() {
       return;
     }
     setSelected(null);
-    void saveSetting('lastFolder', dir);
-    void saveSetting('lastFile', undefined);
     await openLocation(dir, null, () => false);
   }, [openLocation]);
 
@@ -220,17 +219,13 @@ export default function App() {
         return;
       }
 
-      /* What this window was told at creation, taken exactly once. A created
-         window opens what it was handed and nothing else — including nothing at
-         all, for New Window; the session is what a window nothing created falls
-         back to. `lib/window-init` holds that decision and why the two are not
-         one answer.
-
-         Nothing here writes `lastFolder` / `lastFile` back. That pair cannot
-         express a window set at all — a created window writing to it would
-         overwrite the spawner's — and TASK-12.7 replaces it with the restored
-         session, which is also where this path gains its `report_window_content`
-         call. */
+      /* What this window was told at creation, taken exactly once. A window
+         opens what it was handed and nothing else — including nothing at all,
+         for New Window — and there is nothing to fall back to: every window is
+         created now, so being handed nothing means opening nothing.
+         `lib/window-init` holds why the two answers stay distinct all the same.
+         What this window ends up showing reaches the restored session through
+         the effect below. */
       const init = await takeWindowInit().catch((e) => {
         console.error("Failed to take this window's initialization", e);
         return null;
@@ -238,7 +233,7 @@ export default function App() {
       if (disposed) {
         return;
       }
-      const target = locationToOpenAtMount(init, s);
+      const target = locationToOpenAtMount(init);
       if (target && (await pathExists(target.folder))) {
         await openLocation(target.folder, target.file, () => disposed);
       }
@@ -253,6 +248,35 @@ export default function App() {
       disposed = true;
     };
   }, [openTree, openLocation, applyEmojiDir]);
+
+  /* ---- The restored session (TASK-12.7) -------------------------------------
+     **A predicate, not a call site.** The rule is that a window says what it
+     shows whenever what it shows changes, so this watches the displayed folder
+     and selection rather than sitting beside the picker, the mount-time restore
+     and — once TASK-12.5 lands — Open Recent replacing a folder in place. Written
+     as three calls instead, the third would be the one nobody remembers, and the
+     symptom is quiet: replace the folder, quit, and the window comes back on the
+     folder it had before.
+
+     Rust owns the list itself, for the reason it owns the recent folders: several
+     windows read-modify-writing one array cannot do it from here.
+
+     **Held until the mount-time open has settled**, because until then this
+     window shows nothing while its row already says what it is about to show:
+     reporting that emptiness would overwrite the row, and a window closed in
+     the second before its folder arrives would be restored empty. Rust seeded
+     the row when it created the window, so nothing is lost by waiting.
+
+     An unattended export reports nothing, for the reason it records no recent
+     folder — the store it would write is an installed mallow's. */
+  useEffect(() => {
+    if (UNATTENDED || !restoreSettled) {
+      return;
+    }
+    void reportWindowContent(tree.rootDir, selected?.path ?? null).catch((e) =>
+      console.error('Failed to report what this window shows', e),
+    );
+  }, [restoreSettled, tree.rootDir, selected?.path]);
 
   // ---- Filesystem watch (debounced) -----------------------------------------
   useEffect(() => {

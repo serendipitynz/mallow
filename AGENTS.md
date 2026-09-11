@@ -35,12 +35,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 
 **Frontend (`src/`)**
 - `App.tsx` — top-level state: open folder, selection, file-watch wiring, explorer
-  width/side, session restore, settings-modal open state (footer button, the
+  width/side, the mount-time open, settings-modal open state (footer button, the
   `menu:settings` event, and the Cmd/Ctrl+, shortcut all open it), and the
-  launch update check (deferred behind session restore; the `autoCheckUpdates`
-  preference turns it off). `openLocation` is the one sequence the picker, the
-  stored session and a created window's initial location all take; the mount
-  effect asks `take_window_init` for that location before it reads the session.
+  launch update check (deferred behind that open; the `autoCheckUpdates`
+  preference turns it off). `openLocation` is the one sequence the picker and a
+  created or restored window's initial location both take; the mount effect asks
+  `take_window_init` for that location, and nothing consults a stored folder any
+  more. One effect keyed on the displayed folder and selection is what reports
+  this window's content to the restored session — a predicate, not a call site.
 - `hooks/useFileTree.ts` — centralized lazy file-tree state (expanded set, children
   map, `refresh`, `expandPaths`). The tree components are controlled by this.
 - `hooks/useUpdater.ts` — the update check, the install consent and the relaunch
@@ -70,8 +72,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share), `print` / `pdf-export` / `new-window` (each entry's key,
   gate and reason — the last has no gate), `window-init` (what a
-  window opens at mount, given what it was told at creation and what the session
-  remembers), `build-flags` (the unattended switch Vite substitutes), `render-signal`
+  window opens at mount, given what it was told at creation), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
 - `unattended/` — the unattended export's driver (TASK-30), reached only from
@@ -114,6 +115,17 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   because case-insensitivity is a property of the volume rather than of the OS.
   **Pruning entries whose folder is gone is deliberately absent**: it touches the
   filesystem and belongs at submenu build time, and nothing prunes on read.
+- `session.rs` — the restored session: the `windows` key in settings.json, one
+  entry per window open at quit (`{ label, folder, files, active }`), ordered
+  least-recently-focused first. `report_window_content` is the command a window
+  calls whenever its displayed folder or selection changes; `note_window_created`
+  / `note_window_focused` / `note_window_destroyed` are the app-level hooks, and
+  `flush_at_exit` is what `RunEvent::Exit` runs. **Rust owns it for the reason it
+  owns `recentFolders`** — several windows read-modify-writing one array from JS
+  lose entries — and here one mutex covers the live set *and* the store write.
+  `open_restored_windows` creates one window per entry in saved order; `init()`
+  is a plugin whose position between store and window-state is load-bearing (see
+  the gotcha below). The pure functions are unit-tested with no app handle.
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
@@ -146,10 +158,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   for the window for the reason `print_window` is. The three arms carry the one
   thing to check first on each: whether `@media print` applies (see the gotcha
   below), which is why macOS does not use `WKWebView.createPDF`.
-- `lib.rs` — plugin registration (opener, dialog, store, window-state,
-  updater, process — none `cfg(desktop)`-gated, per decision-11), the
-  `invoke_handler`, and (macOS only) a native app menu whose Settings… item
-  (⌘,) emits the `menu:settings` event the frontend listens for.
+- `lib.rs` — plugin registration (opener, dialog, store, **the session**,
+  window-state, updater, process — none `cfg(desktop)`-gated, per decision-11;
+  the session's position in that list is load-bearing, see the gotcha below), the
+  `invoke_handler`, the per-window `Destroyed` / `Focused(true)` hooks, the
+  `RunEvent::Exit` callback that flushes the session, the `setup` that creates
+  **every** window (the configured one carries `"create": false`), and (macOS
+  only) a native app menu whose Settings… item (⌘,) emits the `menu:settings`
+  event the frontend listens for.
 
 ## Conventions
 
@@ -976,14 +992,15 @@ hold rather than as an exhaustive style guide.
   testable without a GUI — a probe handle reports its own drop, which is what a
   stopped watch looks like from the registry's side, and a `RecommendedWatcher`
   cannot report that it was dropped.
-- **The capability window list is a glob, and it carries `main` as well as
-  `w*`.** `capabilities/default.json` gates plugin APIs by window label, so a
+- **The capability window list is the glob `w*`, and nothing is labelled `main`
+  any more.** `capabilities/default.json` gates plugin APIs by window label, so a
   window labelled outside that list loses `store:default` (settings do not
   persist), `dialog:default` (Open… does nothing), `opener:default` (external
   links dead) and `core:window:allow-set-title` (the title stops tracking the
   document) — **only in that window**, which is why a single-window smoke test
-  cannot catch it. `main` stays until every window is created under a `w<n>`
-  label. **The asset-protocol scope needs no per-window entry**: `allow_media_dir`
+  cannot catch it. `main` left the list in TASK-12.7, at the same time as
+  `"create": false` made every window a created one. **The asset-protocol scope
+  needs no per-window entry**: `allow_media_dir`
   widens one app-global scope additively, so a folder granted by any window is
   readable by all of them, and a grant outlives the window that asked for it —
   the scope has no removal API. Neither is a defect for a viewer that only
@@ -1027,14 +1044,69 @@ hold rather than as an exhaustive style guide.
   has to hand off rather than build inline. The cascade rule survived the change
   untouched because it was written against queue order rather than against the
   command being synchronous.
-- **A window created empty is not a window nothing created, and reading the two as
-  one answer costs New Window its whole specification.** `take_window_init` answers
-  `{ location }` for a window `open_window` built and `null` for one it did not, so
-  the created-empty case is `{ location: null }` — flatten it to `null` and an
-  empty New Window falls through to the stored session and opens a duplicate of
-  the last folder, which is the one thing New Window exists not to do. The branch
-  lives in `lib/window-init` rather than inside `App`'s mount effect, because that
-  is where it was got wrong and nothing inside an effect can reach it.
+- **A window created empty is not a window nothing created**, and while both open
+  nothing today, the two answers are not one answer. `take_window_init` answers
+  `{ location }` for a window `open_window` built and `null` for one it did not,
+  so the created-empty case is `{ location: null }`. Flattening them cost New
+  Window its whole specification for as long as a window nothing created fell
+  through to a stored folder: it opened a duplicate of the last one, which is the
+  thing New Window exists not to do. **TASK-12.7 removed that fallback** — every
+  window is created now, so `null` means only that this window's entry has
+  already been taken, which is a WebView reload. `lib/window-init` still holds
+  what each answer opens, outside `App`'s mount effect, because that is where it
+  was got wrong and nothing inside an effect can reach it.
+- **The restored session is one key, one rule and one ordering constraint, and
+  each of the three has a way of looking fine while being wrong.** The key is
+  `windows` in settings.json (`session.rs`), which **replaced `lastFolder` /
+  `lastFile` rather than joining them** — two sources of truth for "where was I"
+  is how they drift. Its file half is a **list** with an `active` naming one
+  entry, though nothing here opens more than one file per window: TASK-13's tabs
+  do, and decision-4 settles the shape now because this key already carries a
+  one-time migration and a rewrite of another plugin's file, and a second round
+  of both is what the list shape buys off. **A row whose label this app cannot
+  open is dropped at launch** — settings.json is a file a reader can edit, and a
+  duplicate `w1` fails the second build outright while a label outside the `w*`
+  glob builds a window with no store, no dialogs and no title. A build that fails
+  anyway does not take the launch with it, since all of this runs inside `setup`
+  and a `?` there means the app never opens at all.
+  **The rule is a predicate, not a call site**: a window reports whenever its
+  displayed folder or selection changes, which the frontend satisfies with an
+  effect on those two values rather than a call beside the picker, the mount-time
+  open and TASK-12.5's Open Recent replace. Written as three calls the third is
+  the one nobody remembers, and the symptom is quiet — replace a folder, quit,
+  and the window comes back on the folder it had before.
+  **The last-window rule decides what leaves**: on `WindowEvent::Destroyed` an
+  entry is dropped only if the window map is still non-empty, so the final
+  window's entry survives into the next launch. The flag-on-`ExitRequested`
+  design it replaced is contradicted by all four quit paths (TASK-12.7 records
+  them), and **the count is "not empty", not "more than one"** — tauri has
+  already removed the dying window from its map by the time the handler runs, so
+  the naive test never drops anything. `RunEvent::Exit` then flushes the live set
+  and calls `Store::save()` **synchronously**, because the store plugin ran its
+  own exit save before this code gets the event and `autoSave` is a debounce the
+  process exits ahead of. Between those, every change is **written through** at
+  once, so a crash loses no more than `lastFolder` did.
+  **The ordering constraint is where the session plugin is registered** — after
+  the store, whose state it reads, and **before window-state**, whose
+  `.window-state.json` its one-time migration rewrites: that plugin loads the
+  whole file in its own setup and writes the cache back at exit, so a rewrite
+  made later is silently overwritten, and plugin setups run in registration order
+  and all of them before the app's own `setup`. That migration renames the `main`
+  entry onto the first restored label and **drops `main` even when it cannot move
+  it**, since nothing can claim that label again and the plugin would otherwise
+  write it back forever. The settings half of the same migration seeds a
+  single-entry session from `lastFolder` / `lastFile` and then deletes them;
+  `lastFiles` / `lastActive` are deliberately not read, because only an install
+  that took TASK-13.4 first could carry them and TASK-13.4 has not landed.
+  **The restore is capped at 8 windows**, dropped from the least-recently-focused
+  end, because a restored window is a WebView carrying its own Shiki WASM
+  highlighter and its own mermaid instance. A window that was showing **no
+  folder** is restored rather than dropped (the window count stays honest, and an
+  empty window is what a first launch shows anyway); a window whose folder has
+  since gone comes back empty rather than being dropped, so the reader can see
+  which one lost it. **An unattended build registers no session at all** and every
+  entry point is a no-op there, so a measurement run leaves the reader's settings
+  where it found them.
 - **The initial location is taken exactly once, and a WebView reload is not a new
   window.** `open_window` deposits `{ folder, file }` under the label and the
   created window removes it at mount, so **after a devtools reload the window
@@ -1080,8 +1152,8 @@ hold rather than as an exhaustive style guide.
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
   `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
   `chord` (accelerator matching plus the app-wide handler — both take the platform
-  as an argument so neither needs `navigator`), `window-init` (which of
-  the three creation states a window is in, and what each opens),
+  as an argument so neither needs `navigator`), `window-init` (what a
+  window opens in each of the three creation states),
   `markdown-preview`, `print`,
   `pdf-export` and `new-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
@@ -1093,10 +1165,11 @@ hold rather than as an exhaustive style guide.
   should still fail in 5s).
 - Backend: `cargo fmt --check`, `cargo check` and `cargo test` inside
   `src-tauri/`. The `commands` module has unit tests (a small self-cleaning
-  temp-dir helper, no `tempfile` dep); `watch`'s registry and `window`'s label
-  allocation and initial-location handover are covered without a GUI, the latter
-  because `reserve` takes the set of live labels as an argument rather than asking
-  the app for it. **`unattended.rs`'s tests are
+  temp-dir helper, no `tempfile` dep); `watch`'s registry, `window`'s label
+  allocation and initial-location handover, and `session`'s live-set functions
+  (reporting, focus order, the last-window rule, the cap and both halves of the
+  migration) are covered without a GUI — the latter two because they take what
+  they need as arguments rather than asking the app for it. **`unattended.rs`'s tests are
   `cfg(unattended)`**, so a plain `cargo test` never compiles them — the paper job
   runs `MALLOW_UNATTENDED=1 cargo test`, and that is the only place they run.
 - **The paper** (TASK-30): `MALLOW_UNATTENDED=1 pnpm tauri build --debug

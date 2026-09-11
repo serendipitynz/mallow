@@ -35,12 +35,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 
 **フロントエンド (`src/`)**
 - `App.tsx` — 最上位の状態: フォルダを開く、選択、ファイル監視の配線、エクスプローラの
-  幅/左右、セッション復元、設定モーダルの開閉（フッターのボタン・`menu:settings`
+  幅/左右、mount 時に開く処理、設定モーダルの開閉（フッターのボタン・`menu:settings`
   イベント・`Cmd/Ctrl+,` ショートカットのいずれからも開く）、起動時の更新確認
-  （セッション復元の後ろへ遅らせる。`autoCheckUpdates` 設定で切れる）。
-  フォルダに辿り着く 3 経路 — フォルダ選択・保存済みセッション・作られたウィンドウが
+  （その処理の後ろへ遅らせる。`autoCheckUpdates` 設定で切れる）。
+  フォルダに辿り着く 2 経路 — フォルダ選択と、作られた／復元されたウィンドウが
   受け取る initial location — は `openLocation` という 1 つの手順を通る。
-  mount 時の効果はセッションを読む前に `take_window_init` へ initial location を要求する。
+  mount 時の効果は `take_window_init` へ initial location を要求し、
+  保存されたフォルダはもうどこからも読まない。表示中のフォルダと選択を見る効果 1 つが
+  restored session への報告で、**呼び出し箇所ではなく述語**として書いてある。
 - `hooks/useFileTree.ts` — ファイルツリーの集中管理（展開集合・子マップ・`refresh`・
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
 - `hooks/useUpdater.ts` — 更新確認・導入の同意・再起動（tauri-plugin-updater +
@@ -109,6 +111,18 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   大文字小文字を区別しないのは OS ではなくボリュームの性質だから。
   **存在しなくなったフォルダの除去は意図的に無い** — ファイルシステムに触るので
   サブメニュー構築時の仕事であり、読み出し時には除去しない。
+- `session.rs` — restored session。settings.json の `windows` キーで、quit 時に
+  開いていたウィンドウ 1 つにつき 1 エントリ（`{ label, folder, files, active }`）を
+  **最後にフォーカスされたものが末尾**の順で持つ。`report_window_content` が
+  「表示中のフォルダか選択が変わったとき」にウィンドウが呼ぶコマンド、
+  `note_window_created` / `note_window_focused` / `note_window_destroyed` が
+  アプリ全体のフック、`flush_at_exit` が `RunEvent::Exit` で走る。
+  **Rust が持つ理由は `recentFolders` と同じ** — 複数ウィンドウが 1 つの配列を
+  read-modify-write するとエントリが落ちる — そのうえここでは 1 つの mutex が
+  ライブ集合と store への書き込みの両方を覆う。`open_restored_windows` が
+  保存順に 1 エントリ 1 ウィンドウを作り、`init()` はプラグインで、store と
+  window-state の間という登録位置が load-bearing である（下の gotcha）。
+  純関数群は app handle 無しで単体テストされている。
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` を `std::process` で実装（OS ごとに `cfg` で分岐）。
   最後のものはファイルをその種別に登録された OS のハンドラへ渡す。
@@ -138,8 +152,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   — **Linux ではこれが紙への唯一の道**になる。`print_window` と同じ理由でウィンドウで命名した。
   3 つの分岐が共通に抱える確認事項は **`@media print` が当たるか**で（下の落とし穴を見る）、
   それが macOS で `WKWebView.createPDF` を採らない理由でもある。
-- `lib.rs` — プラグイン登録（opener, dialog, store, window-state, updater, process。
-  decision-11 によりどれも `cfg(desktop)` で括らない）、`invoke_handler`、
+- `lib.rs` — プラグイン登録（opener, dialog, store, **session**, window-state,
+  updater, process。decision-11 によりどれも `cfg(desktop)` で括らない。
+  session の位置は load-bearing —下の gotcha を読む）、`invoke_handler`、
+  ウィンドウごとの `Destroyed` / `Focused(true)` フック、restored session を
+  flush する `RunEvent::Exit` コールバック、**すべての**ウィンドウを作る `setup`
+  （設定ファイルのウィンドウは `"create": false` を持つ）、
   および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
   `menu:settings` イベントを emit し、フロントがそれを購読する。
 
@@ -855,13 +873,15 @@ Comments と Functions の規約は機械的に検査されない。コメント
   GUI なしで検査できる — 自分の drop を報告する probe ハンドルを使う。drop は
   registry から見た「watch が止まった」状態そのものであり、
   `RecommendedWatcher` は自分が drop されたことを報告できない。
-- **capability のウィンドウ一覧は glob であり、`w*` と一緒に `main` も持つ。**
+- **capability のウィンドウ一覧は glob `w*` だけであり、`main` というラベルは
+  もう存在しない。**
   `capabilities/default.json` はウィンドウラベルで plugin API をゲートするので、
   この一覧に載らないラベルのウィンドウは `store:default`（設定が永続化されない）・
   `dialog:default`（Open… が何もしない）・`opener:default`（外部リンクが死ぬ）・
   `core:window:allow-set-title`（タイトルが文書を追わなくなる）を失う —
   **そのウィンドウだけで**。だから単一ウィンドウの動作確認では捕まらない。
-  `main` は全ウィンドウが `w<n>` ラベルで作られるようになるまで残す。
+  `main` は TASK-12.7 で一覧から外れた — `"create": false` が全ウィンドウを
+  「作られたウィンドウ」にしたのと同じ回である。
   **asset protocol のスコープにはウィンドウごとの項目が要らない**:
   `allow_media_dir` はアプリ全体の 1 つのスコープを加算的に広げるので、
   どのウィンドウが許可したフォルダもすべてのウィンドウから読める。しかも
@@ -902,13 +922,62 @@ Comments と Functions の規約は機械的に検査されない。コメント
   次にこれを再導入できる場所なので、メニュー項目はその場で build せず投げること。
   ずらし規則は変更の影響を受けなかった。コマンドが同期であることではなく、
   キューの順序に対して書いてあったからである。
-- **空で作られたウィンドウと、何にも作られていないウィンドウは別物であり、1 つの答えとして
-  読むと New Window の仕様が丸ごと失われる。** `take_window_init` は `open_window` が
-  作ったウィンドウには `{ location }` を、そうでないウィンドウには `null` を返す。
-  空で作られた場合は `{ location: null }` であって、これを `null` に潰すと空の
-  New Window が保存済みセッションへ落ちて直前のフォルダの複製を開く — New Window が
-  まさにそうしないために存在する動作である。この分岐は `App` の mount 効果の中ではなく
-  `lib/window-init` に置いた。そこが誤った場所であり、効果の中には何も届かないから。
+- **空で作られたウィンドウと、何にも作られていないウィンドウは別物である。**
+  今日はどちらも何も開かないが、2 つの答えは 1 つの答えではない。
+  `take_window_init` は `open_window` が作ったウィンドウには `{ location }` を、
+  そうでないウィンドウには `null` を返し、空で作られた場合は `{ location: null }`
+  である。これを潰すことは、何にも作られていないウィンドウが保存済みフォルダへ
+  落ちていた間、New Window の仕様を丸ごと失わせていた — 直前のフォルダの複製を
+  開くのは、New Window がまさにそうしないために存在する動作である。
+  **TASK-12.7 がその落とし先を消した** — 全ウィンドウが作られたウィンドウになったので、
+  `null` は「このウィンドウの entry は既に取られた」＝ WebView のリロードだけを意味する。
+  それぞれが何を開くかは今も `App` の mount 効果の中ではなく `lib/window-init` にある。
+  そこが誤った場所であり、効果の中には何も届かないから。
+- **restored session は 1 つのキー・1 つの規則・1 つの順序制約であり、3 つとも
+  「正しく見えたまま間違っている」形を持つ。** キーは settings.json の `windows`
+  (`session.rs`)で、**`lastFolder` / `lastFile` に並ぶのではなく置き換えた** —
+  「どこにいたか」の真実が 2 つあることが、両者がずれていく仕組みそのものだから。
+  ファイル側は `active` が 1 エントリを名指す**リスト**である。ここでは 1 ウィンドウが
+  複数ファイルを開かないが、TASK-13 のタブは開く。decision-4 が形をここで確定させるのは、
+  このキーが既に一度きりの移行と別プラグインのファイル書き換えを抱えており、
+  タブが来たときにその 2 つをもう一度やる方が高くつくからである。
+  **このアプリが開けないラベルの行は起動時に落とす** — settings.json は利用者が
+  編集できるファイルで、`w1` が 2 行あれば 2 つ目の build がそのまま失敗し、
+  `w*` glob の外のラベルは store もダイアログもタイトルも無いウィンドウを作る。
+  それでも build が失敗した場合に起動ごと落とさないのは、ここが `setup` の中であり、
+  `?` を書けばアプリが 1 つも開かないからである。
+  **規則は呼び出し箇所ではなく述語である**: 表示中のフォルダか選択が変わったときに
+  ウィンドウが報告する。フロントはフォルダ選択・mount 時に開く処理・TASK-12.5 の
+  Open Recent の置き換えのそれぞれに呼び出しを置くのではなく、その 2 値を見る効果 1 つで
+  満たす。3 つの呼び出しとして書けば 3 つ目が誰も覚えていないものになり、症状は静かである
+  — フォルダを置き換え、終了し、復元したウィンドウは前のフォルダで戻ってくる。
+  **何が抜けるかは last-window rule が決める**: `WindowEvent::Destroyed` で
+  エントリを落とすのは、その時点でウィンドウマップが空でないときだけ。最後の
+  ウィンドウのエントリは次の起動へ生き残る。置き換えた「`ExitRequested` でフラグを
+  立てる」案は 4 つの quit 経路すべてに否定されており（TASK-12.7 が記録している）、
+  **数えるのは「空でない」であって「2 つ以上」ではない** — ハンドラが走る時点で
+  tauri は死にゆくウィンドウを既にマップから外しているので、素朴な条件は 1 つずれて
+  永遠に何も落とさない。`RunEvent::Exit` はライブ集合を flush して `Store::save()` を
+  **同期で**呼ぶ。store プラグインは自分の exit 保存をこのコードより先に終えており、
+  `autoSave` はプロセスの終了に間に合わない debounce だからである。その間の変更は
+  すべて**その場で書き抜ける**ので、クラッシュで失うものは `lastFolder` の頃と変わらない。
+  **順序制約は session プラグインの登録位置である** — 状態を読む store の後、
+  一度きりの移行が `.window-state.json` を書き換える window-state の前。あのプラグインは
+  自分の setup でファイル全体を読み込み、exit でキャッシュを書き戻すので、後から
+  書き換えても黙って上書きされる。プラグインの setup は登録順に走り、どれもアプリ自身の
+  `setup` より前である。その移行は `main` エントリを最初の復元ラベルへ改名し、
+  **改名できないときでも `main` を捨てる** — もうそのラベルを名乗るものは無く、
+  放置すれば毎回の exit で書き戻され続けるから。設定側の移行は `lastFolder` /
+  `lastFile` から 1 エントリの session を作って両キーを削除する。`lastFiles` /
+  `lastActive` は意図的に読まない — それらを持つのは TASK-13.4 を先に入れた
+  インストールだけで、TASK-13.4 は入っていないからである。
+  **復元は 8 ウィンドウで頭打ち**にし、最後にフォーカスされた側から遠い順に落とす。
+  復元されたウィンドウは 1 つで Shiki の WASM highlighter と mermaid インスタンスを
+  自前の WebView に抱えるからである。**フォルダを開いていなかったウィンドウは
+  復元する**（ウィンドウ数が正直に保たれ、空のウィンドウは初回起動が出すものと同じ）。
+  フォルダが消えていたウィンドウは落とさず空で開き、どれが失ったのかを見せる。
+  **無人ビルドは session を登録しない**のでどの入口も何もしない。計測実行は利用者の
+  設定をそのまま残す。
 - **initial location はちょうど 1 回だけ取られ、WebView のリロードは新しいウィンドウでは
   ない。** `open_window` がラベルの下に `{ folder, file }` を置き、作られたウィンドウが
   mount で取り除くので、**devtools のリロード後はウィンドウが location を開き直さず
@@ -952,7 +1021,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `heading`＝座標変換のみ。`findHeading` は DOM のグローバルを要するため対象外・
   `chord`＝アクセラレータの一致判定とアプリ全体の handler。どちらもプラットフォームを
   引数で受けるので `navigator` を要しない・
-  `window-init`＝ウィンドウが 3 つの生成状態のどれにいて、それぞれ何を開くか・
+  `window-init`＝3 つの生成状態それぞれでウィンドウが何を開くか・
   `markdown-preview`・`print`・`pdf-export`・`new-window`＝各 chord のキー・ゲートと、
   イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
   New Window には閉じるゲートが無いことを含む）・
@@ -964,9 +1033,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   5 秒で落ちてほしい）。
 - バックエンド: `src-tauri/` 内で `cargo fmt --check`・`cargo check`・`cargo test`。
   `commands` モジュールにユニットテストがある（`tempfile` 依存を避けた
-  自己クリーンアップ式の temp-dir ヘルパー）。`watch` の registry と、`window` の
-  ラベル採番・initial location の受け渡しも GUI なしで検査する。後者ができるのは
-  `reserve` が生きているラベルの集合をアプリに訊かず引数で受けるから。
+  自己クリーンアップ式の temp-dir ヘルパー）。`watch` の registry、`window` の
+  ラベル採番・initial location の受け渡し、`session` のライブ集合まわり（報告・
+  フォーカス順・last-window rule・上限・移行の両半分）も GUI なしで検査する。
+  後の 2 つができるのは、必要なものをアプリに訊かず引数で受けるから。
   **`unattended.rs` のテストは
   `cfg(unattended)`** なので素の `cargo test` では 1 度もコンパイルされない —
   紙のジョブが `MALLOW_UNATTENDED=1 cargo test` を走らせ、そこだけが実行場所である。

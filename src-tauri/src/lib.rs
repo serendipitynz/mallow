@@ -3,6 +3,7 @@ mod editors;
 mod pdf;
 mod print;
 mod recent;
+mod session;
 #[cfg(unattended)]
 mod unattended;
 mod watch;
@@ -33,7 +34,8 @@ macro_rules! app_handler {
             window::take_window_init,
             recent::record_recent,
             recent::list_recent,
-            recent::clear_recent
+            recent::clear_recent,
+            session::report_window_content
             $(, $extra)*
         ]
     };
@@ -54,11 +56,26 @@ pub fn run() {
     #[cfg(unattended)]
     let request = unattended::request_or_exit();
 
-    #[allow(clippy::let_and_return)]
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_store::Builder::default().build());
+
+    // **Registered between the store and the window state, and that is
+    // load-bearing.** The restored session is read out of the store, so that
+    // plugin has to be set up first; and the session's one-time geometry
+    // migration rewrites tauri-plugin-window-state's file, which that plugin
+    // loads whole in its own setup and writes back at exit — so a rewrite made
+    // afterwards is simply overwritten. Plugin setups run in registration order.
+    //
+    // **An unattended build registers no session at all**: it must leave the
+    // reader's settings where it found them, so it opens one window that no row
+    // is ever written for.
+    #[cfg(not(unattended))]
+    let builder = builder.plugin(session::init());
+
+    #[allow(clippy::let_and_return)]
+    let builder = builder
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -66,13 +83,21 @@ pub fn run() {
         .manage(pdf::ExportLock::default())
         .manage(window::WindowInitRegistry::default())
         .manage(recent::RecentLock::default())
-        .on_window_event(|window, event| {
+        .on_window_event(|window, event| match event {
             // A closed window must leave neither its watch running nor its
-            // slot reserved by an initial location nothing will ever take.
-            if matches!(event, tauri::WindowEvent::Destroyed) {
+            // slot reserved by an initial location nothing will ever take, and
+            // its row leaves the restored session under the last-window rule.
+            tauri::WindowEvent::Destroyed => {
                 watch::drop_window_watch(window);
                 crate::window::drop_window_init(window);
+                session::note_window_destroyed(window);
             }
+            // **The `true` edge only.** The restored session is ordered
+            // least-recently-focused first, so reordering on the `false` edge
+            // would invert it — the window losing focus would be the one moved
+            // to the end.
+            tauri::WindowEvent::Focused(true) => session::note_window_focused(window),
+            _ => {}
         })
         .on_menu_event(|app, event| {
             // The frontend opens its settings modal in response to this event.
@@ -81,9 +106,6 @@ pub fn run() {
             }
         })
         .setup(|app| {
-            #[cfg(not(target_os = "macos"))]
-            let _ = &app;
-
             // On macOS, provide a standard application menu with a Settings… item
             // (⌘,). Other platforms reach settings via the footer button.
             #[cfg(target_os = "macos")]
@@ -131,6 +153,23 @@ pub fn run() {
                 app.set_menu(menu)?;
             }
 
+            // **Every window is created here, restored or not.** The configured
+            // window carries `"create": false`, so tauri creates none of its own
+            // (`src/app.rs:2524` filters on that field) while the config stays the
+            // one place the default size lives — and the label then comes from
+            // here rather than being fixed at `main`, which is what lets a
+            // restored window come back under the label its geometry and its
+            // session row are filed under.
+            //
+            // After `set_menu` rather than before it: a window built afterwards
+            // takes the app-wide menu at creation (tauri-2.11.3
+            // `src/window/mod.rs:394-398`), and on macOS the menu is the
+            // application's rather than any window's anyway.
+            #[cfg(unattended)]
+            window::create_window(app.handle(), None, None, None)?;
+            #[cfg(not(unattended))]
+            session::open_restored_windows(app.handle())?;
+
             Ok(())
         })
         .invoke_handler(handler());
@@ -141,6 +180,14 @@ pub fn run() {
     let builder = builder.manage(request);
 
     builder
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app, event| {
+            // The flush covers the quit paths that emit no destroy events at all
+            // (macOS ⌘Q, a predefined Quit item, `AppHandle::exit`), which is
+            // most of them.
+            if matches!(event, tauri::RunEvent::Exit) {
+                session::flush_at_exit(app);
+            }
+        });
 }

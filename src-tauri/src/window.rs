@@ -28,12 +28,15 @@ pub struct InitialLocation {
 
 /// What a created window was told at creation.
 ///
-/// **A window created empty is not the same thing as a window nothing created**,
-/// and flattening the two costs New Window its whole specification: with a folder
-/// in the stored session, a window that reported "nothing was deposited" would
-/// fall back to that session and open a duplicate of it. So the outer option says
-/// whether this window was created by `open_window`, and `location` says whether
-/// it was given somewhere to open.
+/// **A window created empty is not the same thing as a window nothing created**:
+/// the outer option says whether this window was created by `open_window` and
+/// `location` says whether it was given somewhere to open. Flattening the two
+/// used to cost New Window its whole specification, since a window reporting
+/// "nothing was deposited" then fell back to the stored session and opened a
+/// duplicate of the last folder. TASK-12.7 removed that fallback — every window
+/// is created now, so the two answers open the same nothing — and the shape is
+/// kept because it is what the answer actually means: `null` says this window's
+/// entry has already been taken, which is a WebView reload.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct WindowInit {
     pub location: Option<InitialLocation>,
@@ -116,8 +119,10 @@ impl WindowInitRegistry {
     }
 }
 
-/// The lowest `w<n>` free of both sets. `main` is neither shape, so the
-/// configured window never occupies a slot even while it still exists.
+/// The lowest `w<n>` free of both sets. Every window carries a label of that
+/// shape now: TASK-12.7 gave the configured window `"create": false`, so nothing
+/// is labelled `main` any more and the restore path asks for the label each
+/// window had at quit.
 fn free_label(live: &HashSet<String>, pending: &HashMap<String, Option<InitialLocation>>) -> Result<String, String> {
     (1..=u32::MAX)
         .map(|n| format!("w{n}"))
@@ -205,6 +210,7 @@ pub fn create_window(
     spawner: Option<Window>,
 ) -> Result<String, String> {
     let registry = app.state::<WindowInitRegistry>();
+    let reported = location.clone();
     let label = match label {
         Some(label) => {
             registry.reserve_label(&label, location)?;
@@ -216,6 +222,15 @@ pub fn create_window(
 
     match build_window(app, &label) {
         Ok(created) => {
+            // Recorded once the window exists, so a failed build leaves no row
+            // behind. It is what keeps the window count honest without waiting
+            // for the frontend: a window quit before it ever mounted reports
+            // nothing of its own.
+            let (folder, file) = match reported {
+                Some(location) => (Some(location.folder), location.file),
+                None => (None, None),
+            };
+            crate::session::note_window_created(app, &label, folder, file);
             if let Some(spawner) = spawner {
                 offset_when_stacked_on(created, spawner);
             }
@@ -279,9 +294,9 @@ mod tests {
     }
 
     #[test]
-    fn the_first_created_window_is_w1_beside_the_configured_main() {
+    fn the_first_created_window_is_w1() {
         let registry = WindowInitRegistry::default();
-        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&[]), None).unwrap(), "w1");
     }
 
     #[test]
@@ -289,8 +304,8 @@ mod tests {
         let registry = WindowInitRegistry::default();
         // `webview_windows()` lists neither yet: the reservation is what keeps two
         // creations in flight at once from being handed the same slot.
-        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
-        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w2");
+        assert_eq!(registry.reserve(|| live(&[]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&[]), None).unwrap(), "w2");
     }
 
     /// The interleaving `async` made reachable: two `Cmd/Ctrl+N` presses race, the
@@ -301,12 +316,12 @@ mod tests {
     #[test]
     fn a_creation_cannot_be_handed_a_label_another_creation_has_already_built() {
         let registry = WindowInitRegistry::default();
-        let first = registry.reserve(|| live(&["main"]), None).unwrap();
+        let first = registry.reserve(|| live(&[]), None).unwrap();
         assert_eq!(first, "w1");
         // `build` put w1 in the manager's map, and only then could its window mount
         // and take the entry — that order is what makes the two halves cover each
         // other.
-        let world = live(&["main", "w1"]);
+        let world = live(&["w1"]);
         registry.take(&first).unwrap();
         assert_eq!(registry.reserve(|| world.clone(), None).unwrap(), "w2");
     }
@@ -320,7 +335,7 @@ mod tests {
         use std::cell::RefCell;
 
         let registry = WindowInitRegistry::default();
-        let world = RefCell::new(live(&["main"]));
+        let world = RefCell::new(live(&[]));
         let reads = RefCell::new(0);
         let observe = || {
             *reads.borrow_mut() += 1;
@@ -339,36 +354,37 @@ mod tests {
         registry.take("w2").unwrap();
         registry.take("w3").unwrap();
         // w2 was closed, so it is no longer live and no longer pending.
-        assert_eq!(registry.reserve(|| live(&["main", "w1", "w3"]), None).unwrap(), "w2");
+        assert_eq!(registry.reserve(|| live(&["w1", "w3"]), None).unwrap(), "w2");
     }
 
     #[test]
     fn an_initial_location_is_answered_once_and_then_gone() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(|| live(&["main"]), location("/docs")).unwrap();
+        let label = registry.reserve(|| live(&[]), location("/docs")).unwrap();
         assert_eq!(registry.take(&label).unwrap(), Some(WindowInit { location: location("/docs") }));
         assert_eq!(registry.take(&label).unwrap(), None);
     }
 
-    /// The distinction New Window rests on: a window created empty answers that it
-    /// was created and given nowhere, where a window nothing created answers
-    /// nothing at all. Flatten the two and an empty New Window falls back to the
-    /// stored session and opens a duplicate of the last folder.
+    /// The distinction New Window rested on: a window created empty answers that
+    /// it was created and given nowhere, where a window nothing created answers
+    /// nothing at all. Both open nothing since TASK-12.7 retired the stored
+    /// session's folder, and the two answers stay distinct because that is what
+    /// they mean — an empty New Window against an already-taken entry.
     #[test]
     fn a_window_created_empty_is_not_a_window_nothing_created() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(|| live(&["main"]), None).unwrap();
+        let label = registry.reserve(|| live(&[]), None).unwrap();
         assert_eq!(label, "w1");
         assert_eq!(registry.take(&label).unwrap(), Some(WindowInit { location: None }));
-        assert_eq!(registry.take("main").unwrap(), None);
+        assert_eq!(registry.take("w9").unwrap(), None);
     }
 
     #[test]
     fn an_empty_window_frees_its_slot_once_it_has_taken_its_entry() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(|| live(&["main"]), None).unwrap();
+        let label = registry.reserve(|| live(&[]), None).unwrap();
         registry.take(&label).unwrap();
-        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&[]), None).unwrap(), "w1");
     }
 
     #[test]
@@ -383,8 +399,8 @@ mod tests {
     #[test]
     fn a_window_that_failed_to_build_frees_its_slot_again() {
         let registry = WindowInitRegistry::default();
-        let label = registry.reserve(|| live(&["main"]), location("/docs")).unwrap();
+        let label = registry.reserve(|| live(&[]), location("/docs")).unwrap();
         registry.discard(&label);
-        assert_eq!(registry.reserve(|| live(&["main"]), None).unwrap(), "w1");
+        assert_eq!(registry.reserve(|| live(&[]), None).unwrap(), "w1");
     }
 }

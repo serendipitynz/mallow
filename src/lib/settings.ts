@@ -3,8 +3,13 @@
 import { load, type Store } from '@tauri-apps/plugin-store';
 
 export interface Settings {
-  lastFolder?: string;
-  lastFile?: string;
+  /** One entry per window open at quit, least-recently-focused first. **Rust owns
+   *  this key** — `src-tauri/src/session.rs` is what writes and reads it, for the
+   *  reason it owns `recentFolders`: several windows read-modify-writing one
+   *  array from JS lose entries. It replaced `lastFolder` / `lastFile`, which a
+   *  one-time migration seeds from and then deletes. Declared here because this
+   *  is the shape of the same file; nothing in the frontend reads it. */
+  windows?: { label: string; folder: string | null; files: string[]; active: string | null }[];
   /** Previously opened folders, newest first, capped. **Rust owns this key** —
    *  `record_recent` / `list_recent` / `clear_recent` in `src-tauri/src/recent.rs`
    *  are what write and read it, so that a recording is one step. Declared here

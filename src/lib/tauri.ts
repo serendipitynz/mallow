@@ -123,12 +123,27 @@ export function openWindow(location?: InitialLocation): Promise<string> {
   return invoke<string>('open_window', { location: location ?? null, label: null });
 }
 
+/** Say which folder this window now shows and which file is selected in it, so
+ *  the restored session can bring this window back showing the same thing.
+ *
+ *  **Called whenever the displayed content changes, which is a predicate and not
+ *  a list of call sites** — the folder picker, a restored or handed-over initial
+ *  location and TASK-12.5's Open Recent replace are all of them today. `App`
+ *  satisfies it with an effect on what is displayed rather than a call beside
+ *  each of them, so the next way a folder can change is covered before it exists.
+ *
+ *  It does not stand in for `recordRecent`: the two record different facts. */
+export function reportWindowContent(folder: string | null, file: string | null): Promise<void> {
+  return invoke<void>('report_window_content', { folder, file });
+}
+
 /** Take what this window was told at creation. Answers it once and null
  *  afterwards — and null for a window `open_window` did not create, which is why
  *  a reloaded window comes back empty (see `src-tauri/src/window.rs`).
  *
- *  Null and `{ location: null }` are different answers, and `lib/window-init`
- *  holds what each one means. */
+ *  Null and `{ location: null }` are different answers — an already-taken entry
+ *  against a window created with nowhere to open — and `lib/window-init` holds
+ *  what each one opens, which since TASK-12.7 is nothing in both cases. */
 export function takeWindowInit(): Promise<WindowInit | null> {
   return invoke<WindowInit | null>('take_window_init');
 }

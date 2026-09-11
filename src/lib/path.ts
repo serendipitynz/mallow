@@ -1,7 +1,7 @@
 /** Cross-platform path helpers for the frontend.
  *
  *  Paths reach the frontend from Rust (`read_dir_tree`, `read_file`, and the
- *  restored session's `lastFolder` / `lastFile`) using whatever separator the
+ *  restored session's folder and file) using whatever separator the
  *  host OS uses: `/` on macOS & Linux, `\` on Windows — including `C:\...`
  *  drive letters and `\\server\share` UNC prefixes. These helpers understand
  *  both so tree expansion and the Explorer root label stay correct everywhere.
