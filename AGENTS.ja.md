@@ -96,6 +96,19 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `label` は TASK-12.7 の復元経路だけが渡す。その経路には呼び出し元のウィンドウが
   無いので、素の関数 `create_window` を呼ぶ。スロットの再利用・1 回だけの受け渡し・
   ずらし規則は下の gotcha にある。
+- `recent.rs` — `record_recent` / `list_recent` / `clear_recent`。settings.json の
+  `recentFolders`（新しい順・上限 10・フォルダのパスのみ）を tauri-plugin-store の
+  Rust API 経由で所有する。**Rust が持つのは、記録が read-modify-write だから** —
+  JS 側では読み・差し替え・書き戻しが間にロックの無い 3 手になるので、2 つの
+  ウィンドウが同時に記録するとエントリが落ちる。加えて、これを読むサブメニューは
+  どのみち Rust で作る（TASK-12.4）。`RecentLock` がそのロックで、store は `get` と
+  `set` のそれぞれをロックするが、その間の判断はロックしない。`with_recorded` が
+  並び替え・重複排除・上限の純関数、`folders_from` が保存値を読む純関数で、
+  どちらも app handle 無しで単体テストされている。**同じフォルダの 2 通りの綴りは
+  2 エントリになる** — 比較はダイアログが返した文字列そのままで、
+  大文字小文字を区別しないのは OS ではなくボリュームの性質だから。
+  **存在しなくなったフォルダの除去は意図的に無い** — ファイルシステムに触るので
+  サブメニュー構築時の仕事であり、読み出し時には除去しない。
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` を `std::process` で実装（OS ごとに `cfg` で分岐）。
   最後のものはファイルをその種別に登録された OS のハンドラへ渡す。

@@ -2,6 +2,7 @@ mod commands;
 mod editors;
 mod pdf;
 mod print;
+mod recent;
 #[cfg(unattended)]
 mod unattended;
 mod watch;
@@ -29,7 +30,10 @@ macro_rules! app_handler {
             print::print_window,
             pdf::write_window_pdf,
             window::open_window,
-            window::take_window_init
+            window::take_window_init,
+            recent::record_recent,
+            recent::list_recent,
+            recent::clear_recent
             $(, $extra)*
         ]
     };
@@ -61,6 +65,7 @@ pub fn run() {
         .manage(watch::WatcherState::default())
         .manage(pdf::ExportLock::default())
         .manage(window::WindowInitRegistry::default())
+        .manage(recent::RecentLock::default())
         .on_window_event(|window, event| {
             // A closed window must leave neither its watch running nor its
             // slot reserved by an initial location nothing will ever take.

@@ -26,6 +26,7 @@ import {
   pickFolder,
   pickPdfDestination,
   printWindow,
+  recordRecent,
   showErrorDialog,
   takeWindowInit,
   writeWindowPdf,
@@ -88,6 +89,13 @@ export default function App() {
    *  go on to select a file. */
   const openLocation = useCallback(
     async (folder: string, file: string | null, cancelled: () => boolean) => {
+      /* Recorded here rather than at each entry because this function is
+         already the one sequence all of them take, so TASK-12.5's Open Recent
+         replace is covered by the same line. It does not stand in for
+         `lastFolder` — the two record different facts, and TASK-12.7 is what
+         retires that pair. An unattended export reaches none of this, so a
+         measurement run still leaves the reader's session where it found it. */
+      void recordRecent(folder).catch((e) => console.error('Failed to record the recent folder', e));
       await allowMediaDir(folder).catch((e) => console.error('Failed to allow media dir', e));
       if (cancelled()) {
         return;

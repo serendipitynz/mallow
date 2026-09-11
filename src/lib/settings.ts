@@ -5,6 +5,11 @@ import { load, type Store } from '@tauri-apps/plugin-store';
 export interface Settings {
   lastFolder?: string;
   lastFile?: string;
+  /** Previously opened folders, newest first, capped. **Rust owns this key** —
+   *  `record_recent` / `list_recent` / `clear_recent` in `src-tauri/src/recent.rs`
+   *  are what write and read it, so that a recording is one step. Declared here
+   *  because this is the shape of the same file. */
+  recentFolders?: string[];
   explorerWidth?: number;
   explorerSide?: 'left' | 'right';
   /** Folder holding the user's custom `:shortcode:` emoji (see lib/custom-emoji). */
