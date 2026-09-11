@@ -39,6 +39,16 @@ export function allowMediaDir(path: string): Promise<void> {
   return invoke('allow_media_dir', { path });
 }
 
+/** Record `folder` at the front of the recent-folder list.
+ *
+ *  Rust owns the list so that a recording is one step: read, splice and write
+ *  from here would be three, and two windows recording at once would lose an
+ *  entry (see `src-tauri/src/recent.rs`). Nothing reads it back through here —
+ *  the Open Recent submenu is built in Rust. */
+export function recordRecent(folder: string): Promise<void> {
+  return invoke('record_recent', { path: folder });
+}
+
 /** Prompt the user to pick a folder; returns its path or null if cancelled. */
 export async function pickFolder(): Promise<string | null> {
   const result = await openDialog({ directory: true, multiple: false });
