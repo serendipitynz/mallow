@@ -1,10 +1,10 @@
 ---
 id: TASK-12.3
 title: Own the recent-folder list in Rust
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-11 03:52'
+updated_date: '2026-09-11 04:17'
 labels:
   - feature
 milestone: m-3
