@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for every app window: the configured window and the w<n> windows created at runtime",
-  "windows": ["main", "w*"],
+  "description": "Capability for every app window. Every window is created at runtime under a w<n> label: the configured window carries create: false, so nothing is labelled main any more",
+  "windows": ["w*"],
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
