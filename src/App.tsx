@@ -219,15 +219,13 @@ export default function App() {
         return;
       }
 
-      /* What this window was told at creation, taken exactly once. A created
-         window opens what it was handed and nothing else — including nothing at
-         all, for New Window; the session is what a window nothing created falls
-         back to. `lib/window-init` holds that decision and why the two are not
-         one answer.
-
-         There is no session to fall back to any more: every window is created,
-         so being handed nothing means opening nothing. What this window ends up
-         showing reaches the restored session through the effect below. */
+      /* What this window was told at creation, taken exactly once. A window
+         opens what it was handed and nothing else — including nothing at all,
+         for New Window — and there is nothing to fall back to: every window is
+         created now, so being handed nothing means opening nothing.
+         `lib/window-init` holds why the two answers stay distinct all the same.
+         What this window ends up showing reaches the restored session through
+         the effect below. */
       const init = await takeWindowInit().catch((e) => {
         console.error("Failed to take this window's initialization", e);
         return null;

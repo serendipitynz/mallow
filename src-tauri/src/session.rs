@@ -116,6 +116,39 @@ fn entries_from(value: Option<JsonValue>) -> Vec<WindowEntry> {
     }
 }
 
+/// Whether a stored row names a label this app can actually open a window under.
+///
+/// **A row is read from a file the reader can edit, and a bad label is not a
+/// window that comes back wrong — it is one that cannot come back at all.** Two
+/// rows spelling `w1` fail the second build outright (`WebviewWindowBuilder`
+/// rejects a label already in use), and a label outside the `w*` glob in
+/// `capabilities/default.json` builds a window that silently has no store, no
+/// dialogs and no title — the failure that shows up in one window only. So a row
+/// is kept only when its label round-trips through the same shape `free_label`
+/// hands out.
+fn is_restorable_label(label: &str) -> bool {
+    label
+        .strip_prefix('w')
+        .and_then(|n| n.parse::<u32>().ok())
+        .is_some_and(|n| n >= 1 && format!("w{n}") == label)
+}
+
+/// The rows that can be opened: a usable label, and one row per label.
+///
+/// **The later of two rows for one label wins**, because the order is
+/// least-recently-focused first, so the later row is the more recent truth about
+/// that window. Dropping a row rather than failing the read is the same policy
+/// the rest of this module takes: one unusable row must not cost the reader
+/// every window.
+fn restorable(entries: Vec<WindowEntry>) -> Vec<WindowEntry> {
+    let mut kept: Vec<WindowEntry> = Vec::with_capacity(entries.len());
+    for entry in entries.into_iter().filter(|entry| is_restorable_label(&entry.label)) {
+        kept.retain(|existing| existing.label != entry.label);
+        kept.push(entry);
+    }
+    kept
+}
+
 /// The last `cap` entries, so what is dropped is the least-recently-focused end.
 fn capped(entries: Vec<WindowEntry>, cap: usize) -> Vec<WindowEntry> {
     let surplus = entries.len().saturating_sub(cap);
@@ -398,15 +431,29 @@ pub fn open_restored_windows(app: &AppHandle) -> Result<(), String> {
         Some(state) => state.0.lock().map_err(|e| e.to_string())?.clone(),
         None => Vec::new(),
     };
-    if restored.is_empty() {
-        crate::window::create_window(app, None, None, None)?;
-        return Ok(());
-    }
+
+    let mut opened = 0;
     for entry in restored {
+        let label = entry.label.clone();
         let location = entry
             .folder
             .map(|folder| crate::window::InitialLocation { folder, file: entry.active });
-        crate::window::create_window(app, location, Some(entry.label), None)?;
+        // **One window that will not build must not take the launch with it.**
+        // This runs inside `setup`, so a `?` here fails the build and the app
+        // never opens at all — the reader would have no way back in short of
+        // finding settings.json themselves. The row is left in the live set
+        // rather than pruned, so a failure that was transient is retried at the
+        // next launch, and a label that stays unbuildable is taken over by the
+        // next window to be handed that slot.
+        match crate::window::create_window(app, location, Some(label.clone()), None) {
+            Ok(_) => opened += 1,
+            Err(e) => eprintln!("mallow: the restored window {label} could not be opened ({e})"),
+        }
+    }
+
+    if opened == 0 {
+        // Which is also the first launch, and a session that was empty.
+        crate::window::create_window(app, None, None, None)?;
     }
     Ok(())
 }
@@ -421,12 +468,26 @@ fn prepare(app: &AppHandle) -> Result<(), String> {
     store.delete(LEGACY_FILE_KEY);
 
     let stored = seeded.unwrap_or_else(|| entries_from(store.get(WINDOWS_KEY)));
-    let restored = capped(stored, RESTORE_CAP);
-    write(&store, &restored)?;
-    rename_main_geometry(app, restored.first().map_or(FIRST_LABEL, |entry| entry.label.as_str()))?;
+    let restored = capped(restorable(stored), RESTORE_CAP);
+    let first_label = restored
+        .first()
+        .map_or(FIRST_LABEL, |entry| entry.label.as_str())
+        .to_string();
 
+    // **Published before anything that can fail**, because everything after this
+    // point is a write and a failed write must not cost the reader the session
+    // that was read successfully: an unpublished session opens one empty window,
+    // which then reports its emptiness over the rows still on disk. Both steps
+    // below say so themselves rather than failing this function.
     if let Some(state) = live(app) {
-        *state.0.lock().map_err(|e| e.to_string())? = restored;
+        *state.0.lock().map_err(|e| e.to_string())? = restored.clone();
+    }
+
+    if let Err(e) = write(&store, &restored) {
+        eprintln!("mallow: the restored session could not be written back ({e})");
+    }
+    if let Err(e) = rename_main_geometry(app, &first_label) {
+        eprintln!("mallow: the window geometry could not be migrated ({e})");
     }
     Ok(())
 }
@@ -553,6 +614,29 @@ mod tests {
     fn creating_a_window_over_a_restored_row_leaves_that_row_alone() {
         let entries = vec![entry("w1", Some("/docs"), Some("/docs/a.md"))];
         assert_eq!(with_ensured(entries.clone(), "w1", None, None), entries);
+    }
+
+    /// A hand-edited file naming a label twice used to fail the second window's
+    /// build, and that failure ran inside `setup` — so one duplicated row cost
+    /// the whole launch.
+    #[test]
+    fn one_label_yields_one_window_and_the_later_row_wins() {
+        let entries = vec![entry("w1", Some("/a"), None), entry("w2", None, None), entry("w1", Some("/b"), None)];
+        let kept = restorable(entries);
+        assert_eq!(labels(&kept), vec!["w2", "w1"]);
+        assert_eq!(kept[1].folder.as_deref(), Some("/b"));
+    }
+
+    /// `main` is the one that bites: it builds, and then has no store, no
+    /// dialogs and no title, because `capabilities/default.json` grants `w*`.
+    #[test]
+    fn a_row_naming_a_label_this_app_cannot_open_is_dropped() {
+        for label in ["main", "", "w", "w0", "w01", "w1x", "window1", "w-1"] {
+            assert!(!is_restorable_label(label), "{label} should not be restorable");
+        }
+        for label in ["w1", "w2", "w10", "w4294967295"] {
+            assert!(is_restorable_label(label), "{label} should be restorable");
+        }
     }
 
     #[test]

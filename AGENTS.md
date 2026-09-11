@@ -1063,7 +1063,12 @@ hold rather than as an exhaustive style guide.
   entry, though nothing here opens more than one file per window: TASK-13's tabs
   do, and decision-4 settles the shape now because this key already carries a
   one-time migration and a rewrite of another plugin's file, and a second round
-  of both is what the list shape buys off.
+  of both is what the list shape buys off. **A row whose label this app cannot
+  open is dropped at launch** — settings.json is a file a reader can edit, and a
+  duplicate `w1` fails the second build outright while a label outside the `w*`
+  glob builds a window with no store, no dialogs and no title. A build that fails
+  anyway does not take the launch with it, since all of this runs inside `setup`
+  and a `?` there means the app never opens at all.
   **The rule is a predicate, not a call site**: a window reports whenever its
   displayed folder or selection changes, which the frontend satisfies with an
   effect on those two values rather than a call beside the picker, the mount-time
