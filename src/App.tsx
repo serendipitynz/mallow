@@ -568,9 +568,10 @@ export default function App() {
      **On Windows it is not a second route to the menu item but the only working
      one**: measured 2026-09-12, `Ctrl+W` reached nothing while the menu item
      itself closed the window, so muda's accelerator does not arrive at a
-     WebView2-focused window. Linux was not measured, and this covers it either
-     way. macOS never reaches this — the predefined item takes the key equivalent
-     first. */
+     WebView2-focused window. On Linux it does — `Ctrl+W` already closed a window
+     there — so this is a second route on that platform, and closing twice costs
+     nothing. macOS never reaches it at all: the predefined item takes the key
+     equivalent first. */
   useEffect(() => {
     const onKey = createCloseWindowChordHandler({
       onMac: onMacPlatform(),

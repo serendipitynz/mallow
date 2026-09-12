@@ -12,9 +12,12 @@
  *  `Ctrl+P` forced in `lib/print`: registering no handler does not make a chord
  *  inert, it concedes it to the platform.
  *
- *  **Linux was not measured**, and the chord covers it whichever way its
- *  accelerator behaves — which is the point of consuming a chord rather than
- *  proving who else might want it.
+ *  **The same round measured Linux, and there the accelerator does arrive**:
+ *  `Ctrl+W` closed a window before this module existed. So the gap is WebView2's
+ *  rather than muda's, which is what makes it the same shape as `Ctrl+P` rather
+ *  than a general accelerator problem — and it means this handler is a second
+ *  route on Linux, not the only one. Closing twice is the one duplicate that
+ *  costs nothing, so nothing here has to decide which of the two wins.
  *
  *  **No gate, for New Window's reason**: closing depends on nothing that is
  *  currently displayed, so `chordAction` never reaches its `suppress` case here.

@@ -1055,7 +1055,13 @@ hold rather than as an exhaustive style guide.
   itself worked, and the three chords that did work are exactly the ones `App`
   also registers a `keydown` handler for — so muda's accelerator does not reach a
   WebView2-focused window, and `lib/close-window` is what actually closes it
-  there. **Linux was not measured**, and the chord covers it either way. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
+  there. **On Linux the accelerator does arrive** — `Ctrl+W` closed a window
+  before that module existed — so this is WebView2's gap rather than muda's, the
+  same shape as `Ctrl+P`, and the chord is a second route there rather than the
+  only one. **What that leaves open is `Ctrl+N` on Linux**: if the accelerator
+  arrives *and* the key still reaches the WebView, one press would open two
+  windows. One press opened one window in the round that measured this, but which
+  platform that press was on is not recorded, so treat Linux as unverified for it. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
   consulted is **not measured**, and consuming the chord makes it moot. It is the
   third time this rule has been paid for: **registering no handler does not make a
   chord inert, it concedes the chord to the platform.** The chord costs
