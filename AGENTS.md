@@ -1076,9 +1076,13 @@ hold rather than as an exhaustive style guide.
   last reported. **The platform veto is printing's alone** — `Print…` can never be
   enabled on Linux (`print.rs` refuses there, so an enabled entry would be a press
   with no outcome), while `Export as PDF…` is the *only* way a page leaves mallow
-  there. **Two things about this are not measured.** The non-macOS arms of
-  `compose` were type-checked on macOS by forcing their `cfg`s, which says they
-  compile and says nothing about how GTK or Win32 draws them; and **whether a menu
+  there. **Which CI job compiles which arm is what decided the one
+  `cfg` that is not about behaviour**: `init`, `compose` and
+  `register_windows_menu` are compiled into an unattended build even though
+  nothing there calls them, because the `paper` job is the only CI running a
+  Windows or macOS Rust toolchain and it builds with `MALLOW_UNATTENDED=1` —
+  gated out, the Windows arm would be type-checked by no job at all. **What that
+  still does not say is how GTK or Win32 draws any of it**; and **whether a menu
   accelerator and the app's own `keydown` handler both fire for one keystroke is
   unknown off macOS** — the handlers are deliberately kept, because removing them
   would re-concede `Ctrl+P` to WebView2, which is the measured bug that already

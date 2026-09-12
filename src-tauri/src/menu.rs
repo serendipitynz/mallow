@@ -19,10 +19,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use tauri::menu::{MenuItem, MenuItemBuilder, Submenu};
-// Only the building half is absent from an unattended build.
-#[cfg(not(unattended))]
-use tauri::menu::{Menu, SubmenuBuilder};
+use tauri::menu::{Menu, MenuItem, MenuItemBuilder, Submenu, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow, Window, Wry};
 
 /// Fixed menu-item ids. A recent folder's id is **the folder path itself**, never
@@ -351,10 +348,12 @@ pub fn handle_event(app: &AppHandle, id: &str) {
 /// Windows and Linux the menu bar belongs to the window rather than to the
 /// application.
 ///
-/// Not compiled into an unattended build, which never calls it: everything else
-/// here still is, because `recent.rs` refreshes the submenu whether or not one
-/// exists and answers harmlessly when it does not.
-#[cfg(not(unattended))]
+/// **Compiled into an unattended build even though nothing there calls it**, and
+/// that is deliberate: the `paper` job is the only CI that runs a Windows or a
+/// macOS Rust toolchain, and it builds with `MALLOW_UNATTENDED=1` — so gating
+/// this out would leave the arms below compiled by no CI job at all except
+/// ubuntu's. An unused function is cheaper than an arm nothing type-checks.
+#[cfg_attr(unattended, allow(dead_code))]
 pub fn init(app: &AppHandle) -> tauri::Result<()> {
     let new_window = MenuItemBuilder::with_id(NEW_WINDOW, "New Window")
         .accelerator("CmdOrCtrl+N")
@@ -406,7 +405,8 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
 /// when there is no main menu yet — so called while the menu was being composed
 /// this would fail silently, and the Window menu would simply never list the open
 /// windows.
-#[cfg(all(not(unattended), target_os = "macos"))]
+#[cfg(target_os = "macos")]
+#[cfg_attr(unattended, allow(dead_code))]
 fn register_windows_menu(window_menu: Option<Submenu<Wry>>) -> tauri::Result<()> {
     if let Some(window_menu) = window_menu {
         window_menu.set_as_windows_menu_for_nsapp()?;
@@ -414,7 +414,8 @@ fn register_windows_menu(window_menu: Option<Submenu<Wry>>) -> tauri::Result<()>
     Ok(())
 }
 
-#[cfg(all(not(unattended), not(target_os = "macos")))]
+#[cfg(not(target_os = "macos"))]
+#[cfg_attr(unattended, allow(dead_code))]
 fn register_windows_menu(_window_menu: Option<Submenu<Wry>>) -> tauri::Result<()> {
     Ok(())
 }
@@ -425,7 +426,7 @@ fn register_windows_menu(_window_menu: Option<Submenu<Wry>>) -> tauri::Result<()
 /// The second half of the answer is the macOS Window submenu, handed back rather
 /// than registered here — see `register_windows_menu` for why that ordering is
 /// load-bearing. It is `None` on every other platform.
-#[cfg(not(unattended))]
+#[cfg_attr(unattended, allow(dead_code))]
 #[allow(clippy::too_many_arguments)]
 fn compose(
     app: &AppHandle,
