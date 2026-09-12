@@ -9,13 +9,14 @@
 //! read, the splice and the write are three steps with no lock between them, so
 //! two windows recording at once lose an entry.
 //!
-//! Pruning entries whose folder no longer exists is deliberately not here. It
-//! touches the filesystem and belongs at submenu build time — one rule, one
-//! place, and nothing prunes on read.
+//! Pruning entries whose folder no longer exists happens at submenu build time
+//! and nowhere else — the check touches the filesystem, so it runs when the list
+//! is about to be shown. `pruned_folders` is that one site; nothing prunes on
+//! read.
 
 use std::sync::{Arc, Mutex};
 
-use tauri::{AppHandle, State, Wry};
+use tauri::{AppHandle, Manager, State, Wry};
 use tauri_plugin_store::{JsonValue, Store, StoreExt};
 
 /// How many folders the list keeps. The oldest is dropped once a recording takes
@@ -90,13 +91,57 @@ fn with_recorded(list: Vec<String>, path: &str, cap: usize) -> Vec<String> {
     updated
 }
 
+/// `list` without the entries `exists` says are gone.
+///
+/// The predicate is injected so the rule is testable without a filesystem, and
+/// because what counts as gone is one question — a folder that is now a file is
+/// as unopenable as one that was deleted.
+fn existing_folders(list: Vec<String>, exists: impl Fn(&str) -> bool) -> Vec<String> {
+    list.into_iter().filter(|folder| exists(folder)).collect()
+}
+
 /// Record `path` as the most recently opened folder.
+///
+/// **The lock is released before the menu is refreshed**, and that is not
+/// tidiness: refreshing marshals every menu mutation to the main thread and waits
+/// for it (tauri-2.11.3 `src/menu/mod.rs:25-39`), while the main thread is where
+/// `Clear Recent` takes this same lock. Held across the refresh, the two would
+/// deadlock — each waiting for what the other holds.
 #[tauri::command]
 pub fn record_recent(path: String, app: AppHandle, lock: State<RecentLock>) -> Result<(), String> {
+    {
+        let _guard = lock.0.lock().map_err(|e| e.to_string())?;
+        let store = settings_store(&app)?;
+        let updated = with_recorded(folders_from(store.get(RECENT_KEY)), &path, RECENT_CAP);
+        store.set(RECENT_KEY, updated);
+    }
+    crate::menu::refresh_recent(&app);
+    Ok(())
+}
+
+/// The recent folders with the vanished ones dropped from the list **and from the
+/// store**, newest first.
+///
+/// The write happens only when something was actually dropped, so reading the
+/// list for a submenu build does not touch settings.json every time.
+pub fn pruned_folders(app: &AppHandle) -> Result<Vec<String>, String> {
+    let lock = app.state::<RecentLock>();
     let _guard = lock.0.lock().map_err(|e| e.to_string())?;
-    let store = settings_store(&app)?;
-    let updated = with_recorded(folders_from(store.get(RECENT_KEY)), &path, RECENT_CAP);
-    store.set(RECENT_KEY, updated);
+    let store = settings_store(app)?;
+    let listed = folders_from(store.get(RECENT_KEY));
+    let kept = existing_folders(listed.clone(), |folder| std::path::Path::new(folder).is_dir());
+    if kept.len() != listed.len() {
+        store.set(RECENT_KEY, kept.clone());
+    }
+    Ok(kept)
+}
+
+/// Empty the list from Rust — what the `Clear Recent` menu item does, beside the
+/// command the frontend calls.
+pub fn clear_recent_list(app: &AppHandle) -> Result<(), String> {
+    let lock = app.state::<RecentLock>();
+    let _guard = lock.0.lock().map_err(|e| e.to_string())?;
+    settings_store(app)?.delete(RECENT_KEY);
     Ok(())
 }
 
@@ -106,11 +151,13 @@ pub fn list_recent(app: AppHandle) -> Result<Vec<String>, String> {
     Ok(folders_from(settings_store(&app)?.get(RECENT_KEY)))
 }
 
-/// Empty the list. What `Clear Recent` does once TASK-12.4 gives it a menu item.
+/// Empty the list. The `Clear Recent` menu item reaches the same write through
+/// `clear_recent_list`; this is the command, and it refreshes the submenu for the
+/// same reason `record_recent` does.
 #[tauri::command]
-pub fn clear_recent(app: AppHandle, lock: State<RecentLock>) -> Result<(), String> {
-    let _guard = lock.0.lock().map_err(|e| e.to_string())?;
-    settings_store(&app)?.delete(RECENT_KEY);
+pub fn clear_recent(app: AppHandle) -> Result<(), String> {
+    clear_recent_list(&app)?;
+    crate::menu::refresh_recent(&app);
     Ok(())
 }
 
@@ -155,6 +202,12 @@ mod tests {
     #[test]
     fn two_spellings_of_one_folder_are_two_entries() {
         assert_eq!(with_recorded(folders(&["/Docs"]), "/docs", 10), folders(&["/docs", "/Docs"]));
+    }
+
+    #[test]
+    fn a_folder_that_has_gone_is_dropped_and_the_order_of_the_rest_is_kept() {
+        let kept = existing_folders(folders(&["/a", "/gone", "/b"]), |folder| folder != "/gone");
+        assert_eq!(kept, folders(&["/a", "/b"]));
     }
 
     #[test]
