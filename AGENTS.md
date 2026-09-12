@@ -1064,12 +1064,13 @@ hold rather than as an exhaustive style guide.
   unmistakable and nothing dedupes a creation, while `close()` is asynchronous IPC,
   so both routes could ask, resolve the same window and still show one close.
   **Which layer or layers act is unmeasured.** Two windows is what made it a test
-  at all, and that reason survives the benign answer: a duplicate would not have
-  closed one window twice, because **the menu route resolves its target late** —
+  at all, and that reason survives the benign answer: **a duplicate need not land
+  on one window**, because **the menu route resolves its target late** —
   `focused_window` runs when the queued menu event is delivered
-  (`src/app.rs:2350-2351`, delivered at `:2588`), so it could have taken this
-  window and then whichever one focus moved to, which a single-window round cannot
-  show. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
+  (`src/app.rs:2350-2351`, delivered at `:2588`), so it could resolve this window
+  twice, or take this one and then whichever one focus moved to. **Neither
+  ordering was instrumented**, and a single-window round cannot show the second
+  outcome at all. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
   consulted is **not measured**, and consuming the chord makes it moot. It is the
   third time this rule has been paid for: **registering no handler does not make a
   chord inert, it concedes the chord to the platform.** The chord costs
