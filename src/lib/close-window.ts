@@ -15,9 +15,17 @@
  *  **The same round measured Linux, and there the accelerator does arrive**:
  *  `Ctrl+W` closed a window before this module existed. So the gap is WebView2's
  *  rather than muda's, which is what makes it the same shape as `Ctrl+P` rather
- *  than a general accelerator problem — and it means this handler is a second
- *  route on Linux, not the only one. Closing twice is the one duplicate that
- *  costs nothing, so nothing here has to decide which of the two wins.
+ *  than a general accelerator problem.
+ *
+ *  **Whether both layers now answer one Linux keystroke is unverified, and the
+ *  duplicate would not be benign.** It is tempting to write that closing twice
+ *  costs nothing; it does not follow. This handler closes *this* window at once,
+ *  while the menu route resolves its target from `focused_window` when the queued
+ *  menu event is delivered (tauri-2.11.3 `src/app.rs:2350-2351`, delivered at
+ *  `:2588`) — so with two windows open, one press could close this one and then
+ *  whichever one focus moved to. GTK may equally consume the key before the
+ *  WebView sees it, in which case nothing doubles. Neither has been measured, and
+ *  the test that settles it is two windows on Linux, not one.
  *
  *  **No gate, for New Window's reason**: closing depends on nothing that is
  *  currently displayed, so `chordAction` never reaches its `suppress` case here.

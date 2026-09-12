@@ -1057,11 +1057,18 @@ hold rather than as an exhaustive style guide.
   WebView2-focused window, and `lib/close-window` is what actually closes it
   there. **On Linux the accelerator does arrive** — `Ctrl+W` closed a window
   before that module existed — so this is WebView2's gap rather than muda's, the
-  same shape as `Ctrl+P`, and the chord is a second route there rather than the
-  only one. **What that leaves open is `Ctrl+N` on Linux**: if the accelerator
-  arrives *and* the key still reaches the WebView, one press would open two
-  windows. One press opened one window in the round that measured this, but which
-  platform that press was on is not recorded, so treat Linux as unverified for it. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
+  same shape as `Ctrl+P`. **What that opens is whether both layers now answer one
+  Linux keystroke, which is unverified for every chord and would not be
+  harmless.** `Ctrl+N` would open two windows and `Ctrl+P` would raise two print
+  UIs; and `Ctrl+W` is the worst of the three rather than the benign one, because
+  **the menu route resolves its target late** — `focused_window` runs when the
+  queued menu event is delivered (`src/app.rs:2350-2351`, delivered at `:2588`),
+  so with two windows open one press could close this window and then whichever
+  one focus moved to. GTK may equally consume the key before the WebView sees it,
+  in which case nothing doubles. **The test that settles it is two windows on
+  Linux**, and one press opening one window in a single-window round settles
+  nothing — nor is it recorded which platform that press was on. `Ctrl+E` is the
+  one chord already defended, by `runExclusiveExport` and the Rust export lock. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
   consulted is **not measured**, and consuming the chord makes it moot. It is the
   third time this rule has been paid for: **registering no handler does not make a
   chord inert, it concedes the chord to the platform.** The chord costs
