@@ -48,6 +48,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - `hooks/useUpdater.ts` — the update check, the install consent and the relaunch
   (tauri-plugin-updater + tauri-plugin-process). Holds the `Update` handle
   between the check and the confirmation.
+- `hooks/useWindowEvent.ts` — listening for an event **on this window alone**,
+  which is the frontend half of every per-window emit (the menu's, and the
+  pairing `lib/watch` already establishes for `fs:change`).
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
@@ -72,7 +75,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
-  `Export as PDF…` share), `print` / `pdf-export` / `new-window` (each entry's key,
+  `Export as PDF…` share, and the subscription that pushes it to their menu
+  items), `print` / `pdf-export` / `new-window` (each entry's key,
   gate and reason — the last has no gate), `window-init` (what a
   window opens at mount, given what it was told at creation), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
@@ -115,8 +119,21 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   stored value; both are unit-tested with no app handle. **Two spellings of one
   folder are two entries** — comparison is on the string the dialog returned,
   because case-insensitivity is a property of the volume rather than of the OS.
-  **Pruning entries whose folder is gone is deliberately absent**: it touches the
-  filesystem and belongs at submenu build time, and nothing prunes on read.
+  **Pruning entries whose folder is gone happens at submenu build time and
+  nowhere else**: the check touches the filesystem, so it runs when the list is
+  about to be shown. `pruned_folders` is that one site and `existing_folders` its
+  pure rule; `list_recent` does not prune. **`record_recent` releases `RecentLock`
+  before it refreshes the submenu**, which is not tidiness — every menu mutation
+  waits on the main thread, and the main thread is where `Clear Recent` takes
+  that same lock.
+- `menu.rs` — the native menu, **composed per platform rather than gated**, and
+  the routing of its events. `menu_action` is the pure id → action map,
+  `recent_label` the pure display text for a recent folder, `focused_window` the
+  `webview_windows()` scan every menu event resolves its target with, and
+  `MenuState` what has to change after the menu is built: the Open Recent
+  submenu, `Clear Recent`, and the two entries gated on the active view. The
+  gate is per window (`report_markdown_preview`) because the menu is not. See
+  the gotcha below for what differs between the three platforms and why.
 - `session.rs` — the restored session: the `windows` key in settings.json, one
   entry per window open at quit (`{ label, folder, files, active }`), ordered
   least-recently-focused first. `report_window_content` is the command a window
@@ -170,10 +187,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   window-state, updater, process — none `cfg(desktop)`-gated, per decision-11;
   the session's position in that list is load-bearing, see the gotcha below), the
   `invoke_handler`, the per-window `Destroyed` / `Focused(true)` hooks, the
-  `RunEvent::Exit` callback that flushes the session, the `setup` that creates
-  **every** window (the configured one carries `"create": false`), and (macOS
-  only) a native app menu whose Settings… item (⌘,) emits the `menu:settings`
-  event the frontend listens for.
+  `RunEvent::Exit` callback that flushes the session, the `on_menu_event` that is
+  one line handing the id to `menu.rs`, and the `setup` that builds the menu and
+  then creates **every** window (the configured one carries `"create": false`).
+  **The menu is built before any window**, because a window takes the app-wide
+  menu at creation and on Windows and Linux the menu bar belongs to the window;
+  **an unattended build builds none**, for the reason it registers no session.
 
 ## Conventions
 
@@ -1000,6 +1019,71 @@ hold rather than as an exhaustive style guide.
   testable without a GUI — a probe handle reports its own drop, which is what a
   stopped watch looks like from the registry's side, and a `RecommendedWatcher`
   cannot report that it was dropped.
+- **The menu is one object, three compositions and one routing rule, and each of
+  the three has a way of looking right while being wrong.** `AppHandle::set_menu`
+  is app-wide and assigns the menu to any window not given one explicitly
+  (tauri-2.11.3 `src/app.rs:956-961`), so **dropping the old macOS `cfg` would
+  have produced a Windows and Linux menu bar carrying About / Services / Hide /
+  Show All** — macOS concepts that compile everywhere and mean nothing there. The
+  compositions are: macOS keeps its app submenu and gains File, Edit and a Window
+  submenu registered with `set_as_windows_menu_for_nsapp`, **which is what makes
+  AppKit append the open windows to it and which is a silent no-op until the menu
+  is the application's main menu** — muda resolves the NSMenu through
+  `NSApplication.mainMenu()` and its delegate (muda-0.19.3
+  `src/platform_impl/macos/mod.rs:741-746`) and returns having done nothing when
+  there is none, so it is registered after `set_menu` rather than while the menu
+  is being composed; Windows
+  and Linux have no app submenu, carry Settings… and Exit inside File and About
+  under Help. **On Linux the difference is a rule rather than a list**: muda's GTK
+  backend supports only Separator, Copy, Cut, Paste, SelectAll and About as
+  predefined kinds (muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`) and
+  **silently skips every other one on append rather than failing**, so Quit is an
+  ordinary item calling `AppHandle::exit` there, and **Undo and Redo are simply
+  absent rather than broken** — listing them would build a menu whose entries are
+  not shown, and replacing them with ordinary items would mean driving the
+  WebView's undo stack from Rust for an app with one editable field. The failure
+  mode throughout is a missing entry, which only a look at a Linux build reveals.
+  **`CmdOrCtrl+W` is predefined on macOS and an ordinary item elsewhere**, because
+  muda derives a predefined item's accelerator from its type and offers no setter
+  (`src/items/predefined.rs:331-337`): that is `CmdOrCtrl+W` on macOS and
+  `Alt+F4` everywhere else. decision-4 moves the binding to Close Tab when
+  TASK-13.3 lands, with Close Window on `CmdOrCtrl+Shift+W`, which no predefined
+  item can hold — so that task replaces the macOS arm with the ordinary item the
+  other two already use. **Routing goes through `webview_windows()`**, never
+  `Manager::get_focused_window`, which is behind the `unstable` cargo feature this
+  project does not enable and which tauri documents as free to break in a minor
+  release (`src/lib.rs:541-560`); its implementation is that same scan. **The Rust
+  half of per-window delivery is only half**: a listener registered with the plain
+  `listen()` carries `EventTarget::Any` and matches whatever the emitter filtered
+  on, so `useWindowEvent` is what actually keeps a menu event out of the other
+  windows — the same pairing `fs:change` needs. **Nothing in the handler builds a
+  window inline**: `WebviewWindowBuilder::from_config` deadlocks when reached from
+  a synchronous command *or from an event handler* (`src/webview/webview_window.rs:114-116`,
+  wry#583), and this handler is the other half of what that doc names, so New
+  Window hands off to `tauri::async_runtime::spawn`. **A menu mutation waits on
+  the main thread** (`src/menu/mod.rs:25-39` marshals and blocks on the reply,
+  running inline when the caller is already there), which is why `record_recent`
+  releases `RecentLock` before refreshing the submenu — held across it, that
+  thread and a `Clear Recent` on the main thread would each wait for the other.
+  **A recent entry's id is the folder path**, not an index: an index needs an
+  id → path mapping kept in step with every rebuild, and a stale mapping opens
+  the wrong folder. The two id spaces cannot meet, because a path from the dialog
+  is absolute while every fixed id begins with a letter and carries no separator —
+  and the fallback arm checks the id against the list it built from anyway.
+  **What `Print…` and `Export as PDF…` show is per window while the menu is not**,
+  so `report_markdown_preview` files one boolean per window label and the focused
+  window's is what the items display; a single boolean would show whichever window
+  last reported. **The platform veto is printing's alone** — `Print…` can never be
+  enabled on Linux (`print.rs` refuses there, so an enabled entry would be a press
+  with no outcome), while `Export as PDF…` is the *only* way a page leaves mallow
+  there. **Two things about this are not measured.** The non-macOS arms of
+  `compose` were type-checked on macOS by forcing their `cfg`s, which says they
+  compile and says nothing about how GTK or Win32 draws them; and **whether a menu
+  accelerator and the app's own `keydown` handler both fire for one keystroke is
+  unknown off macOS** — the handlers are deliberately kept, because removing them
+  would re-concede `Ctrl+P` to WebView2, which is the measured bug that already
+  shipped once (`lib/print`), and a doubled dialog is visible where a silently
+  printed `.csv` was not.
 - **A preference is app-wide, and the broadcast that makes it so is the one
   `emit` in this app that is deliberately unfiltered.** `settings.rs`'s
   `broadcast_setting` re-emits `settings:change` to every window, which is the
@@ -1237,7 +1321,8 @@ hold rather than as an exhaustive style guide.
   `chord` (accelerator matching plus the app-wide handler — both take the platform
   as an argument so neither needs `navigator`), `window-init` (what a
   window opens in each of the three creation states),
-  `markdown-preview`, `print`,
+  `markdown-preview` (the gate, and that it notifies only on a change — one
+  invocation reaches Rust per notification), `print`,
   `pdf-export` and `new-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), `settings-sync` (the
@@ -1251,7 +1336,9 @@ hold rather than as an exhaustive style guide.
 - Backend: `cargo fmt --check`, `cargo check` and `cargo test` inside
   `src-tauri/`. The `commands` module has unit tests (a small self-cleaning
   temp-dir helper, no `tempfile` dep); `watch`'s registry, `window`'s label
-  allocation and initial-location handover, and `session`'s live-set functions
+  allocation and initial-location handover, `menu`'s id → action map and its
+  recent-entry label (home abbreviation and the `&` Win32 would swallow),
+  `recent`'s prune rule, and `session`'s live-set functions
   (reporting, focus order, the last-window rule, the cap and both halves of the
   migration) are covered without a GUI — the latter two because they take what
   they need as arguments rather than asking the app for it. **`unattended.rs`'s tests are
