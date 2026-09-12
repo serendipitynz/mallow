@@ -76,7 +76,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   積算）、`chord`（アクセラレータの一致判定と、アプリ全体の chord handler・その 3 値）、
   `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲートと、
   それを 2 つのメニュー項目へ押し出す購読）、
-  `print` / `pdf-export`（各入口のキー・ゲート・理由）、
+  `close-window`（`CmdOrCtrl+W`。macOS 以外ではウィンドウを閉じる**唯一の**経路。
+  下の gotcha を見る）、
+  `print` / `pdf-export` / `new-window` / `close-window`（各入口のキー・ゲート・理由。
+  後ろ 2 つは閉じるゲートを持たない）、
   `build-flags`（Vite が置き換える無人書き出しのスイッチ）、
   `render-signal`（描画済みの本文が変化し終わった時点）、
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
@@ -928,6 +931,21 @@ Comments と Functions の規約は機械的に検査されない。コメント
   Close Tab へ移し、Close Window を `CmdOrCtrl+Shift+W` にすると決めており、
   それを持てる predefined item は無い — つまりその回に macOS の分岐は、
   他 2 環境が既に使っている普通の item へ置き換わる。
+  **ただし普通の item のアクセラレータは Windows に届かない**（2026-09-12 実測）:
+  メニュー項目自体は効くのに `Ctrl+W` では何も閉じず、効いた 3 つの chord は
+  ちょうど `App` が `keydown` handler も登録しているものだった — つまり muda の
+  アクセラレータは WebView2 にフォーカスがあるウィンドウへ届かず、macOS 以外で
+  実際に閉じているのは `lib/close-window` である。WebView2 が `Ctrl+W` を自分で
+  食べているのか、アクセラレータ表が参照されないのかは**未実測**で、chord を
+  消費することでその問いは無効になる。**登録しないことは不活性化ではなく譲渡である**
+  という規則の 3 度目の支払い。この chord は capability に
+  `core:window:allow-close` を要する（core window の default セットは読み取り系だけで、
+  変更系を 1 つも含まない）。**Undo と Redo は全環境の Edit から消した。**
+  これは GTK の規則ではない — mallow には編集可能なテキスト欄が 1 つも無いので、
+  このメニューができる前から macOS で死んだ項目だった。残る
+  Cut / Copy / Paste / Select All は 3 環境で 1 つのサブメニューであり、
+  ちょうど GTK の対応集合でもある。Undo / Redo を戻すのは編集可能な欄の要望であって、
+  メニュー項目 2 つの要望ではない。
   **配送先の解決は `webview_windows()` を通す。** `Manager::get_focused_window` は
   このプロジェクトが有効にしていない `unstable` cargo feature の裏にあり、
   tauri は minor で壊してよいと明記している（`src/lib.rs:541-560`）。
@@ -959,12 +977,15 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `register_windows_menu` は無人ビルドでも誰も呼ばないままコンパイルされる。
   Windows と macOS の Rust ツールチェーンを回す CI は `paper` ジョブだけで、
   それは `MALLOW_UNATTENDED=1` でビルドするので、括り出すと Windows 分岐を
-  型検査するジョブが 1 つも無くなるからである。**それでも言えないのは、
-  GTK や Win32 がどう描くか**。そして **メニューのアクセラレータとアプリ自身の `keydown` handler が
-  1 打鍵で両方発火するかは macOS 以外で未知である** — handler を残したのは意図的で、
-  外せば `Ctrl+P` を WebView2 に譲り渡すことになり、それは一度出荷された実測済みの
-  不具合（`lib/print`）だからである。ダイアログが 2 枚出るのは見えるが、
-  `.csv` が黙って印刷されるのは見えなかった。
+  型検査するジョブが 1 つも無くなるからである。**各環境が実際にどう描くかは
+  2026-09-12 に目視した** — 上の `Ctrl+W` の所見はそこから出たもので、
+  同じ回に Linux の Exit があること、markdown プレビュー以外で 2 項目が
+  disabled になることも確かめた。**メニューのアクセラレータとアプリ自身の
+  `keydown` handler が 1 打鍵で両方発火する例はまだ見ていない** —
+  `Cmd/Ctrl+N` 1 回でウィンドウは 1 つだけ開き、Windows の `Ctrl+W` は
+  そこで問いが立たない理由を示している（アクセラレータがそもそも届かない）。
+  それでも handler は残す — 外せば `Ctrl+P` を WebView2 に譲り渡すことになり、
+  それは一度出荷された実測済みの不具合（`lib/print`）だからである。
 - **設定はアプリ全体のものであり、それを成立させるブロードキャストは、この
   アプリで意図的にフィルタしない唯一の `emit` である。** `settings.rs` の
   `broadcast_setting` が `settings:change` を全ウィンドウへ再発行する。これは
@@ -1183,7 +1204,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `window-init`＝3 つの生成状態それぞれでウィンドウが何を開くか・
   `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
   Rust への invoke が 1 回走る）・
-  `print`・`pdf-export`・`new-window`＝各 chord のキー・ゲートと、
+  `print`・`pdf-export`・`new-window`・`close-window`＝各 chord のキー・ゲートと、
   イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
   New Window には閉じるゲートが無いことを含む）・
   `settings-sync`＝順序づけのみ。listener と emit は Tauri のもの・

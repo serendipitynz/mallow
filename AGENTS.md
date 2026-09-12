@@ -76,8 +76,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share, and the subscription that pushes it to their menu
-  items), `print` / `pdf-export` / `new-window` (each entry's key,
-  gate and reason — the last has no gate), `window-init` (what a
+  items), `close-window` (`CmdOrCtrl+W`, which off macOS is the *only* thing that
+  closes a window — see the gotcha below), `print` / `pdf-export` / `new-window` / `close-window` (each entry's key,
+  gate and reason — the last two have no gate), `window-init` (what a
   window opens at mount, given what it was told at creation), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
@@ -1049,7 +1050,22 @@ hold rather than as an exhaustive style guide.
   `Alt+F4` everywhere else. decision-4 moves the binding to Close Tab when
   TASK-13.3 lands, with Close Window on `CmdOrCtrl+Shift+W`, which no predefined
   item can hold — so that task replaces the macOS arm with the ordinary item the
-  other two already use. **Routing goes through `webview_windows()`**, never
+  other two already use. **But the ordinary item's accelerator does not arrive on
+  Windows** (measured 2026-09-12): `Ctrl+W` closed nothing while the menu item
+  itself worked, and the three chords that did work are exactly the ones `App`
+  also registers a `keydown` handler for — so muda's accelerator does not reach a
+  WebView2-focused window, and `lib/close-window` is what actually closes it off
+  macOS. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
+  consulted is **not measured**, and consuming the chord makes it moot. It is the
+  third time this rule has been paid for: **registering no handler does not make a
+  chord inert, it concedes the chord to the platform.** The chord costs
+  `core:window:allow-close` in the capability, since the core window default set
+  carries the readers and none of the mutators. **Undo and Redo are gone from Edit
+  on every platform**, and that is not the GTK rule — mallow has no editable text
+  field at all, so they were dead entries on macOS long before this menu existed.
+  What is left, Cut / Copy / Paste / Select All, is one submenu for all three
+  platforms and is exactly GTK's supported set; restoring Undo / Redo is a request
+  for an editable field, not for two menu items. **Routing goes through `webview_windows()`**, never
   `Manager::get_focused_window`, which is behind the `unstable` cargo feature this
   project does not enable and which tauri documents as free to break in a minor
   release (`src/lib.rs:541-560`); its implementation is that same scan. **The Rust
@@ -1081,13 +1097,15 @@ hold rather than as an exhaustive style guide.
   `register_windows_menu` are compiled into an unattended build even though
   nothing there calls them, because the `paper` job is the only CI running a
   Windows or macOS Rust toolchain and it builds with `MALLOW_UNATTENDED=1` —
-  gated out, the Windows arm would be type-checked by no job at all. **What that
-  still does not say is how GTK or Win32 draws any of it**; and **whether a menu
-  accelerator and the app's own `keydown` handler both fire for one keystroke is
-  unknown off macOS** — the handlers are deliberately kept, because removing them
-  would re-concede `Ctrl+P` to WebView2, which is the measured bug that already
-  shipped once (`lib/print`), and a doubled dialog is visible where a silently
-  printed `.csv` was not.
+  gated out, the Windows arm would be type-checked by no job at all. **How each
+  platform actually draws it was looked at on 2026-09-12**, which is where the
+  `Ctrl+W` finding above came from, and which also confirmed Exit present on Linux
+  and the two gated entries disabled off a markdown preview. **a menu accelerator and the app's own
+  `keydown` handler have not been seen to both fire for one keystroke** — one
+  `Cmd/Ctrl+N` opened exactly one window, and Windows' `Ctrl+W` says why the
+  question may not arise there: the accelerator does not arrive at all. The
+  handlers are kept regardless, because removing them would re-concede `Ctrl+P` to
+  WebView2, which is the measured bug that already shipped once (`lib/print`).
 - **A preference is app-wide, and the broadcast that makes it so is the one
   `emit` in this app that is deliberately unfiltered.** `settings.rs`'s
   `broadcast_setting` re-emits `settings:change` to every window, which is the
@@ -1327,7 +1345,7 @@ hold rather than as an exhaustive style guide.
   window opens in each of the three creation states),
   `markdown-preview` (the gate, and that it notifies only on a change — one
   invocation reaches Rust per notification), `print`,
-  `pdf-export` and `new-window` (each chord's key, gate and what the handler does
+  `pdf-export`, `new-window` and `close-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), `settings-sync` (the
   ordering alone — the listener and the emit are Tauri's), `outline-pref`

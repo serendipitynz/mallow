@@ -4,7 +4,7 @@ title: Add the File menu on all platforms and route menu events to the focused w
 status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-12 08:27'
+updated_date: '2026-09-12 09:49'
 labels:
   - feature
 milestone: m-3
@@ -71,21 +71,22 @@ Menu labels are built in Rust; the UI language lives in localStorage and is read
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A File submenu offers New Window (CmdOrCtrl+N), Open… (CmdOrCtrl+O), Open Recent, Clear Recent and Close Window
+- [x] #1 A File submenu offers New Window (CmdOrCtrl+N), Open… (CmdOrCtrl+O), Open Recent, Clear Recent and Close Window
 - [x] #2 The Open Recent submenu is rebuilt from record_recent and from Clear Recent, and entries whose folder no longer exists are pruned from the list and the store at that one build site
-- [ ] #3 The menu bar has been looked at on Windows and on Linux and the result recorded, or the platform is explicitly recorded as unverified with the reason
+- [x] #3 The menu bar has been looked at on Windows and on Linux and the result recorded, or the platform is explicitly recorded as unverified with the reason
 - [x] #4 A recent entry's menu id is its folder path, not an index into the list
-- [ ] #5 macOS has a Window submenu registered via set_as_windows_menu_for_nsapp and carrying Minimize and Zoom of its own
+- [x] #5 macOS has a Window submenu registered via set_as_windows_menu_for_nsapp and carrying Minimize and Zoom of its own
 - [x] #6 The menu is composed per platform: macOS keeps its app submenu; Windows and Linux get none, with Exit under File and About under Help; on Linux Exit is an ordinary item, since muda's GTK backend silently skips those predefined kinds, and Close Window is ordinary on both Windows and Linux (see #7)
 - [x] #7 While TASK-13 has not landed, Close Window carries CmdOrCtrl+W on Windows through an ordinary MenuItem, since the predefined item binds Alt+F4 there - or accepting Alt+F4 on Windows is recorded as the choice instead; if TASK-13 has landed, CmdOrCtrl+W belongs to Close Tab and Close Window takes CmdOrCtrl+Shift+W on every platform
 - [x] #8 Menu events resolve their target by scanning webview_windows() for the focused one — not with the unstable Manager::get_focused_window — are emitted to that window, and App.tsx listens for menu:settings through getCurrentWebviewWindow().listen
-- [ ] #9 Print… and Export as PDF… are menu items, both disabled unless the active view is a markdown preview, and Print… is additionally never enabled on Linux while Export as PDF… is
+- [x] #9 Print… and Export as PDF… are menu items, both disabled unless the active view is a markdown preview, and Print… is additionally never enabled on Linux while Export as PDF… is
 - [x] #10 New Window is not built inside the menu handler, since WebviewWindowBuilder::from_config deadlocks there on Windows as it does in a synchronous command
 - [x] #11 Every accelerator the menu carries resolves CmdOrCtrl the way lib/chord does — Command on macOS, Control elsewhere — so an item and its keydown handler cannot answer different keys
+- [ ] #12 CmdOrCtrl+W closes a window on Windows and Linux, where measurement showed the menu item's own accelerator does not arrive — so the app registers the chord itself, as it does for the other three
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 cargo check and cargo test pass; pnpm build and pnpm test pass
-- [ ] #2 With two windows open, Settings… opens the modal in the focused window only, and New Window / Open… act on the focused window
+- [x] #2 With two windows open, Settings… opens the modal in the focused window only, and New Window / Open… act on the focused window
 <!-- DOD:END -->
