@@ -1,10 +1,10 @@
 ---
 id: TASK-12.4
 title: Add the File menu on all platforms and route menu events to the focused window
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-12 10:59'
+updated_date: '2026-09-12 11:04'
 labels:
   - feature
 milestone: m-3
