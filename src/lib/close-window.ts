@@ -17,15 +17,21 @@
  *  rather than muda's, which is what makes it the same shape as `Ctrl+P` rather
  *  than a general accelerator problem.
  *
- *  **Only one layer answers a Linux keystroke — measured 2026-09-12 with two
- *  windows open**: one `Ctrl+W` closed one window, and one `Ctrl+N` opened one.
- *  Two windows is what makes that a test at all, because the duplicate would not
- *  have been benign and a single window could not have shown it: this handler
- *  closes *this* window at once, while the menu route resolves its target from
+ *  **Measured 2026-09-12 on Linux with two windows open: each press produced one
+ *  action and no duplicate was seen** — one `Ctrl+N` opened one window, one
+ *  `Ctrl+W` closed one. **That is the observation, not a count of handlers**, and
+ *  the two halves are not equally strong. `Ctrl+N` is: a second window would have
+ *  been unmistakable and nothing dedupes a creation. `Ctrl+W` is weaker, because
+ *  `close()` is asynchronous IPC — both routes could ask, resolve the same window
+ *  and still show one close. **Which layer or layers act is unmeasured.**
+ *
+ *  Two windows is what made it a test at all, and the reason survives the benign
+ *  answer: a duplicate here would not have closed one window twice. This handler
+ *  closes *this* window, while the menu route resolves its target from
  *  `focused_window` when the queued menu event is delivered (tauri-2.11.3
- *  `src/app.rs:2350-2351`, delivered at `:2588`) — so a doubled press would have
- *  closed this window and then whichever one focus moved to. **Which of the two
- *  layers acts there is not measured and does not need to be.**
+ *  `src/app.rs:2350-2351`, delivered at `:2588`), so a doubled press could have
+ *  taken this window and then whichever one focus moved to — which a single-window
+ *  round cannot show.
  *
  *  **No gate, for New Window's reason**: closing depends on nothing that is
  *  currently displayed, so `chordAction` never reaches its `suppress` case here.

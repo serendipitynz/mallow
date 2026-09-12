@@ -569,8 +569,9 @@ export default function App() {
      one**: measured 2026-09-12, `Ctrl+W` reached nothing while the menu item
      itself closed the window, so muda's accelerator does not arrive at a
      WebView2-focused window. On Linux it does — `Ctrl+W` already closed a window
-     there before this handler existed — and only one of the two layers answers a
-     press, measured with two windows open. macOS never reaches it at all, the
+     there before this handler existed — and a two-window round saw each press
+     produce one action with no duplicate, which is an observation rather than a
+     count of handlers (`lib/close-window`). macOS never reaches it at all, the
      predefined item taking the key equivalent first. */
   useEffect(() => {
     const onKey = createCloseWindowChordHandler({

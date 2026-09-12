@@ -76,8 +76,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share, and the subscription that pushes it to their menu
-  items), `close-window` (`CmdOrCtrl+W`, which off macOS is the *only* thing that
-  closes a window — see the gotcha below), `print` / `pdf-export` / `new-window` / `close-window` (each entry's key,
+  items), `close-window` (`CmdOrCtrl+W`, which on Windows is the *only* thing
+  that closes a window — see the gotcha below), `print` / `pdf-export` / `new-window` / `close-window` (each entry's key,
   gate and reason — the last two have no gate), `window-init` (what a
   window opens at mount, given what it was told at creation), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
@@ -1057,16 +1057,19 @@ hold rather than as an exhaustive style guide.
   WebView2-focused window, and `lib/close-window` is what actually closes it
   there. **On Linux the accelerator does arrive** — `Ctrl+W` closed a window
   before that module existed — so this is WebView2's gap rather than muda's, the
-  same shape as `Ctrl+P`. **Only one of the two layers answers a Linux press**,
-  measured 2026-09-12 with two windows open: one `Ctrl+N` opened one window and
-  one `Ctrl+W` closed one. **Two windows is what made that a test**, and the
-  reason is worth keeping even though the answer was benign: a doubled `Ctrl+W`
-  would not have closed the same window twice, because **the menu route resolves
-  its target late** — `focused_window` runs when the queued menu event is
-  delivered (`src/app.rs:2350-2351`, delivered at `:2588`), so it would have
-  closed this window and then whichever one focus moved to. A single-window round
-  could not have shown that, and one press opening one window there settles
-  nothing. **Which layer acts is not measured and does not need to be.** Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
+  same shape as `Ctrl+P`. **A two-window Linux round saw each press produce one
+  action and no duplicate** (2026-09-12): one `Ctrl+N` opened one window, one
+  `Ctrl+W` closed one. **That is what was observed, not a count of handlers**, and
+  the two halves are not equally strong — a second window would have been
+  unmistakable and nothing dedupes a creation, while `close()` is asynchronous IPC,
+  so both routes could ask, resolve the same window and still show one close.
+  **Which layer or layers act is unmeasured.** Two windows is what made it a test
+  at all, and that reason survives the benign answer: a duplicate would not have
+  closed one window twice, because **the menu route resolves its target late** —
+  `focused_window` runs when the queued menu event is delivered
+  (`src/app.rs:2350-2351`, delivered at `:2588`), so it could have taken this
+  window and then whichever one focus moved to, which a single-window round cannot
+  show. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
   consulted is **not measured**, and consuming the chord makes it moot. It is the
   third time this rule has been paid for: **registering no handler does not make a
   chord inert, it concedes the chord to the platform.** The chord costs
