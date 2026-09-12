@@ -1,10 +1,10 @@
 ---
 id: TASK-12.8
 title: Propagate settings changes to every window
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 22:06'
-updated_date: '2026-09-12 06:41'
+updated_date: '2026-09-12 07:26'
 labels:
   - feature
 milestone: m-3
