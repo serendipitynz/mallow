@@ -17,15 +17,15 @@
  *  rather than muda's, which is what makes it the same shape as `Ctrl+P` rather
  *  than a general accelerator problem.
  *
- *  **Whether both layers now answer one Linux keystroke is unverified, and the
- *  duplicate would not be benign.** It is tempting to write that closing twice
- *  costs nothing; it does not follow. This handler closes *this* window at once,
- *  while the menu route resolves its target from `focused_window` when the queued
- *  menu event is delivered (tauri-2.11.3 `src/app.rs:2350-2351`, delivered at
- *  `:2588`) — so with two windows open, one press could close this one and then
- *  whichever one focus moved to. GTK may equally consume the key before the
- *  WebView sees it, in which case nothing doubles. Neither has been measured, and
- *  the test that settles it is two windows on Linux, not one.
+ *  **Only one layer answers a Linux keystroke — measured 2026-09-12 with two
+ *  windows open**: one `Ctrl+W` closed one window, and one `Ctrl+N` opened one.
+ *  Two windows is what makes that a test at all, because the duplicate would not
+ *  have been benign and a single window could not have shown it: this handler
+ *  closes *this* window at once, while the menu route resolves its target from
+ *  `focused_window` when the queued menu event is delivered (tauri-2.11.3
+ *  `src/app.rs:2350-2351`, delivered at `:2588`) — so a doubled press would have
+ *  closed this window and then whichever one focus moved to. **Which of the two
+ *  layers acts there is not measured and does not need to be.**
  *
  *  **No gate, for New Window's reason**: closing depends on nothing that is
  *  currently displayed, so `chordAction` never reaches its `suppress` case here.
