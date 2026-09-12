@@ -67,7 +67,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   shortcode table), `heading` (the `Heading` type, the injected lookup root and the
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `settings-sync` (one changed preference reaching every window),
-  `theme`, `i18n` (ja/en dictionary + provider/hooks; language
+  `outline-pref` (whether the outline is open — one preference across the views
+  that have one, and across windows), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
@@ -1021,9 +1022,27 @@ hold rather than as an exhaustive style guide.
   setter instead would write a second time **and** send an echo back out.
   **`saveSetting` sends its own broadcast**, so the store-backed preferences
   (explorer width and side, the custom emoji folder, the launch update check)
-  need nothing at their call sites; theme and language are sent from
-  `ThemePicker` and `SettingsModal` instead, which is what keeps `lib/theme` and
-  `lib/i18n` free of the Tauri layer. **`ThemePicker` subscribes rather than
+  need nothing at their call sites; theme, language and the outline toggle are
+  sent from `ThemePicker`, `SettingsModal` and the two views instead, which is
+  what keeps `lib/theme`, `lib/i18n` and `lib/outline-pref` free of the Tauri
+  layer. **The store half of `SettingChange` is derived from `Settings`** rather
+  than listed a second time, so a preference added there makes the switch in
+  `App` non-exhaustive until it is handled — a setting that broadcasts to
+  windows that ignore it is worse than one that does not broadcast. A change can
+  carry `null`, which is a preference deleted from the store, and the receiver
+  lands on the value a window with nothing stored would show.
+  **`lib/outline-pref` is a store rather than two `useState`s** for the reason
+  `ThemePicker` subscribes: `MarkdownView` and `HtmlView` each held their own
+  copy, and one preference across the views has to mean one across the windows
+  too. Its value is cached because `useSyncExternalStore` calls the getter on
+  every render, and an unreachable localStorage would otherwise throw per render
+  **and** answer the stored default rather than what was just applied.
+  **What is deliberately not ordered**: two windows changing the same preference
+  inside one IPC round trip can end on different values, since nothing sequences
+  the changes and each window simply applies what arrives. Reaching that needs
+  two pointer inputs closer together than focusing the second window allows, so
+  it is accepted rather than ordered — and the next launch resolves it, both
+  windows reading the one stored value. **`ThemePicker` subscribes rather than
   holding the current id**, because `onThemeChange` cannot stand in for it:
   Solarized Light to Light repaints without changing the resolved light/dark
   mode, so `onThemeIdChange` is a second subscription rather than a widening of
@@ -1194,7 +1213,8 @@ hold rather than as an exhaustive style guide.
   `pdf-export` and `new-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), `settings-sync` (the
-  origin guard alone — the listener and the emit are Tauri's), and `custom-emoji`
+  origin guard alone — the listener and the emit are Tauri's), `outline-pref`
+  (its cache and its notification), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument

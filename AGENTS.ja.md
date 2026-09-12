@@ -66,7 +66,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `custom-emoji`（ユーザーの絵文字フォルダ →
   ショートコード表）、`heading`（`Heading` 型・注入する lookup root・純関数の座標変換）、
   `scroll`（スクロール位置保持）、`watch`、
-  `settings`（plugin-store）、`theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
+  `settings`（plugin-store）、`settings-sync`（変わった設定 1 件が全ウィンドウへ届く道）、
+  `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
+  `theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
   積算）、`chord`（アクセラレータの一致判定と、アプリ全体の chord handler・その 3 値）、
   `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲート）、
@@ -123,6 +125,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   保存順に 1 エントリ 1 ウィンドウを作り、`init()` はプラグインで、store と
   window-state の間という登録位置が load-bearing である（下の gotcha）。
   純関数群は app handle 無しで単体テストされている。
+- `settings.rs` — `broadcast_setting`。あるウィンドウで変わった設定 1 件を
+  全ウィンドウへ運ぶ中継。**設定値は持たない** — settings.json のキーを所有するのは
+  `recent.rs` と `session.rs` — 運ぶ変更は不透明な JSON なので、設定の一覧が
+  ここに二度書かれることはない。ここだけブロードキャストが正しい理由と、
+  発信元を外すのが emit ではなく label である理由は下の gotcha にある。
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` を `std::process` で実装（OS ごとに `cfg` で分岐）。
   最後のものはファイルをその種別に登録された OS のハンドラへ渡す。
@@ -873,6 +880,47 @@ Comments と Functions の規約は機械的に検査されない。コメント
   GUI なしで検査できる — 自分の drop を報告する probe ハンドルを使う。drop は
   registry から見た「watch が止まった」状態そのものであり、
   `RecommendedWatcher` は自分が drop されたことを報告できない。
+- **設定はアプリ全体のものであり、それを成立させるブロードキャストは、この
+  アプリで意図的にフィルタしない唯一の `emit` である。** `settings.rs` の
+  `broadcast_setting` が `settings:change` を全ウィンドウへ再発行する。これは
+  `fs:change` と逆の判断で、理由も逆 — 2 つのウィンドウが watch を共有しては
+  ならないのに対し、テーマは全ウィンドウで共有されなければならない
+  （TASK-12 がウィンドウ単位のテーマ・言語を対象外にしている）。
+  **発信元ウィンドウを外すのは label であって emit の絞り込みではない** —
+  フロントは既定の `Any` で listen しており、`Any` はフィルタされた emit も
+  等しく受けるので、ウィンドウ単位の `emit_to` では何も隔離されない。Rust が
+  呼び出し元から `origin` を刻み、`lib/settings-sync` の
+  `changeFromOtherWindow` が自分の変更を差し止める。**`storage` イベントは
+  使わない** — 各ウィンドウは別の WebView で、WebView 間の storage 通知を
+  3 エンジンで当てにはできない。
+  **伝播する設定はすべて 2 つの半身を持ち、受信側は永続化しない方を取る** —
+  `setTheme` に対する `applyTheme`、`setLang` に対する `applyLang`、
+  `writeOutlineOpen` に対する `applyOutlineOpen`、絵文字は persist なしの経路。
+  全ウィンドウが 1 つの WebView データストアと 1 つの settings.json を共有するので、
+  イベントが届く時点で値は既に書かれている — 後から作られたウィンドウが伝播なしで
+  正しく起動するのも同じ理由である。永続化する setter を通すと、二度書いた**うえに**
+  エコーを送り返す。
+  **`saveSetting` が自分でブロードキャストする**ので、store 側の設定
+  （エクスプローラの幅と位置、カスタム絵文字フォルダ、起動時の更新確認）は
+  呼び出し側に何も要らない。テーマ・言語・アウトラインの開閉は代わりに
+  `ThemePicker`・`SettingsModal`・2 つのビューから送る — `lib/theme`・`lib/i18n`・
+  `lib/outline-pref` に Tauri 層の依存を持ち込まないため。
+  **`SettingChange` の store 側は `Settings` から導出する**ので、そこにキーを
+  足すと `App` の switch が網羅でなくなり、新しい設定を扱うまでビルドが通らない —
+  無視するウィンドウへ届く設定は、届かない設定より悪い。変更は `null` を運ぶことが
+  あり、それは store から消された設定を意味するので、受信側は「何も保存されていない
+  ウィンドウが見せる値」に着地する。
+  **`lib/outline-pref` が `useState` 2 つではなくストアなのは**、`ThemePicker` が
+  購読するのと同じ理由である。`MarkdownView` と `HtmlView` がそれぞれ自分の写しを
+  持っていたが、「ビューをまたいで 1 つの設定」はウィンドウをまたいでも 1 つで
+  なければならない。値をキャッシュするのは `useSyncExternalStore` が描画のたびに
+  getter を呼ぶためで、到達できない localStorage は描画ごとに throw する**うえに**、
+  いま適用された値ではなく既定値を答えてしまう。
+  **意図的に順序づけていないもの**: 2 つのウィンドウが 1 往復の IPC の中で同じ設定を
+  変えると、互いに違う値で終わりうる。変更を並べる仕組みは無く、各ウィンドウは
+  届いたものをそのまま適用するだけだからである。そこへ到達するには、2 つ目の
+  ウィンドウにフォーカスを移すよりも短い間隔で 2 回ポインタ入力する必要があるので、
+  順序づけずに受け入れている — 次回起動時には両ウィンドウが 1 つの保存値を読んで解消する。
 - **capability のウィンドウ一覧は glob `w*` だけであり、`main` というラベルは
   もう存在しない。**
   `capabilities/default.json` はウィンドウラベルで plugin API をゲートするので、
@@ -1025,6 +1073,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `markdown-preview`・`print`・`pdf-export`・`new-window`＝各 chord のキー・ゲートと、
   イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
   New Window には閉じるゲートが無いことを含む）・
+  `settings-sync`＝発信元ガードのみ。listener と emit は Tauri のもの・
+  `outline-pref`＝キャッシュと通知・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
