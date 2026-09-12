@@ -4,6 +4,7 @@ mod pdf;
 mod print;
 mod recent;
 mod session;
+mod settings;
 #[cfg(unattended)]
 mod unattended;
 mod watch;
@@ -35,7 +36,8 @@ macro_rules! app_handler {
             recent::record_recent,
             recent::list_recent,
             recent::clear_recent,
-            session::report_window_content
+            session::report_window_content,
+            settings::broadcast_setting
             $(, $extra)*
         ]
     };
