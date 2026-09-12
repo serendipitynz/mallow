@@ -12,13 +12,14 @@ import { UNATTENDED } from './lib/build-flags';
 import { onMacPlatform } from './lib/chord';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
-import { useT } from './lib/i18n';
+import { useI18n, useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { createNewWindowChordHandler } from './lib/new-window';
 import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
+import { onSettingChange } from './lib/settings-sync';
 import {
   allowMediaDir,
   openWindow,
@@ -32,6 +33,7 @@ import {
   takeWindowInit,
   writeWindowPdf,
 } from './lib/tauri';
+import { applyTheme } from './lib/theme';
 import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
 import { locationToOpenAtMount } from './lib/window-init';
@@ -40,6 +42,10 @@ const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 600;
 
+function clampWidth(width: number): number {
+  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
+}
+
 /** How long after the session has settled the launch update check runs. It is
  *  gated on the restore finishing rather than on a timer alone, so this only has
  *  to keep the request off the first document's render. */
@@ -47,6 +53,7 @@ const LAUNCH_CHECK_DELAY_MS = 2_000;
 
 export default function App() {
   const t = useT();
+  const { applyLang } = useI18n();
   const tree = useFileTree();
   const [selected, setSelected] = useState<FileEntry | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -204,7 +211,7 @@ export default function App() {
         return;
       }
       if (s.explorerWidth) {
-        setExplorerWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, s.explorerWidth)));
+        setExplorerWidth(clampWidth(s.explorerWidth));
       }
       if (s.explorerSide) {
         setExplorerSide(s.explorerSide);
@@ -382,6 +389,60 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  /* ---- Preferences changed in another window (TASK-12.8) --------------------
+     Every preference is app-wide — TASK-12 puts per-window theme and language
+     out of scope — and the settings modal opens in any window, so a change made
+     anywhere has to land here. `lib/settings-sync` holds why this is the one
+     place a broadcast is correct and how the originating window is kept out.
+
+     **Each applier is the persist-free half on purpose.** Writing the value
+     again would be this window re-doing the work of the window that changed it
+     — one WebView data store and one settings.json are shared — and going
+     through the persisting setters would send an echo back out. */
+  useEffect(() => {
+    // Nothing broadcasts in an unattended build: it has one window, and it reads
+    // no settings to change.
+    if (UNATTENDED) {
+      return;
+    }
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    onSettingChange((change) => {
+      switch (change.key) {
+        case 'theme':
+          applyTheme(change.value);
+          break;
+        case 'lang':
+          applyLang(change.value);
+          break;
+        case 'explorerSide':
+          setExplorerSide(change.value);
+          break;
+        case 'explorerWidth':
+          setExplorerWidth(clampWidth(change.value));
+          break;
+        case 'customEmojiDir':
+          void applyEmojiDir(change.value);
+          break;
+        case 'autoCheckUpdates':
+          setAutoCheckUpdates(change.value);
+          break;
+      }
+    })
+      .then((fn) => {
+        if (disposed) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
+      })
+      .catch((e) => console.error('Failed to listen for settings changes', e));
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [applyLang, applyEmojiDir]);
+
   /* ---- Print (decision-13) --------------------------------------------------
      Registered for the life of the app and **always** consuming the chord, even
      where printing is refused. That is the correction Windows forced: the handler
@@ -463,7 +524,7 @@ export default function App() {
       const onMove = (ev: MouseEvent) => {
         const dx = ev.clientX - startX;
         const raw = explorerSide === 'left' ? startW + dx : startW - dx;
-        setExplorerWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, raw)));
+        setExplorerWidth(clampWidth(raw));
       };
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);

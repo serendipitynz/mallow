@@ -4,7 +4,7 @@
  * first paint, like the theme) so there is no flash of the wrong language, and
  * also drives `<html lang>`. Falls back to the OS locale, then Japanese.
  */
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export type Lang = 'ja' | 'en';
 
@@ -285,6 +285,11 @@ function translate(lang: Lang, key: string, params?: TParams): string {
 interface I18nValue {
   lang: Lang;
   setLang: (lang: Lang) => void;
+  /** Switch this window's language without persisting it — what a window does
+   *  when another window is the one that changed it (`lib/settings-sync`).
+   *  Every window shares one WebView data store, so the originating window's
+   *  write is already this window's stored value. */
+  applyLang: (lang: Lang) => void;
   t: TFn;
 }
 
@@ -297,20 +302,33 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = lang;
   }, [lang]);
 
+  /** Stable for the life of the provider, so that the effect in `App` listening
+   *  for another window's language change registers once rather than again on
+   *  every switch. */
+  const applyLang = useCallback((next: Lang) => {
+    setLangState(next);
+  }, []);
+
+  const setLang = useCallback(
+    (next: Lang) => {
+      try {
+        localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        // still apply for this session
+      }
+      applyLang(next);
+    },
+    [applyLang],
+  );
+
   const value = useMemo<I18nValue>(
     () => ({
       lang,
-      setLang: (next) => {
-        try {
-          localStorage.setItem(STORAGE_KEY, next);
-        } catch {
-          // still apply for this session
-        }
-        setLangState(next);
-      },
+      setLang,
+      applyLang,
       t: (key, params) => translate(lang, key, params),
     }),
-    [lang],
+    [lang, setLang, applyLang],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
