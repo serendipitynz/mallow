@@ -4,7 +4,7 @@ title: Add the File menu on all platforms and route menu events to the focused w
 status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-12 10:17'
+updated_date: '2026-09-12 10:27'
 labels:
   - feature
 milestone: m-3
@@ -82,7 +82,7 @@ Menu labels are built in Rust; the UI language lives in localStorage and is read
 - [x] #9 Print… and Export as PDF… are menu items, both disabled unless the active view is a markdown preview, and Print… is additionally never enabled on Linux while Export as PDF… is
 - [x] #10 New Window is not built inside the menu handler, since WebviewWindowBuilder::from_config deadlocks there on Windows as it does in a synchronous command
 - [x] #11 Every accelerator the menu carries resolves CmdOrCtrl the way lib/chord does — Command on macOS, Control elsewhere — so an item and its keydown handler cannot answer different keys
-- [x] #12 CmdOrCtrl+W closes a window on Windows, where the menu item's own accelerator was measured not to arrive, so the app registers the chord itself as it does the other three. On Linux the accelerator does arrive and the chord is a second route there
+- [x] #12 CmdOrCtrl+W closes a window on Windows, where the menu item's own accelerator was measured not to arrive, so the app registers the chord itself as it does the other three. On Linux the accelerator was measured to arrive before that chord existed; whether both layers answer one keystroke in this build is unverified and awaits a two-window Linux test, since a single window cannot show the second close
 <!-- AC:END -->
 
 ## Definition of Done
