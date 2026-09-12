@@ -47,6 +47,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `expandPaths`）。ツリーコンポーネントはこれに制御される。
 - `hooks/useUpdater.ts` — 更新確認・導入の同意・再起動（tauri-plugin-updater +
   tauri-plugin-process）。更新確認から導入の同意までの間 `Update` ハンドルを保持する。
+- `hooks/useWindowEvent.ts` — **このウィンドウだけ**でイベントを購読する。
+  ウィンドウごとに配るすべての emit のフロント側の半分（メニューのものと、
+  `fs:change` で `lib/watch` が確立した対）。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
@@ -71,8 +74,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
   積算）、`chord`（アクセラレータの一致判定と、アプリ全体の chord handler・その 3 値）、
-  `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲート）、
-  `print` / `pdf-export`（各入口のキー・ゲート・理由）、
+  `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲートと、
+  それを 2 つのメニュー項目へ押し出す購読）、
+  `close-window`（`CmdOrCtrl+W`。Windows ではウィンドウを閉じる**唯一の**経路。
+  下の gotcha を見る）、
+  `print` / `pdf-export` / `new-window` / `close-window`（各入口のキー・ゲート・理由。
+  後ろ 2 つは閉じるゲートを持たない）、
   `build-flags`（Vite が置き換える無人書き出しのスイッチ）、
   `render-signal`（描画済みの本文が変化し終わった時点）、
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
@@ -111,8 +118,20 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   どちらも app handle 無しで単体テストされている。**同じフォルダの 2 通りの綴りは
   2 エントリになる** — 比較はダイアログが返した文字列そのままで、
   大文字小文字を区別しないのは OS ではなくボリュームの性質だから。
-  **存在しなくなったフォルダの除去は意図的に無い** — ファイルシステムに触るので
-  サブメニュー構築時の仕事であり、読み出し時には除去しない。
+  **存在しなくなったフォルダの除去はサブメニュー構築時にだけ行う** —
+  ファイルシステムに触る検査なので、一覧が表示される直前に走る。`pruned_folders` が
+  その唯一の場所で、`existing_folders` がその純粋な規則。`list_recent` は除去しない。
+  **`record_recent` はサブメニューを更新する前に `RecentLock` を解放する** —
+  体裁ではなく、メニューの変更はどれもメインスレッドを待つのに対し、
+  `Clear Recent` はそのメインスレッドで同じロックを取るからである。
+- `menu.rs` — ネイティブメニューと、そのイベントの配送先の解決。
+  **`cfg` で隠すのではなくプラットフォームごとに組む。** `menu_action` が
+  id → 動作の純粋な対応、`recent_label` が最近のフォルダの表示文字列の純関数、
+  `focused_window` がすべてのメニューイベントが配送先を決める
+  `webview_windows()` の走査、`MenuState` がメニュー構築後に変わるもの
+  （Open Recent サブメニュー・`Clear Recent`・アクティブビューでゲートされる 2 項目）。
+  **ゲートはウィンドウごと**（`report_markdown_preview`）で、メニューはそうではない。
+  3 環境で何がどう違い、なぜそうなのかは下の gotcha にある。
 - `session.rs` — restored session。settings.json の `windows` キーで、quit 時に
   開いていたウィンドウ 1 つにつき 1 エントリ（`{ label, folder, files, active }`）を
   **最後にフォーカスされたものが末尾**の順で持つ。`report_window_content` が
@@ -163,10 +182,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   updater, process。decision-11 によりどれも `cfg(desktop)` で括らない。
   session の位置は load-bearing —下の gotcha を読む）、`invoke_handler`、
   ウィンドウごとの `Destroyed` / `Focused(true)` フック、restored session を
-  flush する `RunEvent::Exit` コールバック、**すべての**ウィンドウを作る `setup`
-  （設定ファイルのウィンドウは `"create": false` を持つ）、
-  および（macOS のみ）ネイティブアプリメニュー。Settings… 項目（⌘,）が
-  `menu:settings` イベントを emit し、フロントがそれを購読する。
+  flush する `RunEvent::Exit` コールバック、id を `menu.rs` に渡すだけの 1 行に
+  なった `on_menu_event`、そしてメニューを組んでから**すべての**ウィンドウを作る
+  `setup`（設定ファイルのウィンドウは `"create": false` を持つ）。
+  **メニューはどのウィンドウよりも先に組む** — 後から作られたウィンドウは生成時に
+  アプリ全体のメニューを取り、Windows と Linux ではメニューバーがウィンドウのもの
+  だから。**無人ビルドはメニューを組まない** — session を登録しないのと同じ理由である。
 
 ## 規約
 
@@ -880,6 +901,111 @@ Comments と Functions の規約は機械的に検査されない。コメント
   GUI なしで検査できる — 自分の drop を報告する probe ハンドルを使う。drop は
   registry から見た「watch が止まった」状態そのものであり、
   `RecommendedWatcher` は自分が drop されたことを報告できない。
+- **メニューは 1 つのオブジェクト・3 つの構成・1 つの配送規則であり、
+  その 3 つにはそれぞれ「正しく見えて間違っている」形がある。**
+  `AppHandle::set_menu` はアプリ全体に効き、明示的にメニューを与えられていない
+  ウィンドウに割り当てる（tauri-2.11.3 `src/app.rs:956-961`）。だから
+  **旧 macOS の `cfg` を外すだけなら、About / Services / Hide / Show All を載せた
+  メニューバーが Windows と Linux に出ていた** — どれも macOS の概念で、
+  コンパイルは通るが意味を持たない。構成は 3 つ: macOS は今までのアプリサブメニューを
+  保ち、File・Edit と、`set_as_windows_menu_for_nsapp` で登録する Window サブメニューを
+  得る。**AppKit が開いているウィンドウの一覧を足すのはこの登録のためであり、
+  かつこの登録はメニューがアプリの main menu になるまで黙って何もしない** —
+  muda は `NSApplication.mainMenu()` とその delegate 経由で NSMenu を解決し
+  （muda-0.19.3 `src/platform_impl/macos/mod.rs:741-746`）、main menu が無ければ
+  何もせずに返る。だから登録は `set_menu` の後で、メニューを組んでいる最中ではない。Windows と Linux はアプリサブメニューを持たず、
+  Settings… と Exit を File の中に、About を Help の下に置く。
+  **Linux だけは違いが一覧ではなく規則である**: muda の GTK バックエンドは
+  predefined の種別のうち Separator・Copy・Cut・Paste・SelectAll・About しか
+  対応せず（muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`）、
+  **それ以外は append 時に失敗ではなく黙って飛ばす**。だから Quit は
+  `AppHandle::exit` を呼ぶ普通の item であり、**Undo と Redo は壊れているのではなく
+  端から無い** — 並べれば表示されない項目を持つメニューができ、普通の item に
+  置き換えれば、編集可能なフィールドが 1 つしかないアプリのために WebView の
+  undo スタックを Rust から駆動することになる。失敗の形は一貫して
+  「項目が無い」であり、Linux のビルドを見なければ分からない。
+  **`CmdOrCtrl+W` は macOS だけ predefined で、他は普通の item** —
+  muda は predefined item のアクセラレータを型から導出し setter を持たない
+  （`src/items/predefined.rs:331-337`）ので、macOS で `CmdOrCtrl+W`、
+  他では `Alt+F4` になる。decision-4 は TASK-13.3 が来た時点でこの binding を
+  Close Tab へ移し、Close Window を `CmdOrCtrl+Shift+W` にすると決めており、
+  それを持てる predefined item は無い — つまりその回に macOS の分岐は、
+  他 2 環境が既に使っている普通の item へ置き換わる。
+  **ただし普通の item のアクセラレータは Windows に届かない**（2026-09-12 実測）:
+  メニュー項目自体は効くのに `Ctrl+W` では何も閉じず、効いた 3 つの chord は
+  ちょうど `App` が `keydown` handler も登録しているものだった — つまり muda の
+  アクセラレータは WebView2 にフォーカスがあるウィンドウへ届かず、そこで
+  実際に閉じているのは `lib/close-window` である。**Linux ではアクセラレータが
+  届く** — このモジュールが出来る前から `Ctrl+W` でウィンドウが閉じていた —
+  ので、これは muda ではなく WebView2 の穴であり、`Ctrl+P` と同じ形である。
+  **ウィンドウ 2 つの Linux の回で、どの打鍵も 1 回分の動作を生み、重複は
+  観測されなかった**（2026-09-12）: `Ctrl+N` 1 回でウィンドウは 1 つ開き、
+  `Ctrl+W` 1 回で 1 つ閉じた。**これは観測であって handler の数え上げではない。**
+  2 つの半分は強さが等しくない — ウィンドウが 2 つ開けば見紛いようがなく、
+  生成を重複排除するものも無い。一方 `close()` は非同期 IPC なので、
+  両方の経路が要求し、同じウィンドウに解決し、それでも可視の close は 1 回に
+  なりうる。**どちらの層が、あるいは両方が動いているかは未実測である。**
+  **検査たらしめたのはウィンドウ 2 つであり**、結果が無害だったいまもその理由は
+  残る: 重複していた場合、`Ctrl+W` は同じウィンドウを 2 回閉じるのではない。
+  メニュー経路は配送先を**遅れて**解決するからで、`focused_window` が走るのは
+  キューに積まれたメニューイベントが配送される時点（`src/app.rs:2350-2351`、
+  配送は `:2588`）。つまりこのウィンドウを閉じ、続いてフォーカスが移った方を
+  閉じえた。ウィンドウ 1 つではそれを見せられない。WebView2 が `Ctrl+W` を自分で
+  食べているのか、アクセラレータ表が参照されないのかは**未実測**で、chord を
+  消費することでその問いは無効になる。**登録しないことは不活性化ではなく譲渡である**
+  という規則の 3 度目の支払い。この chord は capability に
+  `core:window:allow-close` を要する（core window の default セットは読み取り系だけで、
+  変更系を 1 つも含まない）。**Undo と Redo は Linux にだけ無い。**
+  これは選択ではなく GTK の都合である — muda のバックエンドはどちらの種別も持たず
+  append 時に飛ばすので、並べれば先頭 2 項目が描かれないサブメニューになる。
+  「mallow には undo するものが無い」という理由で全環境から消しかけた
+  **が、その理由は誤っていた。記録する価値のある誤り方である**:
+  mallow **自身の** UI に編集可能な欄が無いのは正しいが、レンダリング済み HTML
+  ビューが表示している文書は `<input>` や `contenteditable` を持ちうる。そして
+  **フレームの sandbox はそれらを読み取り専用にしない — `allow-forms` が制限するのは
+  フォームの*送信*であって、入力そのものではない。** メニュー項目がその内容に
+  届くかはどの環境でも実測されていないので、元のまま残す — 消すことは、
+  誰も見ていない挙動についての仮定に基づいて動くことだった。
+  **配送先の解決は `webview_windows()` を通す。** `Manager::get_focused_window` は
+  このプロジェクトが有効にしていない `unstable` cargo feature の裏にあり、
+  tauri は minor で壊してよいと明記している（`src/lib.rs:541-560`）。
+  実装はこの走査そのものである。**Rust 側だけでは半分**であり、素の `listen()` で
+  登録したリスナは `EventTarget::Any` を持ち、emit 側が何で絞ってもマッチする —
+  メニューイベントを他のウィンドウから実際に締め出しているのは `useWindowEvent` で、
+  `fs:change` が要るのと同じ対である。**ハンドラの中でウィンドウを組まない**:
+  `WebviewWindowBuilder::from_config` は同期コマンド**およびイベントハンドラ**の
+  中でデッドロックし（`src/webview/webview_window.rs:114-116`、wry#583）、
+  このハンドラはその doc が名指ししているもう一方なので、New Window は
+  `tauri::async_runtime::spawn` へ投げる。**メニューの変更はメインスレッドを待つ**
+  （`src/menu/mod.rs:25-39` が marshal して返答を待つ。呼び出し側が既に
+  メインスレッドなら inline で走る）。だから `record_recent` はサブメニューを
+  更新する前に `RecentLock` を解放する — 握ったままだと、そのスレッドと
+  メインスレッドの `Clear Recent` が互いの持ち物を待ち合う。
+  **最近のフォルダの項目 id はフォルダのパスそのもの**で、添字ではない —
+  添字は再構築のたびに同期し続ける id → パスの対応表を要し、
+  古くなった対応表は違うフォルダを開く。2 つの id 空間は交わらない:
+  ダイアログが返すパスは絶対パスで、固定 id はどれも英字で始まり区切り文字を
+  含まない。加えて、そのフォールバック分岐は id を構築元の一覧と照合する。
+  **`Print…` と `Export as PDF…` が見せる状態はウィンドウごとで、メニューはそうではない**
+  ので、`report_markdown_preview` がウィンドウ label ごとに真偽を 1 つ記録し、
+  項目が見せるのはフォーカスされたウィンドウの分である。単一の真偽なら、
+  最後に報告したウィンドウの状態を見せることになる。**環境による打ち消しは
+  印刷側だけ** — `Print…` は Linux で有効になりえず（`print.rs` が拒否するので、
+  有効に見える項目は押しても何も起きない）、`Export as PDF…` は Linux でこそ
+  唯一の紙への道である。**どの CI ジョブがどの分岐をコンパイルするかが、
+  挙動と関係ない唯一の `cfg` を決めた**: `init`・`compose`・
+  `register_windows_menu` は無人ビルドでも誰も呼ばないままコンパイルされる。
+  Windows と macOS の Rust ツールチェーンを回す CI は `paper` ジョブだけで、
+  それは `MALLOW_UNATTENDED=1` でビルドするので、括り出すと Windows 分岐を
+  型検査するジョブが 1 つも無くなるからである。**各環境が実際にどう描くかは
+  2026-09-12 に目視した** — 上の `Ctrl+W` の所見はそこから出たもので、
+  同じ回に Linux の Exit があること、markdown プレビュー以外で 2 項目が
+  disabled になることも確かめた。**メニューのアクセラレータとアプリ自身の
+  `keydown` handler が 1 打鍵で両方発火する例はまだ見ていない** —
+  `Cmd/Ctrl+N` 1 回でウィンドウは 1 つだけ開き、Windows の `Ctrl+W` は
+  そこで問いが立たない理由を示している（アクセラレータがそもそも届かない）。
+  それでも handler は残す — 外せば `Ctrl+P` を WebView2 に譲り渡すことになり、
+  それは一度出荷された実測済みの不具合（`lib/print`）だからである。
 - **設定はアプリ全体のものであり、それを成立させるブロードキャストは、この
   アプリで意図的にフィルタしない唯一の `emit` である。** `settings.rs` の
   `broadcast_setting` が `settings:change` を全ウィンドウへ再発行する。これは
@@ -1096,7 +1222,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `chord`＝アクセラレータの一致判定とアプリ全体の handler。どちらもプラットフォームを
   引数で受けるので `navigator` を要しない・
   `window-init`＝3 つの生成状態それぞれでウィンドウが何を開くか・
-  `markdown-preview`・`print`・`pdf-export`・`new-window`＝各 chord のキー・ゲートと、
+  `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
+  Rust への invoke が 1 回走る）・
+  `print`・`pdf-export`・`new-window`・`close-window`＝各 chord のキー・ゲートと、
   イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
   New Window には閉じるゲートが無いことを含む）・
   `settings-sync`＝順序づけのみ。listener と emit は Tauri のもの・
@@ -1110,7 +1238,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
 - バックエンド: `src-tauri/` 内で `cargo fmt --check`・`cargo check`・`cargo test`。
   `commands` モジュールにユニットテストがある（`tempfile` 依存を避けた
   自己クリーンアップ式の temp-dir ヘルパー）。`watch` の registry、`window` の
-  ラベル採番・initial location の受け渡し、`session` のライブ集合まわり（報告・
+  ラベル採番・initial location の受け渡し、`menu` の id → 動作の対応と
+  最近のフォルダの表示文字列（ホームの短縮と、Win32 が食べてしまう `&`）、
+  `recent` の除去規則、`session` のライブ集合まわり（報告・
   フォーカス順・last-window rule・上限・移行の両半分）も GUI なしで検査する。
   後の 2 つができるのは、必要なものをアプリに訊かず引数で受けるから。
   **`unattended.rs` のテストは

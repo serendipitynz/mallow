@@ -1,5 +1,8 @@
+use tauri::Manager;
+
 mod commands;
 mod editors;
+mod menu;
 mod pdf;
 mod print;
 mod recent;
@@ -9,8 +12,6 @@ mod settings;
 mod unattended;
 mod watch;
 mod window;
-
-use tauri::Emitter;
 
 /// The command list, written once. `invoke_handler` takes a value built by a
 /// macro, so an unattended build cannot add its two commands without either this
@@ -37,7 +38,8 @@ macro_rules! app_handler {
             recent::list_recent,
             recent::clear_recent,
             session::report_window_content,
-            settings::broadcast_setting
+            settings::broadcast_setting,
+            menu::report_markdown_preview
             $(, $extra)*
         ]
     };
@@ -93,67 +95,34 @@ pub fn run() {
                 watch::drop_window_watch(window);
                 crate::window::drop_window_init(window);
                 session::note_window_destroyed(window);
+                menu::drop_window_gate(window);
             }
             // **The `true` edge only.** The restored session is ordered
             // least-recently-focused first, so reordering on the `false` edge
             // would invert it — the window losing focus would be the one moved
             // to the end.
-            tauri::WindowEvent::Focused(true) => session::note_window_focused(window),
+            // One menu bar serves whichever window is focused, so the two
+            // entries gated on the active view have to show the newly focused
+            // window's answer rather than whichever window last reported one.
+            tauri::WindowEvent::Focused(true) => {
+                session::note_window_focused(window);
+                menu::apply_preview_gate(window.app_handle());
+            }
             _ => {}
         })
-        .on_menu_event(|app, event| {
-            // The frontend opens its settings modal in response to this event.
-            if event.id().as_ref() == "settings" {
-                let _ = app.emit("menu:settings", ());
-            }
-        })
+        // **Every menu event resolves its own target.** `MenuEvent` carries only
+        // the item id (muda-0.19.3 `src/lib.rs:481-484`), and this used to
+        // broadcast `menu:settings` with `app.emit` — harmless with one window and
+        // wrong with several, since every window opened its settings modal at
+        // once.
+        .on_menu_event(|app, event| menu::handle_event(app, event.id().as_ref()))
         .setup(|app| {
-            // On macOS, provide a standard application menu with a Settings… item
-            // (⌘,). Other platforms reach settings via the footer button.
-            #[cfg(target_os = "macos")]
-            {
-                use tauri::menu::{AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
-
-                let handle = app.handle().clone();
-                let settings_item = MenuItemBuilder::with_id("settings", "Settings…")
-                    .accelerator("CmdOrCtrl+,")
-                    .build(&handle)?;
-
-                // Show a high-resolution mallow logo in the About dialog.
-                let about_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/128x128@2x.png")).ok();
-                let about_metadata = AboutMetadataBuilder::new()
-                    .name(Some("mallow"))
-                    .version(Some(env!("CARGO_PKG_VERSION")))
-                    .icon(about_icon)
-                    .build();
-
-                let app_menu = SubmenuBuilder::new(&handle, "mallow")
-                    .about(Some(about_metadata))
-                    .separator()
-                    .item(&settings_item)
-                    .separator()
-                    .services()
-                    .separator()
-                    .hide()
-                    .hide_others()
-                    .show_all()
-                    .separator()
-                    .quit()
-                    .build()?;
-
-                let edit_menu = SubmenuBuilder::new(&handle, "Edit")
-                    .undo()
-                    .redo()
-                    .separator()
-                    .cut()
-                    .copy()
-                    .paste()
-                    .select_all()
-                    .build()?;
-
-                let menu = MenuBuilder::new(&handle).item(&app_menu).item(&edit_menu).build()?;
-                app.set_menu(menu)?;
-            }
+            // **An unattended build gets no menu**, for the reason it registers no
+            // session: it is a measurement instrument with nobody at the keyboard,
+            // and on Windows and Linux a menu bar is part of the window it would
+            // be measuring.
+            #[cfg(not(unattended))]
+            menu::init(app.handle())?;
 
             // **Every window is created here, restored or not.** The configured
             // window carries `"create": false`, so tauri creates none of its own
