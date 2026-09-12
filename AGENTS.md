@@ -66,7 +66,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   emoji folder →
   shortcode table), `heading` (the `Heading` type, the injected lookup root and the
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
-  (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
+  (plugin-store), `settings-sync` (one changed preference reaching every window),
+  `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
@@ -126,6 +127,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `open_restored_windows` creates one window per entry in saved order; `init()`
   is a plugin whose position between store and window-state is load-bearing (see
   the gotcha below). The pure functions are unit-tested with no app handle.
+- `settings.rs` — `broadcast_setting`, the relay that carries one window's
+  changed preference to every window. **It owns no setting value** — `recent.rs`
+  and `session.rs` are what own keys in settings.json — and the change it relays
+  is opaque JSON, so the list of preferences is not written a second time here.
+  See the gotcha below for why a broadcast is right in this one place and why the
+  origin label, not the emit, is what keeps a window off its own update.
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
@@ -992,6 +999,35 @@ hold rather than as an exhaustive style guide.
   testable without a GUI — a probe handle reports its own drop, which is what a
   stopped watch looks like from the registry's side, and a `RecommendedWatcher`
   cannot report that it was dropped.
+- **A preference is app-wide, and the broadcast that makes it so is the one
+  `emit` in this app that is deliberately unfiltered.** `settings.rs`'s
+  `broadcast_setting` re-emits `settings:change` to every window, which is the
+  opposite decision from `fs:change`'s and for the opposite reason: two windows
+  must not share a watch, and every window must share a theme (TASK-12 puts a
+  per-window theme and language out of scope). **The originating window is kept
+  out by a label, not by narrowing the emit** — the frontend listens on the
+  default `Any`, which matches a filtered emit as readily as an unfiltered one,
+  so `emit_to` per window would isolate nothing; Rust stamps `origin` from the
+  calling window and `changeFromOtherWindow` in `lib/settings-sync` is what
+  withholds a window its own change. **Not the `storage` event**: each window is
+  its own WebView, and cross-WebView storage notification is not something to
+  rely on across all three engines.
+  **Every propagated preference has two halves, and the receiving window takes
+  the persist-free one**: `applyTheme` beside `setTheme`, `applyLang` beside
+  `setLang`, `applyEmojiDir` beside the persisting path. Every window shares one
+  WebView data store and one settings.json, so the value is already written by
+  the time the event arrives — which is also why a window created afterwards
+  comes up correct with no propagation at all. Going through the persisting
+  setter instead would write a second time **and** send an echo back out.
+  **`saveSetting` sends its own broadcast**, so the store-backed preferences
+  (explorer width and side, the custom emoji folder, the launch update check)
+  need nothing at their call sites; theme and language are sent from
+  `ThemePicker` and `SettingsModal` instead, which is what keeps `lib/theme` and
+  `lib/i18n` free of the Tauri layer. **`ThemePicker` subscribes rather than
+  holding the current id**, because `onThemeChange` cannot stand in for it:
+  Solarized Light to Light repaints without changing the resolved light/dark
+  mode, so `onThemeIdChange` is a second subscription rather than a widening of
+  the first.
 - **The capability window list is the glob `w*`, and nothing is labelled `main`
   any more.** `capabilities/default.json` gates plugin APIs by window label, so a
   window labelled outside that list loses `store:default` (settings do not
@@ -1157,7 +1193,8 @@ hold rather than as an exhaustive style guide.
   `markdown-preview`, `print`,
   `pdf-export` and `new-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
-  together, and that New Window has no gate to close), and `custom-emoji`
+  together, and that New Window has no gate to close), `settings-sync` (the
+  origin guard alone — the listener and the emit are Tauri's), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
