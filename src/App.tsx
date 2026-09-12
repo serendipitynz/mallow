@@ -1,4 +1,3 @@
-import { listen } from '@tauri-apps/api/event';
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Explorer } from './components/Explorer';
 import { SettingsIcon } from './components/icons';
@@ -8,12 +7,14 @@ import { UpdateDialog } from './components/UpdateDialog';
 import { Viewer } from './components/Viewer';
 import { useFileTree } from './hooks/useFileTree';
 import { useUpdater } from './hooks/useUpdater';
+import { useWindowEvent } from './hooks/useWindowEvent';
 import { UNATTENDED } from './lib/build-flags';
-import { onMacPlatform } from './lib/chord';
+import { matchesCmdOrCtrl, onMacPlatform } from './lib/chord';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useI18n, useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
+import { isMarkdownPreviewActive, onMarkdownPreviewChange } from './lib/markdown-preview';
 import { createNewWindowChordHandler } from './lib/new-window';
 import { applyOutlineOpen } from './lib/outline-pref';
 import { ancestorDirs, isInside } from './lib/path';
@@ -29,6 +30,7 @@ import {
   pickPdfDestination,
   printWindow,
   recordRecent,
+  reportMarkdownPreview,
   reportWindowContent,
   showErrorDialog,
   takeWindowInit,
@@ -433,31 +435,55 @@ export default function App() {
     }
   }, [settingsOpen, resetCheck]);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let disposed = false;
-    listen('menu:settings', () => setSettingsOpen(true)).then((fn) => {
-      if (disposed) {
-        fn();
-      } else {
-        unlisten = fn;
-      }
-    });
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, []);
+  /* ---- The native menu (TASK-12.4) ------------------------------------------
+     Every one of these arrives **at this window only**: the menu is app-wide and
+     `menu.rs` emits to whichever window is focused, which a plain `listen()`
+     would defeat — `EventTarget::Any` matches a filtered emit as readily as an
+     unfiltered one. `useWindowEvent` is that pairing.
+
+     The menu says what was chosen and the window does it, so each of these lands
+     on the same function the toolbar button or the chord already calls. That is
+     what keeps one implementation behind two entries rather than two that can
+     drift. */
+  useWindowEvent('menu:settings', () => setSettingsOpen(true));
+  useWindowEvent('menu:open', () => void openFolder());
+  useWindowEvent('menu:print', () => void printWindow().catch((err) => console.error('print failed', err)));
+
+  /** Open Recent, without the modifier: the chosen folder replaces this window's.
+   *
+   *  Nothing calls `report_window_content` here, and that is the rule rather than
+   *  an omission — reporting is a predicate over the displayed folder and
+   *  selection, which the effect above satisfies, so replacing the tree's root
+   *  reports it. TASK-12.5 adds the modifier branch, which opens a window
+   *  instead and leaves this one untouched. */
+  useWindowEvent<string>('menu:open-recent', (folder) => {
+    setSelected(null);
+    void openLocation(folder, null, () => false);
+  });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+      if (matchesCmdOrCtrl(e, ',', onMacPlatform())) {
         e.preventDefault();
         setSettingsOpen(true);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  /* ---- What the two gated menu items show -----------------------------------
+     The flag lives in this WebView and the menu lives in Rust, so the condition
+     has to be pushed rather than read. **The current value is sent at
+     subscription time as well**, because React runs a child's effects before its
+     parent's: a markdown preview has already published by the time this runs, so
+     waiting for the next change would leave the items disabled over the first
+     document a window opens. */
+  useEffect(() => {
+    const report = (active: boolean) =>
+      void reportMarkdownPreview(active).catch((e) => console.error('Failed to report the view state', e));
+    report(isMarkdownPreviewActive());
+    return onMarkdownPreviewChange(report);
   }, []);
 
   /* ---- Print (decision-13) --------------------------------------------------
@@ -518,6 +544,11 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [exportPdf]);
+
+  // Registered here rather than beside the other menu listeners because it is the
+  // same `exportPdf` the chord runs, declared just above: one implementation
+  // behind both entries, including the flag that serialises them.
+  useWindowEvent('menu:export-pdf', () => void exportPdf());
 
   /* ---- New Window (TASK-12.2) ----------------------------------------------
      Registered and consumed on the same terms as the other two chords and for the

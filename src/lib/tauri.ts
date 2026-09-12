@@ -49,6 +49,17 @@ export function recordRecent(folder: string): Promise<void> {
   return invoke('record_recent', { path: folder });
 }
 
+/** Tell Rust whether this window's active view is a markdown preview, so the
+ *  `Print…` and `Export as PDF…` menu items can show it.
+ *
+ *  **The menu is app-wide while the condition is per window**, so what is sent is
+ *  this window's answer and Rust decides which window's answer the menu shows.
+ *  It is the same flag the two chords read (`lib/markdown-preview`), reported
+ *  rather than re-derived. */
+export function reportMarkdownPreview(active: boolean): Promise<void> {
+  return invoke<void>('report_markdown_preview', { active });
+}
+
 /** Prompt the user to pick a folder; returns its path or null if cancelled. */
 export async function pickFolder(): Promise<string | null> {
   const result = await openDialog({ directory: true, multiple: false });
