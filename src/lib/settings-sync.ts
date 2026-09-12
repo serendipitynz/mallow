@@ -60,15 +60,23 @@ export type SettingChange =
  *  `Date.now()` rather than a counter minted in Rust: the stamp has to exist
  *  before the window applies the change to itself, and a counter only comes back
  *  after a round trip. One system clock serves every window here, so the numbers
- *  are comparable across them — **a wall clock stepped backwards can misorder one
- *  change**, which the next change to that preference corrects, and which no
- *  counter reachable synchronously would avoid. */
+ *  are comparable across them, and `mint` keeps a window's own stamps above what
+ *  it already knows so that a clock stepped backwards cannot silence it. */
 export interface Stamp {
-  /** Epoch milliseconds, taken by the window that made the change. */
+  /** Epoch milliseconds, taken by the window that made the change — but never
+   *  below what that window already knows for the key (see `mint`). */
   at: number;
-  /** The window's label, stamped by Rust so that no window can claim another's. */
+  /** The window's label, stamped by Rust so that no window can claim another's.
+   *  A snapshot read carries `SNAPSHOT_ORIGIN` instead. */
   origin: string;
 }
+
+/** The origin a settings snapshot is stamped with. Empty so that it loses every
+ *  same-millisecond tie against a real change: a read and a write stamped in the
+ *  same millisecond cannot be ordered by their times, and the write is the one
+ *  that carries an intention — a snapshot winning would put the window back on
+ *  the value the store held before the change it just applied. */
+const SNAPSHOT_ORIGIN = '';
 
 /** What a window receives: the change and when it was made. */
 export interface SettingBroadcast {
@@ -117,7 +125,7 @@ export function changeToApply(broadcast: SettingBroadcast, last: Stamp | undefin
  *  with the moment the read was *issued* is what makes it comparable, since
  *  anything written earlier than that is in the answer the read returns. */
 export function snapshotStillCurrent(key: SettingChange['key'], at: number): boolean {
-  return noteApplied(key, { at, origin: selfLabel() });
+  return noteApplied(key, { at, origin: SNAPSHOT_ORIGIN });
 }
 
 function selfLabel(): string {
@@ -133,19 +141,44 @@ function noteApplied(key: SettingChange['key'], stamp: Stamp): boolean {
   return true;
 }
 
-/** Tell every other window that a preference changed.
+/** The time to stamp a change a window is making: the wall clock, or one past
+ *  what it already knows for the key, whichever is later.
  *
- *  **The stamp is taken before anything is awaited**, because the caller has
- *  already applied the change to itself: a stamp minted after a round trip
- *  would leave this window unable to judge a change that arrives inside that
- *  trip, which is the divergence this ordering exists to close.
+ *  **The wall clock alone is not enough, and a clock stepped backwards is not a
+ *  one-change problem.** Every stamp this window mints until real time catches
+ *  up would fall below what its peers already hold, so every change it makes is
+ *  refused by all of them while it applies each one to itself — divergence for
+ *  the length of the step, not for one change. Taking the maximum makes the
+ *  ordering per key monotonic for the window that writes it, whatever the clock
+ *  does, and it is still the wall clock that puts two windows' changes in order
+ *  in the ordinary case. */
+export function mintAt(now: number, last: Stamp | undefined): number {
+  return Math.max(now, last ? last.at + 1 : 0);
+}
+
+/** Stamp a change as made now and record it, returning the emit that tells the
+ *  other windows.
  *
- *  Fire-and-forget past that point — the change is applied and persisted here,
- *  so a failed emit costs the other windows a live update and nothing else. */
-export function broadcastSetting(change: SettingChange): void {
-  const at = Date.now();
+ *  **Split from the emit because a persisted preference is written first.** The
+ *  caller has already applied the value to this window, so the stamp has to
+ *  belong to that moment: taken after the store write instead, a change
+ *  broadcast during the write is judged newer than one made before it, applied
+ *  here, and then left standing when this window's own later stamp is recorded
+ *  without its value ever being re-applied. */
+export function stampSetting(change: SettingChange): () => void {
+  const at = mintAt(Date.now(), applied.get(change.key));
   noteApplied(change.key, { at, origin: selfLabel() });
-  void invoke('broadcast_setting', { change, at }).catch((e) => console.error('Failed to broadcast a setting', e));
+  return () => {
+    // Fire-and-forget: the change is applied and persisted here, so a failed
+    // emit costs the other windows a live update and nothing else.
+    void invoke('broadcast_setting', { change, at }).catch((e) => console.error('Failed to broadcast a setting', e));
+  };
+}
+
+/** Tell every other window that a preference changed, for a caller with nothing
+ *  to persist first. */
+export function broadcastSetting(change: SettingChange): void {
+  stampSetting(change)();
 }
 
 /** Subscribe to preferences changed in another window. */

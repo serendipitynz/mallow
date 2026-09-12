@@ -1051,9 +1051,20 @@ hold rather than as an exhaustive style guide.
   and a counter only comes back after a round trip, leaving a window unable to
   judge what arrives inside that trip; `origin` is still Rust's, so no window can
   claim another's label. **The label breaks a same-millisecond tie**, arbitrarily
-  but identically in every window, which is the property convergence rests on. A
-  wall clock stepped backwards can misorder one change, which the next change to
-  that preference corrects.
+  but identically in every window, which is the property convergence rests on. **A wall clock
+  stepped backwards is not a one-change problem**, which is why the mint takes
+  the maximum of the clock and one past what the window already knows: stamped
+  from the clock alone, every change that window makes until real time catches up
+  falls below what its peers hold — refused by all of them, applied locally by
+  it, divergent for the length of the step.
+  **A snapshot loses every same-millisecond tie**, carrying the empty origin
+  rather than the window's label: a read and a write stamped in the same
+  millisecond cannot be ordered by time, and the write is the one carrying an
+  intention.
+  **`saveSetting` stamps before the store write, not after it** — the caller has
+  already applied the value, so a change broadcast during the write would
+  otherwise be judged the newer of the two, applied here, and left standing when
+  this window's own later stamp was recorded without its value being re-applied.
   **The same ordering covers the mount-time read**, which is why the listener is
   registered *before* `loadSettings` is issued rather than in an effect beside
   it: a change broadcast in between would reach a window listening for nothing,

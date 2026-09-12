@@ -1,7 +1,7 @@
 /** Persistent app settings via the Tauri store plugin (settings.json in the app
  *  config dir). Theme is intentionally kept in localStorage (read before paint). */
 import { load, type Store } from '@tauri-apps/plugin-store';
-import { broadcastSetting, type SettingChange } from './settings-sync';
+import { type SettingChange, stampSetting } from './settings-sync';
 
 export interface Settings {
   /** One entry per window open at quit, least-recently-focused first. **Rust owns
@@ -54,14 +54,19 @@ export type WritableKey = Exclude<keyof Settings, 'windows' | 'recentFolders'>;
  *
  *  Absent because the caller has already applied it: this window's own state. */
 export async function saveSetting<K extends WritableKey>(key: K, value: Settings[K]): Promise<void> {
+  // Stamped before the write rather than after it, because the caller has
+  // already applied the value to this window and the stamp has to belong to that
+  // moment — a change broadcast while the store is being written would otherwise
+  // be judged the newer of the two. Narrowing a generic key against the change
+  // union is not something the compiler does; `WritableKey` is what makes the
+  // pairing sound, and `undefined` becomes the `null` the wire carries for a
+  // cleared setting.
+  const tellTheOtherWindows = stampSetting({ key, value: value ?? null } as SettingChange);
   const store = await getStore();
   if (value === undefined || value === null) {
     await store.delete(key);
   } else {
     await store.set(key, value);
   }
-  // Narrowing a generic key against the change union is not something the
-  // compiler does; `WritableKey` is what makes the pairing sound, and `undefined`
-  // becomes the `null` the wire carries for a cleared setting.
-  broadcastSetting({ key, value: value ?? null } as SettingChange);
+  tellTheOtherWindows();
 }
