@@ -12,9 +12,11 @@
 //! **muda's GTK backend supports only Separator, Copy, Cut, Paste, SelectAll and
 //! About as predefined kinds** (muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`)
 //! and *silently skips* every other one on append rather than failing. So on Linux
-//! anything else — Quit, Close Window, Minimize, Undo, Redo — has to be an
-//! ordinary `MenuItem` with a handler of its own, or it is simply not there. The
-//! failure mode is a missing entry, which only a look at a Linux build reveals.
+//! anything else — Quit, Close Window, Minimize — has to be an ordinary
+//! `MenuItem` with a handler of its own, or it is simply not there. The failure
+//! mode is a missing entry, which only a look at a Linux build reveals; that look
+//! happened on 2026-09-12 and found Exit present, which is what the ordinary item
+//! is for.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -396,6 +398,29 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Cut / Copy / Paste / Select All, identically on all three platforms.
+///
+/// **Undo and Redo are deliberately not here, and their absence is not the GTK
+/// rule.** mallow has no editable text field at all — every control in the
+/// settings modal is a button, and a rendered document's own `<input>` sits in a
+/// frame with no `allow-forms` — so there is nothing in the app to undo, and the
+/// two entries were dead on macOS before this menu existed. Cut and Paste are
+/// strictly as inert, and stay: they are the quartet a reader expects to find,
+/// Copy and Select All do act on a document selection, and the four together are
+/// exactly muda's GTK-supported set, so one submenu serves every platform.
+///
+/// Restoring Undo / Redo is a request for an editable field, not for two menu
+/// items.
+#[cfg_attr(unattended, allow(dead_code))]
+fn edit_submenu(app: &AppHandle) -> tauri::Result<Submenu<Wry>> {
+    SubmenuBuilder::new(app, "Edit")
+        .cut()
+        .copy()
+        .paste()
+        .select_all()
+        .build()
+}
+
 /// Register the macOS Window submenu with AppKit, **after the menu is the
 /// application's main menu and never before**.
 ///
@@ -476,15 +501,7 @@ fn compose(
             .close_window()
             .build()?;
 
-        let edit_menu = SubmenuBuilder::new(app, "Edit")
-            .undo()
-            .redo()
-            .separator()
-            .cut()
-            .copy()
-            .paste()
-            .select_all()
-            .build()?;
+        let edit_menu = edit_submenu(app)?;
 
         // Registering the submenu with AppKit is what makes it list the open
         // windows; Minimize and Zoom are this menu's own items.
@@ -534,29 +551,7 @@ fn compose(
             file_menu = file_menu.quit();
         }
 
-        // **Undo and Redo are absent on Linux rather than broken there.** GTK
-        // skips both on append, so listing them would build a menu whose two top
-        // entries simply are not shown; and replacing them with ordinary items
-        // would mean driving the WebView's own undo stack from Rust for an app
-        // whose only editable field is in the settings modal. Cut / Copy / Paste /
-        // Select All are in GTK's supported set and stay.
-        #[cfg(target_os = "linux")]
-        let edit_menu = SubmenuBuilder::new(app, "Edit")
-            .cut()
-            .copy()
-            .paste()
-            .select_all()
-            .build()?;
-        #[cfg(not(target_os = "linux"))]
-        let edit_menu = SubmenuBuilder::new(app, "Edit")
-            .undo()
-            .redo()
-            .separator()
-            .cut()
-            .copy()
-            .paste()
-            .select_all()
-            .build()?;
+        let edit_menu = edit_submenu(app)?;
 
         // About is in GTK's supported set, which is why Help needs no Linux arm.
         let help_menu = SubmenuBuilder::new(app, "Help").about(Some(about)).build()?;
