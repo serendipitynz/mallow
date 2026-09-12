@@ -1054,18 +1054,23 @@ hold rather than as an exhaustive style guide.
   Windows** (measured 2026-09-12): `Ctrl+W` closed nothing while the menu item
   itself worked, and the three chords that did work are exactly the ones `App`
   also registers a `keydown` handler for — so muda's accelerator does not reach a
-  WebView2-focused window, and `lib/close-window` is what actually closes it off
-  macOS. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
+  WebView2-focused window, and `lib/close-window` is what actually closes it
+  there. **Linux was not measured**, and the chord covers it either way. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
   consulted is **not measured**, and consuming the chord makes it moot. It is the
   third time this rule has been paid for: **registering no handler does not make a
   chord inert, it concedes the chord to the platform.** The chord costs
   `core:window:allow-close` in the capability, since the core window default set
-  carries the readers and none of the mutators. **Undo and Redo are gone from Edit
-  on every platform**, and that is not the GTK rule — mallow has no editable text
-  field at all, so they were dead entries on macOS long before this menu existed.
-  What is left, Cut / Copy / Paste / Select All, is one submenu for all three
-  platforms and is exactly GTK's supported set; restoring Undo / Redo is a request
-  for an editable field, not for two menu items. **Routing goes through `webview_windows()`**, never
+  carries the readers and none of the mutators. **Undo and Redo are absent on Linux
+  alone**, and that is GTK's doing rather than a choice: muda's backend carries
+  neither kind and skips both on append, so listing them would draw a submenu
+  missing its first two entries. They were nearly removed everywhere on the
+  reasoning that mallow has nothing to undo — **and that reasoning was wrong in a
+  way worth recording**: mallow's *own* UI has no editable field, but a document
+  the rendered HTML view is showing can carry an `<input>` or a `contenteditable`,
+  and **the frame's sandbox does not make those read-only — `allow-forms` gates
+  form *submission*, not typing.** Whether the menu entries reach that content has
+  been measured on no platform, so they stay as they were: dropping them would
+  have been acting on an assumption nobody has looked at. **Routing goes through `webview_windows()`**, never
   `Manager::get_focused_window`, which is behind the `unstable` cargo feature this
   project does not enable and which tauri documents as free to break in a minor
   release (`src/lib.rs:541-560`); its implementation is that same scan. **The Rust

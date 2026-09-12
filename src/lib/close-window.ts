@@ -12,6 +12,10 @@
  *  `Ctrl+P` forced in `lib/print`: registering no handler does not make a chord
  *  inert, it concedes it to the platform.
  *
+ *  **Linux was not measured**, and the chord covers it whichever way its
+ *  accelerator behaves — which is the point of consuming a chord rather than
+ *  proving who else might want it.
+ *
  *  **No gate, for New Window's reason**: closing depends on nothing that is
  *  currently displayed, so `chordAction` never reaches its `suppress` case here.
  *

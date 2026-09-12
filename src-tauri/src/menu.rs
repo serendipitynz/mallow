@@ -15,8 +15,9 @@
 //! anything else — Quit, Close Window, Minimize — has to be an ordinary
 //! `MenuItem` with a handler of its own, or it is simply not there. The failure
 //! mode is a missing entry, which only a look at a Linux build reveals; that look
-//! happened on 2026-09-12 and found Exit present, which is what the ordinary item
-//! is for.
+//! happened on 2026-09-12 and found Exit present — the ordinary item doing its
+//! job — and Undo / Redo absent, which is this backend meeting a predefined kind
+//! it does not carry.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -398,27 +399,30 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Cut / Copy / Paste / Select All, identically on all three platforms.
+/// Cut / Copy / Paste / Select All everywhere, with Undo and Redo ahead of them
+/// where the backend carries them.
 ///
-/// **Undo and Redo are deliberately not here, and their absence is not the GTK
-/// rule.** mallow has no editable text field at all — every control in the
-/// settings modal is a button, and a rendered document's own `<input>` sits in a
-/// frame with no `allow-forms` — so there is nothing in the app to undo, and the
-/// two entries were dead on macOS before this menu existed. Cut and Paste are
-/// strictly as inert, and stay: they are the quartet a reader expects to find,
-/// Copy and Select All do act on a document selection, and the four together are
-/// exactly muda's GTK-supported set, so one submenu serves every platform.
+/// **Linux is the one platform without those two, and that is GTK's doing rather
+/// than a choice**: muda's backend does not carry either predefined kind and skips
+/// them on append, so listing them there would build a submenu whose first two
+/// entries are simply not drawn, and an ordinary item in their place would mean
+/// driving a WebView's undo stack from Rust.
 ///
-/// Restoring Undo / Redo is a request for an editable field, not for two menu
-/// items.
+/// **Nothing in mallow's own UI can be edited** — every control in the settings
+/// modal is a button — so the only editable text any of these six can reach is a
+/// control inside a document the rendered HTML view is showing. **The frame's
+/// sandbox does not make those read-only**: `allow-forms` gates form
+/// *submission*, not whether an `<input>` or a `contenteditable` takes typing.
+/// **Whether these entries actually reach that content has been measured on no
+/// platform**, which is why they stay as they were — dropping them would be
+/// acting on an assumption about behaviour nobody has looked at, and a viewed
+/// document's own controls are reachable whatever one thinks of the workflow.
 #[cfg_attr(unattended, allow(dead_code))]
 fn edit_submenu(app: &AppHandle) -> tauri::Result<Submenu<Wry>> {
-    SubmenuBuilder::new(app, "Edit")
-        .cut()
-        .copy()
-        .paste()
-        .select_all()
-        .build()
+    let builder = SubmenuBuilder::new(app, "Edit");
+    #[cfg(not(target_os = "linux"))]
+    let builder = builder.undo().redo().separator();
+    builder.cut().copy().paste().select_all().build()
 }
 
 /// Register the macOS Window submenu with AppKit, **after the menu is the
