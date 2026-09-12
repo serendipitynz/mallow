@@ -4,7 +4,7 @@ title: Propagate settings changes to every window
 status: In Review
 assignee: []
 created_date: '2026-08-02 22:06'
-updated_date: '2026-09-12 01:50'
+updated_date: '2026-09-12 06:41'
 labels:
   - feature
 milestone: m-3
@@ -52,9 +52,9 @@ Anything not propagated must be written down as a known limitation in TASK-12.6 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Changing the theme in one window repaints every open window immediately, and the change survives a relaunch
-- [ ] #2 Changing the language in one window re-renders every open window's UI immediately
-- [ ] #3 Explorer side, explorer width and the custom emoji folder either propagate the same way or are listed as known limitations in TASK-12.6
+- [x] #1 Changing the theme in one window repaints every open window immediately, and the change survives a relaunch
+- [x] #2 Changing the language in one window re-renders every open window's UI immediately
+- [x] #3 Explorer side, explorer width and the custom emoji folder either propagate the same way or are listed as known limitations in TASK-12.6
 - [x] #4 The originating window does not double-apply or fight its own update
 - [x] #5 Propagation uses Tauri events on the default Any target, not the storage event, and the comment says why broadcasting is correct here when fs:change and menu:settings are deliberately window-scoped
 <!-- AC:END -->
@@ -62,5 +62,5 @@ Anything not propagated must be written down as a known limitation in TASK-12.6 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 pnpm build, pnpm test, cargo check and cargo test pass
-- [ ] #2 With three windows open, each setting is changed from a different window and all three windows agree afterwards
+- [x] #2 With three windows open, each setting is changed from a different window and all three windows agree afterwards
 <!-- DOD:END -->
