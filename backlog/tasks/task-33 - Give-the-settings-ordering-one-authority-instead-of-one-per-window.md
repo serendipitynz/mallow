@@ -4,8 +4,10 @@ title: Give the settings ordering one authority instead of one per window
 status: To Do
 assignee: []
 created_date: '2026-09-12 07:31'
+updated_date: '2026-09-12 07:58'
 labels:
   - bug
+milestone: m-3
 dependencies: []
 priority: medium
 type: bug
