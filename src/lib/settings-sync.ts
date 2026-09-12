@@ -22,17 +22,28 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import type { Lang } from './i18n';
+import type { Settings, WritableKey } from './settings';
 import type { ThemeId } from './theme';
 
+/** A store-backed preference and its new value, carrying `null` for a cleared
+ *  one — `undefined` does not survive the JSON this crosses Rust as.
+ *
+ *  **Derived from `Settings` rather than listed a second time.** A key added
+ *  there is a key this carries, which makes the switch that applies a change
+ *  non-exhaustive until the new preference is handled — the alternative is a
+ *  setting that broadcasts to windows that silently ignore it. */
+type StoredChange = {
+  [K in WritableKey]: { key: K; value: NonNullable<Settings[K]> | null };
+}[WritableKey];
+
 /** One changed preference. The two keys Rust owns in settings.json — `windows`
- *  and `recentFolders` — are absent because no window writes them. */
+ *  and `recentFolders` — are absent from `WritableKey` because no window writes
+ *  them; the three that follow live in localStorage rather than the store. */
 export type SettingChange =
+  | StoredChange
   | { key: 'theme'; value: ThemeId }
   | { key: 'lang'; value: Lang }
-  | { key: 'explorerWidth'; value: number }
-  | { key: 'explorerSide'; value: 'left' | 'right' }
-  | { key: 'customEmojiDir'; value: string | null }
-  | { key: 'autoCheckUpdates'; value: boolean };
+  | { key: 'outlineOpen'; value: boolean };
 
 /** What a window receives: the change plus the label of the window that made it. */
 export interface SettingBroadcast {

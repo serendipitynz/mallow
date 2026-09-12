@@ -15,6 +15,7 @@ import { fileEntryFromPath } from './lib/file';
 import { useI18n, useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { createNewWindowChordHandler } from './lib/new-window';
+import { applyOutlineOpen } from './lib/outline-pref';
 import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
@@ -41,6 +42,11 @@ import { locationToOpenAtMount } from './lib/window-init';
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 600;
+/** Named because a propagated change can carry `null` — a preference deleted
+ *  from the store — and the window that receives one has to land on the value a
+ *  window with nothing stored would show. */
+const DEFAULT_SIDE: 'left' | 'right' = 'left';
+const DEFAULT_AUTO_CHECK_UPDATES = true;
 
 function clampWidth(width: number): number {
   return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
@@ -58,10 +64,10 @@ export default function App() {
   const [selected, setSelected] = useState<FileEntry | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [explorerWidth, setExplorerWidth] = useState(DEFAULT_WIDTH);
-  const [explorerSide, setExplorerSide] = useState<'left' | 'right'>('left');
+  const [explorerSide, setExplorerSide] = useState<'left' | 'right'>(DEFAULT_SIDE);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
-  const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState(DEFAULT_AUTO_CHECK_UPDATES);
   const [restoreSettled, setRestoreSettled] = useState(false);
   const updater = useUpdater();
 
@@ -416,17 +422,28 @@ export default function App() {
           applyLang(change.value);
           break;
         case 'explorerSide':
-          setExplorerSide(change.value);
+          setExplorerSide(change.value ?? DEFAULT_SIDE);
           break;
         case 'explorerWidth':
-          setExplorerWidth(clampWidth(change.value));
+          setExplorerWidth(clampWidth(change.value ?? DEFAULT_WIDTH));
           break;
         case 'customEmojiDir':
           void applyEmojiDir(change.value);
           break;
         case 'autoCheckUpdates':
-          setAutoCheckUpdates(change.value);
+          setAutoCheckUpdates(change.value ?? DEFAULT_AUTO_CHECK_UPDATES);
           break;
+        case 'outlineOpen':
+          applyOutlineOpen(change.value);
+          break;
+        default: {
+          // A preference added to `Settings` arrives here as a key this switch
+          // does not handle and stops the build, which is the point: a setting
+          // that propagates to a window that ignores it is worse than one that
+          // does not propagate at all.
+          const unhandled: never = change;
+          console.error('Unhandled setting change', unhandled);
+        }
       }
     })
       .then((fn) => {
