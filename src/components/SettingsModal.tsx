@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { CustomEmojiStatus } from '../lib/custom-emoji';
-import { LANGS, useI18n } from '../lib/i18n';
+import { LANGS, type Lang, useI18n } from '../lib/i18n';
+import { broadcastSetting } from '../lib/settings-sync';
 import type { CheckState } from '../lib/update-flow';
 import { CloseIcon } from './icons';
 
@@ -44,6 +45,14 @@ export function SettingsModal({
   covered,
 }: SettingsModalProps) {
   const { t, lang, setLang } = useI18n();
+
+  /** The language is app-wide (TASK-12 puts a per-window one out of scope), so
+   *  the windows already open have to follow. Sent from here rather than from
+   *  `setLang` so that `lib/i18n` keeps no dependency on the Tauri layer. */
+  const changeLang = (next: Lang) => {
+    setLang(next);
+    broadcastSetting({ key: 'lang', value: next });
+  };
 
   useEffect(() => {
     if (!open || covered) {
@@ -119,7 +128,7 @@ export function SettingsModal({
                   type="button"
                   className={`btn${lang === l.id ? ' is-active' : ''}`}
                   aria-pressed={lang === l.id}
-                  onClick={() => setLang(l.id)}
+                  onClick={() => changeLang(l.id)}
                 >
                   {l.label}
                 </button>

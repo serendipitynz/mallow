@@ -26,6 +26,7 @@ const MODE: Record<Exclude<ThemeId, 'auto'>, Resolved> = {
 
 const media = window.matchMedia('(prefers-color-scheme: dark)');
 const listeners = new Set<(theme: Resolved) => void>();
+const idListeners = new Set<() => void>();
 
 export function getTheme(): ThemeId {
   const value = document.documentElement.dataset.theme;
@@ -60,15 +61,38 @@ export function onThemeChange(callback: (theme: Resolved) => void): () => void {
   return () => listeners.delete(callback);
 }
 
-/** Persist a theme, reflect it on `<html>`, and notify subscribers. */
+/** Subscribe to the chosen theme id, which `onThemeChange` cannot stand in for:
+ *  Solarized Light to Light is a repaint that leaves the resolved mode alone, and
+ *  the picker has to follow it. Shaped for `useSyncExternalStore`, whose snapshot
+ *  is `getTheme`. */
+export function onThemeIdChange(callback: () => void): () => void {
+  idListeners.add(callback);
+  return () => idListeners.delete(callback);
+}
+
+/** Reflect a theme on `<html>` and notify subscribers, without persisting it.
+ *
+ *  What a window does when **another** window is the one that changed the theme
+ *  (`lib/settings-sync`): every window shares one WebView data store, so the
+ *  originating window's write is already this window's stored value, and writing
+ *  it again would be the receiving half re-doing the sending half's work. */
+export function applyTheme(id: ThemeId): void {
+  document.documentElement.dataset.theme = id;
+  notify();
+  idListeners.forEach((cb) => {
+    cb();
+  });
+}
+
+/** Persist a theme and apply it. Telling the other windows is the caller's, so
+ *  that this module keeps no dependency on the Tauri layer. */
 export function setTheme(id: ThemeId): void {
   try {
     localStorage.setItem(STORAGE_KEY, id);
   } catch {
     // Private mode / disabled storage: still apply for this session.
   }
-  document.documentElement.dataset.theme = id;
-  notify();
+  applyTheme(id);
 }
 
 media.addEventListener('change', notify);

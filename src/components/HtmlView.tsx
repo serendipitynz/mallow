@@ -1,14 +1,15 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { Heading, HeadingRoot } from '../lib/heading';
 import { neutralizeAppOriginLinks, transformHtmlDocument } from '../lib/html-doc';
 import { assignHeadingIds } from '../lib/html-headings';
 import { renderedNoticeLines } from '../lib/html-notice';
 import { useT } from '../lib/i18n';
-import { readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
+import { onOutlineOpenChange, readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { dirname } from '../lib/path';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
+import { broadcastSetting } from '../lib/settings-sync';
 import { openInDefaultApp } from '../lib/tauri';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
@@ -159,7 +160,7 @@ export function HtmlView({
     [source, file.path],
   );
   const [mode, setMode] = useState<'rendered' | 'source'>('rendered');
-  const [outlineOpen, setOutlineOpen] = useState<boolean>(readOutlineOpen);
+  const outlineOpen = useSyncExternalStore(onOutlineOpenChange, readOutlineOpen);
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [tooTall, setTooTall] = useState(false);
   /* What the probe below answered on the last load, `null` until one has run.
@@ -594,11 +595,11 @@ export function HtmlView({
   });
 
   function toggleOutline() {
-    setOutlineOpen((v) => {
-      const next = !v;
-      writeOutlineOpen(next);
-      return next;
-    });
+    const next = !outlineOpen;
+    writeOutlineOpen(next);
+    // The outline preference is app-wide — it is already one preference across
+    // the views that have one — so the windows already open have to follow.
+    broadcastSetting({ key: 'outlineOpen', value: next });
   }
 
   function openOutside() {

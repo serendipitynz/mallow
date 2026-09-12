@@ -12,13 +12,15 @@ import { UNATTENDED } from './lib/build-flags';
 import { onMacPlatform } from './lib/chord';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
-import { useT } from './lib/i18n';
+import { useI18n, useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { createNewWindowChordHandler } from './lib/new-window';
+import { applyOutlineOpen } from './lib/outline-pref';
 import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
+import { onSettingChange, type SettingChange, snapshotStillCurrent } from './lib/settings-sync';
 import {
   allowMediaDir,
   openWindow,
@@ -32,6 +34,7 @@ import {
   takeWindowInit,
   writeWindowPdf,
 } from './lib/tauri';
+import { applyTheme } from './lib/theme';
 import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
 import { locationToOpenAtMount } from './lib/window-init';
@@ -39,6 +42,15 @@ import { locationToOpenAtMount } from './lib/window-init';
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 600;
+/** Named because a propagated change can carry `null` — a preference deleted
+ *  from the store — and the window that receives one has to land on the value a
+ *  window with nothing stored would show. */
+const DEFAULT_SIDE: 'left' | 'right' = 'left';
+const DEFAULT_AUTO_CHECK_UPDATES = true;
+
+function clampWidth(width: number): number {
+  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
+}
 
 /** How long after the session has settled the launch update check runs. It is
  *  gated on the restore finishing rather than on a timer alone, so this only has
@@ -47,14 +59,15 @@ const LAUNCH_CHECK_DELAY_MS = 2_000;
 
 export default function App() {
   const t = useT();
+  const { applyLang } = useI18n();
   const tree = useFileTree();
   const [selected, setSelected] = useState<FileEntry | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [explorerWidth, setExplorerWidth] = useState(DEFAULT_WIDTH);
-  const [explorerSide, setExplorerSide] = useState<'left' | 'right'>('left');
+  const [explorerSide, setExplorerSide] = useState<'left' | 'right'>(DEFAULT_SIDE);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
-  const [autoCheckUpdates, setAutoCheckUpdates] = useState(true);
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState(DEFAULT_AUTO_CHECK_UPDATES);
   const [restoreSettled, setRestoreSettled] = useState(false);
   const updater = useUpdater();
 
@@ -182,9 +195,58 @@ export default function App() {
     void applyEmojiDir(null, true);
   }, [applyEmojiDir]);
 
+  /* ---- Preferences changed in another window (TASK-12.8) --------------------
+     Every preference is app-wide — TASK-12 puts per-window theme and language
+     out of scope — and the settings modal opens in any window, so a change made
+     anywhere has to land here. `lib/settings-sync` holds why this is the one
+     place a broadcast is correct, and how two changes made close together are
+     ordered.
+
+     **Each applier is the persist-free half on purpose.** Writing the value
+     again would be this window re-doing the work of the window that changed it
+     — one WebView data store and one settings.json are shared — and going
+     through the persisting setters would send an echo back out. */
+  const applySettingChange = useCallback(
+    (change: SettingChange) => {
+      switch (change.key) {
+        case 'theme':
+          applyTheme(change.value);
+          break;
+        case 'lang':
+          applyLang(change.value);
+          break;
+        case 'outlineOpen':
+          applyOutlineOpen(change.value);
+          break;
+        case 'explorerSide':
+          setExplorerSide(change.value ?? DEFAULT_SIDE);
+          break;
+        case 'explorerWidth':
+          setExplorerWidth(clampWidth(change.value ?? DEFAULT_WIDTH));
+          break;
+        case 'customEmojiDir':
+          void applyEmojiDir(change.value);
+          break;
+        case 'autoCheckUpdates':
+          setAutoCheckUpdates(change.value ?? DEFAULT_AUTO_CHECK_UPDATES);
+          break;
+        default: {
+          // A preference added to `Settings` arrives here as a key this switch
+          // does not handle and stops the build, which is the point: a setting
+          // that propagates to a window that ignores it is worse than one that
+          // does not propagate at all.
+          const unhandled: never = change;
+          console.error('Unhandled setting change', unhandled);
+        }
+      }
+    },
+    [applyLang, applyEmojiDir],
+  );
+
   // ---- Session restore + settings (on launch) -------------------------------
   useEffect(() => {
     let disposed = false;
+    let unlistenSettings: (() => void) | undefined;
 
     /* An unattended build opens the document its command line named instead, and
        reads no settings at all — the store it would read is the installed app's,
@@ -199,20 +261,35 @@ export default function App() {
     }
 
     (async () => {
+      /* **Registered before the settings are read, not beside it.** Both are
+         asynchronous, so a change broadcast between the read and the
+         registration would reach a window that is listening for nothing —
+         and a broadcast is not sent when the reader clicks: the custom emoji
+         folder is sent when its load finishes, which can be a directory scan
+         after the window that opened this one was asked for. Ordering the two
+         closes the gap in one direction; `snapshotStillCurrent` closes the
+         other, where a change applied while the read was in flight would be
+         overwritten by the answer it beat. */
+      unlistenSettings = await onSettingChange(applySettingChange);
+      if (disposed) {
+        unlistenSettings();
+        return;
+      }
+      const readAt = Date.now();
       const s = await loadSettings();
       if (disposed) {
         return;
       }
-      if (s.explorerWidth) {
-        setExplorerWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, s.explorerWidth)));
+      if (s.explorerWidth && snapshotStillCurrent('explorerWidth', readAt)) {
+        setExplorerWidth(clampWidth(s.explorerWidth));
       }
-      if (s.explorerSide) {
+      if (s.explorerSide && snapshotStillCurrent('explorerSide', readAt)) {
         setExplorerSide(s.explorerSide);
       }
-      if (s.autoCheckUpdates === false) {
+      if (s.autoCheckUpdates === false && snapshotStillCurrent('autoCheckUpdates', readAt)) {
         setAutoCheckUpdates(false);
       }
-      if (s.customEmojiDir) {
+      if (s.customEmojiDir && snapshotStillCurrent('customEmojiDir', readAt)) {
         await applyEmojiDir(s.customEmojiDir);
       }
       if (disposed) {
@@ -246,8 +323,9 @@ export default function App() {
       });
     return () => {
       disposed = true;
+      unlistenSettings?.();
     };
-  }, [openTree, openLocation, applyEmojiDir]);
+  }, [openTree, openLocation, applyEmojiDir, applySettingChange]);
 
   /* ---- The restored session (TASK-12.7) -------------------------------------
      **A predicate, not a call site.** The rule is that a window says what it
@@ -463,7 +541,7 @@ export default function App() {
       const onMove = (ev: MouseEvent) => {
         const dx = ev.clientX - startX;
         const raw = explorerSide === 'left' ? startW + dx : startW - dx;
-        setExplorerWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, raw)));
+        setExplorerWidth(clampWidth(raw));
       };
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);

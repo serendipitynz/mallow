@@ -6,9 +6,10 @@ import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { setMarkdownPreviewActive } from '../lib/markdown-preview';
 import { renderMermaid } from '../lib/mermaid';
-import { readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
+import { onOutlineOpenChange, readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { notifyRenderSettled } from '../lib/render-signal';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
+import { broadcastSetting } from '../lib/settings-sync';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
 import { SourceView } from './SourceView';
@@ -17,7 +18,7 @@ export function MarkdownView({ source }: { source: string }) {
   const t = useT();
   const [result, setResult] = useState<RenderResult | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const [outlineOpen, setOutlineOpen] = useState<boolean>(readOutlineOpen);
+  const outlineOpen = useSyncExternalStore(onOutlineOpenChange, readOutlineOpen);
   const [mode, setMode] = useState<'preview' | 'source'>('preview');
   const scrollRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -168,11 +169,11 @@ export function MarkdownView({ source }: { source: string }) {
   const showOutline = mode === 'preview' && hasOutline && outlineOpen;
 
   function toggleOutline() {
-    setOutlineOpen((v) => {
-      const next = !v;
-      writeOutlineOpen(next);
-      return next;
-    });
+    const next = !outlineOpen;
+    writeOutlineOpen(next);
+    // The outline preference is app-wide — it is already one preference across
+    // the views that have one — so the windows already open have to follow.
+    broadcastSetting({ key: 'outlineOpen', value: next });
   }
 
   return (

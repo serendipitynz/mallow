@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useT } from '../lib/i18n';
-import { getTheme, setTheme, THEMES, type ThemeId } from '../lib/theme';
+import { broadcastSetting } from '../lib/settings-sync';
+import { getTheme, onThemeIdChange, setTheme, THEMES, type ThemeId } from '../lib/theme';
 import { MoonIcon, SunIcon, SunMoonIcon } from './icons';
 
 // Proper-noun palette names are not translated.
@@ -23,7 +24,10 @@ function glyphFor(id: ThemeId) {
 
 export function ThemePicker() {
   const t = useT();
-  const [current, setCurrent] = useState<ThemeId>(() => getTheme());
+  // Subscribed rather than held locally, because this window is not the only
+  // thing that changes the theme any more: another window's change arrives
+  // through `lib/settings-sync` and lands on `<html>` via `applyTheme`.
+  const current = useSyncExternalStore(onThemeIdChange, getTheme);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +46,10 @@ export function ThemePicker() {
 
   function pick(id: ThemeId) {
     setTheme(id);
-    setCurrent(id);
+    // The theme is app-wide (TASK-12 puts a per-window one out of scope), so the
+    // windows already open have to follow. Sent from here rather than from
+    // `setTheme` so that `lib/theme` keeps no dependency on the Tauri layer.
+    broadcastSetting({ key: 'theme', value: id });
     setOpen(false);
   }
 

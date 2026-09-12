@@ -66,7 +66,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   emoji folder →
   shortcode table), `heading` (the `Heading` type, the injected lookup root and the
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
-  (plugin-store), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
+  (plugin-store), `settings-sync` (one changed preference reaching every window),
+  `outline-pref` (whether the outline is open — one preference across the views
+  that have one, and across windows), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
@@ -126,6 +128,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `open_restored_windows` creates one window per entry in saved order; `init()`
   is a plugin whose position between store and window-state is load-bearing (see
   the gotcha below). The pure functions are unit-tested with no app handle.
+- `settings.rs` — `broadcast_setting`, the relay that carries one window's
+  changed preference to every window. **It owns no setting value** — `recent.rs`
+  and `session.rs` are what own keys in settings.json — and the change it relays
+  is opaque JSON, so the list of preferences is not written a second time here.
+  See the gotcha below for why a broadcast is right in this one place and why the
+  origin label, not the emit, is what keeps a window off its own update.
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
@@ -992,6 +1000,81 @@ hold rather than as an exhaustive style guide.
   testable without a GUI — a probe handle reports its own drop, which is what a
   stopped watch looks like from the registry's side, and a `RecommendedWatcher`
   cannot report that it was dropped.
+- **A preference is app-wide, and the broadcast that makes it so is the one
+  `emit` in this app that is deliberately unfiltered.** `settings.rs`'s
+  `broadcast_setting` re-emits `settings:change` to every window, which is the
+  opposite decision from `fs:change`'s and for the opposite reason: two windows
+  must not share a watch, and every window must share a theme (TASK-12 puts a
+  per-window theme and language out of scope). **The originating window is kept
+  out by the stamp each change carries, not by narrowing the emit** — the
+  frontend listens on the default `Any`, which matches a filtered emit as
+  readily as an unfiltered one, so `emit_to` per window would isolate nothing;
+  a window records a stamp before applying its own change, so `changeToApply` in
+  `lib/settings-sync` meets it again as not newer. **Not the `storage` event**: each window is
+  its own WebView, and cross-WebView storage notification is not something to
+  rely on across all three engines.
+  **Every propagated preference has two halves, and the receiving window takes
+  the persist-free one**: `applyTheme` beside `setTheme`, `applyLang` beside
+  `setLang`, `applyEmojiDir` beside the persisting path. Every window shares one
+  WebView data store and one settings.json, so the value is already written by
+  the time the event arrives — which is also why a window created afterwards
+  comes up correct with no propagation at all. Going through the persisting
+  setter instead would write a second time **and** send an echo back out.
+  **`saveSetting` sends its own broadcast**, so the store-backed preferences
+  (explorer width and side, the custom emoji folder, the launch update check)
+  need nothing at their call sites; theme, language and the outline toggle are
+  sent from `ThemePicker`, `SettingsModal` and the two views instead, which is
+  what keeps `lib/theme`, `lib/i18n` and `lib/outline-pref` free of the Tauri
+  layer. **The store half of `SettingChange` is derived from `Settings`** rather
+  than listed a second time, so a preference added there makes the switch in
+  `App` non-exhaustive until it is handled — a setting that broadcasts to
+  windows that ignore it is worse than one that does not broadcast. A change can
+  carry `null`, which is a preference deleted from the store, and the receiver
+  lands on the value a window with nothing stored would show.
+  **`lib/outline-pref` is a store rather than two `useState`s** for the reason
+  `ThemePicker` subscribes: `MarkdownView` and `HtmlView` each held their own
+  copy, and one preference across the views has to mean one across the windows
+  too. Its value is cached because `useSyncExternalStore` calls the getter on
+  every render, and an unreachable localStorage would otherwise throw per render
+  **and** answer the stored default rather than what was just applied.
+  **Changes are ordered by a stamp, and that is what makes the windows
+  converge.** Each window records what it last applied per key and ignores
+  anything not newer (`supersedes` in `lib/settings-sync`); without it, two
+  windows changing one preference close together each apply their own change and
+  then the other's in arrival order, so the window that changed it last can
+  finish on the older value. **That does not need human precision**, which is
+  where the first reading of it was wrong: a broadcast is not sent when the
+  reader clicks — the custom emoji folder is sent when its **load** finishes,
+  a directory scan away from the click — so two changes can be stamped far apart
+  and land together. The stamp is `Date.now()` rather than a counter minted in
+  Rust, because it has to exist *before* the window applies the change to itself
+  and a counter only comes back after a round trip, leaving a window unable to
+  judge what arrives inside that trip; `origin` is still Rust's, so no window can
+  claim another's label. **The label breaks a same-millisecond tie**, arbitrarily
+  but identically in every window, which is the property convergence rests on. **A wall clock
+  stepped backwards is not a one-change problem**, which is why the mint takes
+  the maximum of the clock and one past what the window already knows: stamped
+  from the clock alone, every change that window makes until real time catches up
+  falls below what its peers hold — refused by all of them, applied locally by
+  it, divergent for the length of the step.
+  **A snapshot loses every same-millisecond tie**, carrying the empty origin
+  rather than the window's label: a read and a write stamped in the same
+  millisecond cannot be ordered by time, and the write is the one carrying an
+  intention.
+  **`saveSetting` stamps before the store write, not after it** — the caller has
+  already applied the value, so a change broadcast during the write would
+  otherwise be judged the newer of the two, applied here, and left standing when
+  this window's own later stamp was recorded without its value being re-applied.
+  **The same ordering covers the mount-time read**, which is why the listener is
+  registered *before* `loadSettings` is issued rather than in an effect beside
+  it: a change broadcast in between would reach a window listening for nothing,
+  and one applied while the read was in flight would be overwritten by the answer
+  it beat. `snapshotStillCurrent` stamps the snapshot with the moment the read
+  was issued and runs it through the same comparison. **`ThemePicker` subscribes rather than
+  holding the current id**, because `onThemeChange` cannot stand in for it:
+  Solarized Light to Light repaints without changing the resolved light/dark
+  mode, so `onThemeIdChange` is a second subscription rather than a widening of
+  the first.
 - **The capability window list is the glob `w*`, and nothing is labelled `main`
   any more.** `capabilities/default.json` gates plugin APIs by window label, so a
   window labelled outside that list loses `store:default` (settings do not
@@ -1157,7 +1240,9 @@ hold rather than as an exhaustive style guide.
   `markdown-preview`, `print`,
   `pdf-export` and `new-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
-  together, and that New Window has no gate to close), and `custom-emoji`
+  together, and that New Window has no gate to close), `settings-sync` (the
+  ordering alone — the listener and the emit are Tauri's), `outline-pref`
+  (its cache and its notification), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
