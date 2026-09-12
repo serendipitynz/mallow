@@ -20,7 +20,7 @@ import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
-import { onSettingChange } from './lib/settings-sync';
+import { onSettingChange, type SettingChange, snapshotStillCurrent } from './lib/settings-sync';
 import {
   allowMediaDir,
   openWindow,
@@ -195,9 +195,58 @@ export default function App() {
     void applyEmojiDir(null, true);
   }, [applyEmojiDir]);
 
+  /* ---- Preferences changed in another window (TASK-12.8) --------------------
+     Every preference is app-wide — TASK-12 puts per-window theme and language
+     out of scope — and the settings modal opens in any window, so a change made
+     anywhere has to land here. `lib/settings-sync` holds why this is the one
+     place a broadcast is correct, and how two changes made close together are
+     ordered.
+
+     **Each applier is the persist-free half on purpose.** Writing the value
+     again would be this window re-doing the work of the window that changed it
+     — one WebView data store and one settings.json are shared — and going
+     through the persisting setters would send an echo back out. */
+  const applySettingChange = useCallback(
+    (change: SettingChange) => {
+      switch (change.key) {
+        case 'theme':
+          applyTheme(change.value);
+          break;
+        case 'lang':
+          applyLang(change.value);
+          break;
+        case 'outlineOpen':
+          applyOutlineOpen(change.value);
+          break;
+        case 'explorerSide':
+          setExplorerSide(change.value ?? DEFAULT_SIDE);
+          break;
+        case 'explorerWidth':
+          setExplorerWidth(clampWidth(change.value ?? DEFAULT_WIDTH));
+          break;
+        case 'customEmojiDir':
+          void applyEmojiDir(change.value);
+          break;
+        case 'autoCheckUpdates':
+          setAutoCheckUpdates(change.value ?? DEFAULT_AUTO_CHECK_UPDATES);
+          break;
+        default: {
+          // A preference added to `Settings` arrives here as a key this switch
+          // does not handle and stops the build, which is the point: a setting
+          // that propagates to a window that ignores it is worse than one that
+          // does not propagate at all.
+          const unhandled: never = change;
+          console.error('Unhandled setting change', unhandled);
+        }
+      }
+    },
+    [applyLang, applyEmojiDir],
+  );
+
   // ---- Session restore + settings (on launch) -------------------------------
   useEffect(() => {
     let disposed = false;
+    let unlistenSettings: (() => void) | undefined;
 
     /* An unattended build opens the document its command line named instead, and
        reads no settings at all — the store it would read is the installed app's,
@@ -212,20 +261,35 @@ export default function App() {
     }
 
     (async () => {
+      /* **Registered before the settings are read, not beside it.** Both are
+         asynchronous, so a change broadcast between the read and the
+         registration would reach a window that is listening for nothing —
+         and a broadcast is not sent when the reader clicks: the custom emoji
+         folder is sent when its load finishes, which can be a directory scan
+         after the window that opened this one was asked for. Ordering the two
+         closes the gap in one direction; `snapshotStillCurrent` closes the
+         other, where a change applied while the read was in flight would be
+         overwritten by the answer it beat. */
+      unlistenSettings = await onSettingChange(applySettingChange);
+      if (disposed) {
+        unlistenSettings();
+        return;
+      }
+      const readAt = Date.now();
       const s = await loadSettings();
       if (disposed) {
         return;
       }
-      if (s.explorerWidth) {
+      if (s.explorerWidth && snapshotStillCurrent('explorerWidth', readAt)) {
         setExplorerWidth(clampWidth(s.explorerWidth));
       }
-      if (s.explorerSide) {
+      if (s.explorerSide && snapshotStillCurrent('explorerSide', readAt)) {
         setExplorerSide(s.explorerSide);
       }
-      if (s.autoCheckUpdates === false) {
+      if (s.autoCheckUpdates === false && snapshotStillCurrent('autoCheckUpdates', readAt)) {
         setAutoCheckUpdates(false);
       }
-      if (s.customEmojiDir) {
+      if (s.customEmojiDir && snapshotStillCurrent('customEmojiDir', readAt)) {
         await applyEmojiDir(s.customEmojiDir);
       }
       if (disposed) {
@@ -259,8 +323,9 @@ export default function App() {
       });
     return () => {
       disposed = true;
+      unlistenSettings?.();
     };
-  }, [openTree, openLocation, applyEmojiDir]);
+  }, [openTree, openLocation, applyEmojiDir, applySettingChange]);
 
   /* ---- The restored session (TASK-12.7) -------------------------------------
      **A predicate, not a call site.** The rule is that a window says what it
@@ -394,71 +459,6 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  /* ---- Preferences changed in another window (TASK-12.8) --------------------
-     Every preference is app-wide — TASK-12 puts per-window theme and language
-     out of scope — and the settings modal opens in any window, so a change made
-     anywhere has to land here. `lib/settings-sync` holds why this is the one
-     place a broadcast is correct and how the originating window is kept out.
-
-     **Each applier is the persist-free half on purpose.** Writing the value
-     again would be this window re-doing the work of the window that changed it
-     — one WebView data store and one settings.json are shared — and going
-     through the persisting setters would send an echo back out. */
-  useEffect(() => {
-    // Nothing broadcasts in an unattended build: it has one window, and it reads
-    // no settings to change.
-    if (UNATTENDED) {
-      return;
-    }
-    let unlisten: (() => void) | undefined;
-    let disposed = false;
-    onSettingChange((change) => {
-      switch (change.key) {
-        case 'theme':
-          applyTheme(change.value);
-          break;
-        case 'lang':
-          applyLang(change.value);
-          break;
-        case 'explorerSide':
-          setExplorerSide(change.value ?? DEFAULT_SIDE);
-          break;
-        case 'explorerWidth':
-          setExplorerWidth(clampWidth(change.value ?? DEFAULT_WIDTH));
-          break;
-        case 'customEmojiDir':
-          void applyEmojiDir(change.value);
-          break;
-        case 'autoCheckUpdates':
-          setAutoCheckUpdates(change.value ?? DEFAULT_AUTO_CHECK_UPDATES);
-          break;
-        case 'outlineOpen':
-          applyOutlineOpen(change.value);
-          break;
-        default: {
-          // A preference added to `Settings` arrives here as a key this switch
-          // does not handle and stops the build, which is the point: a setting
-          // that propagates to a window that ignores it is worse than one that
-          // does not propagate at all.
-          const unhandled: never = change;
-          console.error('Unhandled setting change', unhandled);
-        }
-      }
-    })
-      .then((fn) => {
-        if (disposed) {
-          fn();
-        } else {
-          unlisten = fn;
-        }
-      })
-      .catch((e) => console.error('Failed to listen for settings changes', e));
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, [applyLang, applyEmojiDir]);
 
   /* ---- Print (decision-13) --------------------------------------------------
      Registered for the life of the app and **always** consuming the chord, even

@@ -16,7 +16,17 @@
  * decision from `lib/watch`'s and for the opposite reason: there is nothing to
  * narrow. `Any` is not what delivers a broadcast — an unfiltered `emit` reaches
  * every listener whatever its target — so what keeps the originating window out
- * is the label Rust stamps on the change, read by `changeFromOtherWindow`.
+ * is the stamp each change carries, read by `changeToApply`.
+ *
+ * **Changes are ordered by that stamp, and the ordering is what makes the
+ * windows converge.** Without it two windows that change one preference close
+ * together end on different values: each applies its own change locally and
+ * then the other's, in whichever order the two events happen to arrive, so the
+ * window that changed it last can finish on the older value. That is reachable
+ * without any human precision, because a broadcast is not sent when the reader
+ * clicks — the custom emoji folder is sent when its **load** finishes, which is
+ * a directory scan away from the click. So every window records what it last
+ * applied per key and ignores anything not newer.
  */
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -45,35 +55,105 @@ export type SettingChange =
   | { key: 'lang'; value: Lang }
   | { key: 'outlineOpen'; value: boolean };
 
-/** What a window receives: the change plus the label of the window that made it. */
-export interface SettingBroadcast {
+/** When a change was made and by which window.
+ *
+ *  `Date.now()` rather than a counter minted in Rust: the stamp has to exist
+ *  before the window applies the change to itself, and a counter only comes back
+ *  after a round trip. One system clock serves every window here, so the numbers
+ *  are comparable across them — **a wall clock stepped backwards can misorder one
+ *  change**, which the next change to that preference corrects, and which no
+ *  counter reachable synchronously would avoid. */
+export interface Stamp {
+  /** Epoch milliseconds, taken by the window that made the change. */
+  at: number;
+  /** The window's label, stamped by Rust so that no window can claim another's. */
   origin: string;
+}
+
+/** What a window receives: the change and when it was made. */
+export interface SettingBroadcast {
+  stamp: Stamp;
   change: SettingChange;
 }
 
 const EVENT = 'settings:change';
 
-/** The change to apply, or `null` when this window is the one that made it.
+/** What this window last applied for each preference. */
+const applied = new Map<SettingChange['key'], Stamp>();
+
+/** Whether `incoming` is newer than what a window has already applied.
  *
- *  The guard against a window fighting its own update, kept out of the effect
- *  that listens so that it can be tested at all. */
-export function changeFromOtherWindow(broadcast: SettingBroadcast, self: string): SettingChange | null {
-  return broadcast.origin === self ? null : broadcast.change;
+ *  **The label breaks a tie, arbitrarily but identically in every window**,
+ *  which is the property convergence rests on: two changes stamped in the same
+ *  millisecond must not be resolved one way here and the other way there.
+ *
+ *  An identical stamp does not supersede, which is how a window declines its own
+ *  broadcast coming back — it recorded that stamp before it applied the change
+ *  to itself, so there is nothing left to do with it. */
+export function supersedes(incoming: Stamp, last: Stamp | undefined): boolean {
+  if (!last) {
+    return true;
+  }
+  if (incoming.at !== last.at) {
+    return incoming.at > last.at;
+  }
+  return incoming.origin > last.origin;
 }
 
-/** Tell every other window that a preference changed. Fire-and-forget: the
- *  change is already applied and persisted here, so a failed emit costs the
- *  other windows a live update and nothing else. */
+/** The change to apply, or `null` when this window already holds something at
+ *  least as new for that key. Kept out of the effect that listens so that it can
+ *  be tested at all. */
+export function changeToApply(broadcast: SettingBroadcast, last: Stamp | undefined): SettingChange | null {
+  return supersedes(broadcast.stamp, last) ? broadcast.change : null;
+}
+
+/** Whether the stored value a read issued at `at` returned is still the newest
+ *  thing this window knows for `key`, recording the read when it is.
+ *
+ *  A window applies its settings snapshot through this rather than straight,
+ *  because the read is asynchronous: a change broadcast while it was in flight
+ *  has already been applied, and the snapshot — taken before that change was
+ *  written — would put the window back on the old value. Stamping the snapshot
+ *  with the moment the read was *issued* is what makes it comparable, since
+ *  anything written earlier than that is in the answer the read returns. */
+export function snapshotStillCurrent(key: SettingChange['key'], at: number): boolean {
+  return noteApplied(key, { at, origin: selfLabel() });
+}
+
+function selfLabel(): string {
+  return getCurrentWebviewWindow().label;
+}
+
+/** Record a stamp as this window's newest for `key`, answering whether it was. */
+function noteApplied(key: SettingChange['key'], stamp: Stamp): boolean {
+  if (!supersedes(stamp, applied.get(key))) {
+    return false;
+  }
+  applied.set(key, stamp);
+  return true;
+}
+
+/** Tell every other window that a preference changed.
+ *
+ *  **The stamp is taken before anything is awaited**, because the caller has
+ *  already applied the change to itself: a stamp minted after a round trip
+ *  would leave this window unable to judge a change that arrives inside that
+ *  trip, which is the divergence this ordering exists to close.
+ *
+ *  Fire-and-forget past that point — the change is applied and persisted here,
+ *  so a failed emit costs the other windows a live update and nothing else. */
 export function broadcastSetting(change: SettingChange): void {
-  void invoke('broadcast_setting', { change }).catch((e) => console.error('Failed to broadcast a setting', e));
+  const at = Date.now();
+  noteApplied(change.key, { at, origin: selfLabel() });
+  void invoke('broadcast_setting', { change, at }).catch((e) => console.error('Failed to broadcast a setting', e));
 }
 
 /** Subscribe to preferences changed in another window. */
 export function onSettingChange(apply: (change: SettingChange) => void): Promise<UnlistenFn> {
-  const self = getCurrentWebviewWindow().label;
   return listen<SettingBroadcast>(EVENT, (event) => {
-    const change = changeFromOtherWindow(event.payload, self);
+    const change = changeToApply(event.payload, applied.get(event.payload.change.key));
     if (change) {
+      applied.set(change.key, event.payload.stamp);
       apply(change);
     }
   });

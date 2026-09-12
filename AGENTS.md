@@ -1006,11 +1006,11 @@ hold rather than as an exhaustive style guide.
   opposite decision from `fs:change`'s and for the opposite reason: two windows
   must not share a watch, and every window must share a theme (TASK-12 puts a
   per-window theme and language out of scope). **The originating window is kept
-  out by a label, not by narrowing the emit** — the frontend listens on the
-  default `Any`, which matches a filtered emit as readily as an unfiltered one,
-  so `emit_to` per window would isolate nothing; Rust stamps `origin` from the
-  calling window and `changeFromOtherWindow` in `lib/settings-sync` is what
-  withholds a window its own change. **Not the `storage` event**: each window is
+  out by the stamp each change carries, not by narrowing the emit** — the
+  frontend listens on the default `Any`, which matches a filtered emit as
+  readily as an unfiltered one, so `emit_to` per window would isolate nothing;
+  a window records a stamp before applying its own change, so `changeToApply` in
+  `lib/settings-sync` meets it again as not newer. **Not the `storage` event**: each window is
   its own WebView, and cross-WebView storage notification is not something to
   rely on across all three engines.
   **Every propagated preference has two halves, and the receiving window takes
@@ -1037,12 +1037,29 @@ hold rather than as an exhaustive style guide.
   too. Its value is cached because `useSyncExternalStore` calls the getter on
   every render, and an unreachable localStorage would otherwise throw per render
   **and** answer the stored default rather than what was just applied.
-  **What is deliberately not ordered**: two windows changing the same preference
-  inside one IPC round trip can end on different values, since nothing sequences
-  the changes and each window simply applies what arrives. Reaching that needs
-  two pointer inputs closer together than focusing the second window allows, so
-  it is accepted rather than ordered — and the next launch resolves it, both
-  windows reading the one stored value. **`ThemePicker` subscribes rather than
+  **Changes are ordered by a stamp, and that is what makes the windows
+  converge.** Each window records what it last applied per key and ignores
+  anything not newer (`supersedes` in `lib/settings-sync`); without it, two
+  windows changing one preference close together each apply their own change and
+  then the other's in arrival order, so the window that changed it last can
+  finish on the older value. **That does not need human precision**, which is
+  where the first reading of it was wrong: a broadcast is not sent when the
+  reader clicks — the custom emoji folder is sent when its **load** finishes,
+  a directory scan away from the click — so two changes can be stamped far apart
+  and land together. The stamp is `Date.now()` rather than a counter minted in
+  Rust, because it has to exist *before* the window applies the change to itself
+  and a counter only comes back after a round trip, leaving a window unable to
+  judge what arrives inside that trip; `origin` is still Rust's, so no window can
+  claim another's label. **The label breaks a same-millisecond tie**, arbitrarily
+  but identically in every window, which is the property convergence rests on. A
+  wall clock stepped backwards can misorder one change, which the next change to
+  that preference corrects.
+  **The same ordering covers the mount-time read**, which is why the listener is
+  registered *before* `loadSettings` is issued rather than in an effect beside
+  it: a change broadcast in between would reach a window listening for nothing,
+  and one applied while the read was in flight would be overwritten by the answer
+  it beat. `snapshotStillCurrent` stamps the snapshot with the moment the read
+  was issued and runs it through the same comparison. **`ThemePicker` subscribes rather than
   holding the current id**, because `onThemeChange` cannot stand in for it:
   Solarized Light to Light repaints without changing the resolved light/dark
   mode, so `onThemeIdChange` is a second subscription rather than a widening of
@@ -1213,7 +1230,7 @@ hold rather than as an exhaustive style guide.
   `pdf-export` and `new-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), `settings-sync` (the
-  origin guard alone — the listener and the emit are Tauri's), `outline-pref`
+  ordering alone — the listener and the emit are Tauri's), `outline-pref`
   (its cache and its notification), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
