@@ -10,6 +10,7 @@ import { useUpdater } from './hooks/useUpdater';
 import { useWindowEvent } from './hooks/useWindowEvent';
 import { UNATTENDED } from './lib/build-flags';
 import { matchesCmdOrCtrl, onMacPlatform } from './lib/chord';
+import { createCloseWindowChordHandler } from './lib/close-window';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
 import { fileEntryFromPath } from './lib/file';
 import { useI18n, useT } from './lib/i18n';
@@ -24,6 +25,7 @@ import { loadSettings, saveSetting } from './lib/settings';
 import { onSettingChange, type SettingChange, snapshotStillCurrent } from './lib/settings-sync';
 import {
   allowMediaDir,
+  closeWindow,
   openWindow,
   pathExists,
   pickFolder,
@@ -560,6 +562,22 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [newWindow]);
+
+  /* ---- Close Window (TASK-12.4) ---------------------------------------------
+     Registered and consumed on the same terms as the other three, with no gate.
+     **Unlike them it is not a second route to the menu item but the only working
+     one off macOS**: measured on Windows 2026-09-12, `Ctrl+W` reached nothing
+     while the menu item itself closed the window, so muda's accelerator does not
+     arrive at a WebView2-focused window. macOS never reaches this — the
+     predefined item takes the key equivalent first. */
+  useEffect(() => {
+    const onKey = createCloseWindowChordHandler({
+      onMac: onMacPlatform(),
+      closeWindow: () => void closeWindow().catch((e) => console.error('Failed to close the window', e)),
+    });
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // ---- Explorer resize ------------------------------------------------------
   const [dragging, setDragging] = useState(false);

@@ -49,6 +49,15 @@ export function recordRecent(folder: string): Promise<void> {
   return invoke('record_recent', { path: folder });
 }
 
+/** Close this window.
+ *
+ *  Needs `core:window:allow-close` in the capability: the core window default set
+ *  carries the readers (`allow-title`, `allow-is-focused`, …) and none of the
+ *  mutators, which is why `allow-set-title` is listed there too. */
+export function closeWindow(): Promise<void> {
+  return getCurrentWindow().close();
+}
+
 /** Tell Rust whether this window's active view is a markdown preview, so the
  *  `Print…` and `Export as PDF…` menu items can show it.
  *
