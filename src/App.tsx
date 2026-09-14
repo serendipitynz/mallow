@@ -25,7 +25,9 @@ import { loadSettings, saveSetting } from './lib/settings';
 import { onSettingChange, type SettingChange, snapshotStillCurrent } from './lib/settings-sync';
 import {
   allowMediaDir,
+  chooseRecent,
   closeWindow,
+  listRecent,
   openWindow,
   pathExists,
   pickFolder,
@@ -73,6 +75,11 @@ export default function App() {
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(DEFAULT_AUTO_CHECK_UPDATES);
   const [restoreSettled, setRestoreSettled] = useState(false);
+  const [recentFolders, setRecentFolders] = useState<string[]>([]);
+  /** What the reader is told about an action that did not do what it looked
+   *  like it would. One slot, because only one thing can have just happened —
+   *  the next notice replaces it rather than stacking. */
+  const [notice, setNotice] = useState<string | null>(null);
   const updater = useUpdater();
 
   const selectedRef = useRef<FileEntry | null>(null);
@@ -141,9 +148,73 @@ export default function App() {
     await openLocation(dir, null, () => false);
   }, [openLocation]);
 
+  /* ---- Open Recent (TASK-12.5) ----------------------------------------------
+     The in-app list and the native submenu are two entries onto one decision,
+     which is Rust's (`open_recent.rs`): it is where the folder's existence is
+     re-checked, where a window already showing it is found, and where a new
+     window is built. What comes back here is the one branch that cannot be done
+     there — replacing this window's folder, since the tree, the media grant and
+     the watch are all state that lives on this side. */
+
+  const refreshRecentFolders = useCallback(() => {
+    void listRecent()
+      .then(setRecentFolders)
+      .catch((e) => console.error('Failed to read the recent folders', e));
+  }, []);
+
+  /** Read while this window has no folder, which is the only state the in-app
+   *  list is shown in — and re-read when the folder goes away again, so a list
+   *  built before this window opened anything is not what the reader comes back
+   *  to. The prune that `chooseRecent` may have done is picked up the same way. */
+  useEffect(() => {
+    if (!tree.rootDir) {
+      refreshRecentFolders();
+    }
+  }, [tree.rootDir, refreshRecentFolders]);
+
+  const replaceFolder = useCallback(
+    (folder: string) => {
+      setNotice(null);
+      setSelected(null);
+      void openLocation(folder, null, () => false);
+    },
+    [openLocation],
+  );
+
+  /** The entry the reader chose is no longer in the list. **Reported rather than
+   *  opened as an empty tree** — the submenu prunes at build time, so the folder
+   *  it names went away between the list being built and the entry being chosen,
+   *  and the reader has no other way to find that out.
+   *
+   *  `gone` picks the sentence. The same branch answers a folder deleted under
+   *  the reader and a list emptied in another window while this one was on
+   *  screen, and only one of the two is ever true. */
+  const reportMissingRecent = useCallback(
+    (folder: string, gone: boolean) => {
+      setNotice(t(gone ? 'recentFolderGone' : 'recentFolderUnlisted', { folder }));
+      refreshRecentFolders();
+    },
+    [t, refreshRecentFolders],
+  );
+
+  const chooseRecentFolder = useCallback(
+    (folder: string, newWindow: boolean) => {
+      void chooseRecent(folder, newWindow)
+        .then((choice) => {
+          if (choice.kind === 'replace') {
+            replaceFolder(folder);
+          } else if (choice.kind === 'missing') {
+            reportMissingRecent(folder, choice.gone);
+          }
+        })
+        .catch((e) => console.error('Failed to open a recent folder', e));
+    },
+    [replaceFolder, reportMissingRecent],
+  );
+
   /** New Window opens empty rather than duplicating this window's folder: a
    *  window opened to compare against something is opened on a different folder,
-   *  and the recent-folder list is one click away once TASK-12.3 has it. */
+   *  and the recent list it opens with is one click from any of them. */
   const newWindow = useCallback(() => {
     void openWindow().catch((e) => console.error('Failed to open a window', e));
   }, []);
@@ -451,17 +522,26 @@ export default function App() {
   useWindowEvent('menu:open', () => void openFolder());
   useWindowEvent('menu:print', () => void printWindow().catch((err) => console.error('print failed', err)));
 
-  /** Open Recent, without the modifier: the chosen folder replaces this window's.
+  /** Open Recent resolved to replacing this window's folder, which is what the
+   *  menu sends when the new-window modifier was not held.
+   *
+   *  **The other three answers never arrive here**, because they are carried out
+   *  where they were decided: `open_recent.rs` focuses a window already showing
+   *  the folder, opens one where none does, and prunes an entry that has gone.
    *
    *  Nothing calls `report_window_content` here, and that is the rule rather than
    *  an omission — reporting is a predicate over the displayed folder and
    *  selection, which the effect above satisfies, so replacing the tree's root
-   *  reports it. TASK-12.5 adds the modifier branch, which opens a window
-   *  instead and leaves this one untouched. */
-  useWindowEvent<string>('menu:open-recent', (folder) => {
-    setSelected(null);
-    void openLocation(folder, null, () => false);
-  });
+   *  reports it. */
+  useWindowEvent<string>('menu:open-recent', replaceFolder);
+
+  /** Open Recent, and the entry was gone by the time it was chosen. The submenu
+   *  prunes at build time, so this is the race alone — and it reaches this window
+   *  rather than being swallowed in Rust because the reader is owed an answer to
+   *  a click that opened nothing. */
+  useWindowEvent<{ folder: string; gone: boolean }>('menu:recent-missing', ({ folder, gone }) =>
+    reportMissingRecent(folder, gone),
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -613,7 +693,14 @@ export default function App() {
   }, []);
 
   const explorer = (
-    <Explorer tree={tree} selectedPath={selected?.path ?? null} onSelect={selectFile} onOpenFolder={openFolder} />
+    <Explorer
+      tree={tree}
+      selectedPath={selected?.path ?? null}
+      onSelect={selectFile}
+      onOpenFolder={openFolder}
+      recentFolders={recentFolders}
+      onChooseRecent={chooseRecentFolder}
+    />
   );
   const resizer = (
     // A drag-only splitter: no keyboard path today, so a tab stop would be focusable and inert,
@@ -634,6 +721,17 @@ export default function App() {
   return (
     <div className="app">
       <Toolbar selected={selected} onOpenFolder={openFolder} />
+      {/* Under the toolbar rather than inside the explorer: what it reports can
+          be a menu choice made while a folder is open, which the explorer's empty
+          state is not on screen for. */}
+      {notice && (
+        <div className="app__notice" role="status">
+          <span>{notice}</span>
+          <button type="button" className="app__notice-close" onClick={() => setNotice(null)}>
+            {t('dismiss')}
+          </button>
+        </div>
+      )}
       <div
         className="app__body"
         data-side={explorerSide}

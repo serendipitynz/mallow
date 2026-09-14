@@ -143,6 +143,43 @@ export function openWindow(location?: InitialLocation): Promise<string> {
   return invoke<string>('open_window', { location: location ?? null, label: null });
 }
 
+/** What choosing a recent folder resolved to. The tagged shape is `ReadError`'s,
+ *  for the reason that one is tagged: a caller has to be forced through the case
+ *  it would otherwise forget, which here is the folder that went away. */
+export type RecentChoice =
+  | { kind: 'missing'; gone: boolean }
+  | { kind: 'replace' }
+  | { kind: 'focused'; label: string }
+  | { kind: 'opened' };
+
+/** Choose a recent folder, with `newWindow` saying whether the reader held the
+ *  new-window modifier.
+ *
+ *  **The same decision the Open Recent submenu takes**, reached from the in-app
+ *  list instead: Rust checks the folder still exists, focuses a window already
+ *  showing it rather than opening a duplicate, and opens one otherwise. Only
+ *  `replace` comes back for this window to act on, because the tree, the media
+ *  grant and the watch are all state that lives here.
+ *
+ *  `missing` carries `gone`, which separates the folder having been removed from
+ *  disk from the list having been emptied while this one was on screen. The
+ *  reader is told one sentence and only one of the two is ever true. */
+export function chooseRecent(folder: string, newWindow: boolean): Promise<RecentChoice> {
+  return invoke<RecentChoice>('choose_recent', { folder, newWindow });
+}
+
+/** The recent folders, newest first. Not pruned — `pruned_folders` touches the
+ *  filesystem and runs where the list is about to be shown, which for the native
+ *  submenu is its build and for the in-app list is `chooseRecent`. */
+export function listRecent(): Promise<string[]> {
+  return invoke<string[]>('list_recent');
+}
+
+/** Empty the recent list, and rebuild the submenu that reads it. */
+export function clearRecent(): Promise<void> {
+  return invoke<void>('clear_recent');
+}
+
 /** Say which folder this window now shows and which file is selected in it, so
  *  the restored session can bring this window back showing the same thing.
  *
