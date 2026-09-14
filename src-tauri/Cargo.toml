@@ -45,6 +45,12 @@ notify = "8"
 # needed. Linux needs webkit2gtk's print operation and gtk's `PrintSettings`,
 # which webkit2gtk takes but does not re-export.
 #
+# Reading the new-window modifier (TASK-12.5) joined these rather than adding a
+# section of its own, and cost one crate instead of three: macOS asks AppKit,
+# which PDF export already brought, for one more class (`NSEvent`), and Linux
+# asks GDK through the `gtk` already here. Only Windows needed something new —
+# `GetKeyState` lives in neither webview2-com nor windows-core.
+#
 # All of them are already in the dependency graph through tauri and wry, so what
 # this adds is `THIRD-PARTY-NOTICES.md` entries rather than compilation — but only
 # while the objc2 crates keep `default-features = false`. Their defaults enable
@@ -56,6 +62,7 @@ notify = "8"
 objc2 = { version = "0.6", default-features = false, features = ["std"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = [
   "std",
+  "NSEvent",
   "NSPrintInfo",
   "NSPrintOperation",
   "NSResponder",
@@ -68,6 +75,7 @@ objc2-web-kit = { version = "0.3", default-features = false, features = ["std", 
 [target.'cfg(target_os = "windows")'.dependencies]
 webview2-com = "0.38"
 windows-core = "0.61"
+windows-sys = { version = "0.61", features = ["Win32_UI_Input_KeyboardAndMouse"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"

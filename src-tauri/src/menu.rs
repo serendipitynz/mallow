@@ -325,15 +325,30 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         // **Checked against the list rather than trusted.** The id is the folder
         // path, so an id this build did not put in the submenu would otherwise be
         // opened as one. What the check reads is the same list the submenu was
-        // built from, which is not a mapping to keep in step.
+        // built from, which is not a mapping to keep in step. That check now
+        // lives in `open_recent`, which the in-app list reaches through a command
+        // — one decision behind two entries rather than two that can drift.
+        //
+        // **The modifier is read here and nowhere earlier, because there is
+        // nowhere earlier**: muda's handler slot is a `OnceCell` tauri fills at
+        // `build()`, so the click-time state is unreachable and this asks the OS
+        // what is held now (`crate::modifier`). A build that cannot ask answers
+        // `None`, which is taken as "not held" — the gesture is then carried by
+        // the in-app list alone, which is what keeps it from silently doing
+        // nothing anywhere (TASK-12.5 AC #4).
         MenuAction::OpenRecent(path) => {
-            match crate::recent::pruned_folders(app) {
-                Ok(folders) if folders.iter().any(|folder| folder == &path) => {
-                    emit_focused(app, "menu:open-recent", path);
+            let new_window = crate::modifier::new_window_modifier_held().unwrap_or(false);
+            let spawner = focused_window(app).map(|focused| focused.as_ref().window());
+            match crate::open_recent::act_on_recent(app, &path, new_window, spawner) {
+                crate::open_recent::RecentChoice::Replace => emit_focused(app, "menu:open-recent", path),
+                // The reason travels with the path: the same branch answers a
+                // folder deleted under the reader and a list emptied in another
+                // window, and only one of the two sentences is ever true.
+                crate::open_recent::RecentChoice::Missing { gone } => {
+                    emit_focused(app, "menu:recent-missing", crate::open_recent::MissingRecent { folder: path, gone });
                 }
-                Ok(_) => refresh_recent(app),
-                Err(e) => eprintln!("mallow: a recent folder could not be resolved ({e})"),
-            };
+                crate::open_recent::RecentChoice::Focused { .. } | crate::open_recent::RecentChoice::Opened => {}
+            }
         }
         MenuAction::CloseWindow => {
             if let Some(window) = focused_window(app) {
