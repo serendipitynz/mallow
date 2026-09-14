@@ -3,6 +3,8 @@ use tauri::Manager;
 mod commands;
 mod editors;
 mod menu;
+mod modifier;
+mod open_recent;
 mod pdf;
 mod print;
 mod recent;
@@ -34,6 +36,7 @@ macro_rules! app_handler {
             pdf::write_window_pdf,
             window::open_window,
             window::take_window_init,
+            open_recent::choose_recent,
             recent::record_recent,
             recent::list_recent,
             recent::clear_recent,

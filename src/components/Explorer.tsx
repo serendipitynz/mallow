@@ -3,15 +3,18 @@ import { useT } from '../lib/i18n';
 import { basename } from '../lib/path';
 import type { FileEntry } from '../lib/types';
 import { FileTree } from './FileTree';
+import { RecentFolders } from './RecentFolders';
 
 interface ExplorerProps {
   tree: FileTreeController;
   selectedPath: string | null;
   onSelect: (entry: FileEntry) => void;
   onOpenFolder: () => void;
+  recentFolders: string[];
+  onChooseRecent: (folder: string, newWindow: boolean) => void;
 }
 
-export function Explorer({ tree, selectedPath, onSelect, onOpenFolder }: ExplorerProps) {
+export function Explorer({ tree, selectedPath, onSelect, onOpenFolder, recentFolders, onChooseRecent }: ExplorerProps) {
   const t = useT();
   const { rootDir, rootEntries, rootLoading, rootError } = tree;
   const rootName = rootDir ? basename(rootDir) : null;
@@ -62,6 +65,7 @@ export function Explorer({ tree, selectedPath, onSelect, onOpenFolder }: Explore
             <button type="button" className="btn" onClick={onOpenFolder}>
               {t('openFolder')}
             </button>
+            <RecentFolders folders={recentFolders} onChoose={onChooseRecent} />
           </div>
         )}
         {rootDir && rootLoading && <div className="tree__status">{t('loading')}</div>}

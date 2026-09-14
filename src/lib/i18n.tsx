@@ -45,6 +45,11 @@ const ja: Dict = {
   explorer: 'エクスプローラ',
   noFolderOpen: 'フォルダが開かれていません。',
   noFiles: '表示できるファイルがありません。',
+  recentFolders: '最近開いたフォルダ',
+  recentNewWindowHint: '{modifier} を押しながらクリックすると別のウィンドウで開きます。',
+  recentFolderGone: 'フォルダが見つかりません: {folder}',
+  recentFolderUnlisted: '最近開いたフォルダの一覧から外れています: {folder}',
+  dismiss: '閉じる',
   // viewer
   selectFile: 'ファイルを選択してください',
   mediaUnsupported: 'このファイルはこのプラットフォームでは表示できません。',
@@ -160,6 +165,11 @@ const en: Dict = {
   explorer: 'Explorer',
   noFolderOpen: 'No folder is open.',
   noFiles: 'No files to display.',
+  recentFolders: 'Recent Folders',
+  recentNewWindowHint: 'Hold {modifier} and click to open in another window.',
+  recentFolderGone: 'That folder is no longer there: {folder}',
+  recentFolderUnlisted: 'That folder is no longer in the recent list: {folder}',
+  dismiss: 'Dismiss',
   // viewer
   selectFile: 'Select a file',
   mediaUnsupported: 'This file cannot be displayed on this platform.',

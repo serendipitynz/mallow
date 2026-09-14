@@ -55,7 +55,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
   toggle), ErrorBanner (shared syntax-error banner), MermaidView,
-  MediaView (image/pdf/video via the asset protocol), Outline, Toolbar, OpenWith,
+  MediaView (image/pdf/video via the asset protocol), RecentFolders (the in-app
+  Open Recent list, shown in the explorer's empty state), Outline, Toolbar, OpenWith,
   ThemePicker, SettingsModal, UpdateDialog (target version, consent, progress),
   icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
@@ -100,6 +101,21 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   the configured window and the ones created at runtime go through one path. The
   `fs:change` event goes out with `emit_to` — see the gotcha below, since that
   alone isolates nothing.
+- `modifier.rs` — `new_window_modifier_held`, the one place the new-window
+  modifier is read, per platform behind its own `cfg`: AppKit's class-level
+  `NSEvent.modifierFlags` on macOS, `GetKeyState(VK_CONTROL)` on Windows, GDK's
+  keymap on Linux. **`None` is a build that cannot ask**, which the caller takes
+  as "not held" rather than as a failure. See the gotcha below for what it can
+  and cannot see, which is the whole of TASK-12.5's spike.
+- `open_recent.rs` — `recent_choice`, the pure function that says what choosing a
+  recent folder does, and `act_on_recent` / `choose_recent`, which read the facts
+  it takes and carry the answer out. **One decision behind two entries** — the
+  Open Recent submenu and the in-app list ask the same question and differ only in
+  where the modifier comes from. Four answers: the entry is no longer listed
+  (pruned and reported, carrying *which* of the two reasons applies), replace the
+  asking window's folder, focus a window already showing it, open a window.
+  `Replace` is the only one that goes back to the frontend, because the tree, the
+  media grant and the watch all live there.
 - `window.rs` — `open_window` / `take_window_init`, and the `WindowInitRegistry`
   the pair hands a location through. `open_window(location, label)` builds one
   window by cloning the configured window's own `WindowConfig` and overwriting its
@@ -1126,6 +1142,65 @@ hold rather than as an exhaustive style guide.
   question may not arise there: the accelerator does not arrive at all. The
   handlers are kept regardless, because removing them would re-concede `Ctrl+P` to
   WebView2, which is the measured bug that already shipped once (`lib/print`).
+- **The new-window modifier cannot be read where it was pressed, and the one
+  platform that fails on the delay is the primary one.** Choosing an Open Recent
+  entry with Cmd/Ctrl held opens the folder in a window instead of replacing the
+  focused window's folder. The modifier cannot come from the event —
+  `muda::MenuEvent` carries only the id — and **the click-time state is
+  unreachable rather than unmeasured**: muda's handler slot is a `OnceCell`
+  (muda-0.19.3 `src/lib.rs:490-491`) that tauri fills during `build()`
+  (tauri-2.11.3 `src/app.rs:2349-2352`), so nothing in this process can wrap it or
+  replace it to take a snapshot beside the id. What `modifier.rs` reads is the
+  state **one event-loop turn later**, when the handler runs
+  (`src/app.rs:2350-2351` posts, `:2586-2600` delivers).
+  **Whether that still agrees with the reader is a property of the delay, and it
+  was measured** (2026-09-14, `pnpm tauri dev`, releasing the key at the instant
+  of the click, five trials each): **macOS 0/5, Windows 5/5, Linux 5/5.** Holding
+  the key until the window appears works on all three. **The gesture is kept on
+  all three anyway, which is a departure from what TASK-12.5 prescribed and is
+  deliberate**: removing it from the macOS menu would make the *natural* gesture —
+  hold, choose, see the window, let go — replace the folder 100% of the time,
+  which is worse than a failure confined to one way of letting go. So on macOS a
+  reader who releases as they click gets a replace, and Open Recent is how they
+  get back. **The macOS menu flashing the chosen item before it dismisses is a
+  candidate for the delay and not a measured cause**; do not write it as one.
+  **Windows reads `GetKeyState` and not `GetAsyncKeyState`, and 5/5 is the outcome
+  rather than the mechanism** — the asynchronous call answers for the hardware
+  now, while `GetKeyState` answers for what the thread's input queue has reached
+  and the `WM_KEYUP` sits behind the message tauri posted. That reading has not
+  been separated from luck by any measurement, so **a Windows failure later is
+  answered by not offering the gesture, not by swapping the call.**
+  **The in-app list is not a fallback that the spike could have made
+  unnecessary.** A DOM click event carries the modifier outright, so
+  `RecentFolders` has the gesture correctly on every platform by construction, and
+  it is also the only route for a reader who never opens the menu bar. It reads
+  the modifier through `newWindowModifierHeld`, which resolves per platform for
+  the reason `matchesCmdOrCtrl` does — `metaKey || ctrlKey` is a superset, and on
+  macOS Ctrl+click is the secondary click, so taking it would open a window on the
+  press that opens a context menu.
+  **The spike cost one crate, no compilation and no notices entry**, against the
+  three direct dependencies TASK-12 approved: PDF export had already made
+  `objc2-app-kit` and `gtk` direct, so macOS needed one more feature and Linux
+  needed nothing; `windows-sys` is the only addition, it was already in the graph,
+  and `Cargo.lock` gains one line while `pnpm notices` reports no diff at all.
+- **Choosing a recent folder already open somewhere focuses that window, in both
+  entries, so the hint cannot promise a new one.** The rule applies wherever the
+  modifier branch is taken — including when the window in front of the reader is
+  the one showing it, since a second window on the folder you are looking at is
+  the duplicate the rule exists to prevent. The in-app list's hint therefore says
+  **another** window rather than a new one; it said "new" until the hand round
+  found it false on all three platforms (2026-09-14). What decides "already
+  showing it" is the restored session's own `folder` string compared exactly
+  (`session.rs`'s `showing_folder`), which is the rule `recentFolders` records
+  under — two spellings of one folder are two folders, because case-insensitivity
+  belongs to the volume rather than to the OS. Entries are ordered
+  least-recently-focused first, so the last match is what comes forward.
+  **The entry that is no longer listed is reported with which of two reasons
+  applies**, and that is not fussiness: a folder deleted under the reader and a
+  list emptied in another window reach the same branch, so one wording would be a
+  false sentence half the time. The submenu's build-time prune
+  (`recent::pruned_folders`) is a different thing again and says nothing to
+  anyone — those entries never reach the screen, so there is nothing to report.
 - **A preference is app-wide, and the broadcast that makes it so is the one
   `emit` in this app that is deliberately unfiltered.** `settings.rs`'s
   `broadcast_setting` re-emits `settings:change` to every window, which is the
@@ -1360,8 +1435,9 @@ hold rather than as an exhaustive style guide.
   pure-logic modules (`markdown` — incl. the untrusted-input security boundary —
   `config-parse`, `frontmatter`, `title`, `path`, `delimited`, `xml-tree`,
   `heading` (the coordinate conversion only — `findHeading` needs DOM globals),
-  `chord` (accelerator matching plus the app-wide handler — both take the platform
-  as an argument so neither needs `navigator`), `window-init` (what a
+  `chord` (accelerator matching, the app-wide handler, and the click modifier the
+  in-app Open Recent list reads — all three take the platform
+  as an argument so none needs `navigator`), `window-init` (what a
   window opens in each of the three creation states),
   `markdown-preview` (the gate, and that it notifies only on a change — one
   invocation reaches Rust per notification), `print`,
@@ -1380,9 +1456,12 @@ hold rather than as an exhaustive style guide.
   temp-dir helper, no `tempfile` dep); `watch`'s registry, `window`'s label
   allocation and initial-location handover, `menu`'s id → action map and its
   recent-entry label (home abbreviation and the `&` Win32 would swallow),
-  `recent`'s prune rule, and `session`'s live-set functions
-  (reporting, focus order, the last-window rule, the cap and both halves of the
-  migration) are covered without a GUI — the latter two because they take what
+  `recent`'s prune rule, `open_recent`'s four answers (including that a window
+  already showing the folder does not divert the replace branch, and that a list
+  emptied under the reader is told apart from a folder deleted under them), and
+  `session`'s live-set functions
+  (reporting, focus order, the last-window rule, the cap, both halves of the
+  migration, and which window is showing a folder) are covered without a GUI — the latter two because they take what
   they need as arguments rather than asking the app for it. **`unattended.rs`'s tests are
   `cfg(unattended)`**, so a plain `cargo test` never compiles them — the paper job
   runs `MALLOW_UNATTENDED=1 cargo test`, and that is the only place they run.

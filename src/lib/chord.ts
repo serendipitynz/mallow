@@ -91,3 +91,24 @@ export function createChordHandler(deps: {
     }
   };
 }
+
+/** The subset of a mouse event a modifier gesture is decided from. */
+export interface ClickModifiers {
+  metaKey: boolean;
+  ctrlKey: boolean;
+}
+
+/** Whether the new-window modifier — Command on macOS, Control elsewhere — was
+ *  held for this click.
+ *
+ *  **Resolved per platform rather than as `metaKey || ctrlKey`**, which is the
+ *  superset the accelerator matching above already refuses: on macOS `Ctrl`+click
+ *  is the secondary-click gesture, so taking it as the modifier would open a
+ *  window on the same press that opens a context menu.
+ *
+ *  Unlike `matchesCmdOrCtrl` this tolerates Shift and Alt, because no second
+ *  click gesture competes for them — there is nothing for holding one to stay
+ *  free for. */
+export function newWindowModifierHeld(event: ClickModifiers, onMac: boolean): boolean {
+  return onMac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+}

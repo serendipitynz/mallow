@@ -199,6 +199,32 @@ fn with_ensured(
     entries
 }
 
+/// The label of the window showing `folder`, most recently focused first.
+///
+/// **What decides it is the live set's own string, compared exactly.** That is
+/// the same rule `recentFolders` records under — two spellings of one folder are
+/// two folders, because case-insensitivity is a property of the volume rather
+/// than of the OS — so a window opened from the recent list always matches the
+/// entry it was opened from.
+///
+/// Entries are ordered least-recently-focused first, so the last match is the
+/// one a reader would expect to be brought forward.
+fn showing_folder(entries: &[WindowEntry], folder: &str) -> Option<String> {
+    entries
+        .iter()
+        .rev()
+        .find(|entry| entry.folder.as_deref() == Some(folder))
+        .map(|entry| entry.label.clone())
+}
+
+/// The label of a live window already showing `folder`, or `None` — which is
+/// also the answer in an unattended build, where there is no session to ask.
+pub fn window_showing(app: &AppHandle, folder: &str) -> Option<String> {
+    let state = live(app)?;
+    let entries = state.0.lock().ok()?;
+    showing_folder(&entries, folder)
+}
+
 /// `entries` with `label`'s row moved to the end.
 ///
 /// The order is least-recently-focused first, so gaining focus moves a window to
@@ -531,6 +557,35 @@ mod tests {
 
     fn labels(entries: &[WindowEntry]) -> Vec<&str> {
         entries.iter().map(|e| e.label.as_str()).collect()
+    }
+
+    #[test]
+    fn the_window_showing_a_folder_is_found_by_its_exact_path() {
+        let entries = vec![entry("w1", Some("/docs"), None), entry("w2", Some("/notes"), None)];
+        assert_eq!(showing_folder(&entries, "/notes"), Some("w2".to_string()));
+        assert_eq!(showing_folder(&entries, "/elsewhere"), None);
+    }
+
+    /// The comparison is on the stored string, which is the rule `recentFolders`
+    /// records under: case-insensitivity belongs to the volume, not to the OS.
+    #[test]
+    fn two_spellings_of_one_folder_are_two_folders_here_too() {
+        let entries = vec![entry("w1", Some("/Docs"), None)];
+        assert_eq!(showing_folder(&entries, "/docs"), None);
+    }
+
+    /// Least-recently-focused first, so the last match is the one to bring
+    /// forward.
+    #[test]
+    fn the_most_recently_focused_window_wins_when_two_show_one_folder() {
+        let entries = vec![entry("w1", Some("/docs"), None), entry("w3", Some("/docs"), None)];
+        assert_eq!(showing_folder(&entries, "/docs"), Some("w3".to_string()));
+    }
+
+    #[test]
+    fn a_window_showing_nothing_matches_no_folder() {
+        let entries = vec![entry("w1", None, None)];
+        assert_eq!(showing_folder(&entries, "/docs"), None);
     }
 
     #[test]

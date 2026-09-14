@@ -146,6 +146,122 @@
   color: $muted;
 }
 
+// ---- Notice bar -------------------------------------------------------------
+// What the reader is told about an action that did nothing visible — today only
+// a recent entry that was no longer there when it was chosen. It sits between
+// the toolbar and the body rather than over the document, so it shifts the
+// layout instead of covering what the reader is reading.
+.app__notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: $ink;
+  background: var(--color-hover-bg);
+  border-bottom: 1px solid $border;
+
+  > span {
+    flex: 1 1 auto;
+    // A path is the only thing this carries, and one too long for the window
+    // must not push the dismiss button off the end.
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+.app__notice-close {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: $muted;
+  background: none;
+  border: 1px solid $border;
+  border-radius: 5px;
+  cursor: pointer;
+
+  &:hover {
+    color: $ink;
+    border-color: $border-strong;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+// ---- In-app Open Recent list ------------------------------------------------
+// Shown in the explorer's empty state, which is the only place a window has
+// before a folder is opened. It carries the new-window gesture on every
+// platform, since a DOM click event reports the modifier outright where the
+// native menu can only ask the OS a turn later (`src-tauri/src/modifier.rs`).
+.recent {
+  margin-top: 20px;
+}
+
+.recent__title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: $faint;
+}
+
+.recent__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.recent__item {
+  display: block;
+  width: 100%;
+  padding: 5px 6px;
+  font: inherit;
+  text-align: left;
+  color: $ink;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-hover-bg);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+.recent__name {
+  display: block;
+  font-size: 13px;
+}
+
+// The directory the folder sits in, which is what tells two folders of one name
+// apart. Truncated rather than wrapped — the whole path is on the button's
+// `title`, so the line is an aid to recognition and not the record of it.
+.recent__path {
+  display: block;
+  font-size: 11px;
+  color: $faint;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recent__hint {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: $faint;
+}
+
 // ---- Body: explorer | viewer ------------------------------------------------
 .app__body {
   display: flex;

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { type ChordEvent, chordAction, createChordHandler, type HandledChordEvent, matchesCmdOrCtrl } from './chord';
+import {
+  type ChordEvent,
+  chordAction,
+  createChordHandler,
+  type HandledChordEvent,
+  matchesCmdOrCtrl,
+  newWindowModifierHeld,
+} from './chord';
 
 function chord(over: Partial<ChordEvent> = {}): ChordEvent {
   return { key: 'p', metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...over };
@@ -172,5 +179,26 @@ describe('createChordHandler', () => {
     allowed = true;
     fire();
     expect(calls).toEqual({ prevented: 2, acted: 1 });
+  });
+});
+
+describe('newWindowModifierHeld', () => {
+  it('takes Command on macOS and Control elsewhere', () => {
+    expect(newWindowModifierHeld({ metaKey: true, ctrlKey: false }, true)).toBe(true);
+    expect(newWindowModifierHeld({ metaKey: false, ctrlKey: true }, true)).toBe(false);
+    expect(newWindowModifierHeld({ metaKey: false, ctrlKey: true }, false)).toBe(true);
+    expect(newWindowModifierHeld({ metaKey: true, ctrlKey: false }, false)).toBe(false);
+  });
+
+  /** Ctrl+click is the secondary click on macOS, so the gesture must not also
+   *  read as "open in a new window". */
+  it('refuses the other modifier being held alongside', () => {
+    expect(newWindowModifierHeld({ metaKey: true, ctrlKey: true }, true)).toBe(false);
+    expect(newWindowModifierHeld({ metaKey: true, ctrlKey: true }, false)).toBe(false);
+  });
+
+  it('is held with neither modifier pressed on no platform', () => {
+    expect(newWindowModifierHeld({ metaKey: false, ctrlKey: false }, true)).toBe(false);
+    expect(newWindowModifierHeld({ metaKey: false, ctrlKey: false }, false)).toBe(false);
   });
 });
