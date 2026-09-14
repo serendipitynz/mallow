@@ -1,10 +1,10 @@
 ---
 id: TASK-12.5
 title: 'Open Recent: replace in place, or open a new window under the modifier'
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-13 09:49'
+updated_date: '2026-09-14 22:30'
 labels:
   - feature
 milestone: m-3
@@ -60,14 +60,14 @@ Edge cases to settle rather than discover:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Choosing it with the modifier opens a new window on the folder and leaves the focused window untouched
-- [ ] #2 An in-app Open Recent list ships regardless of the spike result, reads metaKey/ctrlKey from the DOM click event, and has ja and en dictionary keys
-- [ ] #3 A folder that vanished between submenu build and click is reported and pruned rather than opening an empty tree
-- [ ] #4 No platform is left with a modifier gesture that silently does nothing; what works where is written down
-- [ ] #5 The spike reports, per platform, whether the modifier state can be read at menu-event time and which dependency it costs; only the dependencies it justifies are added, each behind its platform cfg
-- [ ] #6 Choosing a folder already open in another window focuses that window instead of opening a duplicate, in the modifier branch
-- [ ] #7 Choosing a recent entry without the modifier replaces the focused window's folder — selection cleared, media scope granted before the tree opens, watch restarted for that window only, entry moved to the front of recentFolders — and the window reports its new content into the restored session
-- [ ] #8 The spike's pass criterion includes a user who releases the modifier as they click, since the handler reads the current key state rather than a snapshot of the click
+- [x] #1 Choosing it with the modifier opens a new window on the folder and leaves the focused window untouched
+- [x] #2 An in-app Open Recent list ships regardless of the spike result, reads metaKey/ctrlKey from the DOM click event, and has ja and en dictionary keys
+- [x] #3 A folder that vanished between submenu build and click is reported and pruned rather than opening an empty tree
+- [x] #4 No platform is left with a modifier gesture that silently does nothing; what works where is written down
+- [x] #5 The spike reports, per platform, whether the modifier state can be read at menu-event time and which dependency it costs; only the dependencies it justifies are added, each behind its platform cfg
+- [x] #6 Choosing a folder already open in another window focuses that window instead of opening a duplicate, in the modifier branch
+- [x] #7 Choosing a recent entry without the modifier replaces the focused window's folder — selection cleared, media scope granted before the tree opens, watch restarted for that window only, entry moved to the front of recentFolders — and the window reports its new content into the restored session
+- [x] #8 The spike's pass criterion includes a user who releases the modifier as they click, since the handler reads the current key state rather than a snapshot of the click
 <!-- AC:END -->
 
 ## Definition of Done
