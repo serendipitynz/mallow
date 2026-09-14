@@ -54,7 +54,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
   ソース切替）、ErrorBanner（構文エラー表示の共通部品）、MermaidView、
-  MediaView（画像/PDF/動画を asset protocol 経由で表示）、Outline、Toolbar、
+  MediaView（画像/PDF/動画を asset protocol 経由で表示）、
+  RecentFolders（アプリ内の Open Recent 一覧。エクスプローラの空状態に出る）、Outline、Toolbar、
   OpenWith、ThemePicker、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
@@ -73,7 +74,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
   `theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
-  積算）、`chord`（アクセラレータの一致判定と、アプリ全体の chord handler・その 3 値）、
+  積算）、`chord`（アクセラレータの一致判定、アプリ全体の chord handler・その 3 値、
+  および click event から同じ解決をする `newWindowModifierHeld`）、
   `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲートと、
   それを 2 つのメニュー項目へ押し出す購読）、
   `close-window`（`CmdOrCtrl+W`。Windows ではウィンドウを閉じる**唯一の**経路。
@@ -100,6 +102,19 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   （受け取られなかった initial location と一緒に）落とすので、
   設定ファイルのウィンドウと実行時に作ったウィンドウが同じ経路を通る。`fs:change` の emit は
   `emit_to` で行う — **それだけでは何も分離しない**ので、下の gotcha を読む。
+- `modifier.rs` — `new_window_modifier_held`。new-window modifier を読む唯一の場所で、
+  環境ごとに自分の `cfg` の下にある: macOS は AppKit のクラスメソッド
+  `NSEvent.modifierFlags`、Windows は `GetKeyState(VK_CONTROL)`、Linux は GDK の keymap。
+  **`None` は「この build では問い合わせられない」**で、呼び出し側は失敗ではなく
+  「押されていない」として扱う。何が見えて何が見えないかは下の gotcha —
+  TASK-12.5 の spike そのもの。
+- `open_recent.rs` — `recent_choice`（最近のフォルダを選んだとき何が起きるかを答える純関数）と、
+  それが取る事実を読んで実行する `act_on_recent` / `choose_recent`。
+  **決定は 1 つ、入口は 2 つ** — Open Recent サブメニューとアプリ内一覧は同じ問いを立て、
+  違うのは修飾キーの出所だけである。答えは 4 つ: 一覧にもう無い（除去して報告する。
+  **2 つある理由のどちらかを載せて**）、呼び出したウィンドウのフォルダを入れ替える、
+  既にそれを表示しているウィンドウを前に出す、ウィンドウを開く。
+  フロントへ返るのは `Replace` だけで、ツリー・メディアの許可・監視がすべてあちら側にあるから。
 - `window.rs` — `open_window` / `take_window_init` と、その 2 つが location を
   受け渡す `WindowInitRegistry`。`open_window(location, label)` は設定ファイルの
   ウィンドウの `WindowConfig` を clone してラベルだけ上書きしてウィンドウを作るので、
@@ -1007,6 +1022,57 @@ Comments と Functions の規約は機械的に検査されない。コメント
   そこで問いが立たない理由を示している（アクセラレータがそもそも届かない）。
   それでも handler は残す — 外せば `Ctrl+P` を WebView2 に譲り渡すことになり、
   それは一度出荷された実測済みの不具合（`lib/print`）だからである。
+- **new-window modifier は押された場所では読めず、遅れで落ちた唯一の環境が主開発環境だった。**
+  Open Recent の項目を Cmd/Ctrl を押しながら選ぶと、フォーカスされたウィンドウの
+  フォルダを入れ替える代わりに、そのフォルダを別のウィンドウで開く。修飾キーは
+  イベントからは来ない（`muda::MenuEvent` は id しか運ばない）。しかも
+  **クリック時点の状態は「未測定」ではなく「到達できない」**: muda のハンドラ枠は
+  `OnceCell`（muda-0.19.3 `src/lib.rs:490-491`）で、tauri が `build()` の中で埋める
+  （tauri-2.11.3 `src/app.rs:2349-2352`）ので、このプロセスの何もそれを包むことも
+  差し替えることもできず、id の隣にスナップショットを取る場所が存在しない。
+  `modifier.rs` が読むのは**イベントループを 1 周した後**、ハンドラが走る時点の状態である
+  （`src/app.rs:2350-2351` が post し、`:2586-2600` が配る）。
+  **それが利用者の意図と一致するかは遅れの性質であり、実測した**
+  （2026-09-14、`pnpm tauri dev`、クリックと同時にキーを離す操作を各 5 回）:
+  **macOS 0/5、Windows 5/5、Linux 5/5。** ウィンドウが出るまで押したままなら 3 環境とも通る。
+  **それでも gesture は 3 環境とも残してあり、これは TASK-12.5 の指示からの意図的な逸脱である**:
+  macOS のメニューから外すと、**自然な操作**——押す・選ぶ・ウィンドウを見る・離す——が
+  100% フォルダの入れ替えになり、離し方 1 つに限定された失敗より悪い。
+  したがって macOS では、クリックと同時に離した利用者は入れ替えを得て、
+  Open Recent がその戻り道になる。**macOS が選択された項目を点滅させてから閉じることは
+  遅れの候補であって観測された原因ではない**。原因として書かないこと。
+  **Windows は `GetAsyncKeyState` ではなく `GetKeyState` を読んでおり、5/5 は結果であって
+  機序ではない** —— 非同期の方は今のハードウェアを答え、`GetKeyState` はスレッドの
+  入力キューが到達した状態を答え、`WM_KEYUP` は tauri が post したメッセージの後ろに並ぶ。
+  この読みを偶然から切り分けた実測は無いので、**この先 Windows で落ちたときは
+  API を入れ替えるのではなく gesture を出さない方に倒す。**
+  **アプリ内一覧は、spike が成功すれば不要になりえたフォールバックではない。**
+  DOM の click event は修飾キーをそのまま運ぶので、`RecentFolders` は構造上どの環境でも
+  正しく gesture を持ち、しかもメニューバーを開かない利用者にとっては唯一の経路である。
+  修飾キーは `newWindowModifierHeld` が読み、`matchesCmdOrCtrl` と同じ理由で
+  環境ごとに解決する —— `metaKey || ctrlKey` は上位集合であり、macOS の Ctrl+click は
+  副クリックなので、それを採るとコンテキストメニューを開く操作でウィンドウが開いてしまう。
+  **spike の実費は 1 crate、コンパイル 0、notices 0 行**で、TASK-12 が承認した
+  新規直接依存 3 つには届かなかった: PDF 書き出しが既に `objc2-app-kit` と `gtk` を
+  直接依存にしていたので macOS は feature が 1 つ増えただけ、Linux は何も要らず、
+  追加は `windows-sys` だけでそれも既にグラフにあったため、`Cargo.lock` は 1 行増え、
+  `pnpm notices` は差分ゼロを返す。
+- **既にどこかで開いているフォルダを選ぶと、2 つの入口のどちらでもそのウィンドウが前に出るので、
+  案内文は「新しいウィンドウ」を約束できない。** この規則は modifier 分岐が取られるところ
+  すべてに効く —— 目の前のウィンドウがそれを表示している場合も含めて。いま見ているフォルダに
+  2 つ目のウィンドウを開くことこそ、この規則が防ぐための重複だからである。
+  だからアプリ内一覧の案内文は「新しい」ではなく**「別の」**ウィンドウと言う。
+  実機ラウンドが 3 環境ともそれを偽だと見つけるまで「新しい」と書いてあった（2026-09-14）。
+  「既に表示している」を決めるのは restored session 自身の `folder` 文字列の厳密一致
+  （`session.rs` の `showing_folder`）で、これは `recentFolders` が記録する規則と同じ ——
+  同じフォルダの 2 通りの綴りは 2 つのフォルダであり、大文字小文字を区別しないのは
+  OS ではなくボリュームの性質だから。エントリは最後にフォーカスされたものが末尾なので、
+  最後に一致したものが前に出る。
+  **一覧にもう無い項目は、2 つある理由のどちらかを載せて報告する。** これは細かさではない:
+  利用者の下でフォルダが削除された場合と、別のウィンドウで一覧が空にされた場合が
+  同じ分岐に来るので、1 通りの文言では半分の場合に偽になる。サブメニューの構築時の除去
+  （`recent::pruned_folders`）はさらに別のもので、誰にも何も言わない ——
+  それらは画面に出たことがないので、報告すべきものが無い。
 - **設定はアプリ全体のものであり、それを成立させるブロードキャストは、この
   アプリで意図的にフィルタしない唯一の `emit` である。** `settings.rs` の
   `broadcast_setting` が `settings:change` を全ウィンドウへ再発行する。これは
@@ -1220,7 +1286,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   モジュール（`markdown` ＝未信頼入力のセキュリティ境界含む・`config-parse`・
   `frontmatter`・`title`・`path`・`delimited`・`xml-tree`・
   `heading`＝座標変換のみ。`findHeading` は DOM のグローバルを要するため対象外・
-  `chord`＝アクセラレータの一致判定とアプリ全体の handler。どちらもプラットフォームを
+  `chord`＝アクセラレータの一致判定、アプリ全体の handler、アプリ内 Open Recent 一覧が
+  読む click の修飾キー。いずれもプラットフォームを
   引数で受けるので `navigator` を要しない・
   `window-init`＝3 つの生成状態それぞれでウィンドウが何を開くか・
   `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
@@ -1241,8 +1308,11 @@ Comments と Functions の規約は機械的に検査されない。コメント
   自己クリーンアップ式の temp-dir ヘルパー）。`watch` の registry、`window` の
   ラベル採番・initial location の受け渡し、`menu` の id → 動作の対応と
   最近のフォルダの表示文字列（ホームの短縮と、Win32 が食べてしまう `&`）、
-  `recent` の除去規則、`session` のライブ集合まわり（報告・
-  フォーカス順・last-window rule・上限・移行の両半分）も GUI なしで検査する。
+  `recent` の除去規則、`open_recent` の 4 つの答え（既にそのフォルダを表示している
+  ウィンドウがあっても replace 分岐は逸れないこと、利用者の下で一覧が空にされた場合と
+  フォルダが削除された場合を言い分けることを含む）、`session` のライブ集合まわり（報告・
+  フォーカス順・last-window rule・上限・移行の両半分・どのウィンドウがそのフォルダを
+  表示しているか）も GUI なしで検査する。
   後の 2 つができるのは、必要なものをアプリに訊かず引数で受けるから。
   **`unattended.rs` のテストは
   `cfg(unattended)`** なので素の `cargo test` では 1 度もコンパイルされない —
