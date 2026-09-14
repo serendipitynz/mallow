@@ -56,6 +56,14 @@ Edge cases to settle rather than discover:
 - The chosen folder no longer exists - TASK-12.3 prunes at submenu build time, so this is the race where it vanished between build and click. Report it and prune, do not open an empty tree silently.
 - The folder is already open in another window - recommend focusing that window instead of opening a second window on the same folder, which is what VS Code does. Applies to the modifier branch only. Scan `webview_windows()` for it; `Manager::windows()` and `get_focused_window` are behind the `unstable` feature this project does not enable (see TASK-12.4).
 - No window is focused - only reachable if the macOS stay-alive behaviour is ever adopted (TASK-12.2 keeps the exit-on-last-close default), but the handler should still fall back to opening a new window rather than dropping the event.
+
+## What the spike measured, and where this task's own prescription was overruled
+
+Measured on all three platforms 2026-09-14 (`pnpm tauri dev`, the key released at the instant of the click, five trials each): **macOS 0/5, Windows 5/5, Linux 5/5.** All three pass when the key is held until the window appears. The click-time state turned out to be unreachable rather than merely delayed - muda's handler slot is a `OnceCell` (muda-0.19.3 `src/lib.rs:490-491`) that tauri fills during `build()` - so the delivery-time read is the only one there is, and the spike cost one crate rather than three, since PDF export had already made `objc2-app-kit` and `gtk` direct dependencies.
+
+**"If a platform's native read fails the spike, that platform's menu entry keeps the replace-in-place behaviour" above is overruled for macOS**, by the maintainer on 2026-09-14 with the measurement in hand. Removing the gesture from the macOS menu would make the natural gesture - hold, choose, see the window, let go - replace the folder 100% of the time, which is worse than a failure confined to one way of letting go. So the gesture ships on all three, and what a macOS reader who releases at the click gets is a replace, with Open Recent as the way back.
+
+This paragraph is what keeps the ledger from contradicting the shipped behaviour; the grounds themselves live in `AGENTS.md` / `AGENTS.ja.md`, since `_sandbox/` goes away with the milestone. AC #4 is read as written - no platform is left with a gesture that *silently does nothing* - which the macOS entry satisfies, rather than as a requirement that the release-at-click case pass everywhere. AC #8 requires that case to be in the pass criterion and measured, which it was.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
