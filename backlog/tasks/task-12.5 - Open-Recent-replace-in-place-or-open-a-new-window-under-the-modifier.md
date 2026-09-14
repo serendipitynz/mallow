@@ -1,10 +1,10 @@
 ---
 id: TASK-12.5
 title: 'Open Recent: replace in place, or open a new window under the modifier'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-14 22:30'
+updated_date: '2026-09-14 23:35'
 labels:
   - feature
 milestone: m-3
