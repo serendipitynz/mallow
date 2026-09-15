@@ -1765,14 +1765,37 @@ build log is the only place it shows**. macOS is the exception at both ends:
 native bundles skip the patch by design, so the Developer ID signature is never
 at risk, and an unpatched macOS binary still reports the app bundle type.
 
-**`latest.json`'s `notes` is empty, and that is a decision rather than an
-omission.** `releaseBody` is not passed to `tauri-action`, so the update dialog
-shows no changelog — it is built to read without one. Filling it would route the
-generated release notes, multi-line markdown, through a job output, which cannot
-be checked before a real release round; and it leans on the reading that the
-action creates or edits a release only when `tagName` is set and `releaseId` is
-not, which is the same reading that keeps the hand-published draft's generated
-notes intact. Revisit it as its own change with a release round to verify it.
+**`latest.json`'s `notes` is empty on an ordinary release, and it is filled only
+for a release the reader has to act on** — one where deciding whether to take the
+update needs the release explained, which is a security fix or a version after
+which a platform restriction applies (2026-09-16). Every other release leaves it
+empty and the update dialog shows no changelog; it is built to read without one,
+and `UpdateDialog` omits the section entirely rather than rendering an empty one.
+
+**Three different things are called notes here, and conflating them is what makes
+the obvious fix wrong.** The draft's *generated release notes* are the PR list
+`.github/release.yml` groups by label — over twenty lines of markdown as of
+v0.8.0. `latest.json`'s `notes` is one string the updater plugin hands to the
+frontend. The dialog prints that string in a `<pre>` as plain text, deliberately
+not through the markdown pipeline. **So passing `releaseBody` unconditionally is
+not the way to satisfy the policy above**: it would put those twenty-odd lines,
+markup and all, into every update dialog, which is the opposite of filling the
+field only where it says something the reader has to act on.
+
+**What the policy needs is a way to fill the field for one release while every
+other release leaves it empty, and `release.yml` has nothing of the kind** —
+there is no `releaseBody` line in it at all, so the field is empty by
+construction rather than by a switch that is currently off. Two shapes can carry
+it, neither yet built: an optional `workflow_dispatch` input, which reaches only
+the manually started runs and not the ordinary tag push; or editing `latest.json`
+by hand before publishing the draft, which adds no mechanism but lives only in
+whatever the release runbook says. **Either one is first exercised on the release
+that needs it**, and that release is by definition one being cut in a hurry, so
+the shape is worth choosing before then rather than during.
+
+Whichever is taken also leans on the reading that `tauri-action` creates or edits
+a release only when `tagName` is set and `releaseId` is not — the same reading
+that keeps the hand-published draft's generated notes intact.
 
 ## Known follow-ups
 
