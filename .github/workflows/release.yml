@@ -165,10 +165,10 @@ jobs:
       # Bounded at 10 minutes because v0.6.0's x86_64 job sat in this step for
       # 31 minutes, twice, while arm64 ran the same step in under a minute at
       # the same moment (v0.5.0 took 48 seconds, and GitHub reported no Actions
-      # incident). **What that rules out is the workflow and the package list,
-      # not what stalled** — an Ubuntu mirror, the runner's own networking, DNS
-      # and a proxy all fit the same evidence, and none was identified. The
-      # bound is worth having whichever it was. Unbounded, the only
+      # incident). **What stalled was never identified** — a mirror, the
+      # runner's own networking, DNS, a proxy and the x86_64 package closure
+      # itself all fit what was seen, and nothing was ruled out. The bound is
+      # worth having whichever it was. Unbounded, the only
       # limit is the 360-minute job default: a release round then has no failure
       # to react to, only a job that looks like it is still working, and the
       # risk is publishing a draft missing a platform. 10 minutes is ten times a

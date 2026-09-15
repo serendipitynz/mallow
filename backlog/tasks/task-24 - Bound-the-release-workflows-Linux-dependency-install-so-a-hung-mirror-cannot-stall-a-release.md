@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-08-19 21:44'
-updated_date: '2026-09-15 21:38'
+updated_date: '2026-09-15 21:41'
 labels:
   - bug
 milestone: m-3
@@ -39,7 +39,7 @@ The bound is a step-level timeout-minutes: 10 on 'Install Linux system dependenc
 
 Sizing. A healthy run of this step was 48s in v0.5.0 and under a minute on arm64 during the v0.6.0 stall, against 31 minutes for the stall itself; 10 minutes is ten times healthy and a third of the stall. Inside that, each attempt is 45s for apt-get update and 135s for the install, so three attempts plus 30s of backoff is 9.5 minutes and the loop cannot be cut off mid-attempt by its own step bound.
 
-What the v0.6.0 evidence establishes is narrower than the description says. arm64 running the same step in under a minute at the same moment, v0.5.0 taking 48 seconds, and no Actions incident together rule out the workflow and the package list — they do not identify what stalled. An Ubuntu mirror, the runner's own networking, DNS and a proxy all fit. The description attributes it to the mirror; that is an inference, and the fix does not rest on it, since a bound is worth having whichever it was.
+What stalled was never identified, and the description's attribution to the Ubuntu mirror is an inference rather than a finding. Neither arm64 finishing in under a minute at the same moment nor v0.5.0's 48 seconds rules anything out on its own: package resolution, versions, maintainer scripts and repository paths all differ by architecture, and versions move between releases. A mirror, the runner's networking, DNS, a proxy and the x86_64 package closure itself all fit what was seen. The fix does not rest on knowing which, since a bound is worth having whichever it was.
 
 Both stalls named in the description are still covered separately. -o DPkg::Lock::Timeout=60 bounds the dpkg lock; the per-command timeout bounds a connection that is accepted and then stops answering, which a retry alone would not, since one stalled connection would otherwise spend the whole budget on a single attempt.
 
@@ -48,4 +48,6 @@ It is 'sudo timeout' and not 'timeout sudo' so the timeout runs as root and sign
 Scope is release.yml alone, per the description. check.yml has the same bare apt-get in two jobs; a stall there turns a PR red without blocking a release, so it is left alone rather than widened past the AC.
 
 Verification. The workflow only runs in CI, so the loop was extracted and replayed locally under bash -e with apt stubbed: healthy exits 0 on the first attempt, a transient failure recovers on the third, and a timeout (124) on every attempt exits 1 with no sleep after the last one. The YAML parses and the step script passes bash -n. What no local check can show is the bound firing against a real stall — that needs one to happen, so a green release round says the step still works, not that the timeout was exercised.
+
+Review history worth keeping: all three findings across two rounds were comment accuracy, none was behaviour, and each was a claim wider than its evidence. The third one survived the first correction — 'this rules out the workflow and the package list' replaced 'the mirror stalled', and was itself unsupported for the same reason. Narrowing an overclaim is where the next overclaim gets written.
 <!-- SECTION:NOTES:END -->
