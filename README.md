@@ -112,9 +112,63 @@ Installing an update may need the system's permission.
 - **Themes**: light / dark / auto + Solarized Light/Dark · Dracula · Nord.
 - **Self-update**: check for a newer version and install it. See
   [Install and update](#install-and-update).
+- **Multiple windows and the File menu**: New Window, Open…, Open Recent, and
+  one window per folder so two folders can be read side by side. See
+  [Multiple windows and the File menu](#multiple-windows-and-the-file-menu).
+- **Printing and PDF export**: print a rendered Markdown document, or write it
+  to PDF with no print dialog. See
+  [Printing and PDF export](#printing-and-pdf-export).
 - **Persisted settings / session restore**: theme, explorer width and side, the
-  custom emoji folder, the last opened folder/file, and window geometry are saved
-  and restored on the next launch.
+  custom emoji folder and the update-check switch are saved and restored on the
+  next launch — and so is the set of windows that was open at quit, each with its
+  own folder, document, size and position.
+
+## Multiple windows and the File menu
+
+mallow opens as many windows as you want, each on its own folder, so two folders
+can be read side by side. Every window has its own file tree, its own live
+reload and its own document; preferences such as the theme are app-wide and
+change in every open window at once.
+
+| Action | Shortcut |
+|---|---|
+| New Window | `Cmd/Ctrl+N` |
+| Open… | `Cmd/Ctrl+O` |
+| Close Window | `Cmd/Ctrl+W` |
+| Settings… | `Cmd/Ctrl+,` |
+| Print… | `Cmd/Ctrl+P` |
+| Export as PDF… | `Cmd/Ctrl+E` |
+
+Closing the last window quits mallow — on macOS as well as on Windows and Linux.
+
+**Open Recent** replaces the folder in the window you are in. **Hold Cmd
+(macOS) or Ctrl (Windows, Linux) while choosing an entry to open it in another
+window instead.** If a window is already showing the folder you chose, that
+window is brought to the front.
+
+Quitting and relaunching restores the folders that were open at quit. Each
+window reopens the folder and document it had, at the size and position it had.
+The restore limit, the known limitations and the rest of the detail are in
+[AGENTS.md](AGENTS.md).
+
+## Printing and PDF export
+
+Printing and PDF export are available only in a Markdown document's preview
+mode.
+
+**Export as PDF…** (`Cmd/Ctrl+E`) asks where to save and writes the file with no
+print dialog on screen. It works on macOS, Windows and Linux.
+
+**Print…** (`Cmd/Ctrl+P`) prints the document through the platform's own print
+function. Linux is not supported at present.
+
+- On macOS, writing a PDF through the print function can cut a long document
+  short. Reselecting the printer in the print dialog sometimes resolves it.
+- On Windows, a header and footer of the platform's own — date, title, URL, page
+  number — are added. Check and adjust them in the print dialog.
+
+Printing and PDF export apply a print stylesheet. Parts of the document keep the
+theme that is on screen even so — mermaid diagrams among them.
 
 ## Tech stack
 

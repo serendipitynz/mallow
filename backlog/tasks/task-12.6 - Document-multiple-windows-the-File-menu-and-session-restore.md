@@ -1,12 +1,13 @@
 ---
 id: TASK-12.6
 title: 'Document multiple windows, the File menu and session restore'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-08-03 01:16'
+updated_date: '2026-09-15 21:09'
 labels:
   - documentation
+milestone: m-3
 dependencies:
   - TASK-12.5
   - TASK-12.7
@@ -33,17 +34,25 @@ Document multiple windows, the File menu and session restore once the behaviour 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 README.md and README.ja.md list multiple windows, the File menu, the shortcuts, the modifier gesture with its per-platform reach, and window-set restore
-- [ ] #2 Slot-inherited geometry, the restored-window cap and the empty-window-on-missing-folder behaviour are stated as intended; English-only menu labels are stated as deliberate
-- [ ] #3 Descriptions of the settings file name the windows key, not lastFolder / lastFile
-- [ ] #4 Known follow-ups gains translated menu labels
-- [ ] #5 AGENTS.md and AGENTS.ja.md describe the watcher registry, the capability window glob, the initial-location handover, the label slot scheme, the create:false decision and the destroy-versus-quit rule with its event-ordering facts; the stale 'watcher handle lives in WatcherState' and 'macOS only' lines are gone
-- [ ] #6 Whatever TASK-12.8 does not propagate across windows is listed as a known limitation, per setting
-- [ ] #7 AGENTS.md records that window enumeration must use webview_windows(), because the obvious Manager methods are unstable-gated
-- [ ] #8 The window-state migration is documented: an existing install keeps its geometry because the main entry is renamed once, and that migration reads another plugin's state file by design
+- [x] #1 README.md and README.ja.md list multiple windows, the File menu, the shortcuts, the modifier gesture with its per-platform reach, and window-set restore
+- [x] #2 Slot-inherited geometry, the restored-window cap and the empty-window-on-missing-folder behaviour are stated as intended; English-only menu labels are stated as deliberate
+- [x] #3 Descriptions of the settings file name the windows key, not lastFolder / lastFile
+- [x] #4 Known follow-ups gains translated menu labels
+- [x] #5 AGENTS.md and AGENTS.ja.md describe the watcher registry, the capability window glob, the initial-location handover, the label slot scheme, the create:false decision and the destroy-versus-quit rule with its event-ordering facts; the stale 'watcher handle lives in WatcherState' and 'macOS only' lines are gone
+- [x] #6 Whatever TASK-12.8 does not propagate across windows is listed as a known limitation, per setting
+- [x] #7 AGENTS.md records that window enumeration must use webview_windows(), because the obvious Manager methods are unstable-gated
+- [x] #8 The window-state migration is documented: an existing install keeps its geometry because the main entry is renamed once, and that migration reads another plugin's state file by design
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [ ] #1 Both language versions of both documents agree with the shipped behaviour
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+AC #2's four statements are in AGENTS, not in README. The user cut them from README.ja.md on 2026-09-16 as too verbose for a user-facing document — the menu composition and the English labels because launching the app shows both, and the restore cap, the inherited geometry and the empty-folder case because that detail belongs with the mechanism. README now carries one pointer to AGENTS instead. AC #2 names no file, so it stays met; AC #1's list is unaffected, since the shortcuts, the modifier gesture and window-set restore are still in README.
+
+Two claims were corrected in the same round, both of them wrong in the direction of promising more than was measured. 'Prints in the light palette whatever theme is on screen' is false: lib/mermaid.ts renders its SVG with mermaid's own dark theme and print.scss only caps its width, and Shiki's dark tokens are inline !important values the stylesheet cannot un-apply. The wording is now that a print stylesheet applies rather than the screen's theme. And macOS's truncation was observed through the print UI's PDF destination alone, never against a physical printer, so it is now written as a page count that does not match the print preview rather than as a document losing its end.
+<!-- SECTION:NOTES:END -->

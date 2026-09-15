@@ -1403,8 +1403,21 @@ hold rather than as an exhaustive style guide.
   **The last-window rule decides what leaves**: on `WindowEvent::Destroyed` an
   entry is dropped only if the window map is still non-empty, so the final
   window's entry survives into the next launch. The flag-on-`ExitRequested`
-  design it replaced is contradicted by all four quit paths (TASK-12.7 records
-  them), and **the count is "not empty", not "more than one"** — tauri has
+  design it replaced — drop an entry only while no exit has been requested — is
+  contradicted by **all four quit paths, and a destroy handler cannot tell why it
+  is being destroyed**: closing the last window emits `ExitRequested` *inside*
+  the handling of `TaoWindowEvent::Destroyed`, once the window map has gone empty
+  (tauri-runtime-wry-2.11.3 `src/lib.rs:4310-4316`), while the per-window
+  listeners run *before* that match (`:4270-4289`), so the last window's handler
+  always reads the flag false; macOS ⌘Q reaches `applicationWillTerminate` →
+  `Event::LoopDestroyed` and becomes `RunEvent::Exit` alone (`:4185-4186`), with
+  no `ExitRequested` and no per-window destroy; Windows File > Exit calls
+  `PostQuitMessage(0)` and ends in tao's `loop_destroyed()`, again
+  `RunEvent::Exit` alone; and `AppHandle::exit()`, which Linux's Exit item needs,
+  emits `ExitRequested` but tears the windows down without calling their destroy
+  handlers at all. **Only the first path emits a per-window destroy**, which is
+  why the criterion is the window count and there is no flag — and
+  **the count is "not empty", not "more than one"** — tauri has
   already removed the dying window from its map by the time the handler runs, so
   the naive test never drops anything. `RunEvent::Exit` then flushes the live set
   and calls `Store::save()` **synchronously**, because the store plugin ran its
@@ -1417,8 +1430,10 @@ hold rather than as an exhaustive style guide.
   whole file in its own setup and writes the cache back at exit, so a rewrite
   made later is silently overwritten, and plugin setups run in registration order
   and all of them before the app's own `setup`. That migration renames the `main`
-  entry onto the first restored label and **drops `main` even when it cannot move
-  it**, since nothing can claim that label again and the plugin would otherwise
+  entry onto the first restored label — **which is how an install predating
+  `"create": false` keeps the size and position it had**, the geometry being
+  filed under a label no window can carry again — and **drops `main` even when it
+  cannot move it**, since nothing can claim that label again and the plugin would otherwise
   write it back forever. The settings half of the same migration seeds a
   single-entry session from `lastFolder` / `lastFile` and then deletes them;
   `lastFiles` / `lastActive` are deliberately not read, because only an install
@@ -1763,3 +1778,15 @@ notes intact. Revisit it as its own change with a release round to verify it.
 
 - Config-tree expansion state is not preserved across a live reload.
 - Math (KaTeX) is intentionally not implemented.
+- The native menu's labels are English on every platform whatever the app's UI
+  language is. The app's own UI has `ja` / `en`; it is `menu.rs`'s item text that
+  is untranslated, and README says so as deliberate rather than as a defect.
+- **The in-app Recent Folders list does not follow another window, and it is the
+  one thing a window shows that does not.** `recentFolders` is outside
+  `WritableKey`, so `settings:change` never carries it — this is a key the
+  propagation was never given rather than an exception inside it. `App` re-reads
+  the list when this window has no folder and again when its folder goes away, so
+  a window sitting in the empty state keeps the list it built until then. The
+  native Open Recent submenu is not affected: `record_recent` refreshes it, and
+  that submenu is app-wide. Every preference a window *writes* does propagate
+  (TASK-12.8, TASK-33), so this is the only per-setting limitation to state.
