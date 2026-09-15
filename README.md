@@ -162,14 +162,13 @@ print dialog on screen. It works on macOS, Windows and Linux.
 **Print…** (`Cmd/Ctrl+P`) prints the document through the platform's own print
 function. Linux is not supported at present.
 
-- On macOS, writing a PDF through the print function can produce a page count
-  that does not match the print preview. Reselecting the printer in the print
-  dialog sometimes resolves it.
+- On macOS, writing a PDF through the print function can cut a long document
+  short. Reselecting the printer in the print dialog sometimes resolves it.
 - On Windows, a header and footer of the platform's own — date, title, URL, page
   number — are added. Check and adjust them in the print dialog.
 
-Printing and PDF export apply a print stylesheet rather than the theme selected
-on screen.
+Printing and PDF export apply a print stylesheet. Parts of the document keep the
+theme that is on screen even so — mermaid diagrams among them.
 
 ## Tech stack
 
