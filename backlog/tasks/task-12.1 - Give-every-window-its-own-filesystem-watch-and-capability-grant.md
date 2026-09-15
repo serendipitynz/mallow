@@ -4,7 +4,7 @@ title: Give every window its own filesystem watch and capability grant
 status: Done
 assignee: []
 created_date: '2026-08-02 21:13'
-updated_date: '2026-09-09 03:35'
+updated_date: '2026-09-15 21:17'
 labels:
   - feature
 milestone: m-3
@@ -58,7 +58,7 @@ Getting this wrong fails in a way a single-window smoke test cannot catch: the l
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 cargo check and cargo test pass in src-tauri
-- [ ] #2 Two windows watching overlapping folders (a parent and its subfolder) each refresh their own tree, and closing one leaves the other's watch alive
+- [x] #2 Two windows watching overlapping folders (a parent and its subfolder) each refresh their own tree, and closing one leaves the other's watch alive
 - [x] #3 pnpm build and pnpm test pass as well, since the listener change touches src/lib/watch.ts
 <!-- DOD:END -->
 

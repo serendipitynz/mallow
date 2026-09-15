@@ -1,12 +1,13 @@
 ---
 id: TASK-12
 title: Support multiple windows and a File menu
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-02 21:13'
-updated_date: '2026-08-02 22:06'
+updated_date: '2026-09-15 21:17'
 labels:
   - feature
+milestone: m-3
 dependencies: []
 priority: high
 type: feature
@@ -71,11 +72,11 @@ Tabs inside a window are **not** out of scope permanently - they are a sibling f
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 TASK-12.1 through TASK-12.8 are all Done
-- [ ] #2 Two windows show two different folders at the same time, each with its own working file tree and live reload
-- [ ] #3 Quitting with three windows open on three folders and relaunching brings all three back, each on its own folder, document, size and position
-- [ ] #4 The File menu (New Window / Open… / Open Recent) works on macOS, Windows and Linux, or the platform fallback recorded in TASK-12.4 is in place and documented
-- [ ] #5 Choosing an Open Recent entry replaces the focused window's folder; with the new-window modifier it opens a new window, on every platform where TASK-12.5's spike says it is possible, and in the in-app list everywhere
-- [ ] #6 pnpm build, pnpm test, cargo check and cargo test all pass
-- [ ] #7 A preference changed in one window takes effect in every open window
+- [x] #1 TASK-12.1 through TASK-12.8 are all Done
+- [x] #2 Two windows show two different folders at the same time, each with its own working file tree and live reload
+- [x] #3 Quitting with three windows open on three folders and relaunching brings all three back, each on its own folder, document, size and position
+- [x] #4 The File menu (New Window / Open… / Open Recent) works on macOS, Windows and Linux, or the platform fallback recorded in TASK-12.4 is in place and documented
+- [x] #5 Choosing an Open Recent entry replaces the focused window's folder; with the new-window modifier it opens a new window, on every platform where TASK-12.5's spike says it is possible, and in the in-app list everywhere
+- [x] #6 pnpm build, pnpm test, cargo check and cargo test all pass
+- [x] #7 A preference changed in one window takes effect in every open window
 <!-- DOD:END -->
