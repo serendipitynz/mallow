@@ -1,10 +1,10 @@
 ---
 id: TASK-33
 title: Give the settings ordering one authority instead of one per window
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-12 07:31'
-updated_date: '2026-09-12 07:58'
+updated_date: '2026-09-15 02:49'
 labels:
   - bug
 milestone: m-3
@@ -46,15 +46,15 @@ PR #57's review rounds, by the bot account: the round that raised these two is t
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A preference written while another window is writing the same one leaves settings.json holding the value every open window is showing, whichever write completes last
-- [ ] #2 A window opened after the wall clock has stepped backwards can change a preference and have every window that lived through the step follow it
-- [ ] #3 The stamp is still minted before the originating window applies the change to itself, so no preference waits on a round trip to take effect
-- [ ] #4 Whichever way the stale write is refused, the choice is written down with why the other was not taken
+- [x] #1 A preference written while another window is writing the same one leaves settings.json holding the value every open window is showing, whichever write completes last
+- [x] #2 A window opened after the wall clock has stepped backwards can change a preference and have every window that lived through the step follow it
+- [x] #3 The stamp is still minted before the originating window applies the change to itself, so no preference waits on a round trip to take effect
+- [x] #4 Whichever way the stale write is refused, the choice is written down with why the other was not taken
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 pnpm build, pnpm test, cargo check and cargo test pass
+- [x] #1 pnpm build, pnpm test, cargo check and cargo test pass
 - [ ] #2 With two windows, one preference changed in each within the same second, settings.json and both windows agree afterwards and a third window opened next reads the same value
-- [ ] #3 AGENTS.md and AGENTS.ja.md describe where the ordering authority now lives, replacing what TASK-12.8 wrote about the per-window high-water mark
+- [x] #3 AGENTS.md and AGENTS.ja.md describe where the ordering authority now lives, replacing what TASK-12.8 wrote about the per-window high-water mark
 <!-- DOD:END -->

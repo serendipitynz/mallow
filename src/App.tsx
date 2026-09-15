@@ -22,7 +22,7 @@ import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
 import { loadSettings, saveSetting } from './lib/settings';
-import { onSettingChange, type SettingChange, snapshotStillCurrent } from './lib/settings-sync';
+import { onSettingChange, type SettingChange, settingsReadStamp, snapshotStillCurrent } from './lib/settings-sync';
 import {
   allowMediaDir,
   chooseRecent,
@@ -350,7 +350,10 @@ export default function App() {
         unlistenSettings();
         return;
       }
-      const readAt = Date.now();
+      /* Asked for before the read is issued, so that everything already written
+         is in the answer and everything committed afterwards outranks it. The
+         wall clock cannot say that — see `settingsReadStamp`. */
+      const readAt = await settingsReadStamp();
       const s = await loadSettings();
       if (disposed) {
         return;

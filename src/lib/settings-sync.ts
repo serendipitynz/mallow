@@ -1,12 +1,15 @@
 /**
- * App-wide propagation of a changed preference (TASK-12.8).
+ * App-wide propagation of a changed preference (TASK-12.8), ordered by one
+ * authority in Rust (TASK-33).
  *
  * Every preference in mallow is app-wide — TASK-12 puts per-window theme and
  * language out of scope — so a window that changes one has to change it for the
- * windows that are already open. The window that changes a setting reports it,
- * Rust re-emits it to every window (`src-tauri/src/settings.rs`, which is where
- * the comment on why a broadcast is correct here lives), and each window applies
- * it without persisting or re-reporting.
+ * windows that are already open. The window that changes a setting applies it,
+ * stamps it and commits it; Rust gives the change its place in the order, writes
+ * it to settings.json if the store is what holds it, and re-emits it to every
+ * window (`src-tauri/src/settings.rs`, which is where the comment on why a
+ * broadcast is correct here lives); each window applies what it receives without
+ * persisting or re-committing.
  *
  * **Not the `storage` event.** Each window is its own WebView, and cross-WebView
  * storage notification is not something to rely on across WKWebView, WebView2
@@ -15,8 +18,8 @@
  * **The listener stays on the default `Any` target**, which is the opposite
  * decision from `lib/watch`'s and for the opposite reason: there is nothing to
  * narrow. `Any` is not what delivers a broadcast — an unfiltered `emit` reaches
- * every listener whatever its target — so what keeps the originating window out
- * is the stamp each change carries, read by `changeToApply`.
+ * every listener whatever its target — so what keeps a window from fighting its
+ * own update is the stamp each change carries, read by `changeToApply`.
  *
  * **Changes are ordered by that stamp, and the ordering is what makes the
  * windows converge.** Without it two windows that change one preference close
@@ -27,6 +30,22 @@
  * clicks — the custom emoji folder is sent when its **load** finishes, which is
  * a directory scan away from the click. So every window records what it last
  * applied per key and ignores anything not newer.
+ *
+ * **What a window mints is a request, and Rust is what answers it.** A window
+ * can only order what it has seen, which leaves two things it cannot do alone:
+ * keep a mark for changes made before it opened (so a window opened after the
+ * wall clock stepped backwards mints below every window that lived through the
+ * step, and is refused by all of them), and make its store write join the order
+ * at all. Rust holds the high-water mark for the process and raises a stamp that
+ * arrives below it, so the stamp a window records here is provisional — its own
+ * broadcast comes back carrying the stamp the change actually got, and the value
+ * being unchanged is what makes re-applying it invisible.
+ *
+ * **The provisional stamp is still minted before the change is applied**, and
+ * that is not a leftover: a stamp that only existed after a round trip would
+ * make every preference wait on one to take effect, and in the meantime an older
+ * change arriving from another window would overwrite the value this one has
+ * already shown.
  */
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -57,14 +76,15 @@ export type SettingChange =
 
 /** When a change was made and by which window.
  *
- *  `Date.now()` rather than a counter minted in Rust: the stamp has to exist
- *  before the window applies the change to itself, and a counter only comes back
- *  after a round trip. One system clock serves every window here, so the numbers
- *  are comparable across them, and `mint` keeps a window's own stamps above what
- *  it already knows so that a clock stepped backwards cannot silence it. */
+ *  `at` starts as `Date.now()` in the window making the change, because it has
+ *  to exist before that window applies the value to itself; what a change ends
+ *  up carrying is what Rust assigned it, which is that number or the first one
+ *  past the key's mark. One system clock serves every window, so the requests
+ *  are already comparable in the ordinary case and the raise is what covers the
+ *  clock going backwards. */
 export interface Stamp {
-  /** Epoch milliseconds, taken by the window that made the change — but never
-   *  below what that window already knows for the key (see `mint`). */
+  /** Epoch milliseconds — requested by the window that made the change, assigned
+   *  by `src-tauri/src/settings.rs`. */
   at: number;
   /** The window's label, stamped by Rust so that no window can claim another's.
    *  A snapshot read carries `SNAPSHOT_ORIGIN` instead. */
@@ -78,7 +98,7 @@ export interface Stamp {
  *  the value the store held before the change it just applied. */
 const SNAPSHOT_ORIGIN = '';
 
-/** What a window receives: the change and when it was made. */
+/** What a window receives: the change and the place it was given. */
 export interface SettingBroadcast {
   stamp: Stamp;
   change: SettingChange;
@@ -93,11 +113,13 @@ const applied = new Map<SettingChange['key'], Stamp>();
  *
  *  **The label breaks a tie, arbitrarily but identically in every window**,
  *  which is the property convergence rests on: two changes stamped in the same
- *  millisecond must not be resolved one way here and the other way there.
+ *  millisecond must not be resolved one way here and the other way there. Two
+ *  *committed* changes to one key no longer tie — Rust's mark strictly increases
+ *  — so what the label orders is a stamp Rust did not assign: this window's own
+ *  provisional one, and a settings read.
  *
- *  An identical stamp does not supersede, which is how a window declines its own
- *  broadcast coming back — it recorded that stamp before it applied the change
- *  to itself, so there is nothing left to do with it. */
+ *  An identical stamp does not supersede, which is how a window declines a
+ *  broadcast it has already dealt with. */
 export function supersedes(incoming: Stamp, last: Stamp | undefined): boolean {
   if (!last) {
     return true;
@@ -110,22 +132,40 @@ export function supersedes(incoming: Stamp, last: Stamp | undefined): boolean {
 
 /** The change to apply, or `null` when this window already holds something at
  *  least as new for that key. Kept out of the effect that listens so that it can
- *  be tested at all. */
+ *  be tested at all.
+ *
+ *  A window's own change comes back here carrying the stamp Rust assigned it,
+ *  which supersedes the provisional one it recorded whenever the two differ — so
+ *  the window re-applies its own value. That is the mechanism rather than a
+ *  wasted round: it is how the window learns the place its change actually took,
+ *  and the value is the one already on screen. */
 export function changeToApply(broadcast: SettingBroadcast, last: Stamp | undefined): SettingChange | null {
   return supersedes(broadcast.stamp, last) ? broadcast.change : null;
 }
 
-/** Whether the stored value a read issued at `at` returned is still the newest
+/** Whether the stored value a read stamped `at` returned is still the newest
  *  thing this window knows for `key`, recording the read when it is.
  *
  *  A window applies its settings snapshot through this rather than straight,
  *  because the read is asynchronous: a change broadcast while it was in flight
  *  has already been applied, and the snapshot — taken before that change was
- *  written — would put the window back on the old value. Stamping the snapshot
- *  with the moment the read was *issued* is what makes it comparable, since
- *  anything written earlier than that is in the answer the read returns. */
+ *  written — would put the window back on the old value. `settingsReadStamp` is
+ *  what makes the two comparable. */
 export function snapshotStillCurrent(key: SettingChange['key'], at: number): boolean {
   return noteApplied(key, { at, origin: SNAPSHOT_ORIGIN });
+}
+
+/** The stamp to compare a settings snapshot against, asked for **before** the
+ *  read is issued.
+ *
+ *  Rust answers with the highest place it has assigned so far, which is the one
+ *  number that says the right thing about the answer a read issued now will
+ *  return: every change committed before it has already been written, and every
+ *  change committed after it is given a higher place than this. The wall clock
+ *  cannot say that — a window's read stamped from a clock that has stepped
+ *  forwards refuses the next change every other window accepts. */
+export function settingsReadStamp(): Promise<number> {
+  return invoke<number>('settings_read_stamp');
 }
 
 function selfLabel(): string {
@@ -141,44 +181,39 @@ function noteApplied(key: SettingChange['key'], stamp: Stamp): boolean {
   return true;
 }
 
-/** The time to stamp a change a window is making: the wall clock, or one past
- *  what it already knows for the key, whichever is later.
+/** The time to request for a change this window is making: the wall clock, or
+ *  one past what it already knows for the key, whichever is later.
  *
- *  **The wall clock alone is not enough, and a clock stepped backwards is not a
- *  one-change problem.** Every stamp this window mints until real time catches
- *  up would fall below what its peers already hold, so every change it makes is
- *  refused by all of them while it applies each one to itself — divergence for
- *  the length of the step, not for one change. Taking the maximum makes the
- *  ordering per key monotonic for the window that writes it, whatever the clock
- *  does, and it is still the wall clock that puts two windows' changes in order
- *  in the ordinary case. */
+ *  Rust raises anything that arrives below the process-wide mark, so this is not
+ *  what saves a window whose clock has stepped backwards. What it does is keep
+ *  *this* window's provisional stamps ordered among themselves, which is what
+ *  holds the value it has just applied against an older change arriving from
+ *  another window before its own commit comes back. Minted from the wall clock
+ *  alone, a second change made inside the same millisecond as the first would
+ *  record nothing, and the window would take the first change back. */
 export function mintAt(now: number, last: Stamp | undefined): number {
   return Math.max(now, last ? last.at + 1 : 0);
 }
 
-/** Stamp a change as made now and record it, returning the emit that tells the
- *  other windows.
+/** Apply this window's provisional stamp and hand the change to Rust, which
+ *  gives it its place, persists it when `persist` is set, and tells every
+ *  window.
  *
- *  **Split from the emit because a persisted preference is written first.** The
- *  caller has already applied the value to this window, so the stamp has to
- *  belong to that moment: taken after the store write instead, a change
- *  broadcast during the write is judged newer than one made before it, applied
- *  here, and then left standing when this window's own later stamp is recorded
- *  without its value ever being re-applied. */
-export function stampSetting(change: SettingChange): () => void {
+ *  **`persist` is passed rather than derived there**: which preferences the
+ *  store holds is a list, and mirroring it in Rust would be a second copy to
+ *  keep in step — the two callers here are the two answers. */
+export function commitSetting(change: SettingChange, persist: boolean): Promise<void> {
   const at = mintAt(Date.now(), applied.get(change.key));
   noteApplied(change.key, { at, origin: selfLabel() });
-  return () => {
-    // Fire-and-forget: the change is applied and persisted here, so a failed
-    // emit costs the other windows a live update and nothing else.
-    void invoke('broadcast_setting', { change, at }).catch((e) => console.error('Failed to broadcast a setting', e));
-  };
+  return invoke('commit_setting', { change, at, persist });
 }
 
 /** Tell every other window that a preference changed, for a caller with nothing
- *  to persist first. */
+ *  to persist — the three preferences localStorage holds. */
 export function broadcastSetting(change: SettingChange): void {
-  stampSetting(change)();
+  // Fire-and-forget: the change is applied here already, so a failure costs the
+  // other windows a live update and nothing else.
+  void commitSetting(change, false).catch((e) => console.error('Failed to broadcast a setting', e));
 }
 
 /** Subscribe to preferences changed in another window. */
