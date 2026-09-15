@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-08-19 21:44'
-updated_date: '2026-09-15 21:34'
+updated_date: '2026-09-15 21:38'
 labels:
   - bug
 milestone: m-3
@@ -39,11 +39,13 @@ The bound is a step-level timeout-minutes: 10 on 'Install Linux system dependenc
 
 Sizing. A healthy run of this step was 48s in v0.5.0 and under a minute on arm64 during the v0.6.0 stall, against 31 minutes for the stall itself; 10 minutes is ten times healthy and a third of the stall. Inside that, each attempt is 45s for apt-get update and 135s for the install, so three attempts plus 30s of backoff is 9.5 minutes and the loop cannot be cut off mid-attempt by its own step bound.
 
-Both stalls named in the description are covered separately. -o DPkg::Lock::Timeout=60 bounds the dpkg lock; the per-command timeout bounds a mirror that accepts the connection and stops answering, which a retry alone would not, since one stalled connection would otherwise spend the whole budget on a single attempt.
+What the v0.6.0 evidence establishes is narrower than the description says. arm64 running the same step in under a minute at the same moment, v0.5.0 taking 48 seconds, and no Actions incident together rule out the workflow and the package list — they do not identify what stalled. An Ubuntu mirror, the runner's own networking, DNS and a proxy all fit. The description attributes it to the mirror; that is an inference, and the fix does not rest on it, since a bound is worth having whichever it was.
 
-It is 'sudo timeout' and not 'timeout sudo' — the signal has to reach apt, which runs as root. Killing the wrapper instead would leave the lock held and the two remaining attempts would block on it, which turns the retry into a slower way of reaching the same failure.
+Both stalls named in the description are still covered separately. -o DPkg::Lock::Timeout=60 bounds the dpkg lock; the per-command timeout bounds a connection that is accepted and then stops answering, which a retry alone would not, since one stalled connection would otherwise spend the whole budget on a single attempt.
+
+It is 'sudo timeout' and not 'timeout sudo' so the timeout runs as root and signals apt directly. The first wording of this said the other order would kill only the wrapper and leave the lock held, and that is wrong: sudo relays the signals it receives to its command (sudo(8), 'Signal handling'), so a SIGTERM would arrive. What sudo cannot relay is SIGKILL, so this order is what keeps a hard kill available if a SIGTERM ever proves not to be enough.
 
 Scope is release.yml alone, per the description. check.yml has the same bare apt-get in two jobs; a stall there turns a PR red without blocking a release, so it is left alone rather than widened past the AC.
 
-Verification. The workflow only runs in CI, so the loop was extracted and replayed locally under bash -e with apt stubbed: healthy exits 0 on the first attempt, a transient failure recovers on the third, and a timeout (124) on every attempt exits 1 with no sleep after the last one. The YAML parses and the step script passes bash -n. What no local check can show is the bound firing against a real stalled mirror — that needs the mirror to stall, so a green release round says the step still works, not that the timeout was exercised.
+Verification. The workflow only runs in CI, so the loop was extracted and replayed locally under bash -e with apt stubbed: healthy exits 0 on the first attempt, a transient failure recovers on the third, and a timeout (124) on every attempt exits 1 with no sleep after the last one. The YAML parses and the step script passes bash -n. What no local check can show is the bound firing against a real stall — that needs one to happen, so a green release round says the step still works, not that the timeout was exercised.
 <!-- SECTION:NOTES:END -->

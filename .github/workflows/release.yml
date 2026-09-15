@@ -165,7 +165,10 @@ jobs:
       # Bounded at 10 minutes because v0.6.0's x86_64 job sat in this step for
       # 31 minutes, twice, while arm64 ran the same step in under a minute at
       # the same moment (v0.5.0 took 48 seconds, and GitHub reported no Actions
-      # incident, so the stall was the Ubuntu mirror's). Unbounded, the only
+      # incident). **What that rules out is the workflow and the package list,
+      # not what stalled** — an Ubuntu mirror, the runner's own networking, DNS
+      # and a proxy all fit the same evidence, and none was identified. The
+      # bound is worth having whichever it was. Unbounded, the only
       # limit is the 360-minute job default: a release round then has no failure
       # to react to, only a job that looks like it is still working, and the
       # risk is publishing a draft missing a platform. 10 minutes is ten times a
@@ -185,9 +188,12 @@ jobs:
           # otherwise spend the whole budget on a single attempt and never
           # retry.
           #
-          # `sudo timeout` rather than `timeout sudo`: the signal has to reach
-          # apt, which runs as root, or a killed attempt leaves the lock held
-          # and the next two attempts block on it.
+          # `sudo timeout` rather than `timeout sudo`, so the timeout runs as
+          # root and signals apt directly. Not because the other order fails —
+          # sudo relays the signals it receives to its command (sudo(8),
+          # "Signal handling"), so a SIGTERM would arrive. What it cannot relay
+          # is SIGKILL, so only this order leaves a hard kill (`timeout -k`)
+          # available should a SIGTERM ever prove not to be enough.
           #
           # The three attempts are sized to fit inside the step bound —
           # 3 x (45s + 135s) plus 30s of backoff is 9.5 minutes.
