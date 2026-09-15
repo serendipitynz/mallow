@@ -161,20 +161,54 @@ jobs:
       # Matched by prefix, not by exact label: an exact match silently skips
       # this step for any second Linux runner, and the build then fails deep in
       # webkit2gtk rather than here.
+      #
+      # Bounded at 10 minutes because v0.6.0's x86_64 job sat in this step for
+      # 31 minutes, twice, while arm64 ran the same step in under a minute at
+      # the same moment (v0.5.0 took 48 seconds, and GitHub reported no Actions
+      # incident, so the stall was the Ubuntu mirror's). Unbounded, the only
+      # limit is the 360-minute job default: a release round then has no failure
+      # to react to, only a job that looks like it is still working, and the
+      # risk is publishing a draft missing a platform. 10 minutes is ten times a
+      # healthy run and a third of that stall. **A fix here does not reach a
+      # release already tagged** — re-running a tagged run uses the workflow
+      # file from the tagged commit — so it applies to the next tag or to a
+      # workflow_dispatch run.
       - name: Install Linux system dependencies
         if: startsWith(matrix.platform, 'ubuntu')
+        timeout-minutes: 10
         run: |
+          # Two stalls are possible here and a retry alone addresses one of
+          # them: apt can block on the dpkg lock (unattended-upgrades on the
+          # runner), and a mirror can accept the connection and then stop
+          # answering. DPkg::Lock::Timeout covers the first; the per-command
+          # `timeout` covers the second, since one stalled connection would
+          # otherwise spend the whole budget on a single attempt and never
+          # retry.
+          #
+          # `sudo timeout` rather than `timeout sudo`: the signal has to reach
+          # apt, which runs as root, or a killed attempt leaves the lock held
+          # and the next two attempts block on it.
+          #
+          # The three attempts are sized to fit inside the step bound —
+          # 3 x (45s + 135s) plus 30s of backoff is 9.5 minutes.
+          pkgs="libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils"
           # xdg-utils is needed because the AppImage bundler shells out to
           # /usr/bin/xdg-open, which the arm64 runner images do not ship and the
           # x86_64 ones happen to. Without it the arm64 job bundles deb and rpm
           # and then fails on the AppImage.
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            xdg-utils
+          install_deps() {
+            sudo timeout 45 apt-get -o DPkg::Lock::Timeout=60 update \
+              && sudo timeout 135 apt-get -o DPkg::Lock::Timeout=60 install -y $pkgs
+          }
+          for attempt in 1 2 3; do
+            if install_deps; then
+              exit 0
+            fi
+            echo "::warning::apt-get attempt $attempt of 3 failed or timed out"
+            [ "$attempt" = 3 ] || sleep $((attempt * 10))
+          done
+          echo "::error::apt-get did not succeed in 3 bounded attempts"
+          exit 1
 
       - uses: pnpm/action-setup@v4
 
