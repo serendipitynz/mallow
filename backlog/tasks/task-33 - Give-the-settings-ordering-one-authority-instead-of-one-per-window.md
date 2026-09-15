@@ -42,6 +42,16 @@ Neither hole is reachable in ordinary single-user use. The first needs two windo
 ## Where the evidence is
 
 PR #57's review rounds, by the bot account: the round that raised these two is the fourth, posted against `3704b8c` after the merge. Rounds 1-3 are on the same pull request, and the author replies record which findings were refuted and why one refutation was wrong.
+
+## What shipped, and where this task's own prescription was overruled
+
+**"it can hold the per-key high-water mark for the process" above is overruled: the mark is one for the whole process, across every key.** The per-key shape was implemented first and the reviewer caught it on PR #60's first round, because it and the settings read do not agree. A read returns the whole file, so the only stamp that says the right thing about it is one above every key — and stamped from the highest of several per-key marks, a read carries some other key's mark, while a later change to a key whose own mark is lower is raised only past that lower mark and is refused by the window that read. That is the divergence this task exists to close, reintroduced inside the fix. One mark removes the mismatch rather than keeping two numbers in step; ordering per key survives it, since `supersedes` never compares across keys.
+
+**A third hole of the same class was closed with the two named above**, and is not a widening of scope but the same sentence reaching the mount-time read: `snapshotStillCurrent` stamped its snapshot from the wall clock, so a window whose clock had run ahead would stamp its read above changes every other window accepts and refuse them. `settings_read_stamp` answers with the order's own highest place instead, which is what makes a read and a change comparable at all.
+
+**The stale write is not refused; it is ordered.** AC #4 is read against that: the store write moved into Rust under the same lock that assigns the place, so a write landing late is *given* the newest stamp and the last value to reach settings.json is by construction the one every window is showing. The rejected alternative — leaving the write in `saveSetting` and gating it on the stamp still being the newest — is recorded on `commit_setting` and in `AGENTS.md`: it can only be checked before the write is handed to the plugin, and a write already handed over cannot be recalled, so it narrows the hole without closing it.
+
+The grounds themselves live in `AGENTS.md` / `AGENTS.ja.md`, which survive the milestone.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
