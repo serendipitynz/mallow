@@ -167,9 +167,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   what holds it, and relays it to every window; plus `settings_read_stamp`, the
   place a window's own settings read is compared against. **It owns no setting
   value** — `recent.rs` and `session.rs` are what own keys in settings.json — but
-  it does own their **order**: `SettingsOrder` is one high-water mark per key for
-  the whole process, and `effective_at` raises a stamp arriving at or below a
-  key's mark past it rather than refusing it. It reads a change's key and value
+  it does own their **order**: `SettingsOrder` is one high-water mark for the
+  whole process, and `effective_at` raises a stamp arriving at or below it past
+  it rather than refusing it. **One mark rather than one per key**, because a
+  settings read returns the whole file and the only stamp that says the right
+  thing about it is one above every key — per-key marks and a read stamped from
+  the highest of them are not the same number, and a later change to a key whose
+  own mark was lower would be refused by the window that read. Ordering per key
+  survives the sharing: `supersedes` never compares across keys. It reads a change's key and value
   and nothing else, so the list of preferences is still not written a second time
   here — **which of them the store holds arrives as `persist`**. See the gotcha
   below for why a broadcast is right in this one place, why the origin label
@@ -1262,9 +1267,12 @@ hold rather than as an exhaustive style guide.
   per-window high-water mark TASK-12.8 shipped). What a window mints from
   `Date.now()` is a *request*: the stamp has to exist before that window applies
   the value to itself, so it cannot come from a round trip. `commit_setting`
-  holds one high-water mark per key for the process and answers with
-  `effective_at` — the requested time where it is above the mark, the first
-  number past the mark where it is not. **A stamp below the mark is raised rather
+  holds one high-water mark for the process and answers with `effective_at` —
+  the requested time where it is above the mark, the first number past the mark
+  where it is not. **The mark is not per key**, which the first round of TASK-33
+  had wrong: a settings read is stamped from the order and has to be comparable
+  with a change to any key, so per-key marks would let a read carry one key's
+  mark and refuse a later change to a key whose own mark was lower. **A stamp below the mark is raised rather
   than refused**, because the window that minted it has already applied the
   value and a refusal would leave that window the only one holding it. It learns
   the place its change took by meeting its own broadcast, which then supersedes
@@ -1282,7 +1290,7 @@ hold rather than as an exhaustive style guide.
   first change taken back.
   **The label breaks a same-millisecond tie**, arbitrarily but identically in
   every window, which is the property convergence rests on. Two *committed*
-  changes to one key no longer tie — the mark strictly increases — so what it
+  changes no longer tie at all — the mark strictly increases — so what it
   orders is a stamp Rust did not assign: a window's own provisional one, and a
   settings read. **A snapshot loses every such tie**, carrying the empty origin
   rather than the window's label: a read and a write stamped alike cannot be
@@ -1497,8 +1505,8 @@ hold rather than as an exhaustive style guide.
   `session`'s live-set functions
   (reporting, focus order, the last-window rule, the cap, both halves of the
   migration, and which window is showing a folder) and `settings`'s raise rule
-  (that a stamp at or below a key's mark is put past it, and what a settings read
-  is stamped with before anything has changed) are covered without a GUI — the
+  (that a stamp at or below the mark is put past it, and that a change made after
+  a settings read outranks it whichever key either touched) are covered without a GUI — the
   last three because they take what
   they need as arguments rather than asking the app for it. **`unattended.rs`'s tests are
   `cfg(unattended)`**, so a plain `cargo test` never compiles them — the paper job
