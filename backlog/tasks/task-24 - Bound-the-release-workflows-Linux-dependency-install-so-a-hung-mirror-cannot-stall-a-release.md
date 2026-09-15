@@ -3,10 +3,10 @@ id: TASK-24
 title: >-
   Bound the release workflow's Linux dependency install so a hung mirror cannot
   stall a release
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-19 21:44'
-updated_date: '2026-09-15 21:41'
+updated_date: '2026-09-15 22:21'
 labels:
   - bug
 milestone: m-3
