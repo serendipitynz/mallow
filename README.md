@@ -112,9 +112,90 @@ Installing an update may need the system's permission.
 - **Themes**: light / dark / auto + Solarized Light/Dark · Dracula · Nord.
 - **Self-update**: check for a newer version and install it. See
   [Install and update](#install-and-update).
+- **Multiple windows and the File menu**: New Window, Open…, Open Recent, and
+  one window per folder so two folders can be read side by side. See
+  [Multiple windows and the File menu](#multiple-windows-and-the-file-menu).
+- **Printing and PDF export**: print a rendered Markdown document, or write it
+  to PDF with no print dialog. See
+  [Printing and PDF export](#printing-and-pdf-export).
 - **Persisted settings / session restore**: theme, explorer width and side, the
-  custom emoji folder, the last opened folder/file, and window geometry are saved
-  and restored on the next launch.
+  custom emoji folder and the update-check switch are saved and restored on the
+  next launch — and so is the set of windows that was open at quit, each with its
+  own folder, document, size and position.
+
+## Multiple windows and the File menu
+
+mallow opens as many windows as you want, each on its own folder, so two folders
+can be read side by side. Every window has its own file tree, its own live
+reload and its own document; preferences such as the theme are app-wide and
+change in every open window at once.
+
+New Window, Open…, Open Recent, Print… and Export as PDF… are in the **File**
+menu. **The menu is composed per platform** — macOS keeps the application menu
+and a Window menu, while Windows and Linux carry Settings… and Exit inside File
+and About under Help — so a screenshot of one platform is not a picture of the
+others. **The menu labels are English whatever language the app's UI is in**,
+which is deliberate for now.
+
+| Action | Shortcut |
+|---|---|
+| New Window | `Cmd/Ctrl+N` |
+| Open… | `Cmd/Ctrl+O` |
+| Close Window | `Cmd/Ctrl+W` |
+| Settings… | `Cmd/Ctrl+,` |
+| Print… | `Cmd/Ctrl+P` |
+| Export as PDF… | `Cmd/Ctrl+E` |
+
+Closing the last window quits mallow — on macOS as well as on Windows and Linux.
+
+**Open Recent** replaces the folder in the window you are in. **Hold Cmd
+(macOS) or Ctrl (Windows, Linux) while choosing an entry to open it in another
+window instead.** Another rather than new: a folder some window is already
+showing brings that window forward rather than being opened twice. Keep the key
+held until the window appears — releasing it at the moment of the click can be
+too early for mallow to read it, which is what happens on macOS. The same list
+and the same gesture are in a window's empty state, before a folder is opened.
+
+**Quitting and relaunching brings the whole window set back**, each window on
+its own folder and document, at its own size and position. Three parts of that
+are intended rather than faults:
+
+- **A new window can open at the size and position of a window that was closed
+  earlier.** Geometry is remembered per place in the window set rather than per
+  folder, and a new window takes the first free place.
+- **At most 8 windows are restored**, dropping the ones focused least recently.
+- **A window whose folder is gone comes back empty** rather than not coming
+  back, so you can see which window lost it.
+
+Known limitation: the in-app **Recent Folders** list, the one shown in a window
+that has no folder open, does not follow a folder opened or a list cleared in
+another window while it is on screen. The File > Open Recent submenu does.
+
+## Printing and PDF export
+
+Both entries live in the File menu, and **both are available only while a
+Markdown document is shown in preview** — the source half of the toggle, and
+every other file kind, leave them disabled.
+
+**Export as PDF…** (`Cmd/Ctrl+E`) asks where to save and writes the file with no
+print dialog on screen. It works on macOS, Windows and Linux.
+
+**Print…** (`Cmd/Ctrl+P`) hands the document to the platform's own print UI, and
+the three platforms do not behave alike:
+
+- **Linux: printing is unavailable** and the entry stays disabled. Export as PDF
+  is how a document leaves mallow there.
+- **macOS: a long document can lose its end.** The print sheet reuses a page
+  count from before the document was laid out; choosing a different printer in
+  the sheet makes it count again, and the output then matches. That has not been
+  seen in Export as PDF.
+- **Windows:** the WebView adds a header and footer of its own — date, title,
+  URL, page number. They are switched off in the print dialog; mallow cannot
+  remove them.
+
+Both entries put only the document on the page — the explorer, toolbar and
+footer are left off — and both print in the light palette whatever theme is on
+screen, because a dark one comes out as faint text on unprinted white.
 
 ## Tech stack
 
