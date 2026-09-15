@@ -1,10 +1,10 @@
 ---
 id: TASK-12.6
 title: 'Document multiple windows, the File menu and session restore'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-15 21:09'
+updated_date: '2026-09-15 21:16'
 labels:
   - documentation
 milestone: m-3
@@ -46,7 +46,7 @@ Document multiple windows, the File menu and session restore once the behaviour 
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Both language versions of both documents agree with the shipped behaviour
+- [x] #1 Both language versions of both documents agree with the shipped behaviour
 <!-- DOD:END -->
 
 ## Implementation Notes
