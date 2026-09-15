@@ -1,12 +1,13 @@
 ---
 id: TASK-12.6
 title: 'Document multiple windows, the File menu and session restore'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-08-03 01:16'
+updated_date: '2026-09-15 11:42'
 labels:
   - documentation
+milestone: m-3
 dependencies:
   - TASK-12.5
   - TASK-12.7
@@ -33,14 +34,14 @@ Document multiple windows, the File menu and session restore once the behaviour 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 README.md and README.ja.md list multiple windows, the File menu, the shortcuts, the modifier gesture with its per-platform reach, and window-set restore
-- [ ] #2 Slot-inherited geometry, the restored-window cap and the empty-window-on-missing-folder behaviour are stated as intended; English-only menu labels are stated as deliberate
-- [ ] #3 Descriptions of the settings file name the windows key, not lastFolder / lastFile
-- [ ] #4 Known follow-ups gains translated menu labels
-- [ ] #5 AGENTS.md and AGENTS.ja.md describe the watcher registry, the capability window glob, the initial-location handover, the label slot scheme, the create:false decision and the destroy-versus-quit rule with its event-ordering facts; the stale 'watcher handle lives in WatcherState' and 'macOS only' lines are gone
-- [ ] #6 Whatever TASK-12.8 does not propagate across windows is listed as a known limitation, per setting
-- [ ] #7 AGENTS.md records that window enumeration must use webview_windows(), because the obvious Manager methods are unstable-gated
-- [ ] #8 The window-state migration is documented: an existing install keeps its geometry because the main entry is renamed once, and that migration reads another plugin's state file by design
+- [x] #1 README.md and README.ja.md list multiple windows, the File menu, the shortcuts, the modifier gesture with its per-platform reach, and window-set restore
+- [x] #2 Slot-inherited geometry, the restored-window cap and the empty-window-on-missing-folder behaviour are stated as intended; English-only menu labels are stated as deliberate
+- [x] #3 Descriptions of the settings file name the windows key, not lastFolder / lastFile
+- [x] #4 Known follow-ups gains translated menu labels
+- [x] #5 AGENTS.md and AGENTS.ja.md describe the watcher registry, the capability window glob, the initial-location handover, the label slot scheme, the create:false decision and the destroy-versus-quit rule with its event-ordering facts; the stale 'watcher handle lives in WatcherState' and 'macOS only' lines are gone
+- [x] #6 Whatever TASK-12.8 does not propagate across windows is listed as a known limitation, per setting
+- [x] #7 AGENTS.md records that window enumeration must use webview_windows(), because the obvious Manager methods are unstable-gated
+- [x] #8 The window-state migration is documented: an existing install keeps its geometry because the main entry is renamed once, and that migration reads another plugin's state file by design
 <!-- AC:END -->
 
 ## Definition of Done
