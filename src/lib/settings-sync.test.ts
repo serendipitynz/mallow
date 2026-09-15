@@ -1,11 +1,23 @@
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { describe, expect, it, vi } from 'vitest';
-import { changeToApply, mintAt, type SettingBroadcast, type Stamp, supersedes } from './settings-sync';
+import {
+  changeToApply,
+  commitSetting,
+  mintAt,
+  onSettingChange,
+  type SettingBroadcast,
+  type SettingChange,
+  type Stamp,
+  snapshotStillCurrent,
+  supersedes,
+} from './settings-sync';
 
-// The module reaches Tauri only from `broadcastSetting`, `onSettingChange` and
-// `snapshotStillCurrent`; the ordering under test touches none of them, so the
-// APIs are stubbed just far enough for the import to resolve under Node.
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
-vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn() }));
+// Rust is what assigns a stamp and what persists a change, so the two APIs that
+// reach it are stubbed: the tests here are about what this window sends and what
+// it does with what comes back.
+vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(() => Promise.resolve()) }));
+vi.mock('@tauri-apps/api/event', () => ({ listen: vi.fn(() => Promise.resolve(() => {})) }));
 vi.mock('@tauri-apps/api/webviewWindow', () => ({
   getCurrentWebviewWindow: () => ({ label: 'w1' }),
 }));
@@ -90,5 +102,40 @@ describe('mintAt', () => {
     const first = mintAt(100_000, ahead);
     expect(first).toBeGreaterThan(ahead.at);
     expect(mintAt(100_000, { at: first, origin: 'w1' })).toBeGreaterThan(first);
+  });
+});
+
+describe('commitSetting', () => {
+  it('hands Rust the change, the time it is asking for, and whether the store holds it', async () => {
+    vi.mocked(invoke).mockClear();
+    await commitSetting({ key: 'explorerWidth', value: 320 }, true);
+    expect(invoke).toHaveBeenCalledWith('commit_setting', {
+      change: { key: 'explorerWidth', value: 320 },
+      at: expect.any(Number),
+      persist: true,
+    });
+  });
+
+  it('records the provisional stamp, so a settings read cannot take the value back', async () => {
+    await commitSetting({ key: 'explorerSide', value: 'right' }, true);
+    // The read was issued before this window changed the preference, so its
+    // answer predates the change and applying it would undo what is on screen.
+    expect(snapshotStillCurrent('explorerSide', 1)).toBe(false);
+  });
+
+  it('applies its own change again when Rust raised the stamp, which is how the raise lands', async () => {
+    const applied: SettingChange[] = [];
+    await onSettingChange((change) => applied.push(change));
+    const calls = vi.mocked(listen).mock.calls;
+    const deliver = calls[calls.length - 1][1] as unknown as (event: { payload: SettingBroadcast }) => void;
+
+    await commitSetting({ key: 'autoCheckUpdates', value: false }, true);
+    // What a window opened after a clock rollback gets back: the same change,
+    // the same window, and a place above every window that lived through the
+    // step. Declining it would leave this window holding a stamp its peers
+    // never saw, and its next change refused for the same reason again.
+    const raised: Stamp = { at: Date.now() + 3_600_000, origin: 'w1' };
+    deliver({ payload: { stamp: raised, change: { key: 'autoCheckUpdates', value: false } } });
+    expect(applied).toEqual([{ key: 'autoCheckUpdates', value: false }]);
   });
 });
