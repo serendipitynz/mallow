@@ -1,10 +1,10 @@
 ---
 id: TASK-33
 title: Give the settings ordering one authority instead of one per window
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-12 07:31'
-updated_date: '2026-09-15 02:49'
+updated_date: '2026-09-15 04:15'
 labels:
   - bug
 milestone: m-3
@@ -55,6 +55,6 @@ PR #57's review rounds, by the bot account: the round that raised these two is t
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 pnpm build, pnpm test, cargo check and cargo test pass
-- [ ] #2 With two windows, one preference changed in each within the same second, settings.json and both windows agree afterwards and a third window opened next reads the same value
+- [x] #2 With two windows, one preference changed in each within the same second, settings.json and both windows agree afterwards and a third window opened next reads the same value
 - [x] #3 AGENTS.md and AGENTS.ja.md describe where the ordering authority now lives, replacing what TASK-12.8 wrote about the per-window high-water mark
 <!-- DOD:END -->
