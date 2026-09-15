@@ -1,10 +1,10 @@
 ---
 id: TASK-11.2
 title: Check for updates in the app and install on explicit confirmation
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-08-01 23:14'
-updated_date: '2026-08-23 06:18'
+updated_date: '2026-09-15 23:18'
 labels:
   - feature
 milestone: m-2
@@ -64,10 +64,10 @@ Do NOT assume a SmartScreen warning on the Windows update path. The updater down
 - [x] #4 The update dialog is still readable when the notes field in latest.json is empty
 - [x] #5 Download progress is visible; macOS and Linux relaunch through the process plugin, and the Windows path does not leave the UI waiting for a relaunch that never comes because the process has already exited
 - [x] #6 The confirmation warns that the system may ask for a password or administrator approval, without naming a mechanism the plugin chooses at runtime
-- [ ] #7 Refusing the authentication prompt on macOS, Windows and Linux reports a cancelled or failed install rather than a download failure, without matching on upstream error text
+- [x] #7 Refusing the authentication prompt on macOS, Windows and Linux reports a cancelled or failed install rather than a download failure, without matching on upstream error text
 - [x] #8 Every new string is added to both the ja and en dictionaries in lib/i18n.tsx
 - [x] #9 Launching offline produces no error UI on the automatic path
-- [ ] #10 The Windows update path has been run on a real or virtual install and the copy matches what actually happens there
+- [x] #10 The Windows update path has been run on a real or virtual install and the copy matches what actually happens there
 - [x] #11 pnpm build and pnpm test pass
 <!-- AC:END -->
 
@@ -85,5 +85,41 @@ The alternative considered and not taken was to build a Windows installer locall
 So this task stays In Review past the v0.7.0 release session and closes when the version after it (v0.7.1 or v0.8.0) is published — the same session that settles the parent's DoD #2. Everything else is done: AC #1-#6, #8, #9 and #11 are met and PR #40 was approved.
 
 One observation worth keeping for whoever runs the app before that release: the manual check reports 'could not check for updates' even when online, because the endpoint resolves to releases/download/v0.6.0/latest.json and returns 404 (v0.6.0 carries no such asset). The plugin reads only 204 No Content as 'no update' and parses every other body as JSON, so a 404 is an error. This is the 'simply no release yet' case in the task description, not a defect, and it turns into 'you are on the latest version' once v0.7.0 is published.
+---
+created: 2026-09-16
+---
+AC #7 and #10 closed against the published v0.8.0 (2026-09-15 23:06 UTC), the release the
+previous comment was waiting for. All three platforms updated end to end from an installed
+0.7.0 and relaunched on 0.8.0, which also settles the parent's DoD #2.
+
+AC #10 (Windows). A 0.7.0 installed from the .exe (NSIS) updated straight through: no UAC,
+because Tauri's default NSIS installMode is currentUser, and no SmartScreen at any point,
+which is what the task description predicted - the updater downloads through its own HTTP
+client into a temp path, so no Mark-of-the-Web is attached. Nothing was added to README:
+the task says not to write a warning about a warning that never appears, and it never
+appeared. The confirmation copy says the system *may* ask for a password, which stays true
+of a route that does not ask. The .msi route is unmeasured; msiexec would raise UAC there.
+
+AC #7 was closed on Linux, and on the other two by establishing there is nothing to refuse.
+On Ubuntu 24.04 (deb/rpm, VMware), cancelling the privilege-escalation password dialog
+showed 'The update was not installed.' with the hint 'Cancelling, and a failed transfer or
+write, both end here.', and printed the upstream 'Failed to install package' verbatim
+beneath it rather than branching on it - so the screen shows both halves of the AC at once:
+a cancelled install reported as such, without matching on upstream error text. Pressing
+Install again and letting the password through completed the update.
+
+On macOS and Windows the normal route raises no authentication prompt at all. macOS is not
+merely 'usually silent': tauri-plugin-updater 2.10.1 (updater.rs:1255-1295) renames the .app
+out of its parent directory and reaches the AppleScript 'with administrator privileges'
+fallback only when that rename fails with PermissionDenied. The permission that decides this
+belongs to the parent directory, and /Applications is drwxrwxr-x root:admin, so an admin
+account's update is silent by construction. Windows NSIS is silent for the installMode
+reason above.
+
+The user decided (2026-09-16) to measure the normal route only and not to manufacture the
+macOS case - running a 0.7.0 copy from a root-owned directory such as /opt would force the
+rename to fail and reach the prompt, and was declined as more effort than this project
+spends. So AC #7 is closed on a measurement that names where a prompt exists rather than on
+three refusals.
 ---
 <!-- COMMENTS:END -->

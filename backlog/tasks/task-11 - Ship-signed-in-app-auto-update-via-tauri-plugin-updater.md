@@ -1,10 +1,10 @@
 ---
 id: TASK-11
 title: Ship signed in-app auto-update via tauri-plugin-updater
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-08-01 23:13'
-updated_date: '2026-08-19 20:48'
+updated_date: '2026-09-15 23:18'
 labels:
   - feature
 milestone: m-2
@@ -49,7 +49,7 @@ Split into three subtasks because the review units differ: the signing and relea
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 TASK-11.1, TASK-11.2 and TASK-11.3 are all Done
-- [ ] #2 An installed build updates itself end to end on macOS, Windows and Linux. This needs two consecutive published releases that both carry the updater, so schedule it as part of the release plan rather than as a one-off test
-- [ ] #3 The updater private key is stored where it survives this machine, and the consequence of losing it is written down
+- [x] #1 TASK-11.1, TASK-11.2 and TASK-11.3 are all Done
+- [x] #2 An installed build updates itself end to end on macOS, Windows and Linux. This needs two consecutive published releases that both carry the updater, so schedule it as part of the release plan rather than as a one-off test
+- [x] #3 The updater private key is stored where it survives this machine, and the consequence of losing it is written down
 <!-- DOD:END -->
