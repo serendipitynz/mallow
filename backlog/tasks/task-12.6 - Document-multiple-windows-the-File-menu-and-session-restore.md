@@ -4,7 +4,7 @@ title: 'Document multiple windows, the File menu and session restore'
 status: In Review
 assignee: []
 created_date: '2026-08-02 21:14'
-updated_date: '2026-09-15 11:42'
+updated_date: '2026-09-15 21:09'
 labels:
   - documentation
 milestone: m-3
@@ -48,3 +48,11 @@ Document multiple windows, the File menu and session restore once the behaviour 
 <!-- DOD:BEGIN -->
 - [ ] #1 Both language versions of both documents agree with the shipped behaviour
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+AC #2's four statements are in AGENTS, not in README. The user cut them from README.ja.md on 2026-09-16 as too verbose for a user-facing document — the menu composition and the English labels because launching the app shows both, and the restore cap, the inherited geometry and the empty-folder case because that detail belongs with the mechanism. README now carries one pointer to AGENTS instead. AC #2 names no file, so it stays met; AC #1's list is unaffected, since the shortcuts, the modifier gesture and window-set restore are still in README.
+
+Two claims were corrected in the same round, both of them wrong in the direction of promising more than was measured. 'Prints in the light palette whatever theme is on screen' is false: lib/mermaid.ts renders its SVG with mermaid's own dark theme and print.scss only caps its width, and Shiki's dark tokens are inline !important values the stylesheet cannot un-apply. The wording is now that a print stylesheet applies rather than the screen's theme. And macOS's truncation was observed through the print UI's PDF destination alone, never against a physical printer, so it is now written as a page count that does not match the print preview rather than as a document losing its end.
+<!-- SECTION:NOTES:END -->

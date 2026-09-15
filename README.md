@@ -130,13 +130,6 @@ can be read side by side. Every window has its own file tree, its own live
 reload and its own document; preferences such as the theme are app-wide and
 change in every open window at once.
 
-New Window, Open…, Open Recent, Print… and Export as PDF… are in the **File**
-menu. **The menu is composed per platform** — macOS keeps the application menu
-and a Window menu, while Windows and Linux carry Settings… and Exit inside File
-and About under Help — so a screenshot of one platform is not a picture of the
-others. **The menu labels are English whatever language the app's UI is in**,
-which is deliberate for now.
-
 | Action | Shortcut |
 |---|---|
 | New Window | `Cmd/Ctrl+N` |
@@ -150,52 +143,33 @@ Closing the last window quits mallow — on macOS as well as on Windows and Linu
 
 **Open Recent** replaces the folder in the window you are in. **Hold Cmd
 (macOS) or Ctrl (Windows, Linux) while choosing an entry to open it in another
-window instead.** Another rather than new: a folder some window is already
-showing brings that window forward rather than being opened twice. Keep the key
-held until the window appears — releasing it at the moment of the click can be
-too early for mallow to read it, which is what happens on macOS. The same list
-and the same gesture are in a window's empty state, before a folder is opened.
+window instead.** If a window is already showing the folder you chose, that
+window is brought to the front.
 
-**Quitting and relaunching brings the whole window set back**, each window on
-its own folder and document, at its own size and position. Three parts of that
-are intended rather than faults:
-
-- **A new window can open at the size and position of a window that was closed
-  earlier.** Geometry is remembered per place in the window set rather than per
-  folder, and a new window takes the first free place.
-- **At most 8 windows are restored**, dropping the ones focused least recently.
-- **A window whose folder is gone comes back empty** rather than not coming
-  back, so you can see which window lost it.
-
-Known limitation: the in-app **Recent Folders** list, the one shown in a window
-that has no folder open, does not follow a folder opened or a list cleared in
-another window while it is on screen. The File > Open Recent submenu does.
+Quitting and relaunching restores the folders that were open at quit. Each
+window reopens the folder and document it had, at the size and position it had.
+The restore limit, the known limitations and the rest of the detail are in
+[AGENTS.md](AGENTS.md).
 
 ## Printing and PDF export
 
-Both entries live in the File menu, and **both are available only while a
-Markdown document is shown in preview** — the source half of the toggle, and
-every other file kind, leave them disabled.
+Printing and PDF export are available only in a Markdown document's preview
+mode.
 
 **Export as PDF…** (`Cmd/Ctrl+E`) asks where to save and writes the file with no
 print dialog on screen. It works on macOS, Windows and Linux.
 
-**Print…** (`Cmd/Ctrl+P`) hands the document to the platform's own print UI, and
-the three platforms do not behave alike:
+**Print…** (`Cmd/Ctrl+P`) prints the document through the platform's own print
+function. Linux is not supported at present.
 
-- **Linux: printing is unavailable** and the entry stays disabled. Export as PDF
-  is how a document leaves mallow there.
-- **macOS: a long document can lose its end.** The print sheet reuses a page
-  count from before the document was laid out; choosing a different printer in
-  the sheet makes it count again, and the output then matches. That has not been
-  seen in Export as PDF.
-- **Windows:** the WebView adds a header and footer of its own — date, title,
-  URL, page number. They are switched off in the print dialog; mallow cannot
-  remove them.
+- On macOS, writing a PDF through the print function can produce a page count
+  that does not match the print preview. Reselecting the printer in the print
+  dialog sometimes resolves it.
+- On Windows, a header and footer of the platform's own — date, title, URL, page
+  number — are added. Check and adjust them in the print dialog.
 
-Both entries put only the document on the page — the explorer, toolbar and
-footer are left off — and both print in the light palette whatever theme is on
-screen, because a dark one comes out as faint text on unprinted white.
+Printing and PDF export apply a print stylesheet rather than the theme selected
+on screen.
 
 ## Tech stack
 
