@@ -162,12 +162,19 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `open_restored_windows` creates one window per entry in saved order; `init()`
   is a plugin whose position between store and window-state is load-bearing (see
   the gotcha below). The pure functions are unit-tested with no app handle.
-- `settings.rs` — `broadcast_setting`, the relay that carries one window's
-  changed preference to every window. **It owns no setting value** — `recent.rs`
-  and `session.rs` are what own keys in settings.json — and the change it relays
-  is opaque JSON, so the list of preferences is not written a second time here.
-  See the gotcha below for why a broadcast is right in this one place and why the
-  origin label, not the emit, is what keeps a window off its own update.
+- `settings.rs` — `commit_setting`, which gives one window's changed preference
+  its place in the app-wide order, writes it to settings.json when the store is
+  what holds it, and relays it to every window; plus `settings_read_stamp`, the
+  place a window's own settings read is compared against. **It owns no setting
+  value** — `recent.rs` and `session.rs` are what own keys in settings.json — but
+  it does own their **order**: `SettingsOrder` is one high-water mark per key for
+  the whole process, and `effective_at` raises a stamp arriving at or below a
+  key's mark past it rather than refusing it. It reads a change's key and value
+  and nothing else, so the list of preferences is still not written a second time
+  here — **which of them the store holds arrives as `persist`**. See the gotcha
+  below for why a broadcast is right in this one place, why the origin label
+  rather than the emit is what keeps a window off its own update, and why the
+  store write moved here (TASK-33).
 - `editors.rs` — `detect_editors` / `open_in_editor` / `reveal_in_os` /
   `open_in_default_app` via `std::process`, gated per-OS with `cfg`. The last one
   hands a file to the OS handler registered for it, and is here rather than on
@@ -1203,15 +1210,18 @@ hold rather than as an exhaustive style guide.
   anyone — those entries never reach the screen, so there is nothing to report.
 - **A preference is app-wide, and the broadcast that makes it so is the one
   `emit` in this app that is deliberately unfiltered.** `settings.rs`'s
-  `broadcast_setting` re-emits `settings:change` to every window, which is the
+  `commit_setting` re-emits `settings:change` to every window, which is the
   opposite decision from `fs:change`'s and for the opposite reason: two windows
   must not share a watch, and every window must share a theme (TASK-12 puts a
   per-window theme and language out of scope). **The originating window is kept
   out by the stamp each change carries, not by narrowing the emit** — the
   frontend listens on the default `Any`, which matches a filtered emit as
   readily as an unfiltered one, so `emit_to` per window would isolate nothing;
-  a window records a stamp before applying its own change, so `changeToApply` in
-  `lib/settings-sync` meets it again as not newer. **Not the `storage` event**: each window is
+  a window records its own stamp before applying its own change, so
+  `changeToApply` in `lib/settings-sync` meets that broadcast again as not newer
+  — unless Rust raised the stamp, in which case the window applies its own value
+  a second time, which is how it learns the place the change actually took.
+  **Not the `storage` event**: each window is
   its own WebView, and cross-WebView storage notification is not something to
   rely on across all three engines.
   **Every propagated preference has two halves, and the receiving window takes
@@ -1221,7 +1231,7 @@ hold rather than as an exhaustive style guide.
   the time the event arrives — which is also why a window created afterwards
   comes up correct with no propagation at all. Going through the persisting
   setter instead would write a second time **and** send an echo back out.
-  **`saveSetting` sends its own broadcast**, so the store-backed preferences
+  **`saveSetting` is one call that persists and propagates**, so the store-backed preferences
   (explorer width and side, the custom emoji folder, the launch update check)
   need nothing at their call sites; theme, language and the outline toggle are
   sent from `ThemePicker`, `SettingsModal` and the two views instead, which is
@@ -1247,31 +1257,54 @@ hold rather than as an exhaustive style guide.
   where the first reading of it was wrong: a broadcast is not sent when the
   reader clicks — the custom emoji folder is sent when its **load** finishes,
   a directory scan away from the click — so two changes can be stamped far apart
-  and land together. The stamp is `Date.now()` rather than a counter minted in
-  Rust, because it has to exist *before* the window applies the change to itself
-  and a counter only comes back after a round trip, leaving a window unable to
-  judge what arrives inside that trip; `origin` is still Rust's, so no window can
-  claim another's label. **The label breaks a same-millisecond tie**, arbitrarily
-  but identically in every window, which is the property convergence rests on. **A wall clock
-  stepped backwards is not a one-change problem**, which is why the mint takes
-  the maximum of the clock and one past what the window already knows: stamped
-  from the clock alone, every change that window makes until real time catches up
-  falls below what its peers hold — refused by all of them, applied locally by
-  it, divergent for the length of the step.
-  **A snapshot loses every same-millisecond tie**, carrying the empty origin
-  rather than the window's label: a read and a write stamped in the same
-  millisecond cannot be ordered by time, and the write is the one carrying an
-  intention.
-  **`saveSetting` stamps before the store write, not after it** — the caller has
-  already applied the value, so a change broadcast during the write would
-  otherwise be judged the newer of the two, applied here, and left standing when
-  this window's own later stamp was recorded without its value being re-applied.
+  and land together.
+  **The ordering has one authority and it is Rust** (TASK-33, replacing the
+  per-window high-water mark TASK-12.8 shipped). What a window mints from
+  `Date.now()` is a *request*: the stamp has to exist before that window applies
+  the value to itself, so it cannot come from a round trip. `commit_setting`
+  holds one high-water mark per key for the process and answers with
+  `effective_at` — the requested time where it is above the mark, the first
+  number past the mark where it is not. **A stamp below the mark is raised rather
+  than refused**, because the window that minted it has already applied the
+  value and a refusal would leave that window the only one holding it. It learns
+  the place its change took by meeting its own broadcast, which then supersedes
+  its provisional stamp, so it re-applies a value already on screen and nothing
+  shows. **`origin` is still Rust's**, so no window can claim another's label.
+  **Why a window cannot do this alone**: it can only order what it has seen. A
+  window opened after the wall clock stepped backwards has an empty map, mints
+  from the low clock, and is refused by every window that lived through the step
+  while applying the change to itself — divergent for the length of the step, not
+  for one change. Taking the maximum of the clock and one past what *that window*
+  knows was TASK-12.8's answer, and it cannot reach a window that was not there.
+  `mintAt` stays all the same, for a narrower job: keeping this window's own
+  provisional stamps ordered among themselves, so that a second change made
+  inside the same millisecond as the first is not recorded as nothing and the
+  first change taken back.
+  **The label breaks a same-millisecond tie**, arbitrarily but identically in
+  every window, which is the property convergence rests on. Two *committed*
+  changes to one key no longer tie — the mark strictly increases — so what it
+  orders is a stamp Rust did not assign: a window's own provisional one, and a
+  settings read. **A snapshot loses every such tie**, carrying the empty origin
+  rather than the window's label: a read and a write stamped alike cannot be
+  ordered by time, and the write is the one carrying an intention.
+  **The store write is in Rust, under the same lock that assigns the place**, and
+  that is TASK-33's choice with one alternative rejected. Left in `saveSetting`
+  and gated on the stamp still being the newest, a write can only be checked
+  before it is handed to the plugin, and a write already handed over cannot be
+  recalled — the gate narrows the hole without closing it, two windows' writes
+  still complete in whatever order the plugin reaches them, and settings.json can
+  hold a value no open window is showing. Under the lock there is nothing to
+  refuse: **a write that lands late is given the newest stamp**, so the last value
+  to reach settings.json is by construction the one every window ends up showing.
   **The same ordering covers the mount-time read**, which is why the listener is
   registered *before* `loadSettings` is issued rather than in an effect beside
   it: a change broadcast in between would reach a window listening for nothing,
   and one applied while the read was in flight would be overwritten by the answer
-  it beat. `snapshotStillCurrent` stamps the snapshot with the moment the read
-  was issued and runs it through the same comparison. **`ThemePicker` subscribes rather than
+  it beat. `settings_read_stamp` is what the snapshot is stamped with — the
+  highest place assigned at the moment the read was *issued*, so everything
+  already written is in the answer and everything committed afterwards outranks
+  it. **Not the wall clock**: a window whose clock had run ahead would stamp its
+  read above changes every other window accepts, and refuse them. **`ThemePicker` subscribes rather than
   holding the current id**, because `onThemeChange` cannot stand in for it:
   Solarized Light to Light repaints without changing the resolved light/dark
   mode, so `onThemeIdChange` is a second subscription rather than a widening of
@@ -1444,7 +1477,9 @@ hold rather than as an exhaustive style guide.
   `pdf-export`, `new-window` and `close-window` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), `settings-sync` (the
-  ordering alone — the listener and the emit are Tauri's), `outline-pref`
+  ordering, what a commit sends Rust, and that a window applies its own change
+  again when Rust raised the stamp — the listener and the emit are Tauri's),
+  `outline-pref`
   (its cache and its notification), and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
@@ -1461,7 +1496,10 @@ hold rather than as an exhaustive style guide.
   emptied under the reader is told apart from a folder deleted under them), and
   `session`'s live-set functions
   (reporting, focus order, the last-window rule, the cap, both halves of the
-  migration, and which window is showing a folder) are covered without a GUI — the latter two because they take what
+  migration, and which window is showing a folder) and `settings`'s raise rule
+  (that a stamp at or below a key's mark is put past it, and what a settings read
+  is stamped with before anything has changed) are covered without a GUI — the
+  last three because they take what
   they need as arguments rather than asking the app for it. **`unattended.rs`'s tests are
   `cfg(unattended)`**, so a plain `cargo test` never compiles them — the paper job
   runs `MALLOW_UNATTENDED=1 cargo test`, and that is the only place they run.
