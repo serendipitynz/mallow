@@ -41,7 +41,8 @@ macro_rules! app_handler {
             recent::list_recent,
             recent::clear_recent,
             session::report_window_content,
-            settings::broadcast_setting,
+            settings::commit_setting,
+            settings::settings_read_stamp,
             menu::report_markdown_preview
             $(, $extra)*
         ]
@@ -90,6 +91,7 @@ pub fn run() {
         .manage(pdf::ExportLock::default())
         .manage(window::WindowInitRegistry::default())
         .manage(recent::RecentLock::default())
+        .manage(settings::SettingsOrder::default())
         .on_window_event(|window, event| match event {
             // A closed window must leave neither its watch running nor its
             // slot reserved by an initial location nothing will ever take, and
