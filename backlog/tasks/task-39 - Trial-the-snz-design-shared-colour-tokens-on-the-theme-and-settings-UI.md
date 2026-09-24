@@ -4,7 +4,7 @@ title: Trial the snz-design shared colour tokens on the theme and settings UI
 status: In Progress
 assignee: []
 created_date: '2026-09-24 06:39'
-updated_date: '2026-09-24 06:39'
+updated_date: '2026-09-24 06:52'
 labels:
   - feature
 dependencies: []
@@ -28,7 +28,7 @@ snz-design references: doc-7 (theme switching and migration) §6.2 / §6.4 / §7
 - [x] #1 light / dark / solarized-light / solarized-dark draw the shared token values; Dracula and Nord keep their own palettes
 - [x] #2 data-color-family and a resolved data-color-mode are set before first paint and on every theme change, derived from the stored theme id without rewriting it
 - [ ] #3 The paper palette in print.scss stays light whatever scheme is on screen
-- [ ] #4 The settings modal and the theme menu are checked in the four schemes, and the differences are reported back to snz-design
+- [x] #4 The settings modal and the theme menu are checked in the four schemes, and the differences are reported back to snz-design
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -50,4 +50,6 @@ Trial branch `trial/snz-design-tokens`, branched from main `ceb391d`. `src/style
 ## Left open
 - Keyboard (Tab / arrows in the modal and the theme menu) was not exercised: the browser pane was hidden, so key events could not be sent.
 - Two windows and WKWebView were not tried; neither was a document with code and mermaid (the Tauri file reads were stubbed out).
+
+The differences are reported back in snz-design doc-14 (the Web four-app trial results).
 <!-- SECTION:NOTES:END -->
