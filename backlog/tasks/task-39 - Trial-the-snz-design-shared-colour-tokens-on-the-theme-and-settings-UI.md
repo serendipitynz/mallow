@@ -4,7 +4,7 @@ title: Trial the snz-design shared colour tokens on the theme and settings UI
 status: In Progress
 assignee: []
 created_date: '2026-09-24 06:39'
-updated_date: '2026-09-24 06:52'
+updated_date: '2026-09-24 10:42'
 labels:
   - feature
 dependencies: []
@@ -52,4 +52,6 @@ Trial branch `trial/snz-design-tokens`, branched from main `ceb391d`. `src/style
 - Two windows and WKWebView were not tried; neither was a document with code and mermaid (the Tauri file reads were stubbed out).
 
 The differences are reported back in snz-design doc-14 (the Web four-app trial results).
+
+Owner's check in the real Tauri window (WKWebView, macOS, 2026-09-24): the theme follows a live OS light/dark switch, and Tab moves focus through every control, buttons included. wry turns on WKWebView's `tabFocusesLinks` on macOS, so this holds whatever the OS keyboard-navigation setting is.
 <!-- SECTION:NOTES:END -->
