@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { I18nProvider } from './lib/i18n';
+import './styles/snz-tokens.css';
 import './styles/global.scss';
 import './styles/app.scss';
 import './styles/markdown.scss';

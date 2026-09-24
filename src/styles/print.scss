@@ -139,7 +139,7 @@
   :root:not([data-theme]) {
     color-scheme: light;
 
-    @include theme-light;
+    @include theme-print;
   }
 
   body {

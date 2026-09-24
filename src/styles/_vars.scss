@@ -24,8 +24,43 @@ $surface-raised: var(--color-surface-raised);
 $success: var(--color-success);
 $danger: var(--color-danger);
 
-// ---- Light / dark palettes --------------------------------------------------
-@mixin theme-light {
+// ---- Standard / Solarized: the snz-design shared tokens ----------------------
+// Trial of snz-design TASK-12. The four shared schemes (Standard and Solarized,
+// light and dark) come from `snz-tokens.css`, which switches on the
+// `data-color-family` / `data-color-mode` attributes `lib/theme` puts on
+// `<html>`. Because every value here is a `var()`, this one mixin serves all
+// four: which scheme is drawn is decided by the attributes, not by the
+// selector that includes it.
+@mixin theme-shared {
+  --color-bg: var(--snz-surface);
+  --color-surface: var(--snz-surface-alt);
+  --color-surface-raised: var(--snz-surface);
+  --color-sidebar-bg: var(--snz-canvas);
+  --color-ink: var(--snz-fg);
+  --color-muted: var(--snz-fg-muted);
+  --color-faint: var(--snz-fg-faint);
+  --color-link: var(--snz-accent);
+  --color-border: var(--snz-line-divider);
+  --color-border-strong: var(--snz-line-control);
+  --color-control-border: var(--snz-line-control);
+  --color-teal: var(--snz-accent);
+  --color-teal-dark: var(--snz-accent-hover);
+  --color-orange: var(--snz-warn);
+  --color-success: var(--snz-success);
+  --color-danger: var(--snz-danger);
+  --color-selection-bg: var(--snz-surface-selected);
+  --color-hover-bg: var(--snz-surface-hover);
+  --color-code-inline-bg: var(--snz-surface-alt);
+  --color-focus-ring: var(--snz-focus);
+  --color-attention-bg: var(--snz-warn-soft);
+  --color-attention-fg: var(--snz-on-warn-soft);
+  --color-attention-border: var(--snz-warn);
+}
+
+// Paper stays light whatever is on screen (`print.scss`), so it needs literal
+// values: the `var()`s above would resolve to the on-screen scheme. These are
+// the pre-trial light palette, left as they were.
+@mixin theme-print {
   --color-bg: #fff;
   --color-surface: #f6f8fa;
   --color-surface-raised: #fff;
@@ -51,85 +86,7 @@ $danger: var(--color-danger);
   --color-attention-border: rgb(212 167 44 / 40%);
 }
 
-@mixin theme-dark {
-  --color-bg: #0d1117;
-  --color-surface: #161b22;
-  --color-surface-raised: #21262d;
-  --color-sidebar-bg: #0d1117;
-  --color-ink: #e6edf3;
-  --color-muted: #8b949e;
-  --color-faint: #6e7681;
-  --color-link: #58a6ff;
-  --color-border: #30363d;
-  --color-border-strong: #484f58;
-  --color-control-border: #8b949e;
-  --color-teal: #2e9d9d;
-  --color-teal-dark: #257f7f;
-  --color-orange: #e3a008;
-  --color-success: #3fb950;
-  --color-danger: #f85149;
-  --color-selection-bg: rgb(46 157 157 / 18%);
-  --color-hover-bg: rgb(230 237 243 / 6%);
-  --color-code-inline-bg: rgb(110 118 129 / 40%);
-  --color-focus-ring: rgb(46 157 157 / 45%);
-  --color-attention-bg: rgb(187 128 9 / 15%);
-  --color-attention-fg: #d29922;
-  --color-attention-border: rgb(187 128 9 / 40%);
-}
-
 // ---- Extra palettes ---------------------------------------------------------
-@mixin theme-solarized-light {
-  --color-bg: #fdf6e3;
-  --color-surface: #eee8d5;
-  --color-surface-raised: #fdf6e3;
-  --color-sidebar-bg: #eee8d5;
-  --color-ink: #586e75;
-  --color-muted: #93a1a1;
-  --color-faint: #a9b6b6;
-  --color-link: #268bd2;
-  --color-border: #ded8c3;
-  --color-border-strong: #c8c2ad;
-  --color-control-border: #657b83;
-  --color-teal: #2aa198;
-  --color-teal-dark: #1f7a73;
-  --color-orange: #cb4b16;
-  --color-success: #859900;
-  --color-danger: #dc322f;
-  --color-selection-bg: rgb(42 161 152 / 14%);
-  --color-hover-bg: rgb(88 110 117 / 7%);
-  --color-code-inline-bg: rgb(147 161 161 / 22%);
-  --color-focus-ring: rgb(38 139 210 / 30%);
-  --color-attention-bg: #fbf3d0;
-  --color-attention-fg: #b58900;
-  --color-attention-border: rgb(181 137 0 / 40%);
-}
-
-@mixin theme-solarized-dark {
-  --color-bg: #002b36;
-  --color-surface: #073642;
-  --color-surface-raised: #0a4a5a;
-  --color-sidebar-bg: #002b36;
-  --color-ink: #93a1a1;
-  --color-muted: #768d8d;
-  --color-faint: #586e75;
-  --color-link: #268bd2;
-  --color-border: #0e4b59;
-  --color-border-strong: #16627a;
-  --color-control-border: #768d8d;
-  --color-teal: #2aa198;
-  --color-teal-dark: #34c0b5;
-  --color-orange: #cb4b16;
-  --color-success: #859900;
-  --color-danger: #dc322f;
-  --color-selection-bg: rgb(42 161 152 / 18%);
-  --color-hover-bg: rgb(147 161 161 / 8%);
-  --color-code-inline-bg: rgb(88 110 117 / 35%);
-  --color-focus-ring: rgb(38 139 210 / 45%);
-  --color-attention-bg: rgb(181 137 0 / 15%);
-  --color-attention-fg: #b58900;
-  --color-attention-border: rgb(181 137 0 / 40%);
-}
-
 @mixin theme-dracula {
   --color-bg: #282a36;
   --color-surface: #21222c;
@@ -182,21 +139,12 @@ $danger: var(--color-danger);
   --color-attention-border: rgb(235 203 139 / 40%);
 }
 
-// Apply `@content` only when the document is effectively in dark mode — any of
-// the dark palettes, or the OS being dark while in auto / unset.
+// Apply `@content` only when the document is drawn dark. `data-color-mode` is
+// already resolved by `lib/theme` (never auto), and the dark-only palettes
+// (Dracula, Nord) set it to dark as well, so no media query is needed here.
 @mixin on-dark {
-  :root[data-theme='dark'] &,
-  :root[data-theme='solarized-dark'] &,
-  :root[data-theme='dracula'] &,
-  :root[data-theme='nord'] & {
+  :root[data-color-mode='dark'] & {
     @content;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root[data-theme='auto'] &,
-    :root:not([data-theme]) & {
-      @content;
-    }
   }
 }
 

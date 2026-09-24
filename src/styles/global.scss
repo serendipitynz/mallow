@@ -1,52 +1,26 @@
 @use './vars' as *;
 
 // ---- Theme palette ----------------------------------------------------------
-// Light is the default; dark is applied when forced via `data-theme="dark"` or
-// when following the OS while in auto / unset. The inline bootstrap in index.html
-// sets `data-theme` before first paint to avoid a flash.
+// Standard and Solarized come from the shared tokens and are selected by
+// `data-color-family` / `data-color-mode`, which the bootstrap in index.html
+// sets before first paint. Dracula and Nord keep their own literal palettes,
+// keyed on the theme id as before.
 :root {
   color-scheme: light;
 
-  @include theme-light;
+  @include theme-shared;
 }
 
-:root[data-theme='dark'] {
+:root[data-color-mode='dark'] {
   color-scheme: dark;
-
-  @include theme-dark;
-}
-
-:root[data-theme='solarized-light'] {
-  color-scheme: light;
-
-  @include theme-solarized-light;
-}
-
-:root[data-theme='solarized-dark'] {
-  color-scheme: dark;
-
-  @include theme-solarized-dark;
 }
 
 :root[data-theme='dracula'] {
-  color-scheme: dark;
-
   @include theme-dracula;
 }
 
 :root[data-theme='nord'] {
-  color-scheme: dark;
-
   @include theme-nord;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme='auto'],
-  :root:not([data-theme]) {
-    color-scheme: dark;
-
-    @include theme-dark;
-  }
 }
 
 *,
@@ -88,7 +62,10 @@ a {
   font-size: 13px;
   color: $ink;
   background: $surface-raised;
-  border: 1px solid $border;
+  // The outline is what marks this as a control, so it takes the control line
+  // (3:1 against the surface) rather than the decorative `$border`, which the
+  // shared tokens keep at divider strength (snz-design doc-8 §5).
+  border: 1px solid $control-border;
   border-radius: 6px;
   cursor: pointer;
 
@@ -103,7 +80,8 @@ a {
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
+    border-style: dashed;
     cursor: not-allowed;
   }
 }
