@@ -24,6 +24,17 @@ export function MermaidView({ source }: { source: string }) {
     pre.className = 'mermaid';
     pre.textContent = code;
     host.appendChild(pre);
+  }, [source]);
+
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: `source` is not read in the body — it
+     is the re-run trigger, since the effect above has just replaced the block this one renders. Kept
+     apart from it so that a language switch re-marks a diagram that failed without tearing down one
+     that drew: renderMermaid finds only the blocks still left as source. */
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) {
+      return;
+    }
     renderMermaid(host, (message) => t('mermaidFailed', { message })).catch((e) =>
       console.error('Failed to render the mermaid diagram', e),
     );

@@ -16,7 +16,14 @@ let rerenderChain: Promise<void> = Promise.resolve();
 
 function loadMermaid(): Promise<Mermaid> {
   if (!mermaidPromise) {
-    mermaidPromise = import('mermaid').then((m) => m.default);
+    // A rejection is not kept: now that a failed load marks every diagram, a
+    // cached one would mark every document for the rest of the window's life.
+    mermaidPromise = import('mermaid')
+      .then((m) => m.default)
+      .catch((error) => {
+        mermaidPromise = null;
+        throw error;
+      });
   }
   return mermaidPromise;
 }
@@ -125,7 +132,9 @@ async function rerenderPass(theme: Resolved, gen: number): Promise<void> {
  *  marked as not drawn; a diagram that fails on its own is marked and the rest
  *  still render. */
 export async function renderMermaid(root: ParentNode, describeFailure: DescribeFailure): Promise<void> {
-  const blocks = Array.from(root.querySelectorAll<HTMLElement>('pre.mermaid'));
+  const blocks = Array.from(root.querySelectorAll<HTMLElement>('pre.mermaid')).filter((block) =>
+    (block.textContent ?? '').trim(),
+  );
   if (blocks.length === 0) {
     return;
   }
@@ -144,9 +153,6 @@ export async function renderMermaid(root: ParentNode, describeFailure: DescribeF
 
   for (const block of blocks) {
     const code = (block.textContent ?? '').trim();
-    if (!code) {
-      continue;
-    }
     const result = await renderSvg(code, mermaid);
     if (!result.ok) {
       markFailed(block, result.error, describeFailure);
