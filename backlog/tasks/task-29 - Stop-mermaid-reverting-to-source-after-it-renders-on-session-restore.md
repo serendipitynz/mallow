@@ -1,10 +1,10 @@
 ---
 id: TASK-29
 title: Stop mermaid reverting to source after it renders on session restore
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-06 03:42'
-updated_date: '2026-09-25 12:14'
+updated_date: '2026-09-25 12:32'
 labels:
   - bug
 milestone: m-4
@@ -91,4 +91,6 @@ MarkdownView と MermaidView の 2 つの呼び出し元で、openUrl と同じ�
 ## スコープ外（報告のみ）
 
 `SourceView` の `<div dangerouslySetInnerHTML={{ __html: html }} />` も同じ形で、App の再レンダーのたびに Shiki の HTML（最大で入力の約 14 倍）を書き直している。DOM を後から書き換えないので図が消えるような症状はないが、再パースの負荷とテキスト選択が外れる可能性がある。
+
+失敗時の注記の見た目は、マージ時にユーザーが目視で確認済み（2026-09-26）。
 <!-- SECTION:NOTES:END -->
