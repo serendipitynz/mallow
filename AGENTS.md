@@ -372,8 +372,17 @@ hold rather than as an exhaustive style guide.
   / TOML `+++`) is extracted and shown as a key/value table.
 - The markdown HTML is injected via `dangerouslySetInnerHTML`. Imperative
   enhancements (code-copy buttons, mermaid render, external-link interception) run
-  in a `useEffect` keyed on `[result, mode]`. Toggling preview↔source remounts the
-  article, so those enhancements must re-run — **keep `mode` in the deps.**
+  in a `useEffect` keyed on `[result, mode, t]`. Toggling preview↔source remounts the
+  article, so those enhancements must re-run — **keep `mode` in the deps.** **The
+  `{ __html }` object is memoised on `result`, and a literal there is TASK-29's
+  bug**: React 19 compares that prop by identity and rewrites `innerHTML` whenever
+  the object differs, so any re-render above the view put the source of every
+  diagram back (and took the copy buttons) without the effect running again. The
+  invariant is that the article's HTML is written exactly when the enhancements
+  re-run, which is why the memo is keyed on `result` and not on the HTML string.
+  A diagram that fails to render keeps its source with a `.mermaid-error` note
+  above it, and `suppressErrorRendering` keeps mermaid's own error diagram out of
+  `<body>`, where it would otherwise stay and reach the paper.
 - **Untrusted-Markdown boundary** (so `dangerouslySetInnerHTML` stays safe — see
   README "Security"): markdown-it runs with `html: false`, so raw HTML in a
   document is escaped to text, never live DOM. markdown-it's default `validateLink`
