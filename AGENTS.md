@@ -380,6 +380,9 @@ hold rather than as an exhaustive style guide.
   diagram back (and took the copy buttons) without the effect running again. The
   invariant is that the article's HTML is written exactly when the enhancements
   re-run, which is why the memo is keyed on `result` and not on the HTML string.
+  `SourceView` still passes a literal, knowingly: nothing enhances its DOM
+  afterwards, so the rewrite costs a re-parse and the reader's text selection
+  rather than content, and TASK-29 left it out of scope.
   A diagram that fails to render keeps its source with a `.mermaid-error` note
   above it, and `suppressErrorRendering` keeps mermaid's own error diagram out of
   `<body>`, where it would otherwise stay and reach the paper.

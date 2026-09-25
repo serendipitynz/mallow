@@ -359,7 +359,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   どこかで再レンダーが起きるたびに全図がソースに戻り（コピーボタンも消え）、しかも
   effect は再実行されなかった。不変条件は「article の HTML を書くのは強化処理を再実行
   するときだけ」であり、メモのキーを HTML 文字列ではなく `result` にしているのはその
-  ため。描画に失敗した図はソースを残したまま直前に `.mermaid-error` の注記を置く。
+  ため。`SourceView` は承知の上でリテラルのまま: 後から DOM を強化する処理がないので、
+  書き直しで失うのは内容ではなく再パースのコストと読者のテキスト選択であり、TASK-29 では
+  スコープ外とした。描画に失敗した図はソースを残したまま直前に `.mermaid-error` の注記を置く。
   `suppressErrorRendering` は、mermaid 自身のエラー図が `<body>` に残って紙まで届くのを
   防ぐためのもの。
 - **未信頼 Markdown の境界**（`dangerouslySetInnerHTML` を安全に保つための前提。README
