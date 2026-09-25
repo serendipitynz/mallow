@@ -470,6 +470,20 @@
     }
   }
 
+  // Sits directly above the source of a diagram that could not be drawn.
+  // `pre-wrap` because mermaid's parse errors are multi-line, with a caret row
+  // under the offending token.
+  .mermaid-error {
+    margin: 1.2em 0 0.4em;
+    padding: 10px 14px;
+    color: $danger;
+    background: var(--color-attention-bg);
+    border: 1px solid $danger;
+    border-radius: 8px;
+    font-size: 14px;
+    white-space: pre-wrap;
+  }
+
   .mermaid-copy {
     position: absolute;
     top: 8px;

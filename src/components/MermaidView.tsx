@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../lib/i18n';
 import { renderMermaid } from '../lib/mermaid';
 
 /** Render a standalone `.mmd` / `.mermaid` file as a single diagram. */
 export function MermaidView({ source }: { source: string }) {
+  const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const [empty, setEmpty] = useState(false);
 
@@ -22,8 +24,10 @@ export function MermaidView({ source }: { source: string }) {
     pre.className = 'mermaid';
     pre.textContent = code;
     host.appendChild(pre);
-    void renderMermaid(host);
-  }, [source]);
+    renderMermaid(host, (message) => t('mermaidFailed', { message })).catch((e) =>
+      console.error('Failed to render the mermaid diagram', e),
+    );
+  }, [source, t]);
 
   return (
     <div className="doc-scroll">

@@ -63,6 +63,7 @@ const ja: Dict = {
   source: 'ソース',
   viewMode: '表示モード',
   renderError: 'レンダリングエラー: {message}',
+  mermaidFailed: '図を描画できませんでした: {message}',
   // source view
   highlightSkipped: 'ファイルが大きいため、強調表示を省いて表示しています。',
   // html view
@@ -182,6 +183,7 @@ const en: Dict = {
   source: 'Source',
   viewMode: 'View mode',
   renderError: 'Render error: {message}',
+  mermaidFailed: 'The diagram could not be drawn: {message}',
   // source view
   highlightSkipped: 'This file is large, so it is shown without syntax highlighting.',
   // html view

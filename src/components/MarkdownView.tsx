@@ -68,7 +68,9 @@ export function MarkdownView({ source }: { source: string }) {
     }
 
     enhanceCodeBlocks(article);
-    const mermaid = renderMermaid(article);
+    const mermaid = renderMermaid(article, (message) => t('mermaidFailed', { message })).catch((e) =>
+      console.error('Failed to render mermaid diagrams', e),
+    );
 
     /* The unattended export needs to know when this article stops changing, and
        nothing else does — so both the wait and the report are inside the branch
@@ -78,7 +80,7 @@ export function MarkdownView({ source }: { source: string }) {
        source, which is indistinguishable from TASK-29's bug on the paper. */
     if (UNATTENDED) {
       void (async () => {
-        await mermaid.catch(() => {});
+        await mermaid;
         await Promise.all(
           [...article.querySelectorAll('img')].map((img) =>
             img.complete
@@ -125,7 +127,7 @@ export function MarkdownView({ source }: { source: string }) {
       article.removeEventListener('click', onClick);
       cancelAnimationFrame(raf);
     };
-  }, [result, mode]);
+  }, [result, mode, t]);
 
   // The bar is pinned over the top of the scroll container, so a heading must clear
   // it to be visible. Two things need that height and they are in different
