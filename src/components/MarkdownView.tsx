@@ -1,5 +1,5 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { UNATTENDED } from '../lib/build-flags';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
@@ -164,6 +164,18 @@ export function MarkdownView({ source }: { source: string }) {
     return () => setMarkdownPreviewActive(false);
   }, [mode]);
 
+  /* **Memoised on `result`, and that is the fix for TASK-29 rather than a
+     render optimisation.** React 19 compares this prop by identity and writes
+     `innerHTML` whenever the object differs, so a literal here re-injected the
+     article on every render — any state change anywhere above put back the
+     `<pre class="mermaid">` the enhancement effect had replaced, and took the
+     code-copy buttons with it, while that effect, keyed on `result`, did not run
+     again. Keyed on `result`, the HTML is written exactly when the enhancements
+     re-run. Not keyed on the string: a new `result` with the same HTML re-runs the
+     effect, which then has to find the markup it enhances, not markup it already
+     did. */
+  const articleHtml = useMemo(() => ({ __html: result?.html ?? '' }), [result]);
+
   const headings = result?.headings ?? [];
   const hasOutline = headings.length > 1;
   const showOutline = mode === 'preview' && hasOutline && outlineOpen;
@@ -231,7 +243,7 @@ export function MarkdownView({ source }: { source: string }) {
                    safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":
                    markdown-it runs with html: false, its validateLink drops dangerous schemes, and
                    the CSP forbids inline script. Read that section before changing this. */
-                dangerouslySetInnerHTML={{ __html: result?.html ?? '' }}
+                dangerouslySetInnerHTML={articleHtml}
               />
               {showOutline && <Outline headings={headings} scrollRef={scrollRef} />}
             </div>
