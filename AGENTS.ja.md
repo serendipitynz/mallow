@@ -351,9 +351,19 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `renderMarkdown` は `{ html, headings }` を返し、先頭の front-matter（YAML `---` /
   TOML `+++`）は key/value テーブルとして抽出表示する。
 - Markdown の HTML は `dangerouslySetInnerHTML` で注入。命令的強化（コードコピー、
-  mermaid 描画、外部リンク横取り）は `[result, mode]` 依存の `useEffect` で実行する。
+  mermaid 描画、外部リンク横取り）は `[result, mode, t]` 依存の `useEffect` で実行する。
   プレビュー↔ソース切替で article が再マウントされるため、強化処理を再実行する必要が
-  ある。**`mode` を依存配列に残すこと。**
+  ある。**`mode` を依存配列に残すこと。** **`{ __html }` オブジェクトは `result` で
+  メモ化しており、リテラルに戻すと TASK-29 の不具合が再発する**: React 19 はこの prop を
+  同一性で比較し、オブジェクトが変われば `innerHTML` を書き直すため、ビューより上の
+  どこかで再レンダーが起きるたびに全図がソースに戻り（コピーボタンも消え）、しかも
+  effect は再実行されなかった。不変条件は「article の HTML を書くのは強化処理を再実行
+  するときだけ」であり、メモのキーを HTML 文字列ではなく `result` にしているのはその
+  ため。`SourceView` は承知の上でリテラルのまま: 後から DOM を強化する処理がないので、
+  書き直しで失うのは内容ではなく再パースのコストと読者のテキスト選択であり、TASK-29 では
+  スコープ外とした。描画に失敗した図はソースを残したまま直前に `.mermaid-error` の注記を置く。
+  `suppressErrorRendering` は、mermaid 自身のエラー図が `<body>` に残って紙まで届くのを
+  防ぐためのもの。
 - **未信頼 Markdown の境界**（`dangerouslySetInnerHTML` を安全に保つための前提。README
   の "Security" 参照）: markdown-it は `html: false` で動かすため、文書中の raw HTML は
   テキストにエスケープされ、生きた DOM にはならない。markdown-it 既定の `validateLink`

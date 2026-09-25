@@ -1,5 +1,5 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { UNATTENDED } from '../lib/build-flags';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
@@ -68,7 +68,9 @@ export function MarkdownView({ source }: { source: string }) {
     }
 
     enhanceCodeBlocks(article);
-    const mermaid = renderMermaid(article);
+    const mermaid = renderMermaid(article, (message) => t('mermaidFailed', { message })).catch((e) =>
+      console.error('Failed to render mermaid diagrams', e),
+    );
 
     /* The unattended export needs to know when this article stops changing, and
        nothing else does — so both the wait and the report are inside the branch
@@ -78,7 +80,7 @@ export function MarkdownView({ source }: { source: string }) {
        source, which is indistinguishable from TASK-29's bug on the paper. */
     if (UNATTENDED) {
       void (async () => {
-        await mermaid.catch(() => {});
+        await mermaid;
         await Promise.all(
           [...article.querySelectorAll('img')].map((img) =>
             img.complete
@@ -125,7 +127,7 @@ export function MarkdownView({ source }: { source: string }) {
       article.removeEventListener('click', onClick);
       cancelAnimationFrame(raf);
     };
-  }, [result, mode]);
+  }, [result, mode, t]);
 
   // The bar is pinned over the top of the scroll container, so a heading must clear
   // it to be visible. Two things need that height and they are in different
@@ -163,6 +165,18 @@ export function MarkdownView({ source }: { source: string }) {
     setMarkdownPreviewActive(true);
     return () => setMarkdownPreviewActive(false);
   }, [mode]);
+
+  /* **Memoised on `result`, and that is the fix for TASK-29 rather than a
+     render optimisation.** React 19 compares this prop by identity and writes
+     `innerHTML` whenever the object differs, so a literal here re-injected the
+     article on every render — any state change anywhere above put back the
+     `<pre class="mermaid">` the enhancement effect had replaced, and took the
+     code-copy buttons with it, while that effect, keyed on `result`, did not run
+     again. Keyed on `result`, the HTML is written exactly when the enhancements
+     re-run. Not keyed on the string: a new `result` with the same HTML re-runs the
+     effect, which then has to find the markup it enhances, not markup it already
+     did. */
+  const articleHtml = useMemo(() => ({ __html: result?.html ?? '' }), [result]);
 
   const headings = result?.headings ?? [];
   const hasOutline = headings.length > 1;
@@ -231,7 +245,7 @@ export function MarkdownView({ source }: { source: string }) {
                    safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":
                    markdown-it runs with html: false, its validateLink drops dangerous schemes, and
                    the CSP forbids inline script. Read that section before changing this. */
-                dangerouslySetInnerHTML={{ __html: result?.html ?? '' }}
+                dangerouslySetInnerHTML={articleHtml}
               />
               {showOutline && <Outline headings={headings} scrollRef={scrollRef} />}
             </div>
