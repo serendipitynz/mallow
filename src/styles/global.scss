@@ -3,16 +3,11 @@
 // ---- Theme palette ----------------------------------------------------------
 // Standard and Solarized come from the shared tokens and are selected by
 // `data-color-family` / `data-color-mode`, which the bootstrap in index.html
-// sets before first paint. Dracula and Nord keep their own literal palettes,
-// keyed on the theme id as before.
+// sets before first paint; `snz-tokens.css` also sets `color-scheme` from the
+// mode. Dracula and Nord keep their own literal palettes, keyed on the theme id
+// as before.
 :root {
-  color-scheme: light;
-
   @include theme-shared;
-}
-
-:root[data-color-mode='dark'] {
-  color-scheme: dark;
 }
 
 :root[data-theme='dracula'] {

@@ -4,6 +4,11 @@
 // runtime / by OS setting. The SCSS aliases below are thin wrappers over those
 // variables, so `color: $ink` keeps working and follows the active theme.
 
+@use 'sass:map';
+// Named in full: `snz-tokens.css` sits beside it, and the bare name resolved to
+// that plain-CSS copy, which carries no Sass variables.
+@use './_snz-tokens.scss' as snz;
+
 // ---- Themeable color tokens (alias the CSS variables) -----------------------
 $teal: var(--color-teal);
 $teal-dark: var(--color-teal-dark);
@@ -24,66 +29,57 @@ $surface-raised: var(--color-surface-raised);
 $success: var(--color-success);
 $danger: var(--color-danger);
 
-// ---- Standard / Solarized: the snz-design shared tokens ----------------------
-// Trial of snz-design TASK-12. The four shared schemes (Standard and Solarized,
-// light and dark) come from `snz-tokens.css`, which switches on the
-// `data-color-family` / `data-color-mode` attributes `lib/theme` puts on
-// `<html>`. Because every value here is a `var()`, this one mixin serves all
-// four: which scheme is drawn is decided by the attributes, not by the
-// selector that includes it.
+// ---- Standard / Solarized: the shared tokens --------------------------------
+// The four shared schemes (Standard and Solarized, light and dark) come from
+// `snz-tokens.css`, which switches on the `data-color-family` /
+// `data-color-mode` attributes `lib/theme` puts on `<html>`. Every value is a
+// `var()`, so one mixin serves all four: which scheme is drawn is decided by
+// the attributes, not by the selector that includes it.
+//
+// Each palette variable names the role it takes (snz-design doc-16 §7.2). One
+// map feeds both the screen and the paper, so the two cannot map a variable to
+// different roles.
+$shared-roles: (
+  bg: surface,
+  surface: surface-alt,
+  surface-raised: surface,
+  sidebar-bg: canvas,
+  ink: fg,
+  muted: fg-muted,
+  faint: fg-faint,
+  link: accent,
+  border: line-divider,
+  border-strong: line-control,
+  control-border: line-control,
+  teal: accent,
+  teal-dark: accent-hover,
+  orange: warn,
+  success: success,
+  danger: danger,
+  selection-bg: surface-selected,
+  hover-bg: surface-hover,
+  code-inline-bg: surface-alt,
+  focus-ring: focus,
+  attention-bg: warn-soft,
+  attention-fg: on-warn-soft,
+  attention-border: warn,
+);
+
 @mixin theme-shared {
-  --color-bg: var(--snz-surface);
-  --color-surface: var(--snz-surface-alt);
-  --color-surface-raised: var(--snz-surface);
-  --color-sidebar-bg: var(--snz-canvas);
-  --color-ink: var(--snz-fg);
-  --color-muted: var(--snz-fg-muted);
-  --color-faint: var(--snz-fg-faint);
-  --color-link: var(--snz-accent);
-  --color-border: var(--snz-line-divider);
-  --color-border-strong: var(--snz-line-control);
-  --color-control-border: var(--snz-line-control);
-  --color-teal: var(--snz-accent);
-  --color-teal-dark: var(--snz-accent-hover);
-  --color-orange: var(--snz-warn);
-  --color-success: var(--snz-success);
-  --color-danger: var(--snz-danger);
-  --color-selection-bg: var(--snz-surface-selected);
-  --color-hover-bg: var(--snz-surface-hover);
-  --color-code-inline-bg: var(--snz-surface-alt);
-  --color-focus-ring: var(--snz-focus);
-  --color-attention-bg: var(--snz-warn-soft);
-  --color-attention-fg: var(--snz-on-warn-soft);
-  --color-attention-border: var(--snz-warn);
+  @each $name, $role in $shared-roles {
+    --color-#{$name}: var(--snz-#{$role});
+  }
 }
 
-// Paper stays light whatever is on screen (`print.scss`), so it needs literal
-// values: the `var()`s above would resolve to the on-screen scheme. These are
-// the pre-trial light palette, left as they were.
+// Paper is Standard Light whatever is on screen (`print.scss`), so it takes the
+// compile-time values: a `var()` would resolve to the on-screen scheme and
+// print a dark theme dark (snz-design doc-16 §6.1).
 @mixin theme-print {
-  --color-bg: #fff;
-  --color-surface: #f6f8fa;
-  --color-surface-raised: #fff;
-  --color-sidebar-bg: #f6f8fa;
-  --color-ink: #1f2933;
-  --color-muted: #6b7280;
-  --color-faint: #9aa3ad;
-  --color-link: #2563eb;
-  --color-border: #d0d7de;
-  --color-border-strong: #afb8c1;
-  --color-control-border: #6b7280;
-  --color-teal: #2e8c8c;
-  --color-teal-dark: #246f6f;
-  --color-orange: #f5a623;
-  --color-success: #1a7f37;
-  --color-danger: #cf222e;
-  --color-selection-bg: rgb(46 140 140 / 12%);
-  --color-hover-bg: rgb(31 41 51 / 5%);
-  --color-code-inline-bg: rgb(175 184 193 / 20%);
-  --color-focus-ring: rgb(46 140 140 / 25%);
-  --color-attention-bg: #fff8c5;
-  --color-attention-fg: #9a6700;
-  --color-attention-border: rgb(212 167 44 / 40%);
+  $light: map.get(snz.$snz-colors, 'standard', 'light');
+
+  @each $name, $role in $shared-roles {
+    --color-#{$name}: #{map.get($light, $role)};
+  }
 }
 
 // ---- Extra palettes ---------------------------------------------------------
