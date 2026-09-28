@@ -18,6 +18,10 @@ export interface Settings {
   recentFolders?: string[];
   explorerWidth?: number;
   explorerSide?: 'left' | 'right';
+  /** Whether the explorer is on screen. Absent means shown. Its own key rather
+   *  than a width of 0, so hiding the explorer leaves `explorerWidth` as the
+   *  reader set it. */
+  explorerShown?: boolean;
   /** Folder holding the user's custom `:shortcode:` emoji (see lib/custom-emoji). */
   customEmojiDir?: string;
   /** Whether to run an update check after launch. Absent means on. Turning it

@@ -82,7 +82,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   that have one, and across windows), `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
-  a menu's focus), `tree-nav` (the tree's shown rows, what a key does on one, and
+  a menu's focus), `explorer-toggle` (the `CmdOrCtrl+B` chord that shows and
+  hides the explorer — no gate), `tree-nav` (the tree's shown rows, what a key does on one, and
   which row holds the tab stop), `explorer-width` (the explorer's width limits,
   the handle's key steps and where a placing press puts it), `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
@@ -1132,7 +1133,7 @@ hold rather than as an exhaustive style guide.
   (tauri-2.11.3 `src/app.rs:956-961`), so **dropping the old macOS `cfg` would
   have produced a Windows and Linux menu bar carrying About / Services / Hide /
   Show All** — macOS concepts that compile everywhere and mean nothing there. The
-  compositions are: macOS keeps its app submenu and gains File, Edit and a Window
+  compositions are: macOS keeps its app submenu and gains File, Edit, View and a Window
   submenu registered with `set_as_windows_menu_for_nsapp`, **which is what makes
   AppKit append the open windows to it and which is a silent no-op until the menu
   is the application's main menu** — muda resolves the NSMenu through
@@ -1141,7 +1142,10 @@ hold rather than as an exhaustive style guide.
   there is none, so it is registered after `set_menu` rather than while the menu
   is being composed; Windows
   and Linux have no app submenu, carry Settings… and Exit inside File and About
-  under Help. **On Linux the difference is a rule rather than a list**: muda's GTK
+  under Help. **View is the one submenu identical on all three** — Toggle
+  Explorer (`CmdOrCtrl+B`), an ordinary item, so no backend has a predefined kind
+  to skip — and it is a plain item rather than a check item, since a check would
+  have to follow a preference `settings.rs` relays without reading. **On Linux the difference is a rule rather than a list**: muda's GTK
   backend supports only Separator, Copy, Cut, Paste, SelectAll and About as
   predefined kinds (muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`) and
   **silently skips every other one on append rather than failing**, so Quit is an
@@ -1578,7 +1582,7 @@ hold rather than as an exhaustive style guide.
   window opens in each of the three creation states),
   `markdown-preview` (the gate, and that it notifies only on a change — one
   invocation reaches Rust per notification), `print`,
-  `pdf-export`, `new-window` and `close-window` (each chord's key, gate and what the handler does
+  `pdf-export`, `new-window`, `close-window` and `explorer-toggle` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), `settings-sync` (the
   ordering, what a commit sends Rust, and that a window applies its own change

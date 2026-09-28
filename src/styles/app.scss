@@ -45,6 +45,21 @@
   will-change: transform;
 }
 
+.toolbar__lead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+// Shown is a pressed state, told by the face and the outline together as well
+// as by `aria-expanded` — never by colour alone (snz-design doc-9 §6.3.1).
+.toolbar__explorer-toggle[aria-expanded='true'] {
+  color: $ink;
+  background: var(--color-selection-bg);
+  border-color: var(--color-selected);
+}
+
 .toolbar__path {
   flex: 1 1 auto;
   min-width: 0;

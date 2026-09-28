@@ -13,6 +13,7 @@ import { UNATTENDED } from './lib/build-flags';
 import { matchesCmdOrCtrl, onMacPlatform } from './lib/chord';
 import { createCloseWindowChordHandler } from './lib/close-window';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
+import { createToggleExplorerChordHandler } from './lib/explorer-toggle';
 import { clampExplorerWidth, DEFAULT_EXPLORER_WIDTH } from './lib/explorer-width';
 import { fileEntryFromPath } from './lib/file';
 import { useI18n, useT } from './lib/i18n';
@@ -51,6 +52,7 @@ import { locationToOpenAtMount } from './lib/window-init';
  *  from the store — and the window that receives one has to land on the value a
  *  window with nothing stored would show. */
 const DEFAULT_SIDE: 'left' | 'right' = 'left';
+const DEFAULT_EXPLORER_SHOWN = true;
 const DEFAULT_AUTO_CHECK_UPDATES = true;
 
 /** What the resize handle names as the pane it sizes (`aria-controls`). One per
@@ -70,6 +72,7 @@ export default function App() {
   const [reloadToken, setReloadToken] = useState(0);
   const [explorerWidth, setExplorerWidth] = useState(DEFAULT_EXPLORER_WIDTH);
   const [explorerSide, setExplorerSide] = useState<'left' | 'right'>(DEFAULT_SIDE);
+  const [explorerShown, setExplorerShown] = useState(DEFAULT_EXPLORER_SHOWN);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(DEFAULT_AUTO_CHECK_UPDATES);
@@ -265,6 +268,30 @@ export default function App() {
     void applyEmojiDir(null, true);
   }, [applyEmojiDir]);
 
+  // ---- Explorer show / hide -------------------------------------------------
+  const explorerToggleRef = useRef<HTMLButtonElement>(null);
+  const explorerShownRef = useRef(explorerShown);
+  useEffect(() => {
+    explorerShownRef.current = explorerShown;
+  }, [explorerShown]);
+
+  /* The persist-free half, which a change from another window takes too. A focus
+     on the explorer or on its resize handle moves to the toggle before both go,
+     or it would fall to the top of the document with them (snz-design doc-9
+     §6.3.1); showing leaves the focus where it is. The ref is what the chord
+     handler, registered once, reads. */
+  const applyExplorerShown = useCallback((shown: boolean) => {
+    const focused = document.activeElement;
+    const losesFocus =
+      focused instanceof HTMLElement &&
+      (document.getElementById(EXPLORER_ID)?.contains(focused) || focused.closest('.app__resizer') !== null);
+    if (!shown && losesFocus) {
+      explorerToggleRef.current?.focus();
+    }
+    explorerShownRef.current = shown;
+    setExplorerShown(shown);
+  }, []);
+
   /* ---- Preferences changed in another window (TASK-12.8) --------------------
      Every preference is app-wide — TASK-12 puts per-window theme and language
      out of scope — and the settings modal opens in any window, so a change made
@@ -297,6 +324,9 @@ export default function App() {
         case 'explorerWidth':
           setExplorerWidth(clampExplorerWidth(change.value ?? DEFAULT_EXPLORER_WIDTH));
           break;
+        case 'explorerShown':
+          applyExplorerShown(change.value ?? DEFAULT_EXPLORER_SHOWN);
+          break;
         case 'customEmojiDir':
           void applyEmojiDir(change.value);
           break;
@@ -313,7 +343,7 @@ export default function App() {
         }
       }
     },
-    [applyLang, applyEmojiDir],
+    [applyLang, applyEmojiDir, applyExplorerShown],
   );
 
   // ---- Session restore + settings (on launch) -------------------------------
@@ -365,6 +395,9 @@ export default function App() {
       }
       if (s.explorerSide && snapshotStillCurrent('explorerSide', readAt)) {
         setExplorerSide(s.explorerSide);
+      }
+      if (s.explorerShown === false && snapshotStillCurrent('explorerShown', readAt)) {
+        setExplorerShown(false);
       }
       if (s.autoCheckUpdates === false && snapshotStillCurrent('autoCheckUpdates', readAt)) {
         setAutoCheckUpdates(false);
@@ -667,6 +700,19 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const toggleExplorer = useCallback(() => {
+    const shown = !explorerShownRef.current;
+    applyExplorerShown(shown);
+    void saveSetting('explorerShown', shown);
+  }, [applyExplorerShown]);
+
+  useEffect(() => {
+    const onKey = createToggleExplorerChordHandler({ onMac: onMacPlatform(), toggleExplorer });
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleExplorer]);
+  useWindowEvent('menu:toggle-explorer', toggleExplorer);
+
   // ---- Explorer resize ------------------------------------------------------
   const commitExplorerWidth = useCallback((width: number) => {
     setExplorerWidth(width);
@@ -702,7 +748,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <Toolbar selected={selected} onOpenFolder={openFolder} />
+      <Toolbar
+        selected={selected}
+        onOpenFolder={openFolder}
+        explorerShown={explorerShown}
+        explorerSide={explorerSide}
+        explorerId={EXPLORER_ID}
+        onToggleExplorer={toggleExplorer}
+        explorerToggleRef={explorerToggleRef}
+      />
       {/* Under the toolbar rather than inside the explorer: what it reports can
           be a menu choice made while a folder is open, which the explorer's empty
           state is not on screen for. */}
@@ -719,17 +773,21 @@ export default function App() {
         data-side={explorerSide}
         style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}
       >
+        {/* A hidden explorer leaves its slots empty rather than taking them out,
+            so the viewer keeps its position among its siblings: moved, it would
+            remount, and the source / preview choice, the scroll position and a
+            playing video would all be lost. */}
         {explorerSide === 'left' ? (
           <>
-            {explorer}
-            {resizer}
+            {explorerShown && explorer}
+            {explorerShown && resizer}
             {viewer}
           </>
         ) : (
           <>
             {viewer}
-            {resizer}
-            {explorer}
+            {explorerShown && resizer}
+            {explorerShown && explorer}
           </>
         )}
       </div>

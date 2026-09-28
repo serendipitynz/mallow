@@ -120,7 +120,11 @@ Installing an update may need the system's permission.
 - **Printing and PDF export**: print a rendered Markdown document, or write it
   to PDF with no print dialog. See
   [Printing and PDF export](#printing-and-pdf-export).
-- **Persisted settings / session restore**: theme, explorer width and side, the
+- **Hide the explorer**: `Cmd/Ctrl+B`, **View → Toggle Explorer** or the panel
+  button at the end of the toolbar on the explorer's side gives the document the
+  explorer's width, and brings the explorer back at the width it had.
+- **Persisted settings / session restore**: theme, explorer width, side and
+  whether it is shown, the
   custom emoji folder and the update-check switch are saved and restored on the
   next launch — and so is the set of windows that was open at quit, each with its
   own folder, document, size and position.
@@ -140,6 +144,7 @@ change in every open window at once.
 | Settings… | `Cmd/Ctrl+,` |
 | Print… | `Cmd/Ctrl+P` |
 | Export as PDF… | `Cmd/Ctrl+E` |
+| Toggle Explorer (View menu) | `Cmd/Ctrl+B` |
 
 Closing the last window quits mallow — on macOS as well as on Windows and Linux.
 
