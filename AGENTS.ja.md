@@ -61,6 +61,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   RecentFolders（アプリ内の Open Recent 一覧。エクスプローラの空状態に出る）、Outline、Toolbar、
   OpenWith、ModeMenu（明暗の値のメニュー）、`color`（配色の軸を選んで全ウィンドウへ
   伝える）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
+  ExplorerResizer（分割つまみ。ドラッグ・押して掴み押して置く・キー操作）、
+  Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
@@ -78,7 +80,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
   `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
-  メニューの焦点をどこへ移すか）、`i18n`（ja/en 辞書 + provider/hooks。言語は
+  メニューの焦点をどこへ移すか）、`tree-nav`（ツリーに出ている行・行の上でキーが
+  何をするか・Tab の止まりになる行）、`explorer-width`（エクスプローラの幅の上下限・
+  つまみのキーの刻み・置く押下が決める幅）、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
   積算）、`chord`（アクセラレータの一致判定、アプリ全体の chord handler・その 3 値、
   および click event から同じ解決をする `newWindowModifierHeld`）、
@@ -1413,6 +1417,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `outline-pref`＝キャッシュと通知・
   `color-choice`＝分割前の各保存値の 2 軸への読み替えと、片側だけの系統が描く側・
   `menu-nav`・
+  `tree-nav`・
+  `explorer-width`・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で

@@ -62,7 +62,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   Open Recent list, shown in the explorer's empty state), Outline, Toolbar, OpenWith,
   ModeMenu (the light / dark value menu), `color` (choosing a colour axis and
   telling every window), SettingsModal, UpdateDialog (target version, consent,
-  progress), icons (inlined Lucide SVGs, no runtime dependency).
+  progress), ExplorerResizer (the split handle: drag, grab-and-place, and its
+  keys), Notice (a level notice — the failure level only, until TASK-40.5), Busy
+  (the turning figure beside its words), icons (inlined Lucide SVGs, no runtime
+  dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
@@ -79,7 +82,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   that have one, and across windows), `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
-  a menu's focus), `i18n` (ja/en dictionary + provider/hooks; language
+  a menu's focus), `tree-nav` (the tree's shown rows, what a key does on one, and
+  which row holds the tab stop), `explorer-width` (the explorer's width limits,
+  the handle's key steps and where a placing press puts it), `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
@@ -1580,7 +1585,8 @@ hold rather than as an exhaustive style guide.
   again when Rust raised the stamp — the listener and the emit are Tauri's),
   `outline-pref`
   (its cache and its notification), `color-choice` (each pre-split value read
-  onto the two axes, and the side a one-sided family draws), `menu-nav`, and `custom-emoji`
+  onto the two axes, and the side a one-sided family draws), `menu-nav`, `tree-nav`,
+  `explorer-width`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
