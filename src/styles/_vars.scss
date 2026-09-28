@@ -32,6 +32,7 @@ $on-accent: var(--color-on-accent);
 $accent-pressed: var(--color-accent-pressed);
 $hover-bg: var(--color-hover-bg);
 $pressed-bg: var(--color-pressed-bg);
+$figure: var(--color-figure);
 
 // ---- Control shape and states -----------------------------------------------
 $radius-control: var(--snz-radius-sm);
@@ -94,6 +95,7 @@ $shared-roles: (
   pressed-bg: surface-pressed,
   code-inline-bg: surface-alt,
   focus-ring: focus,
+  figure: figure,
   attention-bg: warn-soft,
   attention-fg: on-warn-soft,
   attention-border: warn,
@@ -141,6 +143,7 @@ $shared-roles: (
   --color-pressed-bg: rgb(248 248 242 / 11%);
   --color-code-inline-bg: rgb(98 114 164 / 35%);
   --color-focus-ring: rgb(139 233 253 / 40%);
+  --color-figure: #9aa0c0;
   --color-attention-bg: rgb(255 184 108 / 15%);
   --color-attention-fg: #ffb86c;
   --color-attention-border: rgb(255 184 108 / 40%);
@@ -170,6 +173,7 @@ $shared-roles: (
   --color-pressed-bg: rgb(236 239 244 / 11%);
   --color-code-inline-bg: rgb(76 86 106 / 45%);
   --color-focus-ring: rgb(136 192 208 / 40%);
+  --color-figure: #9aa6bd;
   --color-attention-bg: rgb(235 203 139 / 15%);
   --color-attention-fg: #ebcb8b;
   --color-attention-border: rgb(235 203 139 / 40%);

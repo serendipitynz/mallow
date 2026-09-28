@@ -68,7 +68,7 @@
   flex: 0 0 auto;
 }
 
-// ---- Dropdown menu (toolbar "open with") ------------------------------------
+// ---- Toolbar menus ("open with", light / dark) ------------------------------
 .menu {
   position: relative;
 }
@@ -81,11 +81,19 @@
   // what holds this above the pinned document bar is the z-index there.
   z-index: 50;
   min-width: 200px;
+  max-width: calc(100vw - 16px);
   padding: 4px;
   background: $surface-raised;
-  border: 1px solid $border;
+  // It lies over the document, so its edge needs the control line to part it
+  // from whatever is below (snz-design doc-9 §6.11).
+  border: 1px solid $control-border;
   border-radius: $radius-surface;
-  box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
+  box-shadow: var(--snz-shadow-raised);
+
+  // Focused only when the menu has no items, and then only to hold the focus.
+  &:focus {
+    outline: none;
+  }
 }
 
 .menu__item {
@@ -103,7 +111,11 @@
   border-radius: $radius-control;
   cursor: pointer;
 
-  &:hover {
+  // The focused item takes the hover surface too, so a pointer press that
+  // opens the menu — which draws no ring — still shows where the arrows start.
+  &:hover,
+  &:focus {
+    outline: none;
     background: $hover-bg;
   }
 
@@ -115,10 +127,30 @@
     @include focus-ring(true);
   }
 
+  // The current value is told by the check mark, not by colour alone
+  // (snz-design doc-8 §5.2).
   &.is-active {
-    color: $teal-dark;
     font-weight: 600;
   }
+
+  // Disabled but still focusable, so the reason below the items is read with
+  // it; a dashed outline would crowd a row this size, so it fades alone.
+  &[aria-disabled='true'] {
+    opacity: var(--snz-opacity-disabled);
+    cursor: default;
+
+    &:active {
+      background: $hover-bg;
+    }
+  }
+}
+
+// Kept on every item, so the labels line up whichever one is current.
+.menu__item-check {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 16px;
+  color: $figure;
 }
 
 .menu__item-icon {
@@ -129,8 +161,14 @@
   color: $muted;
 }
 
-.menu__item.is-active .menu__item-icon {
-  color: $teal-dark;
+.menu__note {
+  max-width: 240px;
+  margin: 4px 0 0;
+  padding: 6px 10px 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $muted;
+  border-top: 1px solid $border;
 }
 
 .menu__label {

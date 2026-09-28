@@ -143,8 +143,10 @@ a {
   }
 
   // It has no outline to break into dashes at rest, so the disabled state
-  // gives it one.
-  &:disabled {
+  // gives it one. `aria-disabled` is the form that keeps the focus, so its
+  // reason reaches the keyboard (snz-design doc-8 §5.4).
+  &:disabled,
+  &[aria-disabled='true'] {
     @include disabled-control;
 
     color: $muted;
