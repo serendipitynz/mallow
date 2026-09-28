@@ -198,6 +198,131 @@ a {
   border: 0;
 }
 
+// ---- Segmented control --------------------------------------------------------
+// The selected option is told by a floating face and its outline, not by the
+// selected face and band: on the track that face would not stand out in either
+// light scheme, and a band beside an adjacent option reads as the border between
+// them (snz-design doc-9 §6.12).
+$segmented-inset: calc(var(--snz-space-xs) / 2);
+
+.segmented {
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: $segmented-inset;
+  background: $surface;
+  border-radius: $radius-control;
+}
+
+.segmented__face {
+  position: absolute;
+  top: $segmented-inset;
+  bottom: $segmented-inset;
+  left: $segmented-inset;
+  width: calc((100% - 2 * #{$segmented-inset}) / var(--segmented-count));
+  background: $surface-raised;
+  box-shadow: inset 0 0 0 var(--snz-border-line) $control-border;
+  border-radius: calc(#{$radius-control} - #{$segmented-inset});
+  transform: translateX(calc(var(--segmented-index) * 100%));
+  transition: transform var(--snz-motion-state) ease;
+  pointer-events: none;
+}
+
+.segmented__option {
+  position: relative;
+  isolation: isolate;
+  min-height: calc(30px - 2 * #{$segmented-inset});
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  color: $ink;
+  background: none;
+  border: 0;
+  border-radius: calc(#{$radius-control} - #{$segmented-inset});
+  cursor: pointer;
+  white-space: nowrap;
+
+  // The weight stays: a bolder chosen word would change its width, and the
+  // options are sized to the widest one.
+  &[aria-pressed='true'] {
+    color: var(--color-ink-strong);
+    cursor: default;
+  }
+
+  // A figure in place of the words; the label still reaches the reader and the
+  // tooltip (snz-design doc-8 §6.2).
+  &--icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+
+    &:not([aria-pressed='true']) {
+      color: $figure;
+    }
+
+    &:not([aria-pressed='true']):hover {
+      color: $ink;
+    }
+  }
+
+  &:not([aria-pressed='true']):hover {
+    background: $hover-bg;
+  }
+
+  &:not([aria-pressed='true']):active {
+    background: $pressed-bg;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+// Under reduced motion the face does not travel: each option carries its own,
+// and the chosen one fades in where the other fades out (snz-design doc-5 §4.2).
+@media (prefers-reduced-motion: reduce) {
+  .segmented__face {
+    display: none;
+  }
+
+  .segmented__option::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: $surface-raised;
+    box-shadow: inset 0 0 0 var(--snz-border-line) $control-border;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity var(--snz-motion-state) ease;
+  }
+
+  .segmented__option[aria-pressed='true']::before {
+    opacity: 1;
+  }
+}
+
+// Narrow enough and the options stack, the face travelling down instead of across.
+// It keys on the nearest size container, which the host declares: the rule is
+// there so words are never cut short, and the viewers' bar declares none because
+// its options are figures (snz-design doc-9 §6.12).
+@container (max-width: 22rem) {
+  .segmented {
+    grid-auto-flow: row;
+    grid-auto-rows: 1fr;
+  }
+
+  .segmented__face {
+    right: $segmented-inset;
+    bottom: auto;
+    width: auto;
+    height: calc((100% - 2 * #{$segmented-inset}) / var(--segmented-count));
+    transform: translateY(calc(var(--segmented-index) * 100%));
+  }
+}
+
 // ---- Notice -----------------------------------------------------------------
 // The band, the figure and the face each carry the level, so the level is not
 // told by colour alone (snz-design doc-9 §6.4).
