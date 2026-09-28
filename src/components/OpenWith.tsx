@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { useMenu } from '../hooks/useMenu';
 import { useT } from '../lib/i18n';
 import { detectEditors, openInDefaultApp, openInEditor, revealInOs } from '../lib/tauri';
 import type { EditorInfo, FileEntry } from '../lib/types';
@@ -18,8 +19,9 @@ function revealManagerKey(): string {
 export function OpenWith({ file }: { file: FileEntry | null }) {
   const t = useT();
   const [editors, setEditors] = useState<EditorInfo[]>([]);
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const disabled = !file;
+  const menu = useMenu({ disabled });
+  const reasonId = useId();
 
   useEffect(() => {
     detectEditors()
@@ -27,61 +29,47 @@ export function OpenWith({ file }: { file: FileEntry | null }) {
       .catch((e) => console.error('detectEditors failed', e));
   }, []);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onDoc = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
-  }, [open]);
-
-  const disabled = !file;
-
-  function openIn(id: string) {
+  // Closed before the action runs, so the focus is back on the trigger by the
+  // time anything the action opens takes it (snz-design doc-9 §6.11).
+  function choose(action: (path: string) => Promise<void>) {
+    menu.close(true);
     if (file) {
-      void openInEditor(id, file.path).catch((e) => console.error(e));
+      void action(file.path).catch((e) => console.error(e));
     }
-    setOpen(false);
-  }
-
-  function reveal() {
-    if (file) {
-      void revealInOs(file.path).catch((e) => console.error(e));
-    }
-    setOpen(false);
-  }
-
-  function openDefault() {
-    if (file) {
-      void openInDefaultApp(file.path).catch((e) => console.error(e));
-    }
-    setOpen(false);
   }
 
   return (
-    <div className="menu" ref={rootRef}>
+    <div className="menu" ref={menu.rootRef}>
+      {/* `aria-disabled` rather than `disabled`, so the trigger keeps the focus
+          and its reason reaches the keyboard (snz-design doc-8 §5.4). */}
       <button
         type="button"
         className="icon-btn"
-        title={t('open')}
+        title={disabled ? `${t('open')} — ${t('openNeedsFile')}` : t('open')}
         aria-label={t('open')}
-        disabled={disabled}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        aria-disabled={disabled || undefined}
+        aria-describedby={disabled ? reasonId : undefined}
+        {...menu.triggerProps}
       >
         <ShareIcon />
       </button>
-      {open && !disabled && (
-        <div className="menu__popup" role="menu">
+      {disabled && (
+        <span id={reasonId} className="visually-hidden">
+          {t('openNeedsFile')}
+        </span>
+      )}
+      {menu.open && (
+        <div className="menu__popup" role="menu" aria-label={t('open')} {...menu.popupProps}>
           {editors.length === 0 && <div className="menu__empty">{t('noEditors')}</div>}
           {editors.map((ed) => (
-            <button key={ed.id} type="button" className="menu__item" role="menuitem" onClick={() => openIn(ed.id)}>
+            <button
+              key={ed.id}
+              type="button"
+              className="menu__item"
+              role="menuitem"
+              tabIndex={-1}
+              onClick={() => choose((path) => openInEditor(ed.id, path))}
+            >
               {t('openIn', { editor: ed.label })}
             </button>
           ))}
@@ -89,10 +77,16 @@ export function OpenWith({ file }: { file: FileEntry | null }) {
           {/* Named for what it does rather than for a browser: the OS handler
               registered for a kind is not always one, and resolving its display
               name costs a per-OS lookup for a word (decision-3). */}
-          <button type="button" className="menu__item" role="menuitem" onClick={openDefault}>
+          <button
+            type="button"
+            className="menu__item"
+            role="menuitem"
+            tabIndex={-1}
+            onClick={() => choose(openInDefaultApp)}
+          >
             {t('openDefaultApp')}
           </button>
-          <button type="button" className="menu__item" role="menuitem" onClick={reveal}>
+          <button type="button" className="menu__item" role="menuitem" tabIndex={-1} onClick={() => choose(revealInOs)}>
             {t('revealIn', { manager: t(revealManagerKey()) })}
           </button>
         </div>

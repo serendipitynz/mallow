@@ -1,8 +1,8 @@
 import { useT } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
 import { FolderOpenIcon } from './icons';
+import { ModeMenu } from './ModeMenu';
 import { OpenWith } from './OpenWith';
-import { ThemePicker } from './ThemePicker';
 
 interface ToolbarProps {
   selected: FileEntry | null;
@@ -27,7 +27,7 @@ export function Toolbar({ selected, onOpenFolder }: ToolbarProps) {
       </span>
       <div className="toolbar__actions">
         <OpenWith file={selected} />
-        <ThemePicker />
+        <ModeMenu />
       </div>
     </header>
   );

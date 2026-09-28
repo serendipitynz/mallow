@@ -40,7 +40,7 @@ import {
   takeWindowInit,
   writeWindowPdf,
 } from './lib/tauri';
-import { applyTheme } from './lib/theme';
+import { applyColorChoice } from './lib/theme';
 import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
 import { locationToOpenAtMount } from './lib/window-init';
@@ -284,8 +284,11 @@ export default function App() {
   const applySettingChange = useCallback(
     (change: SettingChange) => {
       switch (change.key) {
-        case 'theme':
-          applyTheme(change.value);
+        case 'colorFamily':
+          applyColorChoice({ family: change.value });
+          break;
+        case 'colorMode':
+          applyColorChoice({ mode: change.value });
           break;
         case 'lang':
           applyLang(change.value);
@@ -330,7 +333,11 @@ export default function App() {
        this branch nor the module it imports (`lib/build-flags`). */
     if (UNATTENDED) {
       void import('./unattended/run').then(({ runUnattendedExport }) =>
-        runUnattendedExport({ openTree, select: setSelected, applyTheme }),
+        runUnattendedExport({
+          openTree,
+          select: setSelected,
+          applyTheme: (mode) => applyColorChoice({ family: 'standard', mode }),
+        }),
       );
       return;
     }

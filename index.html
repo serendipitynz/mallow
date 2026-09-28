@@ -5,31 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>mallow</title>
     <script>
-      // Apply the saved theme before first paint to avoid a flash of the wrong one.
-      // The two colour attributes are derived here as well as in `lib/theme`
-      // (`applyColorAttributes`), because this runs before any module is loaded;
-      // keep the two in step.
+      // Apply the saved colour choice before first paint to avoid a flash of the
+      // wrong scheme. This is a copy of `readChoice` and `drawnMode` in
+      // `lib/color-choice`, because it runs before any module is loaded; keep the
+      // two in step. Nothing stored is written here.
       (function () {
-        var t = null;
-        try {
-          t = localStorage.getItem('theme');
-          if (t) document.documentElement.dataset.theme = t;
-        } catch (e) {
-          /* private mode / disabled storage: fall back to auto */
+        function get(key) {
+          try {
+            return localStorage.getItem(key);
+          } catch (e) {
+            return null; /* private mode / disabled storage: read as nothing stored */
+          }
         }
-        var family = 'standard';
-        var mode = null;
-        if (t === 'light' || t === 'dark') {
-          mode = t;
-        } else if (t === 'solarized-light' || t === 'solarized-dark') {
-          family = 'solarized';
-          mode = t === 'solarized-light' ? 'light' : 'dark';
-        } else if (t === 'dracula' || t === 'nord') {
-          family = t;
-          mode = 'dark';
+        var legacy = {
+          auto: ['standard', 'auto'],
+          light: ['standard', 'light'],
+          dark: ['standard', 'dark'],
+          'solarized-light': ['solarized', 'light'],
+          'solarized-dark': ['solarized', 'dark'],
+          dracula: ['dracula', 'dark'],
+          nord: ['nord', 'dark'],
+        };
+        var sides = { standard: ['light', 'dark'], solarized: ['light', 'dark'], dracula: ['dark'], nord: ['dark'] };
+        var old = get('theme');
+        var base = old !== null && legacy.hasOwnProperty(old) ? legacy[old] : ['standard', 'auto'];
+        var family = get('colorFamily');
+        var mode = get('colorMode');
+        if (family === null) {
+          family = base[0];
         }
         if (mode === null) {
+          mode = base[1];
+        }
+        if (!sides.hasOwnProperty(family) || (mode !== 'light' && mode !== 'dark' && mode !== 'auto')) {
+          family = 'standard';
+          mode = 'auto';
+        }
+        if (mode === 'auto') {
           mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        if (sides[family].indexOf(mode) < 0) {
+          mode = sides[family][0];
         }
         document.documentElement.dataset.colorFamily = family;
         document.documentElement.dataset.colorMode = mode;

@@ -109,7 +109,9 @@ Installing an update may need the system's permission.
   (scroll position preserved); the tree follows changes too.
 - **Open in editor**: detects and launches VS Code / Zed / CotEditor / mi (macOS),
   Notepad++ / Sakura (Windows), etc. Can also reveal the file in the OS file manager.
-- **Themes**: light / dark / auto + Solarized Light/Dark · Dracula · Nord.
+- **Colours**: a palette (Standard · Solarized · Dracula · Nord), chosen in
+  Settings, and light / dark / auto (OS), chosen from the toolbar or in Settings.
+  Dracula and Nord are dark only.
 - **Self-update**: check for a newer version and install it. See
   [Install and update](#install-and-update).
 - **Multiple windows and the File menu**: New Window, Open…, Open Recent, and
