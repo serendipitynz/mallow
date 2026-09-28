@@ -59,8 +59,6 @@ export function TableView({ source, file }: TableViewProps) {
         <ViewPanel idBase={idBase} selected={mode}>
           {mode === 'table' ? (
             <>
-              {/* A plain <p>, like `SourceView`'s own notice: the text is computed
-                once per mount, so a live region would have nothing to announce. */}
               {notice.length > 0 && (
                 <Notice level="info" className="notice--doc">
                   {notice.join(' ')}

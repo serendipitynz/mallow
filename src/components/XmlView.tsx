@@ -133,8 +133,6 @@ export function XmlView({ source }: { source: string }) {
           <ViewPanel idBase={idBase} selected={mode}>
             {mode === 'tree' ? (
               <>
-                {/* A plain <p>, like the source and table notices: the text is
-                    computed once per mount, so a live region has nothing to announce. */}
                 {notice.length > 0 && (
                   <Notice level="info" className="notice--doc">
                     {notice.join(' ')}

@@ -279,7 +279,10 @@ export default function App() {
   // (snz-design doc-9 §6.4).
   const dismissNotice = useCallback(() => {
     setNotice(null);
-    bodyRef.current?.querySelector<HTMLElement>('button:not([disabled]), a[href], [tabindex="0"]')?.focus();
+    const next = bodyRef.current?.querySelector<HTMLElement>('button:not([disabled]), a[href], [tabindex="0"]');
+    // A hidden explorer and an empty viewer leave the body nothing focusable; the toolbar's
+    // toggle is always there.
+    (next ?? explorerToggleRef.current)?.focus();
   }, []);
   useEffect(() => {
     explorerShownRef.current = explorerShown;

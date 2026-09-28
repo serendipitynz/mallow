@@ -293,7 +293,8 @@ export function PanelRightIcon({ size = 16 }: IconProps) {
 
 // ---- Status -----------------------------------------------------------------
 
-/** lucide: circle-x (the failure level of a notice) */
+/** lucide: circle-x (the failure level of a notice). `FAILURE_FIGURE` in
+ *  `lib/mermaid.ts` is a hand-written copy: change both together. */
 export function CircleXIcon({ size = 16 }: IconProps) {
   return (
     <Icon size={size}>
