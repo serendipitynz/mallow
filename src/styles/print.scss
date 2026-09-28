@@ -227,7 +227,8 @@
     h4,
     h5,
     h6 {
-      // On screen this clears the pinned bar, which is not in the paper's DOM.
+      // On screen this is the gap a jump leaves below the pinned bar, which is
+      // not in the paper's DOM.
       scroll-margin-top: 0;
     }
 

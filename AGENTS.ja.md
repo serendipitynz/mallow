@@ -53,6 +53,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `hooks/useMenu.ts` — ツールバーの 2 つのメニューが共有する開閉とキーボードの
   振る舞い。開いたら項目へ焦点を移す、矢印は端で回る、Escape でトリガーへ戻す、
   Tab は焦点を引き戻さずに閉じる（snz-design doc-9 §6.11）。
+- `hooks/useOutlineFocusReturn.ts` — 焦点を持ったままアウトラインが消えるときの
+  焦点の行き先。トリガーへ、トリガーも一緒に消えたなら表示切替の選ばれた選択肢へ
+  （snz-design doc-9 §6.3.1）。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
@@ -62,6 +65,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   OpenWith、ModeMenu（明暗の値のメニュー）、`color`（配色の軸を選んで全ウィンドウへ
   伝える）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
   ExplorerResizer（分割つまみ。ドラッグ・押して掴み押して置く・キー操作）、
+  Segmented（セグメント。各ビューアの表示切替）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
@@ -80,7 +84,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
   `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
-  メニューの焦点をどこへ移すか）、`explorer-toggle`（エクスプローラを出し入れする
+  メニューの焦点をどこへ移すか）、`segmented-nav`（キーがセグメントの焦点をどこへ移すか）、
+  `explorer-toggle`（エクスプローラを出し入れする
   `CmdOrCtrl+B` の chord。ゲートなし）、`tree-nav`（ツリーに出ている行・行の上でキーが
   何をするか・Tab の止まりになる行）、`explorer-width`（エクスプローラの幅の上下限・
   つまみのキーの刻み・置く押下が決める幅）、`i18n`（ja/en 辞書 + provider/hooks。言語は
@@ -738,21 +743,28 @@ Comments と Functions の規約は機械的に検査されない。コメント
 - **見出しのジャンプとアウトラインのスクロールスパイは、TypeScript から CSS へ渡って
   戻ってくる 1 個の値で、3 ファイルすべてが揃っていないと壊れる。** `.doc__bar` は
   スクロール容器の上端に固定されるので、見出しはこれを越えないとそもそも見えない。
+  キーボードで上へ戻った焦点のリンクも同じで、以前は Shift+Tab でリンクがバーの下に
+  完全に隠れた（焦点の被り、2.4.11。TASK-40.4）。
   `MarkdownView` が描画済みのバーを実測し、**`Outline` にスクローラとして渡すのと同じ要素**へ
   `--doc-bar-height` として publish する — `$doc-bar-height` から取らないのは、その 42px を
   コメント自身がトグル行の概算と呼んでいるため（上の `SourceView` の帯と同じ規則）。
-  `markdown.scss` がそれを見出しの `scroll-margin-top` にし、`scrollIntoView` も文書自身の
-  `#` リンクもこれを尊重する。`Outline` は計算し直さず、その computed な
-  `scroll-margin-top` を見出しから読み戻す — 値は 1 個で、SCSS のフォールバックが
-  スパイ側にも効く。比較には `LANDING_SLACK_PX` が入る: スクローラのオフセットは整数、
-  見出しの位置は小数なので、厳密比較だと**クリックした 1 つ上の項目**が半分くらいの確率で
-  ハイライトされる。**property を publish せずに `.markdown-body` をマウントするビューは
-  黙って 62px のフォールバックを使う**（今日は `MermaidView`。Config・Table・Xml・Html の
-  バーは publish しない）。そこに見出しが無いあいだだけ無害。**`HtmlView` は同じ事例ではなく
-  別の事例**で、見出しはフレーム自身の文書の中にあり `markdown.scss` はそこへ届かない。
-  答えは、`html.scss` の `.html-frame` に `scroll-margin-top` として 1 回だけ宣言し、
-  load 時に computed 値を読んで各見出しへインラインスタイルで写すこと。**値は CSS に 1 個の
-  ままで、`Outline` は変わらず見出しから読み戻す。**
+  `markdown.scss` がそれをそのスクローラの `scroll-padding-top`
+  （`.doc-scroll:has(.doc__bar)`）にし、見出しはバーの下に空ける間だけを
+  `scroll-margin-top` に持つ。`scrollIntoView` も文書自身の `#` リンクもエンジンの
+  焦点のスクロールも、この和を尊重する。`Outline` は計算し直さず、padding を
+  スクローラから、margin を見出しから読み戻す — 値は 1 個で、SCSS のフォールバックが
+  スパイ側にも効く。**バーの高さを各見出しではなくスクローラに置くのは、焦点まで届くのが
+  スクローラだけだから**で、見出しの margin はリンクには何もしない。比較には
+  `LANDING_SLACK_PX` が入る: スクローラのオフセットは整数、見出しの位置は小数なので、
+  厳密比較だと**クリックした 1 つ上の項目**が半分くらいの確率でハイライトされる。
+  **property を publish しないビューは黙って 62px のフォールバックを使う**（`MermaidView` と、
+  Config・Table・Xml のバー）。バーがその高さのままであるあいだだけ無害。
+  **`HtmlView` は同じ事例ではなく別の事例**で、見出しはフレーム自身の文書の中にあり
+  `markdown.scss` はそこへ届かない。答えは、`html.scss` の `.html-frame` に間の分の
+  `scroll-margin-top` を 1 回だけ宣言し、load 時に computed 値を読んで各見出しへ
+  インラインスタイルで写すこと。バーの高さは markdown と同じく親のスクローラの padding が
+  持つ。フレームの中からのジャンプは移す前と同じ位置に着いた（Blink。WKWebView は
+  オーナーの確認）。
 - **描画した HTML のフレームの高さは、いま適用している高さで読む。それが収束値を
   「不動点」にしている。** フレームの高さは**そのまま文書のビューポート**なので、
   別の基準で測った高さは**その文書がレイアウトされていない高さ**である。適用すると
@@ -1421,6 +1433,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `outline-pref`＝キャッシュと通知・
   `color-choice`＝分割前の各保存値の 2 軸への読み替えと、片側だけの系統が描く側・
   `menu-nav`・
+  `segmented-nav`・
   `tree-nav`・
   `explorer-width`・
   `custom-emoji`＝Tauri 層を

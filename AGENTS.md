@@ -54,6 +54,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - `hooks/useMenu.ts` — the open / close and keyboard behaviour both toolbar
   menus share: focus onto an item on open, arrows that wrap, Escape back to the
   trigger, Tab closing without pulling the focus back (snz-design doc-9 §6.11).
+- `hooks/useOutlineFocusReturn.ts` — where the focus goes when the outline
+  disappears while holding it: the toggle, or the chosen view option when the
+  toggle went too (snz-design doc-9 §6.3.1).
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
@@ -63,7 +66,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   ModeMenu (the light / dark value menu), `color` (choosing a colour axis and
   telling every window), SettingsModal, UpdateDialog (target version, consent,
   progress), ExplorerResizer (the split handle: drag, grab-and-place, and its
-  keys), Notice (a level notice — the failure level only, until TASK-40.5), Busy
+  keys), Segmented (a segmented control — each viewer's view switch), ViewPanel
+  (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
   (the turning figure beside its words), icons (inlined Lucide SVGs, no runtime
   dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
@@ -82,7 +86,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   that have one, and across windows), `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
-  a menu's focus), `explorer-toggle` (the `CmdOrCtrl+B` chord that shows and
+  a menu's focus), `segmented-nav` (where a key moves a segmented control's focus),
+  `explorer-toggle` (the `CmdOrCtrl+B` chord that shows and
   hides the explorer — no gate), `tree-nav` (the tree's shown rows, what a key does on one, and
   which row holds the tab stop), `explorer-width` (the explorer's width limits,
   the handle's key steps and where a placing press puts it), `i18n` (ja/en dictionary + provider/hooks; language
@@ -819,24 +824,31 @@ hold rather than as an exhaustive style guide.
 - **The heading jump and the outline's scroll spy are one number crossing from
   TypeScript into CSS and back, and all three files have to hold.** `.doc__bar` is
   pinned over the top of the scroll container, so a heading must clear it to be
-  visible at all. `MarkdownView` measures the rendered bar and publishes it as
+  visible at all — and so must a link the keyboard moves the focus back up to,
+  which Shift+Tab used to leave wholly under the bar (focus not obscured, 2.4.11;
+  TASK-40.4). `MarkdownView` measures the rendered bar and publishes it as
   `--doc-bar-height` **on the same element `Outline` is given as its scroller** —
   measured, not taken from `$doc-bar-height`, whose 42px its own comment calls an
   approximation of the toggle row (the same rule as the `SourceView` band above).
-  `markdown.scss` turns it into the headings' `scroll-margin-top`, which is what
-  `scrollIntoView` and a document's own `#` links honour, and `Outline` reads that
-  computed `scroll-margin-top` back off a heading rather than recomputing it — so
-  there is one value, and the SCSS fallback covers the spy too. The comparison
-  carries `LANDING_SLACK_PX`: the scroller's offset is an integer while heading
-  positions are fractional, so an exact test highlights the entry above the one
-  clicked about half the time. **A viewer that mounts `.markdown-body` without
-  publishing the property takes the 62px fallback silently** (`MermaidView` today;
-  the Config/Table/Xml bars publish nothing), which is harmless only for as long
-  as nothing there has headings. **`HtmlView` is the other case, not that one**:
-  its headings sit in the frame's own document, which `markdown.scss` cannot
-  reach, so the value is declared as `scroll-margin-top` on `.html-frame` in
-  `html.scss` and copied onto each heading as an inline style at load. It is
-  still one value in CSS, and `Outline` still reads it back off the heading.
+  `markdown.scss` turns it into that scroller's `scroll-padding-top`
+  (`.doc-scroll:has(.doc__bar)`), and a heading carries only the gap below the bar
+  as its `scroll-margin-top`. `scrollIntoView`, a document's own `#` links and the
+  engine's focus scrolling all honour the sum, and `Outline` reads both back — the
+  padding off the scroller, the margin off the heading — rather than recomputing
+  them, so there is one value, and the SCSS fallback covers the spy too. **The bar
+  height is on the scroller rather than on each heading because only the scroller
+  also reaches the focus**: a margin on a heading does nothing for a link. The
+  comparison carries `LANDING_SLACK_PX`: the scroller's offset is an integer while
+  heading positions are fractional, so an exact test highlights the entry above
+  the one clicked about half the time. **A viewer that does not publish the
+  property takes the 62px fallback silently** (`MermaidView`, and the
+  Config/Table/Xml bars), which is harmless only for as long as their bar stays
+  that tall. **`HtmlView` is the other case, not that one**: its headings sit in
+  the frame's own document, which `markdown.scss` cannot reach, so the gap is
+  declared as `scroll-margin-top` on `.html-frame` in `html.scss` and copied onto
+  each heading as an inline style at load, while the bar's height comes from the
+  parent scroller's padding as it does for markdown. A jump from inside the frame
+  landed where it did before the move (Blink; WKWebView is the owner's check).
 - **The rendered HTML frame's height is read at the height currently applied,
   and that is what makes the converged value a fixed point.** The frame's height
   *is* its document's viewport, so a height measured anywhere else is a height
@@ -1589,7 +1601,7 @@ hold rather than as an exhaustive style guide.
   again when Rust raised the stamp — the listener and the emit are Tauri's),
   `outline-pref`
   (its cache and its notification), `color-choice` (each pre-split value read
-  onto the two axes, and the side a one-sided family draws), `menu-nav`, `tree-nav`,
+  onto the two axes, and the side a one-sided family draws), `menu-nav`, `segmented-nav`, `tree-nav`,
   `explorer-width`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the

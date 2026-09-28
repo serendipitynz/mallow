@@ -22,14 +22,14 @@
   // does, so the outline gets its column.
   grid-area: main;
   min-width: 0;
-  // Where a jump lands a heading *inside* the frame. The pinned `.doc__bar`
-  // overlays the frame's top edge, and the parent's stylesheets do not reach into
-  // the frame's document — so this cannot be declared on the heading the way
-  // `markdown.scss` declares it. It is declared here and copied onto each heading
-  // as an inline style once the document loads, which keeps the landing one value
-  // in CSS: `Outline` reads it back off the heading, so the spy and the jump
-  // cannot drift apart (TASK-20).
-  scroll-margin-top: calc(var(--doc-bar-height, #{$doc-bar-height}) + 1.5rem);
+  // The gap a jump leaves above a heading *inside* the frame; clearing the pinned
+  // `.doc__bar` is the parent scroller's `scroll-padding-top`. The parent's
+  // stylesheets do not reach into the frame's document, so this cannot be
+  // declared on the heading the way `markdown.scss` declares it. It is declared
+  // here and copied onto each heading as an inline style once the document
+  // loads, which keeps the landing one value in CSS: `Outline` reads it back off
+  // the heading, so the spy and the jump cannot drift apart (TASK-20).
+  scroll-margin-top: 1.5rem;
 }
 
 // ---- What the rendered view declined to do -----------------------------------
