@@ -35,7 +35,7 @@
   line-height: 1.6;
   background: $surface;
   border: 1px solid $border;
-  border-radius: 8px;
+  border-radius: $radius-surface;
 
   // Dark-mode token swap (same recipe as markdown code blocks).
   @include on-dark {
@@ -84,7 +84,7 @@
   color: var(--color-attention-fg);
   background: var(--color-attention-bg);
   border: 1px solid var(--color-attention-border);
-  border-radius: 8px;
+  border-radius: $radius-surface;
 }
 
 .src-plain {
@@ -97,7 +97,7 @@
   color: $ink;
   background: $surface;
   border: 1px solid $border;
-  border-radius: 8px;
+  border-radius: $radius-surface;
 }
 
 // Same geometry as the `.line::before` counter of the highlighted path, so the
