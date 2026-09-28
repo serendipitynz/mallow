@@ -31,8 +31,12 @@
         var base = old !== null && legacy.hasOwnProperty(old) ? legacy[old] : ['standard', 'auto'];
         var family = get('colorFamily');
         var mode = get('colorMode');
-        if (family === null) family = base[0];
-        if (mode === null) mode = base[1];
+        if (family === null) {
+          family = base[0];
+        }
+        if (mode === null) {
+          mode = base[1];
+        }
         if (!sides.hasOwnProperty(family) || (mode !== 'light' && mode !== 'dark' && mode !== 'auto')) {
           family = 'standard';
           mode = 'auto';
@@ -40,7 +44,9 @@
         if (mode === 'auto') {
           mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
-        if (sides[family].indexOf(mode) < 0) mode = sides[family][0];
+        if (sides[family].indexOf(mode) < 0) {
+          mode = sides[family][0];
+        }
         document.documentElement.dataset.colorFamily = family;
         document.documentElement.dataset.colorMode = mode;
       })();
