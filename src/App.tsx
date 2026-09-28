@@ -13,6 +13,7 @@ import { UNATTENDED } from './lib/build-flags';
 import { matchesCmdOrCtrl, onMacPlatform } from './lib/chord';
 import { createCloseWindowChordHandler } from './lib/close-window';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
+import { createToggleExplorerChordHandler } from './lib/explorer-toggle';
 import { clampExplorerWidth, DEFAULT_EXPLORER_WIDTH } from './lib/explorer-width';
 import { fileEntryFromPath } from './lib/file';
 import { useI18n, useT } from './lib/i18n';
@@ -51,6 +52,7 @@ import { locationToOpenAtMount } from './lib/window-init';
  *  from the store — and the window that receives one has to land on the value a
  *  window with nothing stored would show. */
 const DEFAULT_SIDE: 'left' | 'right' = 'left';
+const DEFAULT_EXPLORER_SHOWN = true;
 const DEFAULT_AUTO_CHECK_UPDATES = true;
 
 /** What the resize handle names as the pane it sizes (`aria-controls`). One per
@@ -70,6 +72,7 @@ export default function App() {
   const [reloadToken, setReloadToken] = useState(0);
   const [explorerWidth, setExplorerWidth] = useState(DEFAULT_EXPLORER_WIDTH);
   const [explorerSide, setExplorerSide] = useState<'left' | 'right'>(DEFAULT_SIDE);
+  const [explorerShown, setExplorerShown] = useState(DEFAULT_EXPLORER_SHOWN);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(DEFAULT_AUTO_CHECK_UPDATES);
@@ -297,6 +300,9 @@ export default function App() {
         case 'explorerWidth':
           setExplorerWidth(clampExplorerWidth(change.value ?? DEFAULT_EXPLORER_WIDTH));
           break;
+        case 'explorerShown':
+          setExplorerShown(change.value ?? DEFAULT_EXPLORER_SHOWN);
+          break;
         case 'customEmojiDir':
           void applyEmojiDir(change.value);
           break;
@@ -365,6 +371,9 @@ export default function App() {
       }
       if (s.explorerSide && snapshotStillCurrent('explorerSide', readAt)) {
         setExplorerSide(s.explorerSide);
+      }
+      if (s.explorerShown === false && snapshotStillCurrent('explorerShown', readAt)) {
+        setExplorerShown(false);
       }
       if (s.autoCheckUpdates === false && snapshotStillCurrent('autoCheckUpdates', readAt)) {
         setAutoCheckUpdates(false);
@@ -667,6 +676,34 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // ---- Explorer show / hide -------------------------------------------------
+  const explorerToggleRef = useRef<HTMLButtonElement>(null);
+  const explorerShownRef = useRef(explorerShown);
+  useEffect(() => {
+    explorerShownRef.current = explorerShown;
+  }, [explorerShown]);
+
+  /* Read through a ref because the chord handler is registered once. A focus
+     inside the explorer moves to the toggle before the explorer goes, or it would
+     fall to the top of the document with the pane (snz-design doc-9 §6.3.1);
+     showing leaves the focus on the toggle. */
+  const toggleExplorer = useCallback(() => {
+    const shown = !explorerShownRef.current;
+    if (!shown && document.getElementById(EXPLORER_ID)?.contains(document.activeElement)) {
+      explorerToggleRef.current?.focus();
+    }
+    explorerShownRef.current = shown;
+    setExplorerShown(shown);
+    void saveSetting('explorerShown', shown);
+  }, []);
+
+  useEffect(() => {
+    const onKey = createToggleExplorerChordHandler({ onMac: onMacPlatform(), toggleExplorer });
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleExplorer]);
+  useWindowEvent('menu:toggle-explorer', toggleExplorer);
+
   // ---- Explorer resize ------------------------------------------------------
   const commitExplorerWidth = useCallback((width: number) => {
     setExplorerWidth(width);
@@ -702,7 +739,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <Toolbar selected={selected} onOpenFolder={openFolder} />
+      <Toolbar
+        selected={selected}
+        onOpenFolder={openFolder}
+        explorerShown={explorerShown}
+        explorerSide={explorerSide}
+        explorerId={EXPLORER_ID}
+        onToggleExplorer={toggleExplorer}
+        explorerToggleRef={explorerToggleRef}
+      />
       {/* Under the toolbar rather than inside the explorer: what it reports can
           be a menu choice made while a folder is open, which the explorer's empty
           state is not on screen for. */}
@@ -719,7 +764,9 @@ export default function App() {
         data-side={explorerSide}
         style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}
       >
-        {explorerSide === 'left' ? (
+        {!explorerShown ? (
+          viewer
+        ) : explorerSide === 'left' ? (
           <>
             {explorer}
             {resizer}

@@ -269,6 +269,28 @@ export function CheckIcon({ size = 16 }: IconProps) {
   );
 }
 
+// ---- Panes ------------------------------------------------------------------
+
+/** lucide: panel-left (the explorer's show / hide, explorer on the left) */
+export function PanelLeftIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M9 3v18" />
+    </Icon>
+  );
+}
+
+/** lucide: panel-right (the explorer's show / hide, explorer on the right) */
+export function PanelRightIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M15 3v18" />
+    </Icon>
+  );
+}
+
 // ---- Status -----------------------------------------------------------------
 
 /** lucide: circle-x (the failure level of a notice) */
