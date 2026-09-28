@@ -330,7 +330,7 @@ export default function App() {
        this branch nor the module it imports (`lib/build-flags`). */
     if (UNATTENDED) {
       void import('./unattended/run').then(({ runUnattendedExport }) =>
-        runUnattendedExport({ openTree, select: setSelected }),
+        runUnattendedExport({ openTree, select: setSelected, applyTheme }),
       );
       return;
     }
