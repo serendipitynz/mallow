@@ -8,6 +8,17 @@
   overflow: auto;
 }
 
+// Whatever the scroller brings into view has to clear the pinned `.doc__bar`: a
+// heading a jump lands on, and a link the keyboard moves the focus back up to,
+// which would otherwise sit wholly under the bar (snz-design doc-5 §3.2, focus
+// not obscured). Padding on the scroller rather than a margin on each target,
+// because only the scroller covers both. `--doc-bar-height` is measured by the
+// views that have an outline; the SCSS constant is the fallback for the paint
+// before that runs and for the bars nothing measures.
+.doc-scroll:has(.doc__bar) {
+  scroll-padding-top: var(--doc-bar-height, #{$doc-bar-height});
+}
+
 .doc {
   max-width: 1180px;
   margin: 0 auto;
@@ -158,12 +169,11 @@ $tab-band: 4px;
     margin: 1.6em 0 0.6em;
     font-weight: 700;
     line-height: 1.3;
-    // Clear the pinned `.doc__bar`, which otherwise covers the heading a jump lands
-    // on. `--doc-bar-height` is measured by `MarkdownView`; the SCSS constant is the
-    // fallback for the paint before that runs. This declaration is the only place the
-    // landing is stated — `Outline` reads it back off the heading rather than keeping
-    // an offset of its own, so the scroll spy marks the heading a jump arrives at.
-    scroll-margin-top: calc(var(--doc-bar-height, #{$doc-bar-height}) + 1.5rem);
+    // The gap a jump leaves above the heading. Clearing the pinned bar is the
+    // scroller's `scroll-padding-top` (`.doc-scroll`), which the two add up to;
+    // `Outline` reads both back rather than keeping an offset of its own, so the
+    // scroll spy marks the heading a jump arrives at.
+    scroll-margin-top: 1.5rem;
   }
 
   h1 {

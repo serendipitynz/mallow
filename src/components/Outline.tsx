@@ -25,14 +25,16 @@ interface OutlineProps {
 const LANDING_SLACK_PX = 1;
 
 /**
- * Where a jump puts a heading, measured off the heading itself rather than
- * recomputed: `scroll-margin-top` already resolves the bar height `MarkdownView`
- * publishes plus the gap, fallback included, so the spy and the jump cannot drift
- * apart. A heading with none — a document that is not mallow's markdown — answers
- * 0, which is also where its jump lands.
+ * Where a jump puts a heading, read back rather than recomputed: the scroller's
+ * `scroll-padding-top` resolves the bar height the view publishes, fallback
+ * included, and the heading's `scroll-margin-top` the gap below it — the two
+ * `scrollIntoView` adds up — so the spy and the jump cannot drift apart. A heading
+ * with no margin — a document that is not mallow's markdown — adds 0, which is
+ * also what its jump adds.
  */
-function landingOffset(el: HTMLElement): number {
-  return parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+function landingOffset(el: HTMLElement, scroller: HTMLElement): number {
+  const padding = parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0;
+  return padding + (parseFloat(getComputedStyle(el).scrollMarginTop) || 0);
 }
 
 export function Outline({ id, headings, scrollRef, root = appDocumentRoot, onFocusDropped }: OutlineProps) {
@@ -75,7 +77,7 @@ export function Outline({ id, headings, scrollRef, root = appDocumentRoot, onFoc
           continue;
         }
         if (threshold === null) {
-          threshold = landingOffset(el);
+          threshold = landingOffset(el, container);
         }
         const top = offsetFromContainerTop(el.getBoundingClientRect().top, frameOffset, containerTop);
         if (top - threshold <= LANDING_SLACK_PX) {
@@ -117,8 +119,9 @@ export function Outline({ id, headings, scrollRef, root = appDocumentRoot, onFoc
     // parent `scrollTop` computed from `offsetFromContainerTop`. TASK-7 measured both
     // working from inside a srcdoc frame on all three WebViews, so decision-9 left the
     // choice here. This one is chosen because it honours the heading's own
-    // `scroll-margin-top`; reproducing that on the parent side would mean reading it
-    // back out of the computed style at every jump. Only the markdown view declares one
+    // `scroll-margin-top` and the scroller's `scroll-padding-top`; reproducing those
+    // on the parent side would mean reading them back out of the computed style at
+    // every jump. Only the markdown view declares one
     // today (under `.markdown-body`), and a rendered document brings its own or none —
     // the point is that whatever the heading declares is what applies.
     el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });

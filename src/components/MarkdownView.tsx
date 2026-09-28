@@ -136,7 +136,7 @@ export function MarkdownView({ source }: { source: string }) {
 
   // The bar is pinned over the top of the scroll container, so a heading must clear
   // it to be visible. Two things need that height and they are in different
-  // languages — `scroll-margin-top` for the jump, the scroll spy for the highlight —
+  // languages — `scroll-padding-top` for the jump, the scroll spy for the highlight —
   // so it is published on the scroll container for both. Measured rather than taken
   // from `$doc-bar-height`, whose comment calls its 42px an approximation of this
   // row; the SCSS constant stays as the fallback for the paint before this runs.
