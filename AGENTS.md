@@ -51,14 +51,18 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - `hooks/useWindowEvent.ts` — listening for an event **on this window alone**,
   which is the frontend half of every per-window emit (the menu's, and the
   pairing `lib/watch` already establishes for `fs:change`).
+- `hooks/useMenu.ts` — the open / close and keyboard behaviour both toolbar
+  menus share: focus onto an item on open, arrows that wrap, Escape back to the
+  trigger, Tab closing without pulling the focus back (snz-design doc-9 §6.11).
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
   toggle), ErrorBanner (shared syntax-error banner), MermaidView,
   MediaView (image/pdf/video via the asset protocol), RecentFolders (the in-app
   Open Recent list, shown in the explorer's empty state), Outline, Toolbar, OpenWith,
-  ThemePicker, SettingsModal, UpdateDialog (target version, consent, progress),
-  icons (inlined Lucide SVGs, no runtime dependency).
+  ModeMenu (the light / dark value menu), `color` (choosing a colour axis and
+  telling every window), SettingsModal, UpdateDialog (target version, consent,
+  progress), icons (inlined Lucide SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
@@ -72,7 +76,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `settings-sync` (one changed preference reaching every window),
   `outline-pref` (whether the outline is open — one preference across the views
-  that have one, and across windows), `theme`, `i18n` (ja/en dictionary + provider/hooks; language
+  that have one, and across windows), `color-choice` (the two colour axes, the
+  pre-split value read onto them, and the scheme they draw — pure), `theme`
+  (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
+  a menu's focus), `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
@@ -735,15 +742,25 @@ hold rather than as an exhaustive style guide.
   the untrusted-Markdown boundary: the document only supplies the *name*, and a
   name only matches when it is a key of the app-built table — the URL never comes
   from the document. The folder needs its own `allow_media_dir` grant.
-- Theme = `data-theme` attribute + CSS-variable palettes (instant switch; also
-  styles the non-React rendered HTML). 7 themes. **The stored theme id is read,
-  never rewritten**: `index.html` (before first paint) and `lib/theme`
-  (`applyColorAttributes`) both derive `data-color-family` and a resolved
-  `data-color-mode` (light or dark, never auto) from it, and the two copies of
-  that rule have to move together. Standard and Solarized draw the shared tokens
-  through those two attributes; Dracula and Nord keep literal palettes keyed on
-  `data-theme`. `on-dark` keys on `data-color-mode='dark'`, so a new dark palette
-  needs its mode in both copies of the rule and its block in `global.scss`.
+- **The colour is two choices, a family and a light / dark mode**
+  (snz-design doc-7 §4): Standard, Solarized, Dracula and Nord, and Light, Dark
+  or Auto (OS). The family is chosen in the settings modal and the mode in both
+  the settings modal and the toolbar's `ModeMenu`. What reaches `<html>` is the
+  scheme drawn — `data-color-family` and a `data-color-mode` that is light or
+  dark, never auto — and every palette keys on those two attributes; nothing
+  writes `data-theme` any more. **Each axis is stored under its own
+  localStorage key (`colorFamily`, `colorMode`), and the pre-split `theme` key is
+  read and never written**: an axis with no key of its own is read from `theme`
+  by `readChoice` in `lib/color-choice`, so choosing one axis writes only that
+  axis's key — the other falls back to exactly what was being drawn. **A mode the
+  family cannot draw is kept, not rewritten** (Dracula and Nord are dark only):
+  it is drawn as the side the family carries, shown selected but disabled with
+  its reason, and comes back when the reader returns to a two-sided family.
+  `index.html` carries a copy of `readChoice` and `drawnMode` because it runs
+  before any module is loaded, and the two copies have to move together; a
+  family's sides are one table in each. `on-dark` keys on
+  `data-color-mode='dark'`, so a new palette needs its sides in both copies and
+  its block in `global.scss`.
 - i18n is a hand-rolled dictionary in `lib/i18n.tsx` (no library). UI strings go
   through `useT()` / `t(key, params)`; add the key to **both** the `ja` and `en`
   dictionaries. Language follows localStorage → OS locale → Japanese.
@@ -1286,7 +1303,7 @@ hold rather than as an exhaustive style guide.
   its own WebView, and cross-WebView storage notification is not something to
   rely on across all three engines.
   **Every propagated preference has two halves, and the receiving window takes
-  the persist-free one**: `applyTheme` beside `setTheme`, `applyLang` beside
+  the persist-free one**: `applyColorChoice` beside `chooseColor`, `applyLang` beside
   `setLang`, `applyEmojiDir` beside the persisting path. Every window shares one
   WebView data store and one settings.json, so the value is already written by
   the time the event arrives — which is also why a window created afterwards
@@ -1294,8 +1311,8 @@ hold rather than as an exhaustive style guide.
   setter instead would write a second time **and** send an echo back out.
   **`saveSetting` is one call that persists and propagates**, so the store-backed preferences
   (explorer width and side, the custom emoji folder, the launch update check)
-  need nothing at their call sites; theme, language and the outline toggle are
-  sent from `ThemePicker`, `SettingsModal` and the two views instead, which is
+  need nothing at their call sites; the colour, language and the outline toggle
+  are sent from `components/color`, `SettingsModal` and the two views instead, which is
   what keeps `lib/theme`, `lib/i18n` and `lib/outline-pref` free of the Tauri
   layer. **The store half of `SettingChange` is derived from `Settings`** rather
   than listed a second time, so a preference added there makes the switch in
@@ -1304,7 +1321,7 @@ hold rather than as an exhaustive style guide.
   carry `null`, which is a preference deleted from the store, and the receiver
   lands on the value a window with nothing stored would show.
   **`lib/outline-pref` is a store rather than two `useState`s** for the reason
-  `ThemePicker` subscribes: `MarkdownView` and `HtmlView` each held their own
+  `ModeMenu` subscribes: `MarkdownView` and `HtmlView` each held their own
   copy, and one preference across the views has to mean one across the windows
   too. Its value is cached because `useSyncExternalStore` calls the getter on
   every render, and an unreachable localStorage would otherwise throw per render
@@ -1368,11 +1385,14 @@ hold rather than as an exhaustive style guide.
   highest place assigned at the moment the read was *issued*, so everything
   already written is in the answer and everything committed afterwards outranks
   it. **Not the wall clock**: a window whose clock had run ahead would stamp its
-  read above changes every other window accepts, and refuse them. **`ThemePicker` subscribes rather than
-  holding the current id**, because `onThemeChange` cannot stand in for it:
-  Solarized Light to Light repaints without changing the resolved light/dark
-  mode, so `onThemeIdChange` is a second subscription rather than a widening of
-  the first.
+  read above changes every other window accepts, and refuse them. **`ModeMenu` and the settings
+  modal subscribe to the choice**, because `onThemeChange` cannot stand in for
+  it: Solarized Light to Standard Light repaints without changing the drawn
+  side, so `onColorChoiceChange` is a second subscription rather than a widening
+  of the first. **The colour travels as two keys, `colorFamily` and
+  `colorMode`**, because the reader chooses each on its own: ordered as one
+  value, a family chosen in one window and a mode chosen in another close
+  together would have one of the two undone.
 - **The capability window list is the glob `w*`, and nothing is labelled `main`
   any more.** `capabilities/default.json` gates plugin APIs by window label, so a
   window labelled outside that list loses `store:default` (settings do not
@@ -1559,7 +1579,8 @@ hold rather than as an exhaustive style guide.
   ordering, what a commit sends Rust, and that a window applies its own change
   again when Rust raised the stamp — the listener and the emit are Tauri's),
   `outline-pref`
-  (its cache and its notification), and `custom-emoji`
+  (its cache and its notification), `color-choice` (each pre-split value read
+  onto the two axes, and the side a one-sided family draws), `menu-nav`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument

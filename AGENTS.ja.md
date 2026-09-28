@@ -50,13 +50,17 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `hooks/useWindowEvent.ts` — **このウィンドウだけ**でイベントを購読する。
   ウィンドウごとに配るすべての emit のフロント側の半分（メニューのものと、
   `fs:change` で `lib/watch` が確立した対）。
+- `hooks/useMenu.ts` — ツールバーの 2 つのメニューが共有する開閉とキーボードの
+  振る舞い。開いたら項目へ焦点を移す、矢印は端で回る、Escape でトリガーへ戻す、
+  Tab は焦点を引き戻さずに閉じる（snz-design doc-9 §6.11）。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
   ソース切替）、ErrorBanner（構文エラー表示の共通部品）、MermaidView、
   MediaView（画像/PDF/動画を asset protocol 経由で表示）、
   RecentFolders（アプリ内の Open Recent 一覧。エクスプローラの空状態に出る）、Outline、Toolbar、
-  OpenWith、ThemePicker、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
+  OpenWith、ModeMenu（明暗の値のメニュー）、`color`（配色の軸を選んで全ウィンドウへ
+  伝える）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
@@ -72,7 +76,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `scroll`（スクロール位置保持）、`watch`、
   `settings`（plugin-store）、`settings-sync`（変わった設定 1 件が全ウィンドウへ届く道）、
   `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
-  `theme`、`i18n`（ja/en 辞書 + provider/hooks。言語は
+  `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
+  `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
+  メニューの焦点をどこへ移すか）、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
   積算）、`chord`（アクセラレータの一致判定、アプリ全体の chord handler・その 3 値、
   および click event から同じ解決をする `newWindowModifierHeld`）、
@@ -665,14 +671,21 @@ Comments と Functions の規約は機械的に検査されない。コメント
   ショートコードを `<img>` にしても未信頼 Markdown の境界は広がらない: 文書が渡せる
   のは**名前**だけで、名前はアプリ側が組み立てた表のキーである時しかマッチせず、URL は
   文書由来にならない。フォルダには別途 `allow_media_dir` の許可が必要。
-- テーマ = `data-theme` 属性 + CSS 変数パレット（瞬時切替・非 React の描画 HTML にも適用）。
-  7 種類。**保存されたテーマ ID は読むだけで書き換えない**: `index.html`（最初の描画の前）
-  と `lib/theme`（`applyColorAttributes`）の両方が、そこから `data-color-family` と解決
-  済みの `data-color-mode`（light か dark。auto は入れない）を求める。この規則の 2 つの
-  写しは一緒に直す。Standard と Solarized はこの 2 属性で共通トークンを描き、Dracula と
-  Nord は `data-theme` に紐づく直書きのパレットを持つ。`on-dark` は
-  `data-color-mode='dark'` を見るので、暗いパレットを足すときは規則の 2 つの写しに
-  その明暗を足し、`global.scss` にブロックを足す。
+- **配色は配色系統と明暗の 2 つの選択である**（snz-design doc-7 §4）: Standard・
+  Solarized・Dracula・Nord と、ライト・ダーク・自動 (OS)。配色系統は設定モーダルで、
+  明暗は設定モーダルとツールバーの `ModeMenu` の両方で選ぶ。`<html>` に置くのは
+  描かれる組 — `data-color-family` と、light か dark だけを取る `data-color-mode`
+  （auto は入れない）— で、どのパレットもこの 2 属性を見る。`data-theme` はもう
+  書かない。**軸ごとに localStorage のキーを 1 つ持ち（`colorFamily`・`colorMode`）、
+  分割前の `theme` キーは読むだけで書かない**: 自分のキーを持たない軸は
+  `lib/color-choice` の `readChoice` が `theme` から読むので、1 つの軸を選んでも
+  書くのはその軸のキーだけで、もう一方はちょうど描かれていた値に落ちる。
+  **その系統が描けない明暗は書き換えずに残す**（Dracula と Nord は暗い側だけ）:
+  系統が持つ側で描き、選択は選べない印と理由付きで残し、両側を持つ系統へ戻れば
+  そのまま効く。`index.html` は `readChoice` と `drawnMode` の写しを持つ（モジュール
+  より前に走るため）。2 つの写しは一緒に直す。系統が持つ側はどちらでも表 1 つである。
+  `on-dark` は `data-color-mode='dark'` を見るので、パレットを足すときは 2 つの写しに
+  その側を足し、`global.scss` にブロックを足す。
 - i18n は `lib/i18n.tsx` の自作辞書（ライブラリ不使用）。UI 文言は `useT()` /
   `t(key, params)` 経由にし、キーは `ja` と `en` の**両方**の辞書に追加する。言語は
   localStorage → OS ロケール → 日本語 の順で決定。
@@ -1146,7 +1159,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   使わない** — 各ウィンドウは別の WebView で、WebView 間の storage 通知を
   3 エンジンで当てにはできない。
   **伝播する設定はすべて 2 つの半身を持ち、受信側は永続化しない方を取る** —
-  `setTheme` に対する `applyTheme`、`setLang` に対する `applyLang`、
+  `chooseColor` に対する `applyColorChoice`、`setLang` に対する `applyLang`、
   `writeOutlineOpen` に対する `applyOutlineOpen`、絵文字は persist なしの経路。
   全ウィンドウが 1 つの WebView データストアと 1 つの settings.json を共有するので、
   イベントが届く時点で値は既に書かれている — 後から作られたウィンドウが伝播なしで
@@ -1154,15 +1167,18 @@ Comments と Functions の規約は機械的に検査されない。コメント
   エコーを送り返す。
   **`saveSetting` は永続化と伝播を 1 回で行う**ので、store 側の設定
   （エクスプローラの幅と位置、カスタム絵文字フォルダ、起動時の更新確認）は
-  呼び出し側に何も要らない。テーマ・言語・アウトラインの開閉は代わりに
-  `ThemePicker`・`SettingsModal`・2 つのビューから送る — `lib/theme`・`lib/i18n`・
-  `lib/outline-pref` に Tauri 層の依存を持ち込まないため。
+  呼び出し側に何も要らない。配色・言語・アウトラインの開閉は代わりに
+  `components/color`・`SettingsModal`・2 つのビューから送る — `lib/theme`・`lib/i18n`・
+  `lib/outline-pref` に Tauri 層の依存を持ち込まないため。**配色は `colorFamily` と
+  `colorMode` の 2 つのキーで運ぶ** — 利用者は軸ごとに選ぶので、1 つの値として
+  順序を付けると、ある窓で選んだ配色系統と別の窓で選んだ明暗が近い時刻に重なった
+  とき、片方が取り消される。
   **`SettingChange` の store 側は `Settings` から導出する**ので、そこにキーを
   足すと `App` の switch が網羅でなくなり、新しい設定を扱うまでビルドが通らない —
   無視するウィンドウへ届く設定は、届かない設定より悪い。変更は `null` を運ぶことが
   あり、それは store から消された設定を意味するので、受信側は「何も保存されていない
   ウィンドウが見せる値」に着地する。
-  **`lib/outline-pref` が `useState` 2 つではなくストアなのは**、`ThemePicker` が
+  **`lib/outline-pref` が `useState` 2 つではなくストアなのは**、`ModeMenu` が
   購読するのと同じ理由である。`MarkdownView` と `HtmlView` がそれぞれ自分の写しを
   持っていたが、「ビューをまたいで 1 つの設定」はウィンドウをまたいでも 1 つで
   なければならない。値をキャッシュするのは `useSyncExternalStore` が描画のたびに
@@ -1395,6 +1411,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   押し上げたときにウィンドウが自分の変更をもう一度適用すること。listener と emit は
   Tauri のもの・
   `outline-pref`＝キャッシュと通知・
+  `color-choice`＝分割前の各保存値の 2 軸への読み替えと、片側だけの系統が描く側・
+  `menu-nav`・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で

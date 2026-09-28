@@ -98,7 +98,8 @@ mallow には更新をチェックする機能があります。設定から自�
   ツリーも追従。
 - **エディタで開く**: VS Code / Zed / CotEditor / mi（macOS）、Notepad++ / サクラ（Windows）等を
   検出して起動。OS のファイルマネージャで表示も可能。
-- **テーマ**: light / dark / auto + Solarized Light/Dark・Dracula・Nord。
+- **配色**: 配色（標準・Solarized・Dracula・Nord）を設定で選び、明暗（ライト・
+  ダーク・自動 (OS)）をツールバーか設定で選ぶ。Dracula と Nord は暗い側だけ。
 - **自己更新**: 新しいバージョンを確認して導入できます。→ [インストールと更新](#インストールと更新)
 - **複数ウィンドウと File メニュー**: New Window・Open…・Open Recent と、
   1 ウィンドウ 1 フォルダ。2 つのフォルダを並べて読めます。
