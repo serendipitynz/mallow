@@ -76,7 +76,9 @@ $shared-roles: (
   surface: surface-alt,
   surface-raised: surface,
   sidebar-bg: canvas,
+  panel: surface,
   ink: fg,
+  ink-strong: fg-strong,
   muted: fg-muted,
   faint: fg-faint,
   link: accent,
@@ -90,7 +92,10 @@ $shared-roles: (
   'orange': warn,
   success: success,
   danger: danger,
+  danger-soft: danger-soft,
+  on-danger-soft: on-danger-soft,
   selection-bg: surface-selected,
+  selected: selected,
   hover-bg: surface-hover,
   pressed-bg: surface-pressed,
   code-inline-bg: surface-alt,
@@ -124,7 +129,9 @@ $shared-roles: (
   --color-surface: #21222c;
   --color-surface-raised: #343746;
   --color-sidebar-bg: #21222c;
+  --color-panel: #21222c;
   --color-ink: #f8f8f2;
+  --color-ink-strong: #ffffff;
   --color-muted: #9aa0c0;
   --color-faint: #6272a4;
   --color-link: #8be9fd;
@@ -138,7 +145,10 @@ $shared-roles: (
   --color-orange: #ffb86c;
   --color-success: #50fa7b;
   --color-danger: #ff5555;
+  --color-danger-soft: rgb(255 85 85 / 14%);
+  --color-on-danger-soft: #ff9d9d;
   --color-selection-bg: rgb(139 233 253 / 16%);
+  --color-selected: #8be9fd;
   --color-hover-bg: rgb(248 248 242 / 6%);
   --color-pressed-bg: rgb(248 248 242 / 11%);
   --color-code-inline-bg: rgb(98 114 164 / 35%);
@@ -154,7 +164,9 @@ $shared-roles: (
   --color-surface: #3b4252;
   --color-surface-raised: #434c5e;
   --color-sidebar-bg: #2e3440;
+  --color-panel: #2e3440;
   --color-ink: #eceff4;
+  --color-ink-strong: #ffffff;
   --color-muted: #9aa6bd;
   --color-faint: #6d7a92;
   --color-link: #88c0d0;
@@ -168,7 +180,10 @@ $shared-roles: (
   --color-orange: #d08770;
   --color-success: #a3be8c;
   --color-danger: #bf616a;
+  --color-danger-soft: rgb(191 97 106 / 18%);
+  --color-on-danger-soft: #e3a3aa;
   --color-selection-bg: rgb(136 192 208 / 16%);
+  --color-selected: #88c0d0;
   --color-hover-bg: rgb(236 239 244 / 6%);
   --color-pressed-bg: rgb(236 239 244 / 11%);
   --color-code-inline-bg: rgb(76 86 106 / 45%);

@@ -197,3 +197,66 @@ a {
   white-space: nowrap;
   border: 0;
 }
+
+// ---- Notice -----------------------------------------------------------------
+// The band, the figure and the face each carry the level, so the level is not
+// told by colour alone (snz-design doc-9 §6.4).
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 5px 8px;
+  border-left: var(--snz-border-band) solid $border-strong;
+  border-radius: $radius-control;
+  white-space: normal;
+
+  &[data-level='failure'] {
+    border-left-color: $danger;
+    background: var(--color-danger-soft);
+    color: var(--color-on-danger-soft);
+
+    .notice__figure {
+      color: $danger;
+    }
+  }
+}
+
+.notice__figure {
+  display: inline-flex;
+  flex: 0 0 auto;
+  // Centres the 16px figure on the first line of the words beside it.
+  margin-top: calc((1lh - 16px) / 2);
+}
+
+.notice__body {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+// ---- Busy -------------------------------------------------------------------
+.busy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// Slowed rather than stopped under reduced motion: a still figure could not be
+// told from one that has stopped working (snz-design doc-8 §6.7).
+.busy__figure {
+  display: inline-flex;
+  color: $figure;
+
+  svg {
+    animation: busy-spin var(--snz-motion-spin) linear infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation-duration: var(--snz-motion-spin-reduced);
+    }
+  }
+}
+
+@keyframes busy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

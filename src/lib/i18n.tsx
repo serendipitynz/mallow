@@ -56,6 +56,7 @@ const ja: Dict = {
   recentNewWindowHint: '{modifier} を押しながらクリックすると別のウィンドウで開きます。',
   recentFolderGone: 'フォルダが見つかりません: {folder}',
   recentFolderUnlisted: '最近開いたフォルダの一覧から外れています: {folder}',
+  'noticeLevel.failure': '失敗',
   dismiss: '閉じる',
   // viewer
   selectFile: 'ファイルを選択してください',
@@ -184,6 +185,7 @@ const en: Dict = {
   recentNewWindowHint: 'Hold {modifier} and click to open in another window.',
   recentFolderGone: 'That folder is no longer there: {folder}',
   recentFolderUnlisted: 'That folder is no longer in the recent list: {folder}',
+  'noticeLevel.failure': 'Failure',
   dismiss: 'Dismiss',
   // viewer
   selectFile: 'Select a file',
