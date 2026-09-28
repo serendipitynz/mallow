@@ -41,6 +41,7 @@ const PRINT: &str = "file:print";
 const EXPORT_PDF: &str = "file:export-pdf";
 const CLOSE_WINDOW: &str = "file:close-window";
 const EXIT: &str = "file:exit";
+const TOGGLE_EXPLORER: &str = "view:toggle-explorer";
 /// Unprefixed because it predates this module and nothing is gained by churning
 /// it; the event it sends is still `menu:settings`.
 const SETTINGS: &str = "settings";
@@ -97,6 +98,7 @@ pub enum MenuAction {
     Settings,
     CloseWindow,
     Exit,
+    ToggleExplorer,
 }
 
 pub fn menu_action(id: &str) -> MenuAction {
@@ -109,6 +111,7 @@ pub fn menu_action(id: &str) -> MenuAction {
         SETTINGS => MenuAction::Settings,
         CLOSE_WINDOW => MenuAction::CloseWindow,
         EXIT => MenuAction::Exit,
+        TOGGLE_EXPLORER => MenuAction::ToggleExplorer,
         path => MenuAction::OpenRecent(path.to_string()),
     }
 }
@@ -316,6 +319,7 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         MenuAction::Print => emit_focused(app, "menu:print", ()),
         MenuAction::ExportPdf => emit_focused(app, "menu:export-pdf", ()),
         MenuAction::Settings => emit_focused(app, "menu:settings", ()),
+        MenuAction::ToggleExplorer => emit_focused(app, "menu:toggle-explorer", ()),
         MenuAction::ClearRecent => {
             if let Err(e) = crate::recent::clear_recent_list(app) {
                 eprintln!("mallow: the recent folders could not be cleared ({e})");
@@ -395,6 +399,12 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
     let settings = MenuItemBuilder::with_id(SETTINGS, "Settings…")
         .accelerator("CmdOrCtrl+,")
         .build(app)?;
+    // A plain item rather than a check item: a check would have to follow a
+    // preference that changes from any window, and `settings.rs` relays changes
+    // without reading what they carry. The toolbar's toggle states it instead.
+    let toggle_explorer = MenuItemBuilder::with_id(TOGGLE_EXPLORER, "Toggle Explorer")
+        .accelerator("CmdOrCtrl+B")
+        .build(app)?;
 
     let about = tauri::menu::AboutMetadataBuilder::new()
         .name(Some("mallow"))
@@ -404,8 +414,18 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
         .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/128x128@2x.png")).ok())
         .build();
 
-    let (menu, window_menu) =
-        compose(app, &new_window, &open, &recent, &clear_recent, &print, &export_pdf, &settings, about)?;
+    let (menu, window_menu) = compose(
+        app,
+        &new_window,
+        &open,
+        &recent,
+        &clear_recent,
+        &print,
+        &export_pdf,
+        &settings,
+        &toggle_explorer,
+        about,
+    )?;
     app.set_menu(menu)?;
     register_windows_menu(window_menu)?;
 
@@ -481,8 +501,13 @@ fn compose(
     print: &MenuItem<Wry>,
     export_pdf: &MenuItem<Wry>,
     settings: &MenuItem<Wry>,
+    toggle_explorer: &MenuItem<Wry>,
     about: tauri::menu::AboutMetadata<'_>,
 ) -> tauri::Result<(Menu<Wry>, Option<Submenu<Wry>>)> {
+    // The same View menu on all three, and made of an ordinary item only, so no
+    // backend has a predefined kind to skip.
+    let view_menu = SubmenuBuilder::new(app, "View").item(toggle_explorer).build()?;
+
     #[cfg(target_os = "macos")]
     {
         let app_menu = SubmenuBuilder::new(app, "mallow")
@@ -530,6 +555,7 @@ fn compose(
             .item(&app_menu)
             .item(&file_menu)
             .item(&edit_menu)
+            .item(&view_menu)
             .item(&window_menu)
             .build()?;
         Ok((menu, Some(window_menu)))
@@ -578,6 +604,7 @@ fn compose(
         let menu = tauri::menu::MenuBuilder::new(app)
             .item(&file_menu.build()?)
             .item(&edit_menu)
+            .item(&view_menu)
             .item(&help_menu)
             .build()?;
         Ok((menu, None))
@@ -598,6 +625,7 @@ mod tests {
         assert_eq!(menu_action(SETTINGS), MenuAction::Settings);
         assert_eq!(menu_action(CLOSE_WINDOW), MenuAction::CloseWindow);
         assert_eq!(menu_action(EXIT), MenuAction::Exit);
+        assert_eq!(menu_action(TOGGLE_EXPLORER), MenuAction::ToggleExplorer);
     }
 
     /// The id a recent entry carries is the path, which is what makes this the
@@ -612,7 +640,7 @@ mod tests {
     /// id spaces cannot meet.
     #[test]
     fn no_fixed_id_looks_like_an_absolute_path() {
-        for id in [NEW_WINDOW, OPEN, CLEAR_RECENT, PRINT, EXPORT_PDF, SETTINGS, CLOSE_WINDOW, EXIT] {
+        for id in [NEW_WINDOW, OPEN, CLEAR_RECENT, PRINT, EXPORT_PDF, SETTINGS, CLOSE_WINDOW, EXIT, TOGGLE_EXPLORER] {
             assert!(!id.starts_with('/') && !id.starts_with('\\') && !id.contains('/') && !id.contains('\\'));
         }
     }
