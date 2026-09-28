@@ -10,6 +10,7 @@ import { Notice } from './Notice';
 import { RecentFolders } from './RecentFolders';
 
 interface ExplorerProps {
+  id: string;
   tree: FileTreeController;
   selectedPath: string | null;
   onSelect: (entry: FileEntry) => void;
@@ -19,6 +20,7 @@ interface ExplorerProps {
 }
 
 export function Explorer({
+  id,
   tree,
   selectedPath,
   onSelect,
@@ -105,7 +107,7 @@ export function Explorer({
   };
 
   return (
-    <aside className="explorer">
+    <aside className="explorer" id={id}>
       <div className="explorer__header">
         <span title={rootDir ?? undefined}>{rootName ?? t('explorer')}</span>
       </div>
