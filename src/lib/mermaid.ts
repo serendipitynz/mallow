@@ -67,15 +67,33 @@ async function renderSvg(code: string, mermaid: Mermaid): Promise<SvgResult> {
  *  this module has no access to the language. */
 export type DescribeFailure = (message: string) => string;
 
+// The same figure as `CircleXIcon`, written out because this note is built by
+// hand inside rendered markdown, where there is no React tree to hold it.
+const FAILURE_FIGURE =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" ' +
+  'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>';
+
 // The source stays on screen below the note: it is what the reader needs to find
 // the fault, and without the note it is indistinguishable from a document mallow
 // does not render at all.
 function markFailed(block: HTMLElement, error: unknown, describe: DescribeFailure): void {
   const message = error instanceof Error ? error.message : String(error);
   const previous = block.previousElementSibling;
-  const note = previous?.classList.contains('mermaid-error') ? previous : document.createElement('p');
-  note.className = 'mermaid-error';
-  note.textContent = describe(message);
+  const note = previous?.classList.contains('mermaid-error') ? previous : document.createElement('div');
+  note.className = 'notice mermaid-error';
+  note.setAttribute('data-level', 'failure');
+  note.setAttribute('role', 'alert');
+  // Hidden from assistive technology, unlike `Notice`'s figure: the words beside
+  // it already say the diagram failed, and this module has no language to name
+  // the level in (snz-design doc-8 §6.6 lets a figure stay decorative then).
+  const figure = document.createElement('span');
+  figure.className = 'notice__figure';
+  figure.innerHTML = FAILURE_FIGURE;
+  const words = document.createElement('div');
+  words.className = 'notice__body';
+  words.textContent = describe(message);
+  note.replaceChildren(figure, words);
   if (note !== previous) {
     block.before(note);
   }

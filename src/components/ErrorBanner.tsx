@@ -1,4 +1,5 @@
 import { useT } from '../lib/i18n';
+import { Notice } from './Notice';
 
 /** A parse failure with a position where the parser could give one. */
 export interface ErrorLocation {
@@ -23,12 +24,12 @@ export function ErrorBanner({ format, error }: { format: string; error: ErrorLoc
         : t('locLine', { line: error.line });
   }
   return (
-    <div className="cfg-error-banner" role="alert">
+    <Notice level="failure" className="notice--doc cfg-error-banner">
       <strong>
         {t('syntaxError', { format: format.toUpperCase() })}
         {where}
       </strong>
       <span className="cfg-error-message">{error.message}</span>
-    </div>
+    </Notice>
   );
 }

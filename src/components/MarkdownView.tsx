@@ -12,6 +12,7 @@ import { notifyRenderSettled } from '../lib/render-signal';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { broadcastSetting } from '../lib/settings-sync';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
+import { Notice } from './Notice';
 import { Outline } from './Outline';
 import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
@@ -228,7 +229,11 @@ export function MarkdownView({ source }: { source: string }) {
         <ViewPanel idBase={idBase} selected={mode}>
           {mode === 'preview' ? (
             <>
-              {renderError && <div className="doc-error">{t('renderError', { message: renderError })}</div>}
+              {renderError && (
+                <Notice level="failure" className="notice--doc">
+                  {t('renderError', { message: renderError })}
+                </Notice>
+              )}
               <div className="doc__body">
                 {/* Ahead of the article so it follows the toggle in the reading order; the grid
                     still places it beside the article. */}
