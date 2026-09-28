@@ -68,7 +68,8 @@ $radius-surface: var(--snz-radius-md);
 //
 // Each palette variable names the role it takes (snz-design doc-16 §7.2). One
 // map feeds both the screen and the paper, so the two cannot map a variable to
-// different roles.
+// different roles. `teal` and `orange` are quoted because Sass reads those bare
+// names as colours and warns when they are interpolated into a property name.
 $shared-roles: (
   bg: surface,
   surface: surface-alt,
@@ -81,11 +82,11 @@ $shared-roles: (
   border: line-divider,
   border-strong: line-control,
   control-border: line-control,
-  teal: accent,
+  'teal': accent,
   teal-dark: accent-hover,
   accent-pressed: accent-pressed,
   on-accent: on-accent,
-  orange: warn,
+  'orange': warn,
   success: success,
   danger: danger,
   selection-bg: surface-selected,
