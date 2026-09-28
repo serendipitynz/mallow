@@ -1,10 +1,10 @@
 ---
 id: TASK-40.1
 title: 'Shared design: adopt the colour foundation and the shared control states'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-28 03:58'
-updated_date: '2026-09-28 05:34'
+updated_date: '2026-09-28 05:35'
 labels:
   - design
 milestone: m-4
