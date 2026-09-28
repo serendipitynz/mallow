@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-28 03:59'
-updated_date: '2026-09-28 20:16'
+updated_date: '2026-09-28 20:22'
 labels:
   - design
 milestone: m-4
@@ -96,4 +96,7 @@ snz-design references: doc-9 §6.7 (tabs), §6.8 (navigation, current location),
 - Dracula / Nord の比 (doc-7 §6.3 で対象外。目視のみ)。
 - Windows (WebView2)・Linux (WebKitGTK) での見え方と、:has() の対応 (WebKitGTK 2.42 以降が必要)。
 - ソース表示では面 (tabindex=0) と Shiki の pre (Shiki が付ける tabindex=0) で Tab の止まりが2つ続く。pre は横スクロールの止まりなので残した。
+
+## レビュー 1回目 (2026-09-29)
+- 外部レビュー (Codex CLI, gpt-6-astra, effort low) の [P3]: 組の中で矢印で焦点を動かしても Tab の止まり (tabindex=0) が選ばれたタブに残り、Source 選択 → ← → Tab で Source を経由してから面へ、Preview 選択 → → → Shift+Tab で組の中に留まった。止まりを焦点に付いていかせ、焦点が組の外へ出たら選ばれたタブへ戻すようにした (再入場は選ばれたタブに着く)。実測 (Blink): ← の後の Tab は面へ、→ の後の Shift+Tab はトリガーへ、そこから Tab で選ばれたタブへ、→ + Enter + Tab で面へ。上の AC#1 の「tabindex は 0 が選ばれたタブだけ」は、焦点が組の外にあるときの状態を指す。
 <!-- SECTION:NOTES:END -->
