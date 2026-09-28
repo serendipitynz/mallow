@@ -1,13 +1,18 @@
-import { type RefObject, useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { appDocumentRoot, findHeading, type Heading, type HeadingRoot, offsetFromContainerTop } from '../lib/heading';
 import { useT } from '../lib/i18n';
 
 interface OutlineProps {
+  /** Named by the toggle's `aria-controls`. */
+  id: string;
   headings: Heading[];
   /** The scrollable container the document lives in (for scroll-spy + scrolling). */
   scrollRef: RefObject<HTMLDivElement | null>;
   /** Where the headings live. Defaults to the app document; pass a stable value. */
   root?: HeadingRoot;
+  /** Called when the outline is removed while the focus is inside it, before the
+   *  focus falls with it. */
+  onFocusDropped?: () => void;
 }
 
 /**
@@ -30,11 +35,26 @@ function landingOffset(el: HTMLElement): number {
   return parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
 }
 
-export function Outline({ headings, scrollRef, root = appDocumentRoot }: OutlineProps) {
+export function Outline({ id, headings, scrollRef, root = appDocumentRoot, onFocusDropped }: OutlineProps) {
   const t = useT();
   const [activeSlug, setActiveSlug] = useState<string | null>(headings[0]?.slug ?? null);
   const ticking = useRef(false);
   const minDepth = headings.length ? Math.min(...headings.map((h) => h.depth)) : 0;
+  const navRef = useRef<HTMLElement>(null);
+  const onFocusDroppedRef = useRef(onFocusDropped);
+  onFocusDroppedRef.current = onFocusDropped;
+
+  /* A layout cleanup, because it runs before React takes the nav out of the
+     document: by the time a passive cleanup ran, the focus would already have
+     fallen to <body> and nothing would say it had been here. */
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    return () => {
+      if (nav?.contains(document.activeElement)) {
+        onFocusDroppedRef.current?.();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -109,7 +129,7 @@ export function Outline({ headings, scrollRef, root = appDocumentRoot }: Outline
   }
 
   return (
-    <nav className="doc-outline" aria-label={t('outline')}>
+    <nav ref={navRef} id={id} className="doc-outline" aria-label={t('outline')}>
       <p className="doc-outline__title">{t('contents')}</p>
       <ul className="doc-outline__list">
         {headings.map((h) => (
@@ -117,7 +137,7 @@ export function Outline({ headings, scrollRef, root = appDocumentRoot }: Outline
             <a
               href={`#${h.slug}`}
               className={`doc-outline__link${activeSlug === h.slug ? ' is-active' : ''}`}
-              aria-current={activeSlug === h.slug ? 'true' : undefined}
+              aria-current={activeSlug === h.slug ? 'location' : undefined}
               onClick={(e) => go(e, h.slug)}
             >
               {h.text}

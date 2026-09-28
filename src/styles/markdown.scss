@@ -49,9 +49,20 @@
   backdrop-filter: blur(10px);
 }
 
+// Shown is told by the face and the outline as well as by `aria-expanded`,
+// never by colour alone (snz-design doc-9 §6.3.1).
 .doc-outline-toggle[aria-expanded='true'] {
-  color: $teal-dark;
-  border-color: $teal;
+  color: $ink;
+  background: var(--color-selection-bg);
+  border-color: var(--color-selected);
+
+  &:hover {
+    background: $hover-bg;
+  }
+
+  &:active {
+    background: $pressed-bg;
+  }
 }
 
 // 4px rather than the 3px band a selected row takes: under a tab it reads as an
@@ -642,7 +653,7 @@ $outline-breakpoint: 1024px;
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 600;
-  color: $muted;
+  color: var(--color-ink-strong);
   letter-spacing: 0.04em;
 }
 
@@ -667,20 +678,23 @@ $outline-breakpoint: 1024px;
   display: block;
   padding: 4px 8px 4px 12px;
   margin-left: -1px;
-  color: $muted;
+  color: $ink;
   line-height: 1.4;
   text-decoration: none;
-  border-left: 2px solid transparent;
+  border-left: var(--snz-border-band) solid transparent;
 
   &:hover {
-    color: $ink;
+    background: $hover-bg;
     text-decoration: none;
   }
 
+  // The face and the band together, and `aria-current` for the reader: the
+  // current location is never told by colour alone (snz-design doc-9 §6.8).
   &.is-active {
-    color: $teal-dark;
+    color: var(--color-ink-strong);
     font-weight: 600;
-    border-left-color: $teal;
+    background: var(--color-selection-bg);
+    border-left-color: var(--color-selected);
   }
 
   &:focus-visible {
@@ -715,13 +729,15 @@ $outline-breakpoint: 1024px;
     max-width: none;
   }
 
+  // A panel's face rather than the sunken one: on that, the rows' hover face
+  // does not show in Solarized Light (snz-design doc-9 §6.3).
   .doc-outline {
     position: static;
     max-height: 50vh;
     margin-bottom: 1.5rem;
     padding: 12px 14px;
-    background: $surface;
-    border: 1px solid $border;
-    border-radius: 8px;
+    background: var(--color-panel);
+    border: var(--snz-border-line) solid $control-border;
+    border-radius: $radius-surface;
   }
 }

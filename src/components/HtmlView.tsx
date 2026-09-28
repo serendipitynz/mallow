@@ -1,6 +1,7 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useOutlineFocusReturn } from '../hooks/useOutlineFocusReturn';
 import type { Heading, HeadingRoot } from '../lib/heading';
 import { neutralizeAppOriginLinks, transformHtmlDocument } from '../lib/html-doc';
 import { assignHeadingIds } from '../lib/html-headings';
@@ -15,6 +16,7 @@ import type { FileEntry } from '../lib/types';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
 import { SourceView } from './SourceView';
+import { ViewPanel, ViewTabs } from './ViewTabs';
 
 /**
  * Height the frame will grow to at most, above which the document goes to the
@@ -172,6 +174,9 @@ export function HtmlView({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
+  const idBase = useId();
+  const outlineId = `${idBase}-outline`;
+  const onOutlineFocusDropped = useOutlineFocusReturn(barRef);
   const frameRef = useRef<HTMLIFrameElement>(null);
   /** Measurement passes since the last external cause; see {@link MAX_MEASUREMENT_PASSES}. */
   const passes = useRef(0);
@@ -617,65 +622,66 @@ export function HtmlView({
               title={t('outline')}
               aria-label={t('outline')}
               aria-expanded={showOutline}
+              aria-controls={outlineId}
               onClick={toggleOutline}
             >
               <TableOfContentsIcon />
             </button>
           )}
           {renderable && (
-            /* biome-ignore lint/a11y/useSemanticElements: role="group" is the ARIA pattern for a
-               button cluster; <fieldset> is for form controls and requires a <legend>, while the
-               label is already carried by aria-label. */
-            <div className="seg" role="group" aria-label={t('viewMode')}>
-              <button
-                type="button"
-                className={`btn${mode === 'rendered' ? ' is-active' : ''}`}
-                title={t('rendered')}
-                aria-label={t('rendered')}
-                aria-pressed={mode === 'rendered'}
-                onClick={() => setMode('rendered')}
-              >
-                <ScanSearchIcon />
-              </button>
-              <button
-                type="button"
-                className={`btn${mode === 'source' ? ' is-active' : ''}`}
-                title={t('source')}
-                aria-label={t('source')}
-                aria-pressed={mode === 'source'}
-                onClick={() => setMode('source')}
-              >
-                <CodeIcon />
-              </button>
-            </div>
+            <ViewTabs
+              idBase={idBase}
+              label={t('viewMode')}
+              tabs={[
+                { mode: 'rendered', label: t('rendered'), icon: <ScanSearchIcon /> },
+                { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+              ]}
+              selected={mode}
+              onSelect={setMode}
+            />
           )}
         </div>
 
-        {!renderable && (
-          <NoticeBar text={tooTall ? t('htmlTooTall') : t('htmlRenderSkipped')} onOpenOutside={openOutside} />
-        )}
+        {renderable ? (
+          <ViewPanel idBase={idBase} selected={mode}>
+            {showRendered && notice.length > 0 && (
+              <NoticeBar
+                text={notice.map((line) => t(line.key, line.n === undefined ? undefined : { n: line.n })).join(' ')}
+                onOpenOutside={openOutside}
+              />
+            )}
 
-        {showRendered && notice.length > 0 && (
-          <NoticeBar
-            text={notice.map((line) => t(line.key, line.n === undefined ? undefined : { n: line.n })).join(' ')}
-            onOpenOutside={openOutside}
-          />
-        )}
-
-        {showRendered ? (
-          <div className="doc__body">
-            <iframe
-              ref={frameRef}
-              className="html-frame"
-              title={file.name}
-              sandbox="allow-same-origin"
-              srcDoc={transform.html ?? ''}
-              onLoad={onFrameLoad}
-            />
-            {showOutline && <Outline headings={headings} scrollRef={scrollRef} root={frameRoot} />}
-          </div>
+            {showRendered ? (
+              <div className="doc__body">
+                {/* Ahead of the frame so it follows the toggle in the reading order; the grid
+                    still places it beside the frame. */}
+                {showOutline && (
+                  <Outline
+                    id={outlineId}
+                    headings={headings}
+                    scrollRef={scrollRef}
+                    root={frameRoot}
+                    onFocusDropped={onOutlineFocusDropped}
+                  />
+                )}
+                <iframe
+                  ref={frameRef}
+                  className="html-frame"
+                  title={file.name}
+                  sandbox="allow-same-origin"
+                  srcDoc={transform.html ?? ''}
+                  onLoad={onFrameLoad}
+                />
+              </div>
+            ) : (
+              <SourceView source={source} lang="html" />
+            )}
+          </ViewPanel>
         ) : (
-          <SourceView source={source} lang="html" />
+          <>
+            <NoticeBar text={tooTall ? t('htmlTooTall') : t('htmlRenderSkipped')} onOpenOutside={openOutside} />
+            <SourceView source={source} lang="html" />
+          </>
         )}
       </div>
     </div>

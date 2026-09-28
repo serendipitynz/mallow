@@ -1,5 +1,6 @@
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useOutlineFocusReturn } from '../hooks/useOutlineFocusReturn';
 import { UNATTENDED } from '../lib/build-flags';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
@@ -13,6 +14,7 @@ import { broadcastSetting } from '../lib/settings-sync';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
 import { SourceView } from './SourceView';
+import { ViewPanel, ViewTabs } from './ViewTabs';
 
 export function MarkdownView({ source }: { source: string }) {
   const t = useT();
@@ -23,6 +25,9 @@ export function MarkdownView({ source }: { source: string }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLDivElement>(null);
+  const idBase = useId();
+  const outlineId = `${idBase}-outline`;
+  const onOutlineFocusDropped = useOutlineFocusReturn(barRef);
   // Scroll position captured before a live re-render, restored after it mounts.
   const pendingRestore = useRef<ScrollAnchor>(null);
   const resultRef = useRef<RenderResult | null>(null);
@@ -201,58 +206,55 @@ export function MarkdownView({ source }: { source: string }) {
               title={t('outline')}
               aria-label={t('outline')}
               aria-expanded={showOutline}
+              aria-controls={outlineId}
               onClick={toggleOutline}
             >
               <TableOfContentsIcon />
             </button>
           )}
-          {/* biome-ignore lint/a11y/useSemanticElements: role="group" is the ARIA pattern for a
-              button cluster; <fieldset> is for form controls and requires a <legend>, while the
-              label is already carried by aria-label. */}
-          <div className="seg" role="group" aria-label={t('viewMode')}>
-            <button
-              type="button"
-              className={`btn${mode === 'preview' ? ' is-active' : ''}`}
-              title={t('preview')}
-              aria-label={t('preview')}
-              aria-pressed={mode === 'preview'}
-              onClick={() => setMode('preview')}
-            >
-              <ScanSearchIcon />
-            </button>
-            <button
-              type="button"
-              className={`btn${mode === 'source' ? ' is-active' : ''}`}
-              title={t('source')}
-              aria-label={t('source')}
-              aria-pressed={mode === 'source'}
-              onClick={() => setMode('source')}
-            >
-              <CodeIcon />
-            </button>
-          </div>
+          <ViewTabs
+            idBase={idBase}
+            label={t('viewMode')}
+            tabs={[
+              { mode: 'preview', label: t('preview'), icon: <ScanSearchIcon /> },
+              { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+            ]}
+            selected={mode}
+            onSelect={setMode}
+          />
         </div>
 
-        {mode === 'preview' ? (
-          <>
-            {renderError && <div className="doc-error">{t('renderError', { message: renderError })}</div>}
-            <div className="doc__body">
-              <article
-                ref={articleRef}
-                className="markdown-body"
-                /* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is rendered at
-                   runtime, so injecting the HTML is the mechanism, not an oversight. What keeps it
-                   safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":
-                   markdown-it runs with html: false, its validateLink drops dangerous schemes, and
-                   the CSP forbids inline script. Read that section before changing this. */
-                dangerouslySetInnerHTML={articleHtml}
-              />
-              {showOutline && <Outline headings={headings} scrollRef={scrollRef} />}
-            </div>
-          </>
-        ) : (
-          <SourceView source={source} lang="markdown" />
-        )}
+        <ViewPanel idBase={idBase} selected={mode}>
+          {mode === 'preview' ? (
+            <>
+              {renderError && <div className="doc-error">{t('renderError', { message: renderError })}</div>}
+              <div className="doc__body">
+                {/* Ahead of the article so it follows the toggle in the reading order; the grid
+                    still places it beside the article. */}
+                {showOutline && (
+                  <Outline
+                    id={outlineId}
+                    headings={headings}
+                    scrollRef={scrollRef}
+                    onFocusDropped={onOutlineFocusDropped}
+                  />
+                )}
+                <article
+                  ref={articleRef}
+                  className="markdown-body"
+                  /* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is rendered at
+                     runtime, so injecting the HTML is the mechanism, not an oversight. What keeps it
+                     safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":
+                     markdown-it runs with html: false, its validateLink drops dangerous schemes, and
+                     the CSP forbids inline script. Read that section before changing this. */
+                  dangerouslySetInnerHTML={articleHtml}
+                />
+              </div>
+            </>
+          ) : (
+            <SourceView source={source} lang="markdown" />
+          )}
+        </ViewPanel>
       </div>
     </div>
   );
