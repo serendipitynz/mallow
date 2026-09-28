@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { configFormat, parseConfig, shikiLangFor } from '../lib/config-parse';
 import { useI18n } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
@@ -6,6 +6,7 @@ import { ConfigTree } from './ConfigTree';
 import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
 import { SourceView } from './SourceView';
+import { ViewPanel, ViewTabs } from './ViewTabs';
 
 interface ConfigViewProps {
   source: string;
@@ -20,6 +21,7 @@ export function ConfigView({ source, file }: ConfigViewProps) {
   // Bumping the key remounts the tree so a new forceOpen applies to every node.
   const [treeKey, setTreeKey] = useState(0);
   const [forceOpen, setForceOpen] = useState<boolean | undefined>(undefined);
+  const idBase = useId();
 
   function expandAll() {
     setForceOpen(true);
@@ -60,42 +62,32 @@ export function ConfigView({ source, file }: ConfigViewProps) {
             </div>
           )}
           {outcome.ok && (
-            /* biome-ignore lint/a11y/useSemanticElements: see the expand-controls group above. */
-            <div className="seg" role="group" aria-label={t('viewMode')}>
-              <button
-                type="button"
-                className={`btn${mode === 'tree' ? ' is-active' : ''}`}
-                title={t('tree')}
-                aria-label={t('tree')}
-                aria-pressed={mode === 'tree'}
-                onClick={() => setMode('tree')}
-              >
-                <ListTreeIcon />
-              </button>
-              <button
-                type="button"
-                className={`btn${mode === 'source' ? ' is-active' : ''}`}
-                title={t('source')}
-                aria-label={t('source')}
-                aria-pressed={mode === 'source'}
-                onClick={() => setMode('source')}
-              >
-                <CodeIcon />
-              </button>
-            </div>
+            <ViewTabs
+              idBase={idBase}
+              label={t('viewMode')}
+              tabs={[
+                { mode: 'tree', label: t('tree'), icon: <ListTreeIcon /> },
+                { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+              ]}
+              selected={mode}
+              onSelect={setMode}
+            />
           )}
         </div>
 
-        {!outcome.ok && <ErrorBanner format={format} error={outcome.error} />}
-
-        {outcome.ok && mode === 'tree' ? (
-          <ConfigTree key={treeKey} value={outcome.value} forceOpen={forceOpen} />
+        {outcome.ok ? (
+          <ViewPanel idBase={idBase} selected={mode}>
+            {mode === 'tree' ? (
+              <ConfigTree key={treeKey} value={outcome.value} forceOpen={forceOpen} />
+            ) : (
+              <SourceView source={source} lang={shikiLangFor(format)} />
+            )}
+          </ViewPanel>
         ) : (
-          <SourceView
-            source={source}
-            lang={shikiLangFor(format)}
-            errorLine={outcome.ok ? undefined : outcome.error.line}
-          />
+          <>
+            <ErrorBanner format={format} error={outcome.error} />
+            <SourceView source={source} lang={shikiLangFor(format)} errorLine={outcome.error.line} />
+          </>
         )}
       </div>
     </div>

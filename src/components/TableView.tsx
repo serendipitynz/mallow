@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { delimiterFor, parseDelimited, TABLE_MAX_CELL_CHARS, tableExtent } from '../lib/delimited';
 import { useT } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, TableIcon } from './icons';
 import { SourceView } from './SourceView';
+import { ViewPanel, ViewTabs } from './ViewTabs';
 
 interface TableViewProps {
   source: string;
@@ -21,6 +22,7 @@ export function TableView({ source, file }: TableViewProps) {
   const table = useMemo(() => parseDelimited(source, delimiter), [source, delimiter]);
   const extent = useMemo(() => tableExtent(table), [table]);
   const [mode, setMode] = useState<'table' | 'source'>('table');
+  const idBase = useId();
 
   const notice: string[] = [];
   if (table.rowCount > extent.rows) {
@@ -40,46 +42,33 @@ export function TableView({ source, file }: TableViewProps) {
     <div className="doc-scroll">
       <div className="doc tbl-doc">
         <div className="doc__bar">
-          {/* biome-ignore lint/a11y/useSemanticElements: role="group" is the ARIA pattern for a
-              button cluster; <fieldset> is for form controls and requires a <legend>, while the
-              label is already carried by aria-label. */}
-          <div className="seg" role="group" aria-label={t('viewMode')}>
-            <button
-              type="button"
-              className={`btn${mode === 'table' ? ' is-active' : ''}`}
-              title={t('table')}
-              aria-label={t('table')}
-              aria-pressed={mode === 'table'}
-              onClick={() => setMode('table')}
-            >
-              <TableIcon />
-            </button>
-            <button
-              type="button"
-              className={`btn${mode === 'source' ? ' is-active' : ''}`}
-              title={t('source')}
-              aria-label={t('source')}
-              aria-pressed={mode === 'source'}
-              onClick={() => setMode('source')}
-            >
-              <CodeIcon />
-            </button>
-          </div>
+          <ViewTabs
+            idBase={idBase}
+            label={t('viewMode')}
+            tabs={[
+              { mode: 'table', label: t('table'), icon: <TableIcon /> },
+              { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+            ]}
+            selected={mode}
+            onSelect={setMode}
+          />
         </div>
 
-        {mode === 'table' ? (
-          <>
-            {/* A plain <p>, like `SourceView`'s own notice: the text is computed
+        <ViewPanel idBase={idBase} selected={mode}>
+          {mode === 'table' ? (
+            <>
+              {/* A plain <p>, like `SourceView`'s own notice: the text is computed
                 once per mount, so a live region would have nothing to announce. */}
-            {notice.length > 0 && <p className="tbl-notice">{notice.join(' ')}</p>}
-            <Table rows={table.rows} extent={extent} emptyLabel={t('empty')} rowNumberLabel={t('rowNumber')} />
-          </>
-        ) : (
-          // No `csv` grammar is loaded: Shiki's is a ten-column "rainbow" whose
-          // scopes the GitHub themes mostly have no colour for, which would tint
-          // a few columns and leave the rest plain — read as a fault, not a limit.
-          <SourceView source={source} lang="text" />
-        )}
+              {notice.length > 0 && <p className="tbl-notice">{notice.join(' ')}</p>}
+              <Table rows={table.rows} extent={extent} emptyLabel={t('empty')} rowNumberLabel={t('rowNumber')} />
+            </>
+          ) : (
+            // No `csv` grammar is loaded: Shiki's is a ten-column "rainbow" whose
+            // scopes the GitHub themes mostly have no colour for, which would tint
+            // a few columns and leave the rest plain — read as a fault, not a limit.
+            <SourceView source={source} lang="text" />
+          )}
+        </ViewPanel>
       </div>
     </div>
   );

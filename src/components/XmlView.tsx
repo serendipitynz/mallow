@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useT } from '../lib/i18n';
 import { buildXmlTree, XML_MAX_VALUE_CHARS, type XmlErrorInfo, xmlErrorInfo } from '../lib/xml-tree';
 import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
 import { SourceView } from './SourceView';
+import { ViewPanel, ViewTabs } from './ViewTabs';
 import { XmlTree } from './XmlTree';
 
 /**
@@ -59,6 +60,7 @@ export function XmlView({ source }: { source: string }) {
   // Bumping the key remounts the tree so a new forceOpen applies to every node.
   const [treeKey, setTreeKey] = useState(0);
   const [forceOpen, setForceOpen] = useState<boolean | undefined>(undefined);
+  const idBase = useId();
 
   function expandAll() {
     setForceOpen(true);
@@ -110,45 +112,38 @@ export function XmlView({ source }: { source: string }) {
             </div>
           )}
           {tree !== null && (
-            /* biome-ignore lint/a11y/useSemanticElements: see the expand-controls group above. */
-            <div className="seg" role="group" aria-label={t('viewMode')}>
-              <button
-                type="button"
-                className={`btn${mode === 'tree' ? ' is-active' : ''}`}
-                title={t('tree')}
-                aria-label={t('tree')}
-                aria-pressed={mode === 'tree'}
-                onClick={() => setMode('tree')}
-              >
-                <ListTreeIcon />
-              </button>
-              <button
-                type="button"
-                className={`btn${mode === 'source' ? ' is-active' : ''}`}
-                title={t('source')}
-                aria-label={t('source')}
-                aria-pressed={mode === 'source'}
-                onClick={() => setMode('source')}
-              >
-                <CodeIcon />
-              </button>
-            </div>
+            <ViewTabs
+              idBase={idBase}
+              label={t('viewMode')}
+              tabs={[
+                { mode: 'tree', label: t('tree'), icon: <ListTreeIcon /> },
+                { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+              ]}
+              selected={mode}
+              onSelect={setMode}
+            />
           )}
         </div>
 
         {!outcome.ok && <ErrorBanner format="XML" error={outcome.error} />}
 
-        {tree !== null && mode === 'tree' ? (
-          <>
-            {/* A plain <p>, like the source and table notices: the text is
-                computed once per mount, so a live region has nothing to announce. */}
-            {notice.length > 0 && <p className="xml-notice">{notice.join(' ')}</p>}
-            {tree.nodes.length === 0 ? (
-              <p className="xml-empty">{t('empty')}</p>
+        {tree !== null ? (
+          <ViewPanel idBase={idBase} selected={mode}>
+            {mode === 'tree' ? (
+              <>
+                {/* A plain <p>, like the source and table notices: the text is
+                    computed once per mount, so a live region has nothing to announce. */}
+                {notice.length > 0 && <p className="xml-notice">{notice.join(' ')}</p>}
+                {tree.nodes.length === 0 ? (
+                  <p className="xml-empty">{t('empty')}</p>
+                ) : (
+                  <XmlTree key={treeKey} nodes={tree.nodes} forceOpen={forceOpen} />
+                )}
+              </>
             ) : (
-              <XmlTree key={treeKey} nodes={tree.nodes} forceOpen={forceOpen} />
+              <SourceView source={source} lang="xml" />
             )}
-          </>
+          </ViewPanel>
         ) : (
           // `errorLine` is undefined whenever the engine's message named no
           // position, and nothing is then flagged — the view must not point at a

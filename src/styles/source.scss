@@ -1,7 +1,7 @@
 @use './vars' as *;
 
-// Segmented toggle shared by the markdown (preview/source) and config
-// (tree/source) view-mode switches.
+// A row of buttons: the settings modal's value groups and the update dialog's
+// actions. The viewers' switches are tabs (`.view-tabs`).
 .seg {
   display: flex;
   gap: 4px;
