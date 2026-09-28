@@ -3,8 +3,9 @@ import { delimiterFor, parseDelimited, TABLE_MAX_CELL_CHARS, tableExtent } from 
 import { useT } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, TableIcon } from './icons';
+import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
-import { ViewPanel, ViewTabs } from './ViewTabs';
+import { ViewPanel } from './ViewPanel';
 
 interface TableViewProps {
   source: string;
@@ -42,14 +43,14 @@ export function TableView({ source, file }: TableViewProps) {
     <div className="doc-scroll">
       <div className="doc tbl-doc">
         <div className="doc__bar">
-          <ViewTabs
+          <Segmented
             idBase={idBase}
             label={t('viewMode')}
-            tabs={[
-              { mode: 'table', label: t('table'), icon: <TableIcon /> },
-              { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+            options={[
+              { value: 'table', label: t('table'), icon: <TableIcon /> },
+              { value: 'source', label: t('source'), icon: <CodeIcon /> },
             ]}
-            selected={mode}
+            value={mode}
             onSelect={setMode}
           />
         </div>

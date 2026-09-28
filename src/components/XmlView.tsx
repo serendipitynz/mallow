@@ -3,8 +3,9 @@ import { useT } from '../lib/i18n';
 import { buildXmlTree, XML_MAX_VALUE_CHARS, type XmlErrorInfo, xmlErrorInfo } from '../lib/xml-tree';
 import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
+import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
-import { ViewPanel, ViewTabs } from './ViewTabs';
+import { ViewPanel } from './ViewPanel';
 import { XmlTree } from './XmlTree';
 
 /**
@@ -112,14 +113,14 @@ export function XmlView({ source }: { source: string }) {
             </div>
           )}
           {tree !== null && (
-            <ViewTabs
+            <Segmented
               idBase={idBase}
               label={t('viewMode')}
-              tabs={[
-                { mode: 'tree', label: t('tree'), icon: <ListTreeIcon /> },
-                { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+              options={[
+                { value: 'tree', label: t('tree'), icon: <ListTreeIcon /> },
+                { value: 'source', label: t('source'), icon: <CodeIcon /> },
               ]}
-              selected={mode}
+              value={mode}
               onSelect={setMode}
             />
           )}

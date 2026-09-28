@@ -5,8 +5,9 @@ import type { FileEntry } from '../lib/types';
 import { ConfigTree } from './ConfigTree';
 import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
+import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
-import { ViewPanel, ViewTabs } from './ViewTabs';
+import { ViewPanel } from './ViewPanel';
 
 interface ConfigViewProps {
   source: string;
@@ -62,14 +63,14 @@ export function ConfigView({ source, file }: ConfigViewProps) {
             </div>
           )}
           {outcome.ok && (
-            <ViewTabs
+            <Segmented
               idBase={idBase}
               label={t('viewMode')}
-              tabs={[
-                { mode: 'tree', label: t('tree'), icon: <ListTreeIcon /> },
-                { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+              options={[
+                { value: 'tree', label: t('tree'), icon: <ListTreeIcon /> },
+                { value: 'source', label: t('source'), icon: <CodeIcon /> },
               ]}
-              selected={mode}
+              value={mode}
               onSelect={setMode}
             />
           )}
