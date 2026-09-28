@@ -47,7 +47,12 @@ a {
   color: $link;
 }
 
-// Shared button reset for the toolbar / tree controls.
+// Buttons (snz-design doc-8 §6.1). `.btn` is the normal variant; the primary
+// and danger variants change the surface and the ink as one pair, because a
+// hover that swapped only the surface would leave the ink on a ground it was
+// not chosen for (snz-design doc-8 §5.3). Hover and press move the surface and
+// nothing else: a pressed button that moved would slide out from under the
+// pointer.
 .btn {
   display: inline-flex;
   align-items: center;
@@ -58,27 +63,56 @@ a {
   color: $ink;
   background: $surface-raised;
   // The outline is what marks this as a control, so it takes the control line
-  // (3:1 against the surface) rather than the decorative `$border`, which the
-  // shared tokens keep at divider strength (snz-design doc-8 §5).
+  // (3:1 against the surface) rather than the decorative `$border`.
   border: 1px solid $control-border;
-  border-radius: 6px;
+  border-radius: $radius-control;
   cursor: pointer;
 
   &:hover {
-    border-color: $border-strong;
-    background: var(--color-hover-bg);
+    background: $hover-bg;
+  }
+
+  &:active {
+    background: $pressed-bg;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: 1px;
+    @include focus-ring;
   }
 
   &:disabled {
-    opacity: 0.45;
-    border-style: dashed;
-    cursor: not-allowed;
+    @include disabled-control;
+
+    background: $surface-raised;
   }
+}
+
+.btn--primary {
+  color: $on-accent;
+  background: $teal;
+  border-color: $teal;
+
+  &:hover {
+    background: $teal-dark;
+    border-color: $teal-dark;
+  }
+
+  &:active {
+    background: $accent-pressed;
+    border-color: $accent-pressed;
+  }
+
+  &:disabled {
+    background: $teal;
+    border-color: $teal;
+  }
+}
+
+// The surface stays the normal one: a filled danger button would look like the
+// error bands, which report rather than act (snz-design doc-8 §6.1).
+.btn--danger {
+  color: $danger;
+  border-color: $danger;
 }
 
 .icon-btn {
@@ -91,22 +125,31 @@ a {
   color: $muted;
   background: none;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: $radius-control;
   cursor: pointer;
 
   &:hover {
     color: $ink;
-    background: var(--color-hover-bg);
+    background: $hover-bg;
+  }
+
+  &:active {
+    color: $ink;
+    background: $pressed-bg;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: 1px;
+    @include focus-ring;
   }
 
+  // It has no outline to break into dashes at rest, so the disabled state
+  // gives it one.
   &:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+    @include disabled-control;
+
+    color: $muted;
+    background: none;
+    border-color: $control-border;
   }
 }
 

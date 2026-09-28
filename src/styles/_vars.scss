@@ -28,6 +28,36 @@ $surface: var(--color-surface);
 $surface-raised: var(--color-surface-raised);
 $success: var(--color-success);
 $danger: var(--color-danger);
+$on-accent: var(--color-on-accent);
+$accent-pressed: var(--color-accent-pressed);
+$hover-bg: var(--color-hover-bg);
+$pressed-bg: var(--color-pressed-bg);
+
+// ---- Control shape and states -----------------------------------------------
+$radius-control: var(--snz-radius-sm);
+$radius-surface: var(--snz-radius-md);
+
+// Keyboard focus is an outline added outside the control, never a recoloured
+// border: against the control's own line a recoloured border stays under 3:1
+// (snz-design doc-8 §5.1). `$inside` is for rows that fill a scrolling box,
+// which would clip an outline drawn outside them (snz-design doc-16 §6.3).
+@mixin focus-ring($inside: false) {
+  outline: var(--snz-border-focus) solid var(--color-focus-ring);
+
+  @if $inside {
+    outline-offset: calc(-1 * var(--snz-border-focus));
+  } @else {
+    outline-offset: var(--snz-border-focus-offset);
+  }
+}
+
+// Disabled is told by shape as well as by fading, and the cursor stays the
+// plain arrow (snz-design doc-8 §5.4).
+@mixin disabled-control {
+  opacity: var(--snz-opacity-disabled);
+  border-style: var(--snz-border-disabled-style);
+  cursor: default;
+}
 
 // ---- Standard / Solarized: the shared tokens --------------------------------
 // The four shared schemes (Standard and Solarized, light and dark) come from
@@ -53,11 +83,14 @@ $shared-roles: (
   control-border: line-control,
   teal: accent,
   teal-dark: accent-hover,
+  accent-pressed: accent-pressed,
+  on-accent: on-accent,
   orange: warn,
   success: success,
   danger: danger,
   selection-bg: surface-selected,
   hover-bg: surface-hover,
+  pressed-bg: surface-pressed,
   code-inline-bg: surface-alt,
   focus-ring: focus,
   attention-bg: warn-soft,
@@ -97,11 +130,14 @@ $shared-roles: (
   --color-control-border: #9aa0c0;
   --color-teal: #50fa7b;
   --color-teal-dark: #69ff96;
+  --color-accent-pressed: #8affb0;
+  --color-on-accent: #282a36;
   --color-orange: #ffb86c;
   --color-success: #50fa7b;
   --color-danger: #ff5555;
   --color-selection-bg: rgb(139 233 253 / 16%);
   --color-hover-bg: rgb(248 248 242 / 6%);
+  --color-pressed-bg: rgb(248 248 242 / 11%);
   --color-code-inline-bg: rgb(98 114 164 / 35%);
   --color-focus-ring: rgb(139 233 253 / 40%);
   --color-attention-bg: rgb(255 184 108 / 15%);
@@ -123,11 +159,14 @@ $shared-roles: (
   --color-control-border: #9aa6bd;
   --color-teal: #8fbcbb;
   --color-teal-dark: #a3d0cf;
+  --color-accent-pressed: #b8e0df;
+  --color-on-accent: #2e3440;
   --color-orange: #d08770;
   --color-success: #a3be8c;
   --color-danger: #bf616a;
   --color-selection-bg: rgb(136 192 208 / 16%);
   --color-hover-bg: rgb(236 239 244 / 6%);
+  --color-pressed-bg: rgb(236 239 244 / 11%);
   --color-code-inline-bg: rgb(76 86 106 / 45%);
   --color-focus-ring: rgb(136 192 208 / 40%);
   --color-attention-bg: rgb(235 203 139 / 15%);
