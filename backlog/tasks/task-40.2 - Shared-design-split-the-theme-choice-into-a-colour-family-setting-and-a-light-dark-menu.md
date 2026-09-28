@@ -3,10 +3,10 @@ id: TASK-40.2
 title: >-
   Shared design: split the theme choice into a colour-family setting and a light
   / dark menu
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-28 03:58'
-updated_date: '2026-09-28 06:02'
+updated_date: '2026-09-28 08:00'
 labels:
   - design
 milestone: m-4
