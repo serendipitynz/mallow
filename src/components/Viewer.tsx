@@ -5,11 +5,13 @@ import { type ReadError, readErrorMessage } from '../lib/read-error';
 import { readFile, setWindowTitle } from '../lib/tauri';
 import { documentTitle, windowTitle } from '../lib/title';
 import type { FileEntry } from '../lib/types';
+import { Busy } from './Busy';
 import { ConfigView } from './ConfigView';
 import { HtmlView } from './HtmlView';
 import { MarkdownView } from './MarkdownView';
 import { MediaView } from './MediaView';
 import { MermaidView } from './MermaidView';
+import { Notice } from './Notice';
 import { SourceView } from './SourceView';
 import { TableView } from './TableView';
 import { XmlView } from './XmlView';
@@ -149,14 +151,22 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
       <main className="viewer">
         <div className="viewer__placeholder is-error">
           <code>{file.path}</code>
-          <p>{readErrorMessage(error, t)}</p>
+          <Notice level="failure">{readErrorMessage(error, t)}</Notice>
         </div>
       </main>
     );
   }
 
   if (text === null) {
-    return <main className="viewer">{loading && <div className="viewer__placeholder">{t('loading')}</div>}</main>;
+    return (
+      <main className="viewer">
+        {loading && (
+          <div className="viewer__placeholder">
+            <Busy>{t('loading')}</Busy>
+          </div>
+        )}
+      </main>
+    );
   }
 
   return (
