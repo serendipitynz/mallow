@@ -56,6 +56,13 @@ const ja: Dict = {
   recentNewWindowHint: '{modifier} を押しながらクリックすると別のウィンドウで開きます。',
   recentFolderGone: 'フォルダが見つかりません: {folder}',
   recentFolderUnlisted: '最近開いたフォルダの一覧から外れています: {folder}',
+  treeReadFailed: 'このフォルダを読み込めませんでした（{error}）。閉じて開き直すと読み込み直します。',
+  folderReadFailed: 'フォルダを読み込めませんでした（{error}）。フォルダを開き直してください。',
+  explorerWidth: 'エクスプローラの幅',
+  explorerWidthValue: '{width} ピクセル',
+  explorerWidthHint:
+    'ドラッグするか、クリックしてから置きたい位置をクリックすると幅を変えられます。矢印キーでも変えられます。',
+  'noticeLevel.failure': '失敗',
   dismiss: '閉じる',
   // viewer
   selectFile: 'ファイルを選択してください',
@@ -184,6 +191,12 @@ const en: Dict = {
   recentNewWindowHint: 'Hold {modifier} and click to open in another window.',
   recentFolderGone: 'That folder is no longer there: {folder}',
   recentFolderUnlisted: 'That folder is no longer in the recent list: {folder}',
+  treeReadFailed: "Couldn't read this folder ({error}). Close it and open it again to retry.",
+  folderReadFailed: "Couldn't read the folder ({error}). Open the folder again.",
+  explorerWidth: 'Explorer width',
+  explorerWidthValue: '{width} pixels',
+  explorerWidthHint: 'Drag, or click and then click where it should go, to change the width. The arrow keys work too.',
+  'noticeLevel.failure': 'Failure',
   dismiss: 'Dismiss',
   // viewer
   selectFile: 'Select a file',

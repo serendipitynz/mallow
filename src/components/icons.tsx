@@ -268,3 +268,25 @@ export function CheckIcon({ size = 16 }: IconProps) {
     </Icon>
   );
 }
+
+// ---- Status -----------------------------------------------------------------
+
+/** lucide: circle-x (the failure level of a notice) */
+export function CircleXIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m15 9-6 6" />
+      <path d="m9 9 6 6" />
+    </Icon>
+  );
+}
+
+/** lucide: loader-circle (work in progress) */
+export function LoaderCircleIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </Icon>
+  );
+}

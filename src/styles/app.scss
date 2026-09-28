@@ -292,6 +292,12 @@
   }
 }
 
+// The faint ink holds 4.5:1 on the resting face but not on the hover face in
+// Solarized Dark (4.42), so it steps up with the face (snz-design doc-8 §5.3).
+.recent__item:is(:hover, :active) .recent__path {
+  color: $muted;
+}
+
 .recent__name {
   display: block;
   font-size: 13px;
@@ -317,6 +323,7 @@
 
 // ---- Body: explorer | viewer ------------------------------------------------
 .app__body {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
@@ -330,7 +337,9 @@
   max-width: $explorer-max-width;
   flex: 0 0 auto;
   border-right: 1px solid $border;
-  background: var(--color-sidebar-bg);
+  // The panel face rather than the canvas: rows set on the canvas lose their
+  // hover — 1.02:1 against it in Solarized Light (snz-design doc-9 §6.3).
+  background: var(--color-panel);
   overflow: hidden;
 }
 
@@ -350,7 +359,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: $muted;
+  color: var(--color-ink-strong);
 }
 
 .explorer__scroll {
@@ -363,6 +372,18 @@
   padding: 16px 12px;
   font-size: 13px;
   color: $muted;
+}
+
+// An empty state is said in words, and faint ones (snz-design doc-9 §5.4).
+.explorer__empty-words {
+  color: $faint;
+}
+
+// The whole folder's loading or failure, above where the tree would be.
+.explorer__status {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: $faint;
 }
 
 // ---- File tree --------------------------------------------------------------
@@ -378,25 +399,31 @@
   align-items: center;
   gap: 4px;
   width: 100%;
-  padding: 3px 8px 3px var(--row-indent, 8px);
+  min-height: var(--snz-size-target-min);
+  // One level is one toggle figure wide, so a child's toggle sits under its
+  // parent's figure (snz-design doc-9 §6.1.1).
+  padding: 2px 8px 2px calc(8px + var(--tree-depth, 0) * var(--snz-icon-size-sm));
   font-size: 13px;
   line-height: 1.5;
   color: $ink;
-  background: none;
-  border: 0;
-  text-align: left;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
 
   &:hover {
     background: $hover-bg;
   }
 
+  // Face, outline and a 3px band together: the face alone differs from an
+  // unselected row by 1.04–1.24:1 (snz-design doc-8 §5.2).
   &.is-selected {
     background: var(--color-selection-bg);
-    color: $teal-dark;
+    box-shadow:
+      inset var(--snz-border-band) 0 0 var(--color-selected),
+      inset 0 0 0 var(--snz-border-line) var(--color-selected);
+    color: var(--color-ink-strong);
     font-weight: 600;
   }
 
@@ -409,14 +436,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: var(--snz-icon-size-sm);
+  height: var(--snz-icon-size-sm);
   flex: 0 0 auto;
-  color: $faint;
-  transition: transform 0.12s ease;
+  color: $figure;
+  transition: transform var(--snz-motion-state) ease;
 
   &.is-open {
     transform: rotate(90deg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 
   // Files get no chevron but keep the same indent slot.
@@ -452,7 +483,9 @@
 }
 
 .tree__icon[data-kind='yaml'] {
-  color: #8957e5; // violet
+  // Not a violet of its own: #8957e5 fell to 2.7:1 on the dark schemes' selected
+  // row, under the 3:1 a figure needs (snz-design doc-5 §3.2).
+  color: $figure;
 }
 
 .tree__icon[data-kind='toml'] {
@@ -464,18 +497,26 @@
   text-overflow: ellipsis;
 }
 
+// A child area's state sits at the children's level, past the toggle's slot, so
+// its words start where a child's name would.
 .tree__status {
-  padding: 3px 8px 3px var(--row-indent, 8px);
+  display: flex;
+  align-items: center;
+  min-height: var(--snz-size-target-min);
+  padding: 2px 8px 2px
+    calc(8px + var(--tree-depth, 0) * var(--snz-icon-size-sm) + var(--snz-icon-size-sm) + 4px);
   font-size: 12px;
-  color: $muted;
-}
+  color: $faint;
 
-.tree__status.is-error {
-  color: $danger;
+  .notice {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
 }
 
 // ---- Resizer ----------------------------------------------------------------
 .app__resizer {
+  position: relative;
   width: 5px;
   margin: 0 -2px;
   flex: 0 0 auto;
@@ -484,13 +525,43 @@
   border: 0;
   z-index: 2;
 
-  // The control line rather than the focus colour: the handle takes no
-  // keyboard focus, and since the focus colour became a solid accent a hover
-  // painted in it would read as focus.
+  // The control line rather than the focus colour, so a hover does not read
+  // as keyboard focus.
   &:hover,
-  &.is-dragging {
+  &.is-active {
     background: $control-border;
   }
+
+  // Above the catcher while grabbed, so pressing the handle again reaches it
+  // and cancels rather than placing it where it already is.
+  &.is-active {
+    z-index: 21;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+// Covers the body while the handle is grabbed. Above `.doc__bar` (5), whose
+// buttons would otherwise take the press that places the handle.
+.app__resize-catcher {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  cursor: col-resize;
+}
+
+// Where the placing press would put the handle, drawn as the handle's own
+// active state so the two read as one thing.
+.app__resize-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  margin-left: -2px;
+  background: $control-border;
+  pointer-events: none;
 }
 
 // ---- Viewer -----------------------------------------------------------------

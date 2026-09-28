@@ -1,14 +1,13 @@
-import type { CSSProperties } from 'react';
+import { type CSSProperties, type KeyboardEvent, useId } from 'react';
 import type { FileTreeState } from '../hooks/useFileTree';
 import { useT } from '../lib/i18n';
 import type { FileEntry, FileKind } from '../lib/types';
+import { Busy } from './Busy';
 import { ChevronRight, FileChartIcon, FileConfigIcon, FileTextIcon, FolderIcon, TableIcon } from './icons';
+import { Notice } from './Notice';
 
-const INDENT_STEP = 14;
-const BASE_INDENT = 8;
-
-function indentStyle(depth: number): CSSProperties {
-  return { '--row-indent': `${BASE_INDENT + depth * INDENT_STEP}px` } as CSSProperties;
+function levelStyle(depth: number): CSSProperties {
+  return { '--tree-depth': depth } as CSSProperties;
 }
 
 /** Lucide icon for a file kind (directories are handled separately). */
@@ -33,28 +32,28 @@ function FileKindIcon({ kind }: { kind: FileKind }) {
   }
 }
 
-interface TreeProps {
-  entries: FileEntry[];
-  depth: number;
-  tree: FileTreeState;
+/** What every row needs from the explorer that owns the focus. */
+export interface TreeRowHandlers {
+  tabStop: string | null;
   selectedPath: string | null;
-  onSelect: (entry: FileEntry) => void;
-  onToggle: (path: string) => void;
+  onRowClick: (entry: FileEntry) => void;
+  onRowFocus: (path: string) => void;
+  onRowKeyDown: (e: KeyboardEvent<HTMLDivElement>, path: string) => void;
 }
 
-export function FileTree({ entries, depth, tree, selectedPath, onSelect, onToggle }: TreeProps) {
+interface TreeProps {
+  entries: FileEntry[];
+  tree: FileTreeState;
+  rows: TreeRowHandlers;
+  label: string;
+}
+
+export function FileTree({ entries, tree, rows, label }: TreeProps) {
   return (
-    <ul className={depth === 0 ? 'tree' : 'tree__group'} role={depth === 0 ? 'tree' : 'group'}>
+    // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the WAI-ARIA tree pattern puts `tree` on the list its items already form; a div would drop the list structure the rows are laid out in
+    <ul className="tree" role="tree" aria-label={label}>
       {entries.map((entry) => (
-        <TreeItem
-          key={entry.path}
-          entry={entry}
-          depth={depth}
-          tree={tree}
-          selectedPath={selectedPath}
-          onSelect={onSelect}
-          onToggle={onToggle}
-        />
+        <TreeItem key={entry.path} entry={entry} depth={0} tree={tree} rows={rows} />
       ))}
     </ul>
   );
@@ -64,77 +63,71 @@ interface ItemProps {
   entry: FileEntry;
   depth: number;
   tree: FileTreeState;
-  selectedPath: string | null;
-  onSelect: (entry: FileEntry) => void;
-  onToggle: (path: string) => void;
+  rows: TreeRowHandlers;
 }
 
-function TreeItem({ entry, depth, tree, selectedPath, onSelect, onToggle }: ItemProps) {
+function TreeItem({ entry, depth, tree, rows }: ItemProps) {
   const t = useT();
+  const groupId = useId();
   const expanded = entry.isDir && tree.expanded.has(entry.path);
   const children = tree.childrenByPath.get(entry.path);
   const loading = tree.loading.has(entry.path);
   const error = tree.errors.get(entry.path);
-  const isSelected = !entry.isDir && entry.path === selectedPath;
-  const childStatusStyle = indentStyle(depth + 1);
-
-  function activate() {
-    if (entry.isDir) {
-      onToggle(entry.path);
-    } else {
-      onSelect(entry);
-    }
-  }
+  const isSelected = !entry.isDir && entry.path === rows.selectedPath;
+  const statusStyle = levelStyle(depth + 1);
 
   return (
     <li role="none">
-      <button
-        type="button"
+      <div
         className={`tree__row${isSelected ? ' is-selected' : ''}`}
-        style={indentStyle(depth)}
+        style={levelStyle(depth)}
         role="treeitem"
+        tabIndex={entry.path === rows.tabStop ? 0 : -1}
+        data-path={entry.path}
+        aria-level={depth + 1}
         aria-expanded={entry.isDir ? expanded : undefined}
         aria-selected={isSelected || undefined}
-        onClick={activate}
+        aria-owns={expanded ? groupId : undefined}
+        onClick={() => rows.onRowClick(entry)}
+        onFocus={() => rows.onRowFocus(entry.path)}
+        onKeyDown={(e) => rows.onRowKeyDown(e, entry.path)}
         title={entry.name}
       >
         <span className={`tree__chevron${entry.isDir ? '' : ' is-leaf'}${expanded ? ' is-open' : ''}`}>
-          {entry.isDir ? <ChevronRight /> : null}
+          {entry.isDir ? <ChevronRight size={16} /> : null}
         </span>
         <span className="tree__icon" data-kind={entry.kind}>
           {entry.isDir ? <FolderIcon /> : <FileKindIcon kind={entry.kind} />}
         </span>
         <span className="tree__label">{entry.name}</span>
-      </button>
+      </div>
 
+      {/* The child area belongs to the item, so a screen reader hears which
+          parent it is under and not only how deep (snz-design doc-9 §6.1.1). A
+          failure keeps the children read before it: removing them would draw a
+          failure and an empty folder as the same screen (snz-design doc-9 §5.5). */}
       {expanded && (
-        <>
-          {loading && !children && (
-            <div className="tree__status" style={childStatusStyle}>
-              {t('loading')}
-            </div>
-          )}
+        // biome-ignore lint/a11y/useSemanticElements: a tree's child list is an ARIA `group`; `<fieldset>` groups form controls and would be read as a form
+        <ul className="tree__group" role="group" id={groupId}>
           {error && (
-            <div className="tree__status is-error" style={childStatusStyle}>
-              {error}
-            </div>
+            <li role="none" className="tree__status" style={statusStyle}>
+              <Notice level="failure">{t('treeReadFailed', { error })}</Notice>
+            </li>
           )}
-          {children && children.length === 0 && !error && (
-            <div className="tree__status" style={childStatusStyle}>
+          {!error && loading && !children && (
+            <li role="none" className="tree__status" style={statusStyle}>
+              <Busy>{t('loading')}</Busy>
+            </li>
+          )}
+          {!error && children && children.length === 0 && (
+            <li role="none" className="tree__status" style={statusStyle}>
               {t('empty')}
-            </div>
+            </li>
           )}
-          {children && children.length > 0 && (
-            <FileTree
-              entries={children}
-              depth={depth + 1}
-              tree={tree}
-              selectedPath={selectedPath}
-              onSelect={onSelect}
-              onToggle={onToggle}
-            />
-          )}
-        </>
+          {children?.map((child) => (
+            <TreeItem key={child.path} entry={child} depth={depth + 1} tree={tree} rows={rows} />
+          ))}
+        </ul>
       )}
     </li>
   );

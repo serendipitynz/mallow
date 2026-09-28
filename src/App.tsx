@@ -1,5 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Explorer } from './components/Explorer';
+import { ExplorerResizer } from './components/ExplorerResizer';
 import { SettingsIcon } from './components/icons';
 import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
@@ -12,6 +13,7 @@ import { UNATTENDED } from './lib/build-flags';
 import { matchesCmdOrCtrl, onMacPlatform } from './lib/chord';
 import { createCloseWindowChordHandler } from './lib/close-window';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
+import { clampExplorerWidth, DEFAULT_EXPLORER_WIDTH } from './lib/explorer-width';
 import { fileEntryFromPath } from './lib/file';
 import { useI18n, useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
@@ -45,18 +47,15 @@ import type { FileEntry } from './lib/types';
 import { onFsChange, startWatch } from './lib/watch';
 import { locationToOpenAtMount } from './lib/window-init';
 
-const DEFAULT_WIDTH = 280;
-const MIN_WIDTH = 180;
-const MAX_WIDTH = 600;
 /** Named because a propagated change can carry `null` — a preference deleted
  *  from the store — and the window that receives one has to land on the value a
  *  window with nothing stored would show. */
 const DEFAULT_SIDE: 'left' | 'right' = 'left';
 const DEFAULT_AUTO_CHECK_UPDATES = true;
 
-function clampWidth(width: number): number {
-  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
-}
+/** What the resize handle names as the pane it sizes (`aria-controls`). One per
+ *  window, since each window is its own document. */
+const EXPLORER_ID = 'explorer';
 
 /** How long after the session has settled the launch update check runs. It is
  *  gated on the restore finishing rather than on a timer alone, so this only has
@@ -69,7 +68,7 @@ export default function App() {
   const tree = useFileTree();
   const [selected, setSelected] = useState<FileEntry | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
-  const [explorerWidth, setExplorerWidth] = useState(DEFAULT_WIDTH);
+  const [explorerWidth, setExplorerWidth] = useState(DEFAULT_EXPLORER_WIDTH);
   const [explorerSide, setExplorerSide] = useState<'left' | 'right'>(DEFAULT_SIDE);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
@@ -83,15 +82,11 @@ export default function App() {
   const updater = useUpdater();
 
   const selectedRef = useRef<FileEntry | null>(null);
-  const widthRef = useRef(explorerWidth);
   // Serialises overlapping custom-emoji loads; see `applyEmojiDir`.
   const emojiGeneration = useRef(0);
   useEffect(() => {
     selectedRef.current = selected;
   }, [selected]);
-  useEffect(() => {
-    widthRef.current = explorerWidth;
-  }, [explorerWidth]);
 
   const { open: openTree, refresh, expandPaths } = tree;
 
@@ -300,7 +295,7 @@ export default function App() {
           setExplorerSide(change.value ?? DEFAULT_SIDE);
           break;
         case 'explorerWidth':
-          setExplorerWidth(clampWidth(change.value ?? DEFAULT_WIDTH));
+          setExplorerWidth(clampExplorerWidth(change.value ?? DEFAULT_EXPLORER_WIDTH));
           break;
         case 'customEmojiDir':
           void applyEmojiDir(change.value);
@@ -366,7 +361,7 @@ export default function App() {
         return;
       }
       if (s.explorerWidth && snapshotStillCurrent('explorerWidth', readAt)) {
-        setExplorerWidth(clampWidth(s.explorerWidth));
+        setExplorerWidth(clampExplorerWidth(s.explorerWidth));
       }
       if (s.explorerSide && snapshotStillCurrent('explorerSide', readAt)) {
         setExplorerSide(s.explorerSide);
@@ -673,29 +668,10 @@ export default function App() {
   }, []);
 
   // ---- Explorer resize ------------------------------------------------------
-  const [dragging, setDragging] = useState(false);
-  const startResize = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      setDragging(true);
-      const startX = e.clientX;
-      const startW = widthRef.current;
-      const onMove = (ev: MouseEvent) => {
-        const dx = ev.clientX - startX;
-        const raw = explorerSide === 'left' ? startW + dx : startW - dx;
-        setExplorerWidth(clampWidth(raw));
-      };
-      const onUp = () => {
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-        setDragging(false);
-        void saveSetting('explorerWidth', widthRef.current);
-      };
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    },
-    [explorerSide],
-  );
+  const commitExplorerWidth = useCallback((width: number) => {
+    setExplorerWidth(width);
+    void saveSetting('explorerWidth', width);
+  }, []);
 
   const changeSide = useCallback((side: 'left' | 'right') => {
     setExplorerSide(side);
@@ -704,6 +680,7 @@ export default function App() {
 
   const explorer = (
     <Explorer
+      id={EXPLORER_ID}
       tree={tree}
       selectedPath={selected?.path ?? null}
       onSelect={selectFile}
@@ -713,17 +690,12 @@ export default function App() {
     />
   );
   const resizer = (
-    // A drag-only splitter: no keyboard path today, so a tab stop would be focusable and inert,
-    // and aria-valuenow would report a width nothing can change. Arrow-key resizing is a UI
-    // change, tracked separately. HTML has no splitter element, so role says what this is.
-    // biome-ignore lint/a11y/useFocusableInteractive: drag-only, see above
-    // biome-ignore lint/a11y/useSemanticElements: no semantic splitter element exists
-    <div
-      className={`app__resizer${dragging ? ' is-dragging' : ''}`}
-      // biome-ignore lint/a11y/useAriaPropsForRole: drag-only, see above
-      role="separator"
-      aria-orientation="vertical"
-      onMouseDown={startResize}
+    <ExplorerResizer
+      side={explorerSide}
+      width={explorerWidth}
+      controls={EXPLORER_ID}
+      onPreview={setExplorerWidth}
+      onCommit={commitExplorerWidth}
     />
   );
   const viewer = <Viewer file={selected} reloadToken={reloadToken} />;
