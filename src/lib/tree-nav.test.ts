@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isShownUnder, tabStopPath, treeKeyAction, visibleRows } from './tree-nav';
+import { isShownUnder, readsOnOpen, tabStopPath, treeKeyAction, visibleRows } from './tree-nav';
 import type { FileEntry } from './types';
 
 const dir = (path: string): FileEntry => ({ name: path, path, isDir: true, kind: 'directory' });
@@ -83,6 +83,17 @@ describe('tabStopPath', () => {
     expect(tabStopPath(rows, 'gone.md', 'd.md')).toBe('d.md');
     expect(tabStopPath(rows, null, 'c/hidden.md')).toBe('a');
     expect(tabStopPath([], null, null)).toBeNull();
+  });
+});
+
+describe('readsOnOpen', () => {
+  it('reads a folder never read, and not one already read', () => {
+    expect(readsOnOpen('c', children, new Map())).toBe(true);
+    expect(readsOnOpen('a', children, new Map())).toBe(false);
+  });
+
+  it('reads again a folder whose refresh failed while its earlier children are still held', () => {
+    expect(readsOnOpen('a', children, new Map([['a', 'Permission denied']]))).toBe(true);
   });
 });
 

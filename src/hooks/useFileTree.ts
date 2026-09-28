@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readDirTree } from '../lib/tauri';
+import { readsOnOpen } from '../lib/tree-nav';
 import type { FileEntry } from '../lib/types';
 
 /** Centralized, controlled state for the lazy file tree. Lifting it here (rather
@@ -37,6 +38,7 @@ export function useFileTree(): FileTreeController {
   const rootDirRef = useRef<string | null>(null);
   const childrenRef = useRef(childrenByPath);
   const expandedRef = useRef(expanded);
+  const errorsRef = useRef(errors);
   useEffect(() => {
     rootDirRef.current = rootDir;
   }, [rootDir]);
@@ -46,6 +48,9 @@ export function useFileTree(): FileTreeController {
   useEffect(() => {
     expandedRef.current = expanded;
   }, [expanded]);
+  useEffect(() => {
+    errorsRef.current = errors;
+  }, [errors]);
 
   const loadChildren = useCallback(async (path: string) => {
     setLoading((s) => new Set(s).add(path));
@@ -96,7 +101,7 @@ export function useFileTree(): FileTreeController {
           next.delete(path);
         } else {
           next.add(path);
-          if (!childrenRef.current.has(path)) {
+          if (readsOnOpen(path, childrenRef.current, errorsRef.current)) {
             void loadChildren(path);
           }
         }

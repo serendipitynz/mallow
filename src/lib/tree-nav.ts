@@ -100,6 +100,18 @@ export function tabStopPath(
   return rows[0]?.entry.path ?? null;
 }
 
+/** Whether opening a folder reads it. A folder whose last read failed is read
+ *  again even though children from an earlier read are still held: a refresh
+ *  that fails keeps those children on screen (snz-design doc-9 §5.5), and
+ *  reopening is the retry the failure notice offers. */
+export function readsOnOpen(
+  path: string,
+  childrenByPath: ReadonlyMap<string, unknown>,
+  errors: ReadonlyMap<string, unknown>,
+): boolean {
+  return !childrenByPath.has(path) || errors.has(path);
+}
+
 /** Whether `path` sits somewhere under `ancestor` among the shown rows — the case
  *  where closing `ancestor` would take the focused row off the screen. */
 export function isShownUnder(rows: readonly TreeRow[], path: string, ancestor: string): boolean {
