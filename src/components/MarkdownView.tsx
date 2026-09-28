@@ -13,8 +13,9 @@ import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../
 import { broadcastSetting } from '../lib/settings-sync';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
+import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
-import { ViewPanel, ViewTabs } from './ViewTabs';
+import { ViewPanel } from './ViewPanel';
 
 export function MarkdownView({ source }: { source: string }) {
   const t = useT();
@@ -212,14 +213,14 @@ export function MarkdownView({ source }: { source: string }) {
               <TableOfContentsIcon />
             </button>
           )}
-          <ViewTabs
+          <Segmented
             idBase={idBase}
             label={t('viewMode')}
-            tabs={[
-              { mode: 'preview', label: t('preview'), icon: <ScanSearchIcon /> },
-              { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+            options={[
+              { value: 'preview', label: t('preview'), icon: <ScanSearchIcon /> },
+              { value: 'source', label: t('source'), icon: <CodeIcon /> },
             ]}
-            selected={mode}
+            value={mode}
             onSelect={setMode}
           />
         </div>

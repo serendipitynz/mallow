@@ -15,8 +15,9 @@ import { openInDefaultApp } from '../lib/tauri';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Outline } from './Outline';
+import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
-import { ViewPanel, ViewTabs } from './ViewTabs';
+import { ViewPanel } from './ViewPanel';
 
 /**
  * Height the frame will grow to at most, above which the document goes to the
@@ -629,14 +630,14 @@ export function HtmlView({
             </button>
           )}
           {renderable && (
-            <ViewTabs
+            <Segmented
               idBase={idBase}
               label={t('viewMode')}
-              tabs={[
-                { mode: 'rendered', label: t('rendered'), icon: <ScanSearchIcon /> },
-                { mode: 'source', label: t('source'), icon: <CodeIcon /> },
+              options={[
+                { value: 'rendered', label: t('rendered'), icon: <ScanSearchIcon /> },
+                { value: 'source', label: t('source'), icon: <CodeIcon /> },
               ]}
-              selected={mode}
+              value={mode}
               onSelect={setMode}
             />
           )}

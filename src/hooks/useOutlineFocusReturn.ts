@@ -3,7 +3,7 @@ import { type RefObject, useCallback, useLayoutEffect, useRef } from 'react';
 /**
  * Where the focus goes when the outline disappears while holding it: to the
  * toggle outside it, or — when the toggle went with it, because the document no
- * longer has headings enough for an outline — to the selected view tab
+ * longer has headings enough for an outline — to the chosen view option
  * (snz-design doc-9 §6.3.1). Left alone it falls to the top of the document.
  *
  * Returns the callback to hand `Outline` as `onFocusDropped`. The move waits for
@@ -22,7 +22,7 @@ export function useOutlineFocusReturn(barRef: RefObject<HTMLElement | null>): ()
     const bar = barRef.current;
     const target =
       bar?.querySelector<HTMLElement>('.doc-outline-toggle') ??
-      bar?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      bar?.querySelector<HTMLElement>('.segmented [aria-pressed="true"]');
     target?.focus();
   });
 
