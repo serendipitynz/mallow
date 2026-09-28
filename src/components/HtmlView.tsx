@@ -14,6 +14,7 @@ import { broadcastSetting } from '../lib/settings-sync';
 import { openInDefaultApp } from '../lib/tauri';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
+import { Notice } from './Notice';
 import { Outline } from './Outline';
 import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
@@ -699,11 +700,16 @@ export function HtmlView({
 function NoticeBar({ text, onOpenOutside }: { text: string; onOpenOutside: () => void }) {
   const t = useT();
   return (
-    <div className="src-notice html-notice">
-      <p className="html-notice__text">{text}</p>
-      <button type="button" className="btn html-notice__action" onClick={onOpenOutside}>
-        {t('openDefaultApp')}
-      </button>
-    </div>
+    <Notice
+      level="degraded"
+      className="notice--doc"
+      actions={
+        <button type="button" className="btn" onClick={onOpenOutside}>
+          {t('openDefaultApp')}
+        </button>
+      }
+    >
+      {text}
+    </Notice>
   );
 }
