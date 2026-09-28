@@ -1,4 +1,4 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { tabKeyTarget } from '../lib/tab-nav';
 
 export interface ViewTab<M extends string> {
@@ -29,6 +29,12 @@ function panelId(idBase: string): string {
  *  Tab stop that the arrows move inside (snz-design doc-9 §6.7). */
 export function ViewTabs<M extends string>({ idBase, label, tabs, selected, onSelect }: ViewTabsProps<M>) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  /* The Tab stop follows the focus while it is inside the group, so Tab and
+     Shift+Tab leave from the tab the arrows reached rather than passing through
+     the selected one; it goes back to the selected tab once the focus leaves, so
+     coming back in lands on what is shown. */
+  const [focusedMode, setFocusedMode] = useState<M | null>(null);
+  const stopMode = focusedMode ?? selected;
 
   function onKeyDown(event: React.KeyboardEvent, index: number) {
     const target = tabKeyTarget(event.key, index, tabs.length);
@@ -40,7 +46,16 @@ export function ViewTabs<M extends string>({ idBase, label, tabs, selected, onSe
   }
 
   return (
-    <div className="view-tabs" role="tablist" aria-label={label}>
+    <div
+      className="view-tabs"
+      role="tablist"
+      aria-label={label}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+          setFocusedMode(null);
+        }
+      }}
+    >
       {tabs.map((tab, index) => (
         <button
           key={tab.mode}
@@ -55,7 +70,8 @@ export function ViewTabs<M extends string>({ idBase, label, tabs, selected, onSe
           aria-label={tab.label}
           aria-selected={tab.mode === selected}
           aria-controls={panelId(idBase)}
-          tabIndex={tab.mode === selected ? 0 : -1}
+          tabIndex={tab.mode === stopMode ? 0 : -1}
+          onFocus={() => setFocusedMode(tab.mode)}
           onClick={() => onSelect(tab.mode)}
           onKeyDown={(e) => onKeyDown(e, index)}
         >
