@@ -4,9 +4,10 @@ title: 'Shared design: adopt the colour foundation and the shared control states
 status: In Review
 assignee: []
 created_date: '2026-09-28 03:58'
-updated_date: '2026-09-28 04:54'
+updated_date: '2026-09-28 05:34'
 labels:
   - design
+milestone: m-4
 dependencies: []
 references:
   - ../snz-design
