@@ -23,7 +23,7 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
 }));
 
 function broadcast(stamp: Stamp): SettingBroadcast {
-  return { stamp, change: { key: 'theme', value: 'dracula' } };
+  return { stamp, change: { key: 'colorFamily', value: 'dracula' } };
 }
 
 describe('supersedes', () => {
@@ -55,7 +55,7 @@ describe('supersedes', () => {
 describe('changeToApply', () => {
   it('hands on a change newer than anything applied', () => {
     expect(changeToApply(broadcast({ at: 2, origin: 'w2' }), { at: 1, origin: 'w1' })).toEqual({
-      key: 'theme',
+      key: 'colorFamily',
       value: 'dracula',
     });
   });

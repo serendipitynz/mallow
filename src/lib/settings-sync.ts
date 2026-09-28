@@ -50,9 +50,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import type { ColorFamily, ModeChoice } from './color-choice';
 import type { Lang } from './i18n';
 import type { Settings, WritableKey } from './settings';
-import type { ThemeId } from './theme';
 
 /** A store-backed preference and its new value, carrying `null` for a cleared
  *  one — `undefined` does not survive the JSON this crosses Rust as.
@@ -67,10 +67,16 @@ type StoredChange = {
 
 /** One changed preference. The two keys Rust owns in settings.json — `windows`
  *  and `recentFolders` — are absent from `WritableKey` because no window writes
- *  them; the three that follow live in localStorage rather than the store. */
+ *  them; the four that follow live in localStorage rather than the store.
+ *
+ *  **The colour choice travels as two keys**, one per axis, because the reader
+ *  chooses each on its own: ordered as one value, a family chosen in one window
+ *  and a mode chosen in another close together would have one of the two
+ *  undone. */
 export type SettingChange =
   | StoredChange
-  | { key: 'theme'; value: ThemeId }
+  | { key: 'colorFamily'; value: ColorFamily }
+  | { key: 'colorMode'; value: ModeChoice }
   | { key: 'lang'; value: Lang }
   | { key: 'outlineOpen'; value: boolean };
 
@@ -209,7 +215,7 @@ export function commitSetting(change: SettingChange, persist: boolean): Promise<
 }
 
 /** Tell every other window that a preference changed, for a caller with nothing
- *  to persist — the three preferences localStorage holds. */
+ *  to persist — the preferences localStorage holds. */
 export function broadcastSetting(change: SettingChange): void {
   // Fire-and-forget: the change is applied here already, so a failure costs the
   // other windows a live update and nothing else.

@@ -259,3 +259,12 @@ export function CloseIcon({ size = 16 }: IconProps) {
     </Icon>
   );
 }
+
+/** lucide: check (the current value in a value menu) */
+export function CheckIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M20 6 9 17l-5-5" />
+    </Icon>
+  );
+}

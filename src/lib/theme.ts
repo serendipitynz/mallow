@@ -1,66 +1,73 @@
 /**
- * Theme system: light / dark / auto plus extra palettes (Solarized, Dracula,
- * Nord). The chosen theme id lives on `<html data-theme>` (set before first paint
- * by the bootstrap in index.html) and is persisted to localStorage. Each palette
- * resolves to a light/dark "mode" that drives mermaid + the Shiki token swap.
+ * The colour choice on `<html>`: a family and a light / dark mode, chosen
+ * separately (snz-design doc-7 §4) and persisted to localStorage under one key
+ * each. The rule that reads them and the scheme they draw is `lib/color-choice`;
+ * this module holds the DOM, the storage and the subscriptions.
+ *
+ * What is written to `<html>` is the scheme drawn — `data-color-family` and a
+ * `data-color-mode` that is light or dark, never auto — so nothing downstream
+ * re-derives it from the OS (snz-design doc-16 §6.2). The bootstrap in
+ * index.html puts the same two attributes there before first paint.
  */
 
-export type ThemeId = 'light' | 'dark' | 'auto' | 'solarized-light' | 'solarized-dark' | 'dracula' | 'nord';
-export type Resolved = 'light' | 'dark';
+import {
+  type ColorChoice,
+  drawnMode,
+  FAMILY_KEY,
+  LEGACY_KEY,
+  MODE_KEY,
+  type ReadChoice,
+  type Resolved,
+  readChoice,
+  type StoredColor,
+} from './color-choice';
 
-/** Theme ids in menu order. Labels are resolved at render time: light/dark/auto
- *  are translated, the named palettes use their proper-noun label. */
-export const THEMES: ThemeId[] = ['light', 'dark', 'auto', 'solarized-light', 'solarized-dark', 'dracula', 'nord'];
-
-const STORAGE_KEY = 'theme';
-
-// Light/dark mode each palette resolves to (drives mermaid + Shiki token colors).
-const MODE: Record<Exclude<ThemeId, 'auto'>, Resolved> = {
-  light: 'light',
-  dark: 'dark',
-  'solarized-light': 'light',
-  'solarized-dark': 'dark',
-  dracula: 'dark',
-  nord: 'dark',
-};
+export type { Resolved } from './color-choice';
 
 const media = window.matchMedia('(prefers-color-scheme: dark)');
 const listeners = new Set<(theme: Resolved) => void>();
-const idListeners = new Set<() => void>();
+const choiceListeners = new Set<() => void>();
 
-export function getTheme(): ThemeId {
-  const value = document.documentElement.dataset.theme;
-  return THEMES.some((id) => id === value) ? (value as ThemeId) : 'auto';
-}
-
-/** The effective light/dark mode once "auto" is resolved against the OS. */
-export function resolveTheme(): Resolved {
-  const id = getTheme();
-  if (id === 'auto') {
-    return media.matches ? 'dark' : 'light';
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    // Private mode / disabled storage: read as nothing stored.
+    return null;
   }
-  return MODE[id];
 }
 
-/** The family each theme id belongs to on the snz-design colour axes. The
- *  Standard and Solarized ids draw from the shared tokens; Dracula and Nord
- *  name themselves so no shared block matches them. */
-const FAMILY: Record<ThemeId, string> = {
-  light: 'standard',
-  dark: 'standard',
-  auto: 'standard',
-  'solarized-light': 'solarized',
-  'solarized-dark': 'solarized',
-  dracula: 'dracula',
-  nord: 'nord',
+function writeStored(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private mode / disabled storage: still apply for this session.
+  }
+}
+
+// What is stored, mirrored so that a choice this session could not persist
+// still reads back the way a reload would read a persisted one.
+const stored: StoredColor = {
+  legacy: readStored(LEGACY_KEY),
+  family: readStored(FAMILY_KEY),
+  mode: readStored(MODE_KEY),
 };
 
-/** Puts the resolved colour axes on `<html>` (snz-design doc-10 §4): the mode is
- *  light or dark only, never auto, so nothing downstream re-derives it from the
- *  OS. The same rule runs in index.html before first paint. */
+let read: ReadChoice = readChoice(stored);
+
+/** Shaped for `useSyncExternalStore`: the same object until the choice changes. */
+export function getColorChoice(): ReadChoice {
+  return read;
+}
+
+/** The side drawn once auto is resolved against the OS and the family's sides. */
+export function resolveTheme(): Resolved {
+  return drawnMode(read.choice, media.matches);
+}
+
 function applyColorAttributes(): void {
   const root = document.documentElement;
-  root.dataset.colorFamily = FAMILY[getTheme()];
+  root.dataset.colorFamily = read.choice.family;
   root.dataset.colorMode = resolveTheme();
 }
 
@@ -78,44 +85,64 @@ function notify(): void {
   });
 }
 
-/** Subscribe to effective light/dark changes. Returns an unsubscribe function. */
+/** Subscribe to the drawn light/dark side. Returns an unsubscribe function. A
+ *  family change that keeps the side (Solarized Light to Standard Light) is not
+ *  reported: those who redraw on this redraw only for a change of side
+ *  (snz-design doc-7 §8.3). */
 export function onThemeChange(callback: (theme: Resolved) => void): () => void {
   listeners.add(callback);
   return () => listeners.delete(callback);
 }
 
-/** Subscribe to the chosen theme id, which `onThemeChange` cannot stand in for:
- *  Solarized Light to Light is a repaint that leaves the resolved mode alone, and
- *  the picker has to follow it. Shaped for `useSyncExternalStore`, whose snapshot
- *  is `getTheme`. */
-export function onThemeIdChange(callback: () => void): () => void {
-  idListeners.add(callback);
-  return () => idListeners.delete(callback);
+/** Subscribe to the reader's choice, which `onThemeChange` cannot stand in for:
+ *  a family change can leave the side alone, and the controls have to follow
+ *  it. Shaped for `useSyncExternalStore`, whose snapshot is `getColorChoice`. */
+export function onColorChoiceChange(callback: () => void): () => void {
+  choiceListeners.add(callback);
+  return () => choiceListeners.delete(callback);
 }
 
-/** Reflect a theme on `<html>` and notify subscribers, without persisting it.
+/** Reflect a change to one or both axes on `<html>` and notify subscribers,
+ *  without persisting it.
  *
- *  What a window does when **another** window is the one that changed the theme
+ *  What a window does when **another** window is the one that made the choice
  *  (`lib/settings-sync`): every window shares one WebView data store, so the
  *  originating window's write is already this window's stored value, and writing
  *  it again would be the receiving half re-doing the sending half's work. */
-export function applyTheme(id: ThemeId): void {
-  document.documentElement.dataset.theme = id;
+export function applyColorChoice(change: Partial<ColorChoice>): void {
+  if (change.family !== undefined) {
+    stored.family = change.family;
+  }
+  if (change.mode !== undefined) {
+    stored.mode = change.mode;
+  }
+  read = readChoice(stored);
   notify();
-  idListeners.forEach((cb) => {
+  choiceListeners.forEach((cb) => {
     cb();
   });
 }
 
-/** Persist a theme and apply it. Telling the other windows is the caller's, so
- *  that this module keeps no dependency on the Tauri layer. */
-export function setTheme(id: ThemeId): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, id);
-  } catch {
-    // Private mode / disabled storage: still apply for this session.
+/** Persist the reader's choice of one axis and apply it, answering what was
+ *  written — which is what the caller tells the other windows, so that this
+ *  module keeps no dependency on the Tauri layer.
+ *
+ *  **Only the chosen axis is written.** An axis with no key of its own is read
+ *  from the pre-split value, which is what it was drawn from, so the axis not
+ *  chosen stays what it was (snz-design doc-7 §4.2). The exception is a stored
+ *  choice this version does not know: that is drawn as the initial choice, and
+ *  left alone the unknown axis would keep the chosen one from taking effect, so
+ *  both are written as drawn. */
+export function chooseColor(change: Partial<ColorChoice>): Partial<ColorChoice> {
+  const written: Partial<ColorChoice> = read.unrecognized ? { ...read.choice, ...change } : change;
+  if (written.family !== undefined) {
+    writeStored(FAMILY_KEY, written.family);
   }
-  applyTheme(id);
+  if (written.mode !== undefined) {
+    writeStored(MODE_KEY, written.mode);
+  }
+  applyColorChoice(written);
+  return written;
 }
 
 media.addEventListener('change', notify);

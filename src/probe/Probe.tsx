@@ -7,7 +7,8 @@
 
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { THEMES, type ThemeId } from '../lib/theme';
+import { type ColorChoice, FAMILIES, modeAvailable } from '../lib/color-choice';
+import { applyColorChoice } from '../lib/theme';
 import { TOP_NAV_QUERY } from './fixtures';
 import {
   armClickProbe,
@@ -92,12 +93,16 @@ function Host({ hostRef }: { hostRef: RefObject<HTMLDivElement | null> }) {
   return <div className="probe-host" ref={hostRef} />;
 }
 
+const SCHEMES: ColorChoice[] = FAMILIES.flatMap((family) =>
+  (['light', 'dark'] as const).filter((mode) => modeAvailable(family, mode)).map((mode) => ({ family, mode })),
+);
+
 function verdictClass(verdict: Check['verdict']): string {
   return `probe-verdict probe-verdict--${verdict}`;
 }
 
 export default function Probe() {
-  const [theme, setThemeId] = useState<ThemeId>('dark');
+  const [scheme, setScheme] = useState(SCHEMES.findIndex((c) => c.family === 'standard' && c.mode === 'dark'));
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
   const [assetCheck, setAssetCheck] = useState<Check | null>(null);
@@ -140,11 +145,11 @@ export default function Probe() {
   // two intervals writing the same mode's readings would interleave them.
   const linkTeardownRef = useRef<(() => void) | null>(null);
 
-  // Applied straight to the attribute rather than through `setTheme`, which
-  // would persist into the real app's localStorage — the probe shares its origin.
+  // Applied without persisting, rather than through `chooseColor`, which would
+  // write into the real app's localStorage — the probe shares its origin.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    applyColorChoice(SCHEMES[scheme]);
+  }, [scheme]);
 
   const topNavHappened = window.location.search.includes(TOP_NAV_QUERY);
 
@@ -382,14 +387,14 @@ export default function Probe() {
           <label className="probe-field">
             <span>palette</span>
             <select
-              value={theme}
+              value={scheme}
               onChange={(e) => {
-                setThemeId(e.target.value as ThemeId);
+                setScheme(Number(e.target.value));
               }}
             >
-              {THEMES.map((id) => (
-                <option key={id} value={id}>
-                  {id}
+              {SCHEMES.map((c, i) => (
+                <option key={`${c.family}-${c.mode}`} value={i}>
+                  {c.family} {c.mode}
                 </option>
               ))}
             </select>

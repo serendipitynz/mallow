@@ -4,17 +4,17 @@
 // Standard and Solarized come from the shared tokens and are selected by
 // `data-color-family` / `data-color-mode`, which the bootstrap in index.html
 // sets before first paint; `snz-tokens.css` also sets `color-scheme` from the
-// mode. Dracula and Nord keep their own literal palettes, keyed on the theme id
-// as before.
+// mode. Dracula and Nord keep their own literal palettes, keyed on the same
+// family attribute.
 :root {
   @include theme-shared;
 }
 
-:root[data-theme='dracula'] {
+:root[data-color-family='dracula'] {
   @include theme-dracula;
 }
 
-:root[data-theme='nord'] {
+:root[data-color-family='nord'] {
   @include theme-nord;
 }
 
@@ -152,6 +152,37 @@ a {
     color: $muted;
     background: none;
     border-color: $control-border;
+  }
+}
+
+// A native select, so the list, the keyboard and the reading of a disabled
+// option are the platform's (snz-design doc-8 §6.3). `appearance: none` is what
+// lets WebKit take the outline and the surface; the chevron is drawn here.
+.select {
+  min-width: 0;
+  padding: 5px 28px 5px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: $ink;
+  background-color: $surface-raised;
+  background-image:
+    linear-gradient(45deg, transparent 50%, $muted 50%), linear-gradient(135deg, $muted 50%, transparent 50%);
+  background-position:
+    right 14px center,
+    right 9px center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  border: 1px solid $control-border;
+  border-radius: $radius-control;
+  appearance: none;
+  cursor: pointer;
+
+  &:hover {
+    background-color: $hover-bg;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
   }
 }
 

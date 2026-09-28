@@ -1,8 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useId, useSyncExternalStore } from 'react';
+import {
+  type ColorFamily,
+  FAMILIES,
+  isOneSided,
+  MODE_CHOICES,
+  type ModeChoice,
+  modeAvailable,
+} from '../lib/color-choice';
 import type { CustomEmojiStatus } from '../lib/custom-emoji';
 import { LANGS, type Lang, useI18n } from '../lib/i18n';
 import { broadcastSetting } from '../lib/settings-sync';
+import { getColorChoice, onColorChoiceChange } from '../lib/theme';
 import type { CheckState } from '../lib/update-flow';
+import { chooseColorEverywhere, useFamilyLabel } from './color';
 import { CloseIcon } from './icons';
 
 interface SettingsModalProps {
@@ -45,6 +55,12 @@ export function SettingsModal({
   covered,
 }: SettingsModalProps) {
   const { t, lang, setLang } = useI18n();
+  const familyLabel = useFamilyLabel();
+  const { choice, unrecognized } = useSyncExternalStore(onColorChoiceChange, getColorChoice);
+  const familyId = useId();
+  const modeId = useId();
+  const reasonId = useId();
+  const oneSided = isOneSided(choice.family);
 
   /** The language is app-wide (TASK-12 puts a per-window one out of scope), so
    *  the windows already open have to follow. Sent from here rather than from
@@ -93,6 +109,55 @@ export function SettingsModal({
           </button>
         </div>
         <div className="modal__body">
+          {/* Two selects, the family deciding which modes can be chosen
+              (snz-design doc-9 §6.10). Choosing a family never rewrites the
+              mode: a mode the family cannot draw stays selected, marked and
+              disabled, with the reason beside it (snz-design doc-7 §4.2). */}
+          <section className="settings-group">
+            <h3 className="settings-group__label">{t('appearance')}</h3>
+            <div className="settings-field">
+              <label htmlFor={familyId}>{t('colorFamily')}</label>
+              <select
+                id={familyId}
+                className="select"
+                value={choice.family}
+                onChange={(e) => chooseColorEverywhere({ family: e.target.value as ColorFamily })}
+              >
+                {FAMILIES.map((family) => (
+                  <option key={family} value={family}>
+                    {familyLabel(family)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="settings-field">
+              <label htmlFor={modeId}>{t('colorMode')}</label>
+              <select
+                id={modeId}
+                className="select"
+                value={choice.mode}
+                aria-describedby={oneSided ? reasonId : undefined}
+                onChange={(e) => chooseColorEverywhere({ mode: e.target.value as ModeChoice })}
+              >
+                {MODE_CHOICES.map((mode) => {
+                  const available = modeAvailable(choice.family, mode);
+                  const label = t(`mode.${mode}`);
+                  return (
+                    <option key={mode} value={mode} disabled={!available}>
+                      {available ? label : `${label} (${t('unavailable')})`}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            {oneSided && (
+              <p id={reasonId} className="settings-group__hint">
+                {t('modeOneSided', { family: familyLabel(choice.family) })}
+              </p>
+            )}
+            {unrecognized && <p className="settings-group__hint">{t('colorUnrecognized')}</p>}
+          </section>
+
           <section className="settings-group">
             <h3 className="settings-group__label">{t('explorerPosition')}</h3>
             {/* biome-ignore lint/a11y/useSemanticElements: role="group" is the ARIA pattern for a

@@ -643,6 +643,15 @@
   color: $muted;
 }
 
+.settings-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: $ink;
+}
+
 .settings-group__hint {
   margin: 0;
   font-size: 12px;
