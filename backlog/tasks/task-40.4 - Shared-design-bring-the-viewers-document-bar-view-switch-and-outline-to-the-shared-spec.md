@@ -3,10 +3,10 @@ id: TASK-40.4
 title: >-
   Shared design: bring the viewer's document bar, view switch and outline to the
   shared spec
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-28 03:59'
-updated_date: '2026-09-28 21:52'
+updated_date: '2026-09-28 22:05'
 labels:
   - design
 milestone: m-4
@@ -39,7 +39,7 @@ snz-design references: doc-9 §6.7 (tabs), §6.8 (navigation, current location),
 - [x] #2 The outline's current location carries the surface as well as its band and aria-current (doc-9 §6.8)
 - [x] #3 The outline toggle states whether the outline is shown, and focus has a defined destination when the outline goes away (doc-9 §6.3.1)
 - [x] #4 The document bar's icon-only buttons follow doc-8 §6.2, heading jumps still clear the sticky bar, and the bar still never covers the toolbar's menus
-- [ ] #5 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
+- [x] #5 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
 - [x] #6 pnpm test, pnpm lint and pnpm build pass
 <!-- AC:END -->
 
@@ -111,4 +111,10 @@ snz-design references: doc-9 §6.7 (tabs), §6.8 (navigation, current location),
 - 確認 (Blink、上と同じ環境): 5ビューとも group「View mode」+ aria-pressed の2択。← → は端で止まり移すだけでは選ばない、Home / End、→ + Enter で選択、Space で選択、Tab で面へ、面から PageDown / ↓ でスクロール (scrollTop 0 → 535)。Source 選択 → ← → Tab で面へ直接、Preview 選択 → → → Shift+Tab で組の外 (トリガー)、Tab で戻ると選ばれた Preview。焦点の戻り先: 別の窓からアウトラインを消す → トリガー (Markdown・HTML)、見出し1つへの再読み込み → 選ばれた選択肢。浮いた面は Source を選ぶと 36px 右へ (transition transform 140ms)、動きを減らす設定では浮いた面を消し選択肢ごとの面の不透明度が 0,1 → 1,0 と入れ替わる。640px の窓でも1列。
 - コントラスト (Standard L / Standard D / Solarized L / Solarized D): 浮いた面の輪郭/溝 (選択表示) 3.42 / 4.49 / 3.64 / 3.76、選ばれた図形/浮いた面 17.98 / 13.62 / 13.92 / 12.05、未選択の図形/溝 5.53 / 7.87 / 5.04 / 5.61、hover の図形/hover の面 11.52 / 10.07 / 10.41 / 9.91、焦点の枠/溝 6.17 / 7.88 / 4.76 / 6.79、/浮いた面 7.31 / 6.73 / 5.41 / 5.88、/hover の面 5.84 / 5.93 / 4.67 / 5.49。報告のみ: 浮いた面の塗り/溝 1.18 / 1.17 / 1.14 / 1.15。溝は不透明なので、操作帯の半透明はこの組の比に掛からない (帯の 88% はトリガーと全展開の図形のため)。上の「タブ」の行の測定値はこの変更で置き換わった。
 - オーナーの実窓の確認: タブだった時点で Tab キーの挙動を確認し問題なし (2026-09-29)。セグメントに改めた後の実窓の確認は未。
+
+## 実窓の確認とマージ (2026-09-29)
+- 外部レビュー (Codex CLI, gpt-6-astra, effort low): 1回目 [P3] 1件 (310678f で修正)、2回目は 404f7b2 を APPROVE、セグメントへ改めた後の3回目も指摘なしで 0c77e34 を APPROVE。
+- AC#5 の実窓 (WKWebView) の確認: オーナーが実機で確認し問題なし (2026-09-29。タブの時点の Tab キーの挙動と、セグメントに改めた後の確認)。
+- 図形だけの選択肢を例外にする理由 (オーナー, 2026-09-29): 部品の分け方は「同じ場所の面を入れ替えるか、値を選ぶか」ではなく「ツール (アクション) として使われるかどうか」。mallow のこの位置は、表示された文書に対するツールバーの一部で、Finder のツールバーの「ビューボタン」と同じ扱い。オーナーは語域を必須にする必要は無いとも考えている。snz-design の TASK-33 (serendipitynz/snz-design#27 で起票) で扱う。
+- マージ: #69 (220f1fd)。
 <!-- SECTION:NOTES:END -->
