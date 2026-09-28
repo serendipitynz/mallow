@@ -80,7 +80,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
   `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
-  メニューの焦点をどこへ移すか）、`tree-nav`（ツリーに出ている行・行の上でキーが
+  メニューの焦点をどこへ移すか）、`explorer-toggle`（エクスプローラを出し入れする
+  `CmdOrCtrl+B` の chord。ゲートなし）、`tree-nav`（ツリーに出ている行・行の上でキーが
   何をするか・Tab の止まりになる行）、`explorer-width`（エクスプローラの幅の上下限・
   つまみのキーの刻み・置く押下が決める幅）、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
@@ -997,13 +998,16 @@ Comments と Functions の規約は機械的に検査されない。コメント
   **旧 macOS の `cfg` を外すだけなら、About / Services / Hide / Show All を載せた
   メニューバーが Windows と Linux に出ていた** — どれも macOS の概念で、
   コンパイルは通るが意味を持たない。構成は 3 つ: macOS は今までのアプリサブメニューを
-  保ち、File・Edit と、`set_as_windows_menu_for_nsapp` で登録する Window サブメニューを
+  保ち、File・Edit・View と、`set_as_windows_menu_for_nsapp` で登録する Window サブメニューを
   得る。**AppKit が開いているウィンドウの一覧を足すのはこの登録のためであり、
   かつこの登録はメニューがアプリの main menu になるまで黙って何もしない** —
   muda は `NSApplication.mainMenu()` とその delegate 経由で NSMenu を解決し
   （muda-0.19.3 `src/platform_impl/macos/mod.rs:741-746`）、main menu が無ければ
   何もせずに返る。だから登録は `set_menu` の後で、メニューを組んでいる最中ではない。Windows と Linux はアプリサブメニューを持たず、
-  Settings… と Exit を File の中に、About を Help の下に置く。
+  Settings… と Exit を File の中に、About を Help の下に置く。**View だけは 3 つとも同じ**
+  — 普通の項目の Toggle Explorer（`CmdOrCtrl+B`）だけなので、どのバックエンドにも
+  飛ばされる定義済みの種類が無い。チェック付きの項目にしないのは、チェックが
+  `settings.rs` が中身を読まずに中継する設定を追わなければならなくなるため。
   **Linux だけは違いが一覧ではなく規則である**: muda の GTK バックエンドは
   predefined の種別のうち Separator・Copy・Cut・Paste・SelectAll・About しか
   対応せず（muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`）、
@@ -1408,7 +1412,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `window-init`＝3 つの生成状態それぞれでウィンドウが何を開くか・
   `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
   Rust への invoke が 1 回走る）・
-  `print`・`pdf-export`・`new-window`・`close-window`＝各 chord のキー・ゲートと、
+  `print`・`pdf-export`・`new-window`・`close-window`・`explorer-toggle`＝各 chord のキー・ゲートと、
   イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
   New Window には閉じるゲートが無いことを含む）・
   `settings-sync`＝順序づけと、commit が Rust へ何を送るか、Rust が stamp を
