@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-28 03:59'
-updated_date: '2026-09-28 20:22'
+updated_date: '2026-09-28 21:52'
 labels:
   - design
 milestone: m-4
@@ -35,7 +35,7 @@ snz-design references: doc-9 §6.7 (tabs), §6.8 (navigation, current location),
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [x] #1 The view switches in the Markdown, config, table, XML and HTML views are read as tabs and move with the arrows inside the group (doc-9 §6.7)
+- [x] #1 The view switches in the Markdown, config, table, XML and HTML views are segmented controls (doc-9 §6.12; the owner's decision of 2026-09-29, in place of doc-9 §6.7's tabs): one Tab stop that the arrows move inside, choosing on Enter, Space or a press
 - [x] #2 The outline's current location carries the surface as well as its band and aria-current (doc-9 §6.8)
 - [x] #3 The outline toggle states whether the outline is shown, and focus has a defined destination when the outline goes away (doc-9 §6.3.1)
 - [x] #4 The document bar's icon-only buttons follow doc-8 §6.2, heading jumps still clear the sticky bar, and the bar still never covers the toolbar's menus
@@ -53,6 +53,8 @@ snz-design references: doc-9 §6.7 (tabs), §6.8 (navigation, current location),
 5. アウトラインの出し入れ (doc-9 §6.3.1): トリガーに aria-controls を足し、出ている間は面 surface-selected + 輪郭 selected (TASK-37 のエクスプローラのトリガーと同じ形)。アウトラインを DOM で本文より前に置き、読み順をトリガー → タブの組 → アウトライン → 本文にする (見た目の位置は grid のまま)。アウトラインが焦点を持ったまま消えるとき (別の窓からの切替・見出しが減った再読み込みを含む) は、焦点をトリガーへ、トリガーも消えるなら選ばれたタブへ移す。
 6. 操作帯のアイコンのみボタン (doc-8 §6.2) を照らし、足りないものを直す。見出しへの移動が帯を避けること (TASK-20) と、帯がツールバーのメニューを覆わないこと (TASK-22) を確かめる。帯の下に隠れる焦点 (doc-5 §3.2 フォーカスの被り) も測る。
 7. 文言は ja / en の両方へ。4配色の測定点の比・キーボードの到達・環境 (doc-5 §5.3) を Implementation Notes へ。WKWebView の実窓はオーナーの確認を記録する。
+
+8. (オーナー判断 2026-09-29) 表示切替はタブではなくセグメント (doc-9 §6.12 の選択肢ボタンの組、snz-design storybook の segmented) にする。溝 surface-alt の上に同じ幅の選択肢を並べ、選ばれた選択肢の下に浮いた面 (surface + line-control の輪郭) を置き、選択が変わると浮いた面が motion-state で動く (動きを減らす設定では溶け替え)。選択肢は語で出す (§6.12 は図形だけの選択肢を作らない)。読み上げは group の中の aria-pressed のボタン。組の幅が 22rem 以下では縦に積む。部品は設定モーダル (TASK-40.6) でも使える共通の Segmented として作る。面は Tab で止まれる region のまま残す。AC#1 の文言をこの判断に合わせて改める。doc-9 §6.12 と doc-13 §7.1・§10 が mallow の表示切替をタブとしている点は snz-design 側の改訂が要る。
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -99,4 +101,14 @@ snz-design references: doc-9 §6.7 (tabs), §6.8 (navigation, current location),
 
 ## レビュー 1回目 (2026-09-29)
 - 外部レビュー (Codex CLI, gpt-6-astra, effort low) の [P3]: 組の中で矢印で焦点を動かしても Tab の止まり (tabindex=0) が選ばれたタブに残り、Source 選択 → ← → Tab で Source を経由してから面へ、Preview 選択 → → → Shift+Tab で組の中に留まった。止まりを焦点に付いていかせ、焦点が組の外へ出たら選ばれたタブへ戻すようにした (再入場は選ばれたタブに着く)。実測 (Blink): ← の後の Tab は面へ、→ の後の Shift+Tab はトリガーへ、そこから Tab で選ばれたタブへ、→ + Enter + Tab で面へ。上の AC#1 の「tabindex は 0 が選ばれたタブだけ」は、焦点が組の外にあるときの状態を指す。
+
+## 表示切替をタブからセグメントへ (オーナー判断, 2026-09-29)
+- オーナーの指示で、表示切替を doc-9 §6.7 のタブから §6.12 の選択肢ボタンの組 (snz-design storybook の segmented) に改めた。AC#1 の文言もこの判断に合わせて改めた。**doc-9 §6.12 は「mallow の表示切替に使う .seg は §6.7 のタブであり、この部品ではない」、doc-13 §7.1・§10 は表示切替を §6.7 としており、snz-design 側の改訂が要る。**
+- 選択肢は図形だけにした (オーナーの追加の指示)。§6.12 は選択肢の構造で語域を必須とし「図形だけの選択肢を作らない — doc-8 §6.2 と同じ理由」とする。各選択肢は aria-label と title で語を持ち、doc-8 §6.2 の理由 (読み上げへ届く語) は満たすが、§6.12 の構造からは外れる意図的な例外。
+- 部品は共通の Segmented (components/Segmented.tsx、styles は global.scss の .segmented) として作り、設定モーダル (TASK-40.6) でも使えるようにした。溝 surface-alt・浮いた面 surface + line-control の輪郭・選択肢は同じ幅・選ばれた図形は fg-strong・未選択は figure (hover で fg)・語の太さは変えない。浮いた面は motion-state で動き、動きを減らす設定では選択肢ごとの面の不透明度の入れ替え。読み上げは group の中の aria-pressed のボタン。選ばれた選択肢の再押下は何もしない。Tab の止まりはレビュー1回目の修正のまま (組の中では焦点に付いていき、外へ出たら選ばれた選択肢へ戻る。§6.12 の「矢印で移ってから出ても次に入るのは選ばれている選択肢」と「Tab / Shift+Tab は組の外へ出る」の両方を満たす)。
+- §6.12 の「組の幅が 22rem 以下では縦に積む」は、部品側に container query として置いたが、操作帯は基準の容器を宣言しない。規則の目的は語を切り詰めないことで、図形の組には当たらず、宣言すると 640px の窓 (操作帯 295px) で幅 77px の組が縦に積まれ操作帯が伸びるため。
+- 面 (ViewPanel) は tabpanel から section (region) へ。ラベルは選ばれた選択肢 (aria-labelledby)、Tab の止まりのまま。lib/tab-nav は lib/segmented-nav へ改名。使われなくなる図形は無い (図形の選択肢で使う)。
+- 確認 (Blink、上と同じ環境): 5ビューとも group「View mode」+ aria-pressed の2択。← → は端で止まり移すだけでは選ばない、Home / End、→ + Enter で選択、Space で選択、Tab で面へ、面から PageDown / ↓ でスクロール (scrollTop 0 → 535)。Source 選択 → ← → Tab で面へ直接、Preview 選択 → → → Shift+Tab で組の外 (トリガー)、Tab で戻ると選ばれた Preview。焦点の戻り先: 別の窓からアウトラインを消す → トリガー (Markdown・HTML)、見出し1つへの再読み込み → 選ばれた選択肢。浮いた面は Source を選ぶと 36px 右へ (transition transform 140ms)、動きを減らす設定では浮いた面を消し選択肢ごとの面の不透明度が 0,1 → 1,0 と入れ替わる。640px の窓でも1列。
+- コントラスト (Standard L / Standard D / Solarized L / Solarized D): 浮いた面の輪郭/溝 (選択表示) 3.42 / 4.49 / 3.64 / 3.76、選ばれた図形/浮いた面 17.98 / 13.62 / 13.92 / 12.05、未選択の図形/溝 5.53 / 7.87 / 5.04 / 5.61、hover の図形/hover の面 11.52 / 10.07 / 10.41 / 9.91、焦点の枠/溝 6.17 / 7.88 / 4.76 / 6.79、/浮いた面 7.31 / 6.73 / 5.41 / 5.88、/hover の面 5.84 / 5.93 / 4.67 / 5.49。報告のみ: 浮いた面の塗り/溝 1.18 / 1.17 / 1.14 / 1.15。溝は不透明なので、操作帯の半透明はこの組の比に掛からない (帯の 88% はトリガーと全展開の図形のため)。上の「タブ」の行の測定値はこの変更で置き換わった。
+- オーナーの実窓の確認: タブだった時点で Tab キーの挙動を確認し問題なし (2026-09-29)。セグメントに改めた後の実窓の確認は未。
 <!-- SECTION:NOTES:END -->
