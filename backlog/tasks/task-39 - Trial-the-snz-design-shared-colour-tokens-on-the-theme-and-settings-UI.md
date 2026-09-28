@@ -1,10 +1,10 @@
 ---
 id: TASK-39
 title: Trial the snz-design shared colour tokens on the theme and settings UI
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-24 06:39'
-updated_date: '2026-09-24 10:42'
+updated_date: '2026-09-28 04:53'
 labels:
   - feature
 dependencies: []
@@ -27,7 +27,7 @@ snz-design references: doc-7 (theme switching and migration) §6.2 / §6.4 / §7
 <!-- AC:BEGIN -->
 - [x] #1 light / dark / solarized-light / solarized-dark draw the shared token values; Dracula and Nord keep their own palettes
 - [x] #2 data-color-family and a resolved data-color-mode are set before first paint and on every theme change, derived from the stored theme id without rewriting it
-- [ ] #3 The paper palette in print.scss stays light whatever scheme is on screen
+- [x] #3 The paper palette in print.scss stays light whatever scheme is on screen
 - [x] #4 The settings modal and the theme menu are checked in the four schemes, and the differences are reported back to snz-design
 <!-- AC:END -->
 
@@ -54,4 +54,10 @@ Trial branch `trial/snz-design-tokens`, branched from main `ceb391d`. `src/style
 The differences are reported back in snz-design doc-14 (the Web four-app trial results).
 
 Owner's check in the real Tauri window (WKWebView, macOS, 2026-09-24): the theme follows a live OS light/dark switch, and Tab moves focus through every control, buttons included. wry turns on WKWebView's `tabFocusesLinks` on macOS, so this holds whatever the OS keyboard-navigation setting is.
+
+## AC#3 の確認と完了 (2026-09-28, TASK-40.1 の中で)
+- 本適用 (TASK-40.1) の判断で、紙の配色は旧 light の直書きから標準 Light へ移した (オーナー決定 2026-09-28)。theme-print は `_snz-tokens.scss` (0.1.1) の `$snz-colors` の standard/light からコンパイル時に作る。
+- 確認: MALLOW_UNATTENDED=1 のデバッグビルド (macOS 26.6.2 / WKWebView) で scripts/paper/print-pagebreaks.md を `--theme light` と `--theme dark` で書き出し、PDF の塗り色を読んだ。dark の実行でも本文 #232a36・リンク #14549e・区切り線 #d7dbe2・補助文 #555e6c で、light の実行と同じ標準 Light の値だった。dark の実行では mermaid が暗い側で描かれ、コードは単色 (印刷の on-dark 規則) になっており、暗い経路を通ったうえで紙が明るいままであることを示す。measure-paper.mjs は両方とも全項目通過 (14 ページ、文字高 18.55 / 基準 18.56)。
+- 試験ブランチの unattended/run.ts は `data-theme` だけを置いていたため、`--theme dark` が明暗属性に届かず、紙の検査の dark 側が暗い経路を通らなくなっていた。TASK-40.1 で applyTheme を通すよう直した。
+- 試験として Done にする (TASK-40.1 の AC#1)。本適用は TASK-40 とその子タスクが引き受ける。
 <!-- SECTION:NOTES:END -->
