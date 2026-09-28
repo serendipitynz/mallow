@@ -55,7 +55,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   menus share: focus onto an item on open, arrows that wrap, Escape back to the
   trigger, Tab closing without pulling the focus back (snz-design doc-9 §6.11).
 - `hooks/useOutlineFocusReturn.ts` — where the focus goes when the outline
-  disappears while holding it: the toggle, or the selected view tab when the
+  disappears while holding it: the toggle, or the chosen view option when the
   toggle went too (snz-design doc-9 §6.3.1).
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
@@ -66,8 +66,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   ModeMenu (the light / dark value menu), `color` (choosing a colour axis and
   telling every window), SettingsModal, UpdateDialog (target version, consent,
   progress), ExplorerResizer (the split handle: drag, grab-and-place, and its
-  keys), ViewTabs (each viewer's view switch as a tab list, and the panel it
-  selects), Notice (a level notice — the failure level only, until TASK-40.5), Busy
+  keys), Segmented (a segmented control — each viewer's view switch), ViewPanel
+  (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
   (the turning figure beside its words), icons (inlined Lucide SVGs, no runtime
   dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
@@ -86,7 +86,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   that have one, and across windows), `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
-  a menu's focus), `tab-nav` (where a key moves a tab list's focus),
+  a menu's focus), `segmented-nav` (where a key moves a segmented control's focus),
   `explorer-toggle` (the `CmdOrCtrl+B` chord that shows and
   hides the explorer — no gate), `tree-nav` (the tree's shown rows, what a key does on one, and
   which row holds the tab stop), `explorer-width` (the explorer's width limits,
@@ -1601,7 +1601,7 @@ hold rather than as an exhaustive style guide.
   again when Rust raised the stamp — the listener and the emit are Tauri's),
   `outline-pref`
   (its cache and its notification), `color-choice` (each pre-split value read
-  onto the two axes, and the side a one-sided family draws), `menu-nav`, `tab-nav`, `tree-nav`,
+  onto the two axes, and the side a one-sided family draws), `menu-nav`, `segmented-nav`, `tree-nav`,
   `explorer-width`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the

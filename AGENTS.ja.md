@@ -54,7 +54,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   振る舞い。開いたら項目へ焦点を移す、矢印は端で回る、Escape でトリガーへ戻す、
   Tab は焦点を引き戻さずに閉じる（snz-design doc-9 §6.11）。
 - `hooks/useOutlineFocusReturn.ts` — 焦点を持ったままアウトラインが消えるときの
-  焦点の行き先。トリガーへ、トリガーも一緒に消えたなら選ばれた表示切替のタブへ
+  焦点の行き先。トリガーへ、トリガーも一緒に消えたなら表示切替の選ばれた選択肢へ
   （snz-design doc-9 §6.3.1）。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
@@ -65,7 +65,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   OpenWith、ModeMenu（明暗の値のメニュー）、`color`（配色の軸を選んで全ウィンドウへ
   伝える）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
   ExplorerResizer（分割つまみ。ドラッグ・押して掴み押して置く・キー操作）、
-  ViewTabs（各ビューアの表示切替をタブの組にしたものと、それが選ぶ面）、
+  Segmented（セグメント。各ビューアの表示切替）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
@@ -84,7 +84,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
   `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
-  メニューの焦点をどこへ移すか）、`tab-nav`（キーがタブの組の焦点をどこへ移すか）、
+  メニューの焦点をどこへ移すか）、`segmented-nav`（キーがセグメントの焦点をどこへ移すか）、
   `explorer-toggle`（エクスプローラを出し入れする
   `CmdOrCtrl+B` の chord。ゲートなし）、`tree-nav`（ツリーに出ている行・行の上でキーが
   何をするか・Tab の止まりになる行）、`explorer-width`（エクスプローラの幅の上下限・
@@ -1433,7 +1433,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `outline-pref`＝キャッシュと通知・
   `color-choice`＝分割前の各保存値の 2 軸への読み替えと、片側だけの系統が描く側・
   `menu-nav`・
-  `tab-nav`・
+  `segmented-nav`・
   `tree-nav`・
   `explorer-width`・
   `custom-emoji`＝Tauri 層を
