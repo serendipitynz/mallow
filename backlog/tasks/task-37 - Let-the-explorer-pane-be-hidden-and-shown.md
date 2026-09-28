@@ -1,10 +1,10 @@
 ---
 id: TASK-37
 title: Let the explorer pane be hidden and shown
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-16 00:39'
-updated_date: '2026-09-28 09:43'
+updated_date: '2026-09-28 10:06'
 labels:
   - feature
 milestone: m-4
@@ -98,4 +98,12 @@ measured against the same fixture as TASK-35 rather than on its own.
 - WKWebView の実窓: View メニューの見え方と、⌘B がメニューの key equivalent として1回だけ効くこと (macOS はメニューが先に取るので keydown の handler は発火しない想定)。
 - Linux で、GTK のアクセラレータと keydown の handler が1回の押下で両方動かないこと。出し入れは2回動くと元に戻るので、二重なら「何も起きない」に見える。GTK は窓のアクセラレータを焦点の widget より先に処理して止めるので起きない想定だが、測っていない。
 - Windows (WebView2): メニューのアクセラレータが届かないのは既知 (lib/close-window) で、keydown の handler が動く想定。
+
+## レビューと実窓の確認 (2026-09-28)
+- 外部レビュー (Codex CLI, gpt-6-astra) 1回目の2件を df2d688 で直した。
+  - [P2] 左側のエクスプローラを隠すと Viewer が本文の3番目の子から1番目の子へ移り、React が作り直していた。ソース / プレビューの選択・スクロール位置・再生中の動画が失われる。隠している間はエクスプローラとつまみの枠を空で残し、Viewer の位置を保つ形にした。ヘッドレス Chrome で、出し入れの前後で Viewer の DOM 要素が同じまま (左右とも) で、スクロール位置 300px も残ることを確かめた。
+  - [P3] つまみに焦点があるときと、他の窓からの変更で隠れるときに、焦点がトリガーへ移っていなかった。受け渡しを保存しない側の applyExplorerShown に移し、つまみも対象にした。受け取った窓は commit_setting を送らない。
+  - 2回目で指摘なし、bot が df2d688 を APPROVE。
+- 実窓 (WKWebView, `pnpm tauri dev`) の確認: オーナーが OK。確かめたのは、View メニューが出て ⌘B で1回だけ切り替わること、右側に置いたときにボタンがツールバーの右端へ移ること、ソース表示のまま出し入れしても表示が保たれること。
+- マージ: #68 (5fb2cda)。Linux での二重の発火と Windows は引き続き未測定。
 <!-- SECTION:NOTES:END -->
