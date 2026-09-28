@@ -304,6 +304,38 @@ export function CircleXIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** lucide: triangle-alert (the warning level of a notice) */
+export function TriangleAlertIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </Icon>
+  );
+}
+
+/** lucide: ban (the degraded level of a notice) */
+export function BanIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m4.9 4.9 14.2 14.2" />
+    </Icon>
+  );
+}
+
+/** lucide: info (the information level of a notice) */
+export function InfoIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </Icon>
+  );
+}
+
 /** lucide: loader-circle (work in progress) */
 export function LoaderCircleIcon({ size = 16 }: IconProps) {
   return (
