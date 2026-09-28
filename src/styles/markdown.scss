@@ -39,7 +39,12 @@
   z-index: 5;
   padding-top: $doc-pad-top;
   padding-bottom: 12px;
-  background: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  // Opaque enough that the tabs' and buttons' figures and the selected band keep
+  // 3:1 in all four shared schemes even when pure white or pure black scrolls
+  // under — a rendered HTML page's white frame under a dark bar is the real case.
+  // 72% fell to 2.06:1 in Solarized Dark; 85% is the edge at 3.09, and 88%
+  // leaves 3.39 (snz-design doc-5 §3.2).
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
@@ -47,6 +52,57 @@
 .doc-outline-toggle[aria-expanded='true'] {
   color: $teal-dark;
   border-color: $teal;
+}
+
+// 4px rather than the 3px band a selected row takes: under a tab it reads as an
+// underline, and at 3px that underline looks too thin (snz-design doc-9 §6.7).
+$tab-band: 4px;
+
+// The selected tab is told by the band and a stronger figure together, not by
+// a face (snz-design doc-9 §6.7).
+.view-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: var(--snz-border-line) solid $control-border;
+}
+
+.view-tabs__tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  // Over the group's rule, so the selected tab's band covers it.
+  margin-bottom: calc(-1 * var(--snz-border-line));
+  padding: 0;
+  color: $figure;
+  background: none;
+  border: 0;
+  border-radius: $radius-control $radius-control 0 0;
+  cursor: pointer;
+
+  &:hover {
+    color: $ink;
+    background: $hover-bg;
+  }
+
+  &:active {
+    color: $ink;
+    background: $pressed-bg;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &[aria-selected='true'] {
+    color: var(--color-ink-strong);
+    box-shadow: inset 0 (-$tab-band) 0 var(--color-selected);
+  }
+}
+
+.view-panel:focus-visible {
+  @include focus-ring;
 }
 
 .doc-error {
