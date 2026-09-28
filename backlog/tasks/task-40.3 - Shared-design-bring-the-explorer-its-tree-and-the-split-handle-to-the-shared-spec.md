@@ -3,10 +3,10 @@ id: TASK-40.3
 title: >-
   Shared design: bring the explorer, its tree and the split handle to the shared
   spec
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-28 03:58'
-updated_date: '2026-09-28 08:59'
+updated_date: '2026-09-28 09:18'
 labels:
   - design
 milestone: m-4
@@ -38,7 +38,7 @@ snz-design references: doc-9 §6.1.1 (tree), §6.3 (panel), §6.8 (navigation; t
 - [x] #2 Selection, hover, loading, empty and failure in the tree follow doc-9 §6.1.1, and a failure to read children carries the failure-level icon (doc-9 §6.4)
 - [x] #3 The empty window and the recent-folder list follow doc-9 §6.8 and §5.4
 - [x] #4 The explorer's width can be changed without dragging: from the keyboard on the focused handle, and with a single-pointer alternative (doc-5 §4.1)
-- [ ] #5 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
+- [x] #5 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
 - [x] #6 pnpm test, pnpm lint and pnpm build pass
 <!-- AC:END -->
 
@@ -97,4 +97,9 @@ snz-design references: doc-9 §6.1.1 (tree), §6.3 (panel), §6.8 (navigation; t
 - VoiceOver での読み上げ (aria-owns で子の域が親の子として読まれるか、つまみの値の読み上げ)。
 - Dracula / Nord の比 (doc-7 §6.3 で対象外)。新しく足した --color-selected / danger-soft / on-danger-soft の値は目で選んだだけ。
 - Windows (WebView2)・Linux (WebKitGTK) での見え方。
+
+## レビューと実窓の確認 (2026-09-28)
+- 外部レビュー (Codex CLI, gpt-6-astra) 1回目の [P2]: 一度読めたフォルダが更新で読み込みに失敗すると、子の一覧が残っているため開き直しても読み直さず、告知の「閉じて開き直すと読み込み直します」が成り立たなかった。26a6751 で、開くときは直前の読み込みが失敗していれば読み直すようにした (lib/tree-nav の readsOnOpen。前に読めていた子は再試行の間も残す)。テスト2件を足し、pnpm test は 430 件。2回目で指摘なし、bot が 26a6751 を APPROVE。
+- AC#5 の実窓 (WKWebView) の確認: オーナーが実機で確認し OK (2026-09-28)。
+- マージ: #67 (3b6c2c7)。
 <!-- SECTION:NOTES:END -->
