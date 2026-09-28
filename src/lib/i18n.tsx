@@ -56,6 +56,8 @@ const ja: Dict = {
   recentNewWindowHint: '{modifier} を押しながらクリックすると別のウィンドウで開きます。',
   recentFolderGone: 'フォルダが見つかりません: {folder}',
   recentFolderUnlisted: '最近開いたフォルダの一覧から外れています: {folder}',
+  treeReadFailed: 'このフォルダを読み込めませんでした（{error}）。閉じて開き直すと読み込み直します。',
+  folderReadFailed: 'フォルダを読み込めませんでした（{error}）。フォルダを開き直してください。',
   'noticeLevel.failure': '失敗',
   dismiss: '閉じる',
   // viewer
@@ -185,6 +187,8 @@ const en: Dict = {
   recentNewWindowHint: 'Hold {modifier} and click to open in another window.',
   recentFolderGone: 'That folder is no longer there: {folder}',
   recentFolderUnlisted: 'That folder is no longer in the recent list: {folder}',
+  treeReadFailed: "Couldn't read this folder ({error}). Close it and open it again to retry.",
+  folderReadFailed: "Couldn't read the folder ({error}). Open the folder again.",
   'noticeLevel.failure': 'Failure',
   dismiss: 'Dismiss',
   // viewer
