@@ -17,7 +17,7 @@
   color: $ink;
   background: var(--color-attention-bg);
   border: 1px solid $border;
-  border-radius: 8px;
+  border-radius: $radius-surface;
 }
 
 .tbl-empty {
@@ -32,7 +32,7 @@
   line-height: 1.5;
   background: $surface;
   border: 1px solid $border;
-  border-radius: 8px;
+  border-radius: $radius-surface;
 
   th,
   td {

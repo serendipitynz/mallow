@@ -84,7 +84,7 @@
   padding: 4px;
   background: $surface-raised;
   border: 1px solid $border;
-  border-radius: 8px;
+  border-radius: $radius-surface;
   box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
 }
 
@@ -100,11 +100,19 @@
   text-align: left;
   background: none;
   border: 0;
-  border-radius: 5px;
+  border-radius: $radius-control;
   cursor: pointer;
 
   &:hover {
-    background: var(--color-hover-bg);
+    background: $hover-bg;
+  }
+
+  &:active {
+    background: $pressed-bg;
+  }
+
+  &:focus-visible {
+    @include focus-ring(true);
   }
 
   &.is-active {
@@ -178,18 +186,22 @@
   font-size: 12px;
   color: $muted;
   background: none;
-  border: 1px solid $border;
-  border-radius: 5px;
+  border: 1px solid $control-border;
+  border-radius: $radius-control;
   cursor: pointer;
 
   &:hover {
     color: $ink;
-    border-color: $border-strong;
+    background: $hover-bg;
+  }
+
+  &:active {
+    color: $ink;
+    background: $pressed-bg;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: 1px;
+    @include focus-ring;
   }
 }
 
@@ -226,16 +238,19 @@
   color: $ink;
   background: none;
   border: 0;
-  border-radius: 5px;
+  border-radius: $radius-control;
   cursor: pointer;
 
   &:hover {
-    background: var(--color-hover-bg);
+    background: $hover-bg;
+  }
+
+  &:active {
+    background: $pressed-bg;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: -2px;
+    @include focus-ring(true);
   }
 }
 
@@ -338,7 +353,7 @@
   text-overflow: ellipsis;
 
   &:hover {
-    background: var(--color-hover-bg);
+    background: $hover-bg;
   }
 
   &.is-selected {
@@ -348,8 +363,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: -2px;
+    @include focus-ring(true);
   }
 }
 
@@ -432,9 +446,12 @@
   border: 0;
   z-index: 2;
 
+  // The control line rather than the focus colour: the handle takes no
+  // keyboard focus, and since the focus colour became a solid accent a hover
+  // painted in it would read as focus.
   &:hover,
   &.is-dragging {
-    background: var(--color-focus-ring);
+    background: $control-border;
   }
 }
 
@@ -546,7 +563,7 @@
   overflow: auto;
   background: $surface-raised;
   border: 1px solid $border;
-  border-radius: 12px;
+  border-radius: $radius-surface;
   box-shadow: 0 16px 48px rgb(0 0 0 / 32%);
 }
 
@@ -611,7 +628,7 @@
   word-break: break-all;
   background: $surface;
   border: 1px solid $border;
-  border-radius: 6px;
+  border-radius: $radius-control;
 }
 
 // ---- Update dialog ----------------------------------------------------------
@@ -649,7 +666,7 @@
   word-break: break-word;
   background: $surface;
   border: 1px solid $border;
-  border-radius: 6px;
+  border-radius: $radius-control;
 }
 
 // The plugin's own failure text. Kept, unparsed, because it is the only

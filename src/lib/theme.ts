@@ -42,9 +42,32 @@ export function resolveTheme(): Resolved {
   return MODE[id];
 }
 
+/** The family each theme id belongs to on the snz-design colour axes. The
+ *  Standard and Solarized ids draw from the shared tokens; Dracula and Nord
+ *  name themselves so no shared block matches them. */
+const FAMILY: Record<ThemeId, string> = {
+  light: 'standard',
+  dark: 'standard',
+  auto: 'standard',
+  'solarized-light': 'solarized',
+  'solarized-dark': 'solarized',
+  dracula: 'dracula',
+  nord: 'nord',
+};
+
+/** Puts the resolved colour axes on `<html>` (snz-design doc-10 §4): the mode is
+ *  light or dark only, never auto, so nothing downstream re-derives it from the
+ *  OS. The same rule runs in index.html before first paint. */
+function applyColorAttributes(): void {
+  const root = document.documentElement;
+  root.dataset.colorFamily = FAMILY[getTheme()];
+  root.dataset.colorMode = resolveTheme();
+}
+
 let lastResolved: Resolved = resolveTheme();
 
 function notify(): void {
+  applyColorAttributes();
   const resolved = resolveTheme();
   if (resolved === lastResolved) {
     return;

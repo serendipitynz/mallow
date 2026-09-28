@@ -1,52 +1,21 @@
 @use './vars' as *;
 
 // ---- Theme palette ----------------------------------------------------------
-// Light is the default; dark is applied when forced via `data-theme="dark"` or
-// when following the OS while in auto / unset. The inline bootstrap in index.html
-// sets `data-theme` before first paint to avoid a flash.
+// Standard and Solarized come from the shared tokens and are selected by
+// `data-color-family` / `data-color-mode`, which the bootstrap in index.html
+// sets before first paint; `snz-tokens.css` also sets `color-scheme` from the
+// mode. Dracula and Nord keep their own literal palettes, keyed on the theme id
+// as before.
 :root {
-  color-scheme: light;
-
-  @include theme-light;
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-
-  @include theme-dark;
-}
-
-:root[data-theme='solarized-light'] {
-  color-scheme: light;
-
-  @include theme-solarized-light;
-}
-
-:root[data-theme='solarized-dark'] {
-  color-scheme: dark;
-
-  @include theme-solarized-dark;
+  @include theme-shared;
 }
 
 :root[data-theme='dracula'] {
-  color-scheme: dark;
-
   @include theme-dracula;
 }
 
 :root[data-theme='nord'] {
-  color-scheme: dark;
-
   @include theme-nord;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme='auto'],
-  :root:not([data-theme]) {
-    color-scheme: dark;
-
-    @include theme-dark;
-  }
 }
 
 *,
@@ -78,7 +47,12 @@ a {
   color: $link;
 }
 
-// Shared button reset for the toolbar / tree controls.
+// Buttons (snz-design doc-8 §6.1). `.btn` is the normal variant; the primary
+// and danger variants change the surface and the ink as one pair, because a
+// hover that swapped only the surface would leave the ink on a ground it was
+// not chosen for (snz-design doc-8 §5.3). Hover and press move the surface and
+// nothing else: a pressed button that moved would slide out from under the
+// pointer.
 .btn {
   display: inline-flex;
   align-items: center;
@@ -88,24 +62,57 @@ a {
   font-size: 13px;
   color: $ink;
   background: $surface-raised;
-  border: 1px solid $border;
-  border-radius: 6px;
+  // The outline is what marks this as a control, so it takes the control line
+  // (3:1 against the surface) rather than the decorative `$border`.
+  border: 1px solid $control-border;
+  border-radius: $radius-control;
   cursor: pointer;
 
   &:hover {
-    border-color: $border-strong;
-    background: var(--color-hover-bg);
+    background: $hover-bg;
+  }
+
+  &:active {
+    background: $pressed-bg;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: 1px;
+    @include focus-ring;
   }
 
   &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    @include disabled-control;
+
+    background: $surface-raised;
   }
+}
+
+.btn--primary {
+  color: $on-accent;
+  background: $teal;
+  border-color: $teal;
+
+  &:hover {
+    background: $teal-dark;
+    border-color: $teal-dark;
+  }
+
+  &:active {
+    background: $accent-pressed;
+    border-color: $accent-pressed;
+  }
+
+  &:disabled {
+    background: $teal;
+    border-color: $teal;
+  }
+}
+
+// The surface stays the normal one: a filled danger button would look like the
+// error bands, which report rather than act (snz-design doc-8 §6.1).
+.btn--danger {
+  color: $danger;
+  border-color: $danger;
 }
 
 .icon-btn {
@@ -118,22 +125,31 @@ a {
   color: $muted;
   background: none;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: $radius-control;
   cursor: pointer;
 
   &:hover {
     color: $ink;
-    background: var(--color-hover-bg);
+    background: $hover-bg;
+  }
+
+  &:active {
+    color: $ink;
+    background: $pressed-bg;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus-ring);
-    outline-offset: 1px;
+    @include focus-ring;
   }
 
+  // It has no outline to break into dashes at rest, so the disabled state
+  // gives it one.
   &:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
+    @include disabled-control;
+
+    color: $muted;
+    background: none;
+    border-color: $control-border;
   }
 }
 

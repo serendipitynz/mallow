@@ -87,8 +87,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `unattended/` — 無人書き出しのドライバ（TASK-30）。`App` の `if (UNATTENDED)` からしか
   到達せず、通常のバンドルには入らない。
-- `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin）、`global`、`app`、
-  `markdown`、`config`、`source`、`html`、`table`、`xml`。
+- `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin + 操作部品の状態の mixin）、
+  `global`、`app`、`markdown`、`config`、`source`、`html`、`table`、`xml`、`print`。
+  ほかに共通トークンの写し `snz-tokens.css` と `_snz-tokens.scss` を置く（下の
+  「共通デザイン」を参照）。
 
 **バックエンド (`src-tauri/src/`)**
 - `commands.rs` — `read_dir_tree` / `read_file` / `path_exists` / `allow_media_dir`
@@ -219,11 +221,41 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - SCSS のみ。Tailwind は決して導入しない。
 - `src-tauri/target` はコミットしない（ビルド成果物・git 無視済み）。
 - mallow は独立プロジェクトとして扱う。コード/コメント/ドキュメントに外部プロジェクトを
-  「由来」として記述しない。
+  「由来」として記述しない。共通デザインの仕様 snz-design（`serendipitynz/snz-design`、
+  同じ GitHub organization）はこの外部プロジェクトに当たらない。コード・コメント・
+  ドキュメントで snz-design を名指しし、その文書を引いてよい。
 - production 依存の追加前に確認する。
 - 第三者ライセンス通知（`THIRD-PARTY-NOTICES.md`）は `pnpm notices`
   （`scripts/gen-third-party-notices.mjs`）で生成し、`bundle.resources` でアプリに
   同梱する。依存を変更したら再生成する。
+
+### 共通デザイン（snz-design）
+
+mallow の配色・操作部品の状態・部品の振る舞いは、serendipitynz のアプリ共通の
+デザイン仕様 **snz-design** に従う。snz-design はこのリポジトリと並べて
+`../snz-design` に置く。以下のコマンドはこの配置を前提にしている。
+
+- **画面を作る・直す前に、snz-design の doc-16**（Web 系 4 アプリへの適用ガイド。
+  mallow は §7.2）**と、snz-design にある mallow の適用記録**
+  （「mallowの共通デザイン適用記録」）**を読む。** 適用記録は、どの画面のどの部品が
+  仕様どおりか、どれが意図的な例外か、どれが未適用かを持つ。仕様そのものは doc-8
+  （基本部品）と doc-9（複合部品）にあり、doc-16 は読む順を示すだけで書き写さない。
+- **写しは手で直さない**: `src/styles/snz-tokens.css`（`--snz-*` の CSS 変数。
+  `main.tsx` で最初に読み込む）と `src/styles/_snz-tokens.scss`（同じ色の Sass の値。
+  `var()` だと画面の配色に従ってしまうため、印刷の配色がこちらを使う）。1 行目は
+  `vendor.mjs verify` が読む版の表示なので、上にコメントを 1 行足すだけでも照合が
+  落ちる。更新はリリース済みの版から、写しだけの commit で行う:
+  `node ../snz-design/tokens/vendor.mjs copy <版> <名前> src/styles/<名前>` のあと
+  `node ../snz-design/tokens/vendor.mjs verify src/styles/snz-tokens.css
+  src/styles/_snz-tokens.scss`。先に `../snz-design/tokens/CHANGELOG.md` で、2 つの
+  版の間の利用側の作業を読む。どちらも Biome の対象外なので、整形で書き換わらない。
+- **mallow が持つ値は mallow のファイルに置く**: Dracula と Nord のパレット、各
+  `--color-*` 変数をどの共通の役割に当てるかの対応（`_vars.scss` の `$shared-roles`）。
+- **コメントで仕様を引くときは `snz-design doc-N §X` の形にし**、仕様を言い換えず
+  理由を 1 行で指す。
+- 共通デザインの作業は mallow の台帳（TASK-40 とその子タスク）で追い、snz-design の
+  側は適用記録で追う。mallow のタスクが Done になっても、適用記録は自動では
+  更新されない。
 
 ### lint とフォーマット
 
@@ -634,8 +666,13 @@ Comments と Functions の規約は機械的に検査されない。コメント
   のは**名前**だけで、名前はアプリ側が組み立てた表のキーである時しかマッチせず、URL は
   文書由来にならない。フォルダには別途 `allow_media_dir` の許可が必要。
 - テーマ = `data-theme` 属性 + CSS 変数パレット（瞬時切替・非 React の描画 HTML にも適用）。
-  7 種類。ダークパレットを追加する際は `_vars.scss` の `on-dark` mixin と `global.scss`
-  の適用にも追加すること。
+  7 種類。**保存されたテーマ ID は読むだけで書き換えない**: `index.html`（最初の描画の前）
+  と `lib/theme`（`applyColorAttributes`）の両方が、そこから `data-color-family` と解決
+  済みの `data-color-mode`（light か dark。auto は入れない）を求める。この規則の 2 つの
+  写しは一緒に直す。Standard と Solarized はこの 2 属性で共通トークンを描き、Dracula と
+  Nord は `data-theme` に紐づく直書きのパレットを持つ。`on-dark` は
+  `data-color-mode='dark'` を見るので、暗いパレットを足すときは規則の 2 つの写しに
+  その明暗を足し、`global.scss` にブロックを足す。
 - i18n は `lib/i18n.tsx` の自作辞書（ライブラリ不使用）。UI 文言は `useT()` /
   `t(key, params)` 経由にし、キーは `ja` と `en` の**両方**の辞書に追加する。言語は
   localStorage → OS ロケール → 日本語 の順で決定。

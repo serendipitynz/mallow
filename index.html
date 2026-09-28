@@ -6,13 +6,33 @@
     <title>mallow</title>
     <script>
       // Apply the saved theme before first paint to avoid a flash of the wrong one.
+      // The two colour attributes are derived here as well as in `lib/theme`
+      // (`applyColorAttributes`), because this runs before any module is loaded;
+      // keep the two in step.
       (function () {
+        var t = null;
         try {
-          var t = localStorage.getItem('theme');
+          t = localStorage.getItem('theme');
           if (t) document.documentElement.dataset.theme = t;
         } catch (e) {
           /* private mode / disabled storage: fall back to auto */
         }
+        var family = 'standard';
+        var mode = null;
+        if (t === 'light' || t === 'dark') {
+          mode = t;
+        } else if (t === 'solarized-light' || t === 'solarized-dark') {
+          family = 'solarized';
+          mode = t === 'solarized-light' ? 'light' : 'dark';
+        } else if (t === 'dracula' || t === 'nord') {
+          family = t;
+          mode = 'dark';
+        }
+        if (mode === null) {
+          mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.colorFamily = family;
+        document.documentElement.dataset.colorMode = mode;
       })();
     </script>
   </head>

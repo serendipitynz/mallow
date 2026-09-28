@@ -95,7 +95,7 @@ export function UpdateDialog({ flow, runningVersion, onConfirm, onDismiss }: Upd
             <>
               <p className="settings-group__hint">{t('updateAuthNotice')}</p>
               <div className="seg">
-                <button type="button" className="btn is-active" onClick={onConfirm}>
+                <button type="button" className="btn btn--primary" onClick={onConfirm}>
                   {t('updateInstallNow')}
                 </button>
                 <button type="button" className="btn" onClick={onDismiss}>

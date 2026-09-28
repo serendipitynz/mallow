@@ -289,9 +289,9 @@
     height: 32px;
     padding: 0;
     color: $muted;
-    background: $surface;
-    border: 1px solid $border;
-    border-radius: 6px;
+    background: $surface-raised;
+    border: 1px solid $control-border;
+    border-radius: $radius-control;
     cursor: pointer;
     transition:
       color 0.15s ease,
@@ -304,13 +304,16 @@
 
     &:hover {
       color: $ink;
-      border-color: $border-strong;
-      background: $surface-raised;
+      background: $hover-bg;
+    }
+
+    &:active {
+      color: $ink;
+      background: $pressed-bg;
     }
 
     &:focus-visible {
-      outline: 2px solid $link;
-      outline-offset: 1px;
+      @include focus-ring;
     }
 
     &.is-copied {
@@ -516,9 +519,9 @@
     font-weight: 600;
     line-height: 1.2;
     color: $muted;
-    background: $surface;
-    border: 1px solid $border;
-    border-radius: 6px;
+    background: $surface-raised;
+    border: 1px solid $control-border;
+    border-radius: $radius-control;
     cursor: pointer;
     transition:
       color 0.15s ease,
@@ -527,13 +530,16 @@
 
     &:hover {
       color: $ink;
-      border-color: $border-strong;
-      background: $surface-raised;
+      background: $hover-bg;
+    }
+
+    &:active {
+      color: $ink;
+      background: $pressed-bg;
     }
 
     &:focus-visible {
-      outline: 2px solid $link;
-      outline-offset: 1px;
+      @include focus-ring;
     }
 
     &.is-copied {
@@ -622,8 +628,7 @@ $outline-breakpoint: 1024px;
   }
 
   &:focus-visible {
-    outline: 2px solid $link;
-    outline-offset: -2px;
+    @include focus-ring(true);
   }
 }
 

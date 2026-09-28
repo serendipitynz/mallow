@@ -4,6 +4,11 @@
 // runtime / by OS setting. The SCSS aliases below are thin wrappers over those
 // variables, so `color: $ink` keeps working and follows the active theme.
 
+@use 'sass:map';
+// Named in full: `snz-tokens.css` sits beside it, and the bare name resolved to
+// that plain-CSS copy, which carries no Sass variables.
+@use './_snz-tokens.scss' as snz;
+
 // ---- Themeable color tokens (alias the CSS variables) -----------------------
 $teal: var(--color-teal);
 $teal-dark: var(--color-teal-dark);
@@ -23,113 +28,95 @@ $surface: var(--color-surface);
 $surface-raised: var(--color-surface-raised);
 $success: var(--color-success);
 $danger: var(--color-danger);
+$on-accent: var(--color-on-accent);
+$accent-pressed: var(--color-accent-pressed);
+$hover-bg: var(--color-hover-bg);
+$pressed-bg: var(--color-pressed-bg);
 
-// ---- Light / dark palettes --------------------------------------------------
-@mixin theme-light {
-  --color-bg: #fff;
-  --color-surface: #f6f8fa;
-  --color-surface-raised: #fff;
-  --color-sidebar-bg: #f6f8fa;
-  --color-ink: #1f2933;
-  --color-muted: #6b7280;
-  --color-faint: #9aa3ad;
-  --color-link: #2563eb;
-  --color-border: #d0d7de;
-  --color-border-strong: #afb8c1;
-  --color-control-border: #6b7280;
-  --color-teal: #2e8c8c;
-  --color-teal-dark: #246f6f;
-  --color-orange: #f5a623;
-  --color-success: #1a7f37;
-  --color-danger: #cf222e;
-  --color-selection-bg: rgb(46 140 140 / 12%);
-  --color-hover-bg: rgb(31 41 51 / 5%);
-  --color-code-inline-bg: rgb(175 184 193 / 20%);
-  --color-focus-ring: rgb(46 140 140 / 25%);
-  --color-attention-bg: #fff8c5;
-  --color-attention-fg: #9a6700;
-  --color-attention-border: rgb(212 167 44 / 40%);
+// ---- Control shape and states -----------------------------------------------
+$radius-control: var(--snz-radius-sm);
+$radius-surface: var(--snz-radius-md);
+
+// Keyboard focus is an outline added outside the control, never a recoloured
+// border: against the control's own line a recoloured border stays under 3:1
+// (snz-design doc-8 §5.1). `$inside` is for rows that fill a scrolling box,
+// which would clip an outline drawn outside them (snz-design doc-16 §6.3).
+@mixin focus-ring($inside: false) {
+  outline: var(--snz-border-focus) solid var(--color-focus-ring);
+
+  @if $inside {
+    outline-offset: calc(-1 * var(--snz-border-focus));
+  } @else {
+    outline-offset: var(--snz-border-focus-offset);
+  }
 }
 
-@mixin theme-dark {
-  --color-bg: #0d1117;
-  --color-surface: #161b22;
-  --color-surface-raised: #21262d;
-  --color-sidebar-bg: #0d1117;
-  --color-ink: #e6edf3;
-  --color-muted: #8b949e;
-  --color-faint: #6e7681;
-  --color-link: #58a6ff;
-  --color-border: #30363d;
-  --color-border-strong: #484f58;
-  --color-control-border: #8b949e;
-  --color-teal: #2e9d9d;
-  --color-teal-dark: #257f7f;
-  --color-orange: #e3a008;
-  --color-success: #3fb950;
-  --color-danger: #f85149;
-  --color-selection-bg: rgb(46 157 157 / 18%);
-  --color-hover-bg: rgb(230 237 243 / 6%);
-  --color-code-inline-bg: rgb(110 118 129 / 40%);
-  --color-focus-ring: rgb(46 157 157 / 45%);
-  --color-attention-bg: rgb(187 128 9 / 15%);
-  --color-attention-fg: #d29922;
-  --color-attention-border: rgb(187 128 9 / 40%);
+// Disabled is told by shape as well as by fading, and the cursor stays the
+// plain arrow (snz-design doc-8 §5.4).
+@mixin disabled-control {
+  opacity: var(--snz-opacity-disabled);
+  border-style: var(--snz-border-disabled-style);
+  cursor: default;
+}
+
+// ---- Standard / Solarized: the shared tokens --------------------------------
+// The four shared schemes (Standard and Solarized, light and dark) come from
+// `snz-tokens.css`, which switches on the `data-color-family` /
+// `data-color-mode` attributes `lib/theme` puts on `<html>`. Every value is a
+// `var()`, so one mixin serves all four: which scheme is drawn is decided by
+// the attributes, not by the selector that includes it.
+//
+// Each palette variable names the role it takes (snz-design doc-16 §7.2). One
+// map feeds both the screen and the paper, so the two cannot map a variable to
+// different roles. `teal` and `orange` are quoted because Sass reads those bare
+// names as colours and warns when they are interpolated into a property name.
+$shared-roles: (
+  bg: surface,
+  surface: surface-alt,
+  surface-raised: surface,
+  sidebar-bg: canvas,
+  ink: fg,
+  muted: fg-muted,
+  faint: fg-faint,
+  link: accent,
+  border: line-divider,
+  border-strong: line-control,
+  control-border: line-control,
+  'teal': accent,
+  teal-dark: accent-hover,
+  accent-pressed: accent-pressed,
+  on-accent: on-accent,
+  'orange': warn,
+  success: success,
+  danger: danger,
+  selection-bg: surface-selected,
+  hover-bg: surface-hover,
+  pressed-bg: surface-pressed,
+  code-inline-bg: surface-alt,
+  focus-ring: focus,
+  attention-bg: warn-soft,
+  attention-fg: on-warn-soft,
+  attention-border: warn,
+);
+
+@mixin theme-shared {
+  @each $name, $role in $shared-roles {
+    --color-#{$name}: var(--snz-#{$role});
+  }
+}
+
+// Paper is Standard Light whatever is on screen (`print.scss`), so it takes the
+// compile-time values: a `var()` would resolve to the on-screen scheme and
+// print a dark theme dark (snz-design doc-16 §6.1).
+@mixin theme-print {
+  $light: map.get(snz.$snz-colors, 'standard', 'light');
+
+  @each $name, $role in $shared-roles {
+    --color-#{$name}: #{map.get($light, $role)};
+  }
 }
 
 // ---- Extra palettes ---------------------------------------------------------
-@mixin theme-solarized-light {
-  --color-bg: #fdf6e3;
-  --color-surface: #eee8d5;
-  --color-surface-raised: #fdf6e3;
-  --color-sidebar-bg: #eee8d5;
-  --color-ink: #586e75;
-  --color-muted: #93a1a1;
-  --color-faint: #a9b6b6;
-  --color-link: #268bd2;
-  --color-border: #ded8c3;
-  --color-border-strong: #c8c2ad;
-  --color-control-border: #657b83;
-  --color-teal: #2aa198;
-  --color-teal-dark: #1f7a73;
-  --color-orange: #cb4b16;
-  --color-success: #859900;
-  --color-danger: #dc322f;
-  --color-selection-bg: rgb(42 161 152 / 14%);
-  --color-hover-bg: rgb(88 110 117 / 7%);
-  --color-code-inline-bg: rgb(147 161 161 / 22%);
-  --color-focus-ring: rgb(38 139 210 / 30%);
-  --color-attention-bg: #fbf3d0;
-  --color-attention-fg: #b58900;
-  --color-attention-border: rgb(181 137 0 / 40%);
-}
-
-@mixin theme-solarized-dark {
-  --color-bg: #002b36;
-  --color-surface: #073642;
-  --color-surface-raised: #0a4a5a;
-  --color-sidebar-bg: #002b36;
-  --color-ink: #93a1a1;
-  --color-muted: #768d8d;
-  --color-faint: #586e75;
-  --color-link: #268bd2;
-  --color-border: #0e4b59;
-  --color-border-strong: #16627a;
-  --color-control-border: #768d8d;
-  --color-teal: #2aa198;
-  --color-teal-dark: #34c0b5;
-  --color-orange: #cb4b16;
-  --color-success: #859900;
-  --color-danger: #dc322f;
-  --color-selection-bg: rgb(42 161 152 / 18%);
-  --color-hover-bg: rgb(147 161 161 / 8%);
-  --color-code-inline-bg: rgb(88 110 117 / 35%);
-  --color-focus-ring: rgb(38 139 210 / 45%);
-  --color-attention-bg: rgb(181 137 0 / 15%);
-  --color-attention-fg: #b58900;
-  --color-attention-border: rgb(181 137 0 / 40%);
-}
-
 @mixin theme-dracula {
   --color-bg: #282a36;
   --color-surface: #21222c;
@@ -144,11 +131,14 @@ $danger: var(--color-danger);
   --color-control-border: #9aa0c0;
   --color-teal: #50fa7b;
   --color-teal-dark: #69ff96;
+  --color-accent-pressed: #8affb0;
+  --color-on-accent: #282a36;
   --color-orange: #ffb86c;
   --color-success: #50fa7b;
   --color-danger: #ff5555;
   --color-selection-bg: rgb(139 233 253 / 16%);
   --color-hover-bg: rgb(248 248 242 / 6%);
+  --color-pressed-bg: rgb(248 248 242 / 11%);
   --color-code-inline-bg: rgb(98 114 164 / 35%);
   --color-focus-ring: rgb(139 233 253 / 40%);
   --color-attention-bg: rgb(255 184 108 / 15%);
@@ -170,11 +160,14 @@ $danger: var(--color-danger);
   --color-control-border: #9aa6bd;
   --color-teal: #8fbcbb;
   --color-teal-dark: #a3d0cf;
+  --color-accent-pressed: #b8e0df;
+  --color-on-accent: #2e3440;
   --color-orange: #d08770;
   --color-success: #a3be8c;
   --color-danger: #bf616a;
   --color-selection-bg: rgb(136 192 208 / 16%);
   --color-hover-bg: rgb(236 239 244 / 6%);
+  --color-pressed-bg: rgb(236 239 244 / 11%);
   --color-code-inline-bg: rgb(76 86 106 / 45%);
   --color-focus-ring: rgb(136 192 208 / 40%);
   --color-attention-bg: rgb(235 203 139 / 15%);
@@ -182,21 +175,12 @@ $danger: var(--color-danger);
   --color-attention-border: rgb(235 203 139 / 40%);
 }
 
-// Apply `@content` only when the document is effectively in dark mode — any of
-// the dark palettes, or the OS being dark while in auto / unset.
+// Apply `@content` only when the document is drawn dark. `data-color-mode` is
+// already resolved by `lib/theme` (never auto), and the dark-only palettes
+// (Dracula, Nord) set it to dark as well, so no media query is needed here.
 @mixin on-dark {
-  :root[data-theme='dark'] &,
-  :root[data-theme='solarized-dark'] &,
-  :root[data-theme='dracula'] &,
-  :root[data-theme='nord'] & {
+  :root[data-color-mode='dark'] & {
     @content;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root[data-theme='auto'] &,
-    :root:not([data-theme]) & {
-      @content;
-    }
   }
 }
 

@@ -14,7 +14,7 @@
  *  **It writes nothing a reader owns.** The settings store holds the restored
  *  session and the rest under the same identifier an installed mallow uses, so a
  *  run of this must not touch it: the document is opened directly rather than
- *  through `selectFile`, the theme is applied to `<html>` rather than through
+ *  through `selectFile`, the theme goes through `applyTheme` rather than
  *  `setTheme`, no watcher is started, and nothing reports what this window shows.
  *  An unattended build registers no session on the Rust side either.
  */
@@ -38,6 +38,7 @@ interface Request {
 export interface AppSeam {
   openTree: (dir: string) => Promise<void>;
   select: (entry: FileEntry) => void;
+  applyTheme: (theme: 'light' | 'dark') => void;
 }
 
 /** How long a document may take to settle before the run is called failed.
@@ -85,10 +86,12 @@ export async function runUnattendedExport(app: AppSeam): Promise<void> {
     return;
   }
 
-  // Applied to the element rather than through `lib/theme`, which persists to
-  // localStorage — shared with the installed app, so a measurement run would
-  // change the reader's theme.
-  document.documentElement.dataset.theme = request.theme;
+  // `applyTheme` rather than `setTheme`, which persists to localStorage —
+  // shared with the installed app, so a measurement run would change the
+  // reader's theme. Nor the bare `data-theme` attribute: the palette and the
+  // dark code swap follow the colour attributes derived from it, and setting it
+  // alone left a `--theme dark` run drawing whatever the stored theme resolved to.
+  app.applyTheme(request.theme);
 
   const problem = documentProblem(request.document, await pathExists(request.document));
   if (problem) {

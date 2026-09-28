@@ -125,11 +125,11 @@
     overflow-wrap: anywhere;
   }
 
-  // ---- 4. Paper is light on every palette -----------------------------------
-  // The selectors mirror the theme ones in `global.scss` at equal specificity,
-  // so being last in source order is what makes them win — including over the
-  // `prefers-color-scheme: dark` block, which `:root:not([data-theme])` is here
-  // to answer.
+  // ---- 4. Paper is Standard Light on every palette --------------------------
+  // The selectors match or outrank the theme ones in `global.scss` — the
+  // Dracula and Nord blocks included — so being last in source order is what
+  // makes them win. `theme-print` holds compile-time values, since the shared
+  // palette's `var()`s would follow the scheme on screen.
   //
   // Measured on macOS: a dark palette prints as faint text on white, because the
   // background is dropped and the palette's light ink then sits on an unprinted
@@ -139,7 +139,7 @@
   :root:not([data-theme]) {
     color-scheme: light;
 
-    @include theme-light;
+    @include theme-print;
   }
 
   body {
@@ -147,7 +147,7 @@
   }
 
   // Shiki's dark swap survives the palette override, because it is keyed on the
-  // theme attribute rather than on a colour token: `--shiki-dark` is emitted per
+  // `data-color-mode` attribute rather than on a colour token: `--shiki-dark` is emitted per
   // token as an inline custom property and applied with `!important`, which
   // beats the inline light colour beside it.
   //
@@ -167,7 +167,7 @@
   //
   // `on-dark` is included *inside* each rule rather than around them: used at
   // the top level its `&` has no parent, and Sass emits `:scope` in its place —
-  // `:root[data-theme='dark'] :scope .markdown-body …`, a `:root` nested under
+  // `:root[data-color-mode='dark'] :scope .markdown-body …`, a `:root` nested under
   // another element, which matches nothing. That compiles and ships silently.
   .markdown-body pre.shiki {
     @include on-dark {
