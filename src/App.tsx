@@ -777,8 +777,12 @@ export default function App() {
           be a menu choice made while a folder is open, which the explorer's empty
           state is not on screen for. */}
       {noticeFade.shown && (
-        <div className="app__notice" inert={noticeFade.leaving} onAnimationEnd={noticeFade.onAnimationEnd}>
-          <Notice level="info" onDismiss={dismissNotice} className={noticeFade.leaving ? 'is-leaving' : undefined}>
+        <div
+          className={noticeFade.leaving ? 'app__notice is-leaving' : 'app__notice'}
+          inert={noticeFade.leaving}
+          onAnimationEnd={noticeFade.onAnimationEnd}
+        >
+          <Notice level="info" onDismiss={dismissNotice}>
             {noticeFade.shown}
           </Notice>
         </div>
