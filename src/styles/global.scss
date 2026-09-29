@@ -310,7 +310,7 @@ $segmented-inset: calc(var(--snz-space-xs) / 2);
 // the viewers' bar must never stack. Unnamed, the query would answer to whatever
 // container is nearest, so one declared around the bar would stack it too
 // (snz-design doc-9 §6.12).
-@container segmented (max-width: 22rem) {
+@container segmented (max-inline-size: 22rem) {
   .segmented {
     grid-auto-flow: row;
     grid-auto-rows: 1fr;
