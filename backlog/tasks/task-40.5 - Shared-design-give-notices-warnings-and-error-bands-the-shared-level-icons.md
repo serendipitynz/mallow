@@ -1,10 +1,10 @@
 ---
 id: TASK-40.5
 title: 'Shared design: give notices, warnings and error bands the shared level icons'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-28 03:59'
-updated_date: '2026-09-28 22:40'
+updated_date: '2026-09-29 00:51'
 labels:
   - design
 milestone: m-4
@@ -38,7 +38,7 @@ snz-design references: doc-9 §6.4 (notices and their levels); doc-8 §6.7 (in p
 - [x] #1 Each notice, warning and error band carries the icon of its level from doc-9 §6.4, so its level is not told by colour alone
 - [x] #2 The notice bar keeps its close button and role=status, and the syntax error bands keep role=alert and stay undismissable (doc-9 §6.4)
 - [x] #3 The viewer's loading and failure placeholders follow doc-9 §6.4 and doc-8 §6.7
-- [ ] #4 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
+- [x] #4 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
 - [x] #5 pnpm test, pnpm lint and pnpm build pass
 <!-- AC:END -->
 
@@ -86,4 +86,6 @@ snz-design references: doc-9 §6.4 (notices and their levels); doc-8 §6.7 (in p
 
 ## 検証
 - `pnpm lint` / `pnpm build` / `pnpm test` (440 件) 通過。Rust の変更なし。
+
+AC #4: オーナーが実ウィンドウ (WKWebView) で目視確認済み (2026-09-29)。Nord のコントラスト未達 2 点 (案内の語 4.10:1、失敗の図形 2.55:1) は Nord の値そのものが原因で、この課題では動かさず記録のみ。
 <!-- SECTION:NOTES:END -->
