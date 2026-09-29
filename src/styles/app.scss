@@ -642,10 +642,15 @@
 }
 
 .modal {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 420px;
   max-height: 100%;
-  overflow: auto;
+  // The heading and the action area stay put and only the body scrolls, so
+  // the card itself must not scroll (snz-design doc-9 §6.6).
+  overflow: hidden;
+  outline: none;
   background: $surface-raised;
   border: 1px solid $border;
   border-radius: $radius-surface;
@@ -653,6 +658,7 @@
 }
 
 .modal__header {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -669,16 +675,45 @@
 }
 
 .modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
   padding: 18px 16px;
+  overflow: auto;
+  // Scrolling a focused control into view otherwise stops with its edge on the
+  // scrollport's, and the ring, which sits outside it, is cut off (snz-design
+  // doc-16 §6.3).
+  scroll-padding: calc(var(--snz-border-focus) + var(--snz-border-focus-offset));
+}
+
+// Right-aligned, cancel then execute in document order, and still right-aligned
+// when it wraps (snz-design doc-9 §6.6).
+.modal__actions {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid $border;
 }
 
 .settings-group {
+  // The segmented control stacks its options by the width of its nearest size
+  // container, so each group declares one: the modal's width is what runs out
+  // on a narrow window (snz-design doc-9 §6.12).
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  > .segmented,
+  > .settings-group__select {
+    align-self: flex-start;
+    max-width: 100%;
+  }
 }
 
 .settings-group__label {
@@ -817,15 +852,16 @@
   // An indeterminate bar has no value pseudo-element to paint, so with
   // `appearance: none` it is an empty track — which reads as a stalled transfer
   // rather than as a phase with no measurable extent. The sweep is on the track
-  // itself for that reason. Stilled under reduced motion, where a flat track is
-  // the lesser problem.
+  // itself for that reason. Slowed under reduced motion.
   &:indeterminate::-webkit-progress-bar {
     background: linear-gradient(90deg, $surface 25%, $teal 50%, $surface 75%);
     background-size: 250% 100%;
     animation: update-progress-sweep 1.4s linear infinite;
 
+    // Slowed rather than stilled: a stopped bar cannot be told from a stalled
+    // transfer (snz-design doc-8 §6.7.1).
     @media (prefers-reduced-motion: reduce) {
-      animation: none;
+      animation-duration: 5s;
     }
   }
 }

@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { type ReactNode, useId } from 'react';
 import { type TFn, useT } from '../lib/i18n';
 import { downloadPercent, formatBytes, type UpdateFlow } from '../lib/update-flow';
-import { CloseIcon } from './icons';
+import { Modal } from './Modal';
 
 interface UpdateDialogProps {
   flow: UpdateFlow;
@@ -31,19 +31,7 @@ function dialogTitle(flow: UpdateFlow, t: TFn): string {
 export function UpdateDialog({ flow, runningVersion, onConfirm, onDismiss }: UpdateDialogProps) {
   const t = useT();
   const dismissable = isDismissable(flow);
-
-  useEffect(() => {
-    if (!dismissable) {
-      return;
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onDismiss();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [dismissable, onDismiss]);
+  const reasonId = useId();
 
   if (flow.phase === 'none') {
     return null;
@@ -52,106 +40,103 @@ export function UpdateDialog({ flow, runningVersion, onConfirm, onDismiss }: Upd
   const title = dialogTitle(flow, t);
 
   return (
-    /* biome-ignore lint/a11y/noStaticElementInteractions: the overlay is a click-outside target,
-       not a control — the same pattern as the settings modal, and closing is also reachable by
-       Escape and by the close button whenever this dialog can be closed at all. */
-    <div
-      className="modal-overlay"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (dismissable && e.target === e.currentTarget) {
-          onDismiss();
-        }
-      }}
+    <Modal
+      title={title}
+      onClose={onDismiss}
+      dismissible={dismissable}
+      closeReasonId={dismissable ? undefined : reasonId}
+      refocusKey={flow.phase}
+      actions={dialogActions(flow, t, onConfirm, onDismiss)}
     >
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="modal__header">
-          <h2 className="modal__title">{title}</h2>
-          {dismissable ? (
-            <button type="button" className="icon-btn" title={t('close')} aria-label={t('close')} onClick={onDismiss}>
-              <CloseIcon />
-            </button>
-          ) : null}
-        </div>
-        <div className="modal__body">
-          <div className="update">
-            <p className="update__version">{t('updateTargetVersion', { version: flow.target.version })}</p>
-            {runningVersion ? (
-              <p className="update__running">{t('updateRunningVersion', { version: runningVersion })}</p>
-            ) : null}
-          </div>
+      <div className="update">
+        <p className="update__version">{t('updateTargetVersion', { version: flow.target.version })}</p>
+        {runningVersion ? (
+          <p className="update__running">{t('updateRunningVersion', { version: runningVersion })}</p>
+        ) : null}
+      </div>
 
-          {flow.target.notes ? (
-            <section className="settings-group">
-              <h3 className="settings-group__label">{t('updateNotesLabel')}</h3>
-              {/* Shown as plain text rather than through the markdown pipeline: the
+      {flow.target.notes ? (
+        <section className="settings-group">
+          <h3 className="settings-group__label">{t('updateNotesLabel')}</h3>
+          {/* Shown as plain text rather than through the markdown pipeline: the
                   notes arrive over the network, and a release body is legible as
                   written without giving this dialog a second rendering path. */}
-              <pre className="update__notes">{flow.target.notes}</pre>
-            </section>
-          ) : null}
+          <pre
+            className="update__notes"
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll box has to be a Tab stop so the keyboard can scroll it; WebKit gives it none of its own.
+            tabIndex={0}
+          >
+            {flow.target.notes}
+          </pre>
+        </section>
+      ) : null}
 
-          {flow.phase === 'available' ? (
-            <>
-              <p className="settings-group__hint">{t('updateAuthNotice')}</p>
-              <div className="seg">
-                <button type="button" className="btn btn--primary" onClick={onConfirm}>
-                  {t('updateInstallNow')}
-                </button>
-                <button type="button" className="btn" onClick={onDismiss}>
-                  {t('updateLater')}
-                </button>
-              </div>
-            </>
-          ) : null}
+      {flow.phase === 'available' ? <p className="settings-group__hint">{t('updateAuthNotice')}</p> : null}
 
-          {flow.phase === 'downloading' ? (
-            <UpdateProgress
-              label={t('updateDownloading')}
-              readout={downloadReadout(flow.received, flow.total)}
-              ariaLabel={t('updateProgress')}
-              received={flow.received}
-              total={flow.total}
-            />
-          ) : null}
+      {flow.phase === 'downloading' ? (
+        <UpdateProgress
+          label={t('updateDownloading')}
+          readout={downloadReadout(flow.received, flow.total)}
+          ariaLabel={t('updateProgress')}
+          received={flow.received}
+          total={flow.total}
+        />
+      ) : null}
 
-          {/* The install itself reports nothing, and on Windows this process is
+      {/* The install itself reports nothing, and on Windows this process is
               gone before it ends — so the copy has to hold for a window that
               simply disappears here, and no "restarting" state is promised. */}
-          {flow.phase === 'installing' ? (
-            <UpdateProgress label={t('updateInstalling')} ariaLabel={t('updateProgress')} />
-          ) : null}
+      {flow.phase === 'installing' ? (
+        <UpdateProgress label={t('updateInstalling')} ariaLabel={t('updateProgress')} />
+      ) : null}
 
-          {flow.phase === 'relaunching' ? (
-            <UpdateProgress label={t('updateRelaunching')} ariaLabel={t('updateProgress')} />
-          ) : null}
+      {flow.phase === 'relaunching' ? (
+        <UpdateProgress label={t('updateRelaunching')} ariaLabel={t('updateProgress')} />
+      ) : null}
 
-          {flow.phase === 'installed' ? (
-            <>
-              <p className="settings-group__hint">{t('updateInstalledHint')}</p>
-              <div className="seg">
-                <button type="button" className="btn" onClick={onDismiss}>
-                  {t('close')}
-                </button>
-              </div>
-            </>
-          ) : null}
+      {dismissable ? null : (
+        <p id={reasonId} className="settings-group__hint">
+          {t('updateCannotClose')}
+        </p>
+      )}
 
-          {flow.phase === 'failed' ? (
-            <>
-              <p className="settings-group__hint">{t('updateInstallFailedHint')}</p>
-              <p className="update__detail">{flow.message}</p>
-              <div className="seg">
-                <button type="button" className="btn" onClick={onDismiss}>
-                  {t('close')}
-                </button>
-              </div>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
+      {flow.phase === 'installed' ? <p className="settings-group__hint">{t('updateInstalledHint')}</p> : null}
+
+      {flow.phase === 'failed' ? (
+        <>
+          <p className="settings-group__hint">{t('updateInstallFailedHint')}</p>
+          <p className="update__detail">{flow.message}</p>
+        </>
+      ) : null}
+    </Modal>
   );
+}
+
+/** Cancel before execute, so the execute button ends the row (snz-design
+ *  doc-9 §6.6). The stages that cannot be closed have nothing to press. */
+function dialogActions(flow: UpdateFlow, t: TFn, onConfirm: () => void, onDismiss: () => void): ReactNode {
+  switch (flow.phase) {
+    case 'available':
+      return (
+        <>
+          <button type="button" className="btn" onClick={onDismiss}>
+            {t('updateLater')}
+          </button>
+          <button type="button" className="btn btn--primary" onClick={onConfirm}>
+            {t('updateInstallNow')}
+          </button>
+        </>
+      );
+    case 'installed':
+    case 'failed':
+      return (
+        <button type="button" className="btn" onClick={onDismiss}>
+          {t('close')}
+        </button>
+      );
+    default:
+      return null;
+  }
 }
 
 /** A percentage when the response announced its length, and the raw byte count
