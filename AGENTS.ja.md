@@ -57,7 +57,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   焦点の行き先。トリガーへ、トリガーも一緒に消えたなら表示切替の選ばれた選択肢へ
   （snz-design doc-9 §6.3.1）。
 - `hooks/useExitFade.ts` — 告知を、フェードで消え終わるまで操作を受けない状態で画面に
-  残す。出るときと同じ形で消えるようにするため（snz-design doc-9 §6.4）。
+  残す。出るときと同じ形で消えるようにするため（snz-design doc-9 §6.4）。使うのは通知帯
+  だけ。ビューアの中の帯は下の文書が差し替わるときに消えるので、フェードの間残すと前の
+  ファイルの帯が新しいファイルの上に出る。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
