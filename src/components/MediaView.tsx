@@ -2,6 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { useEffect, useState } from 'react';
 import { useT } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
+import { Notice } from './Notice';
 
 interface MediaViewProps {
   file: FileEntry;
@@ -36,7 +37,7 @@ function Unsupported({ name }: { name: string }) {
   return (
     <div className="viewer__placeholder is-error">
       <code>{name}</code>
-      <p>{t('mediaUnsupported')}</p>
+      <Notice level="failure">{t('mediaUnsupported')}</Notice>
     </div>
   );
 }

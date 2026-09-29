@@ -2,6 +2,7 @@ import { type CSSProperties, useCallback, useEffect, useRef, useState } from 're
 import { Explorer } from './components/Explorer';
 import { ExplorerResizer } from './components/ExplorerResizer';
 import { SettingsIcon } from './components/icons';
+import { Notice } from './components/Notice';
 import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
 import { UpdateDialog } from './components/UpdateDialog';
@@ -270,7 +271,19 @@ export default function App() {
 
   // ---- Explorer show / hide -------------------------------------------------
   const explorerToggleRef = useRef<HTMLButtonElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const explorerShownRef = useRef(explorerShown);
+
+  // The close control goes with the notice, and focus left on nothing falls to
+  // the top of the page: hand it to the first thing in the body instead
+  // (snz-design doc-9 §6.4).
+  const dismissNotice = useCallback(() => {
+    setNotice(null);
+    const next = bodyRef.current?.querySelector<HTMLElement>('button:not([disabled]), a[href], [tabindex="0"]');
+    // A hidden explorer and an empty viewer leave the body nothing focusable; the toolbar's
+    // toggle is always there.
+    (next ?? explorerToggleRef.current)?.focus();
+  }, []);
   useEffect(() => {
     explorerShownRef.current = explorerShown;
   }, [explorerShown]);
@@ -761,14 +774,14 @@ export default function App() {
           be a menu choice made while a folder is open, which the explorer's empty
           state is not on screen for. */}
       {notice && (
-        <div className="app__notice" role="status">
-          <span>{notice}</span>
-          <button type="button" className="app__notice-close" onClick={() => setNotice(null)}>
-            {t('dismiss')}
-          </button>
+        <div className="app__notice">
+          <Notice level="info" onDismiss={dismissNotice}>
+            {notice}
+          </Notice>
         </div>
       )}
       <div
+        ref={bodyRef}
         className="app__body"
         data-side={explorerSide}
         style={{ '--explorer-width': `${explorerWidth}px` } as CSSProperties}

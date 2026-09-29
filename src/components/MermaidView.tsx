@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '../lib/i18n';
 import { renderMermaid } from '../lib/mermaid';
+import { Notice } from './Notice';
 
 /** Render a standalone `.mmd` / `.mermaid` file as a single diagram. */
 export function MermaidView({ source }: { source: string }) {
@@ -43,7 +44,11 @@ export function MermaidView({ source }: { source: string }) {
   return (
     <div className="doc-scroll">
       <div className="doc">
-        {empty && <p className="doc-error">空のファイルです。</p>}
+        {empty && (
+          <Notice level="info" className="notice--doc">
+            {t('mermaidEmpty')}
+          </Notice>
+        )}
         <div className="markdown-body" ref={hostRef} />
       </div>
     </div>

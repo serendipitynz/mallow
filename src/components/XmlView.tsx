@@ -3,6 +3,7 @@ import { useT } from '../lib/i18n';
 import { buildXmlTree, XML_MAX_VALUE_CHARS, type XmlErrorInfo, xmlErrorInfo } from '../lib/xml-tree';
 import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
+import { Notice } from './Notice';
 import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
 import { ViewPanel } from './ViewPanel';
@@ -132,9 +133,11 @@ export function XmlView({ source }: { source: string }) {
           <ViewPanel idBase={idBase} selected={mode}>
             {mode === 'tree' ? (
               <>
-                {/* A plain <p>, like the source and table notices: the text is
-                    computed once per mount, so a live region has nothing to announce. */}
-                {notice.length > 0 && <p className="xml-notice">{notice.join(' ')}</p>}
+                {notice.length > 0 && (
+                  <Notice level="info" className="notice--doc">
+                    {notice.join(' ')}
+                  </Notice>
+                )}
                 {tree.nodes.length === 0 ? (
                   <p className="xml-empty">{t('empty')}</p>
                 ) : (

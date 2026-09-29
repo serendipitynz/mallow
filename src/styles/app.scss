@@ -213,49 +213,10 @@
 // the toolbar and the body rather than over the document, so it shifts the
 // layout instead of covering what the reader is reading.
 .app__notice {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   flex: 0 0 auto;
-  padding: 8px 14px;
+  padding: 6px 14px;
   font-size: 13px;
-  color: $ink;
-  background: var(--color-hover-bg);
   border-bottom: 1px solid $border;
-
-  > span {
-    flex: 1 1 auto;
-    // A path is the only thing this carries, and one too long for the window
-    // must not push the dismiss button off the end.
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-}
-
-.app__notice-close {
-  flex: 0 0 auto;
-  padding: 2px 8px;
-  font: inherit;
-  font-size: 12px;
-  color: $muted;
-  background: none;
-  border: 1px solid $control-border;
-  border-radius: $radius-control;
-  cursor: pointer;
-
-  &:hover {
-    color: $ink;
-    background: $hover-bg;
-  }
-
-  &:active {
-    color: $ink;
-    background: $pressed-bg;
-  }
-
-  &:focus-visible {
-    @include focus-ring;
-  }
 }
 
 // ---- In-app Open Recent list ------------------------------------------------

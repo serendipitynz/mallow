@@ -3,6 +3,7 @@ import type { ShikiTransformer } from 'shiki';
 import { useT } from '../lib/i18n';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from '../lib/shiki';
 import { countLines, highlightSkipReason } from '../lib/source-cap';
+import { Notice } from './Notice';
 
 /** Shared syntax-highlighted source view with line numbers. Used as one mode of
  *  the markdown viewer (preview/source), the config viewer (tree/source), the
@@ -89,7 +90,11 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
 
   return (
     <div className="src-view" ref={hostRef} style={{ '--src-gutter-digits': gutterDigits(lineCount) } as CSSProperties}>
-      {skipReason !== null && <p className="src-notice">{t('highlightSkipped')}</p>}
+      {skipReason !== null && (
+        <Notice level="degraded" className="notice--doc">
+          {t('highlightSkipped')}
+        </Notice>
+      )}
       {skipReason !== null ? (
         <PlainSource code={code} lineCount={lineCount} errorLine={errorLine} />
       ) : (

@@ -77,16 +77,6 @@
 }
 
 // ---- Unhighlighted path (over the caps in lib/source-cap) -------------------
-.src-notice {
-  margin: 0 0 10px;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: var(--color-attention-fg);
-  background: var(--color-attention-bg);
-  border: 1px solid var(--color-attention-border);
-  border-radius: $radius-surface;
-}
-
 .src-plain {
   display: flex;
   overflow-x: auto;

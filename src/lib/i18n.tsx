@@ -63,6 +63,9 @@ const ja: Dict = {
   explorerWidthHint:
     'ドラッグするか、クリックしてから置きたい位置をクリックすると幅を変えられます。矢印キーでも変えられます。',
   'noticeLevel.failure': '失敗',
+  'noticeLevel.warning': '警告',
+  'noticeLevel.degraded': '一部の機能が使えない状態',
+  'noticeLevel.info': '案内',
   dismiss: '閉じる',
   // viewer
   selectFile: 'ファイルを選択してください',
@@ -78,6 +81,7 @@ const ja: Dict = {
   viewMode: '表示モード',
   renderError: 'レンダリングエラー: {message}',
   mermaidFailed: '図を描画できませんでした: {message}',
+  mermaidEmpty: '空のファイルです。',
   // source view
   highlightSkipped: 'ファイルが大きいため、強調表示を省いて表示しています。',
   // html view
@@ -197,6 +201,9 @@ const en: Dict = {
   explorerWidthValue: '{width} pixels',
   explorerWidthHint: 'Drag, or click and then click where it should go, to change the width. The arrow keys work too.',
   'noticeLevel.failure': 'Failure',
+  'noticeLevel.warning': 'Warning',
+  'noticeLevel.degraded': 'Some features unavailable',
+  'noticeLevel.info': 'Information',
   dismiss: 'Dismiss',
   // viewer
   selectFile: 'Select a file',
@@ -211,6 +218,7 @@ const en: Dict = {
   viewMode: 'View mode',
   renderError: 'Render error: {message}',
   mermaidFailed: 'The diagram could not be drawn: {message}',
+  mermaidEmpty: 'The file is empty.',
   // source view
   highlightSkipped: 'This file is large, so it is shown without syntax highlighting.',
   // html view

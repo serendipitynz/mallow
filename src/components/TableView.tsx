@@ -3,6 +3,7 @@ import { delimiterFor, parseDelimited, TABLE_MAX_CELL_CHARS, tableExtent } from 
 import { useT } from '../lib/i18n';
 import type { FileEntry } from '../lib/types';
 import { CodeIcon, TableIcon } from './icons';
+import { Notice } from './Notice';
 import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
 import { ViewPanel } from './ViewPanel';
@@ -58,9 +59,11 @@ export function TableView({ source, file }: TableViewProps) {
         <ViewPanel idBase={idBase} selected={mode}>
           {mode === 'table' ? (
             <>
-              {/* A plain <p>, like `SourceView`'s own notice: the text is computed
-                once per mount, so a live region would have nothing to announce. */}
-              {notice.length > 0 && <p className="tbl-notice">{notice.join(' ')}</p>}
+              {notice.length > 0 && (
+                <Notice level="info" className="notice--doc">
+                  {notice.join(' ')}
+                </Notice>
+              )}
               <Table rows={table.rows} extent={extent} emptyLabel={t('empty')} rowNumberLabel={t('rowNumber')} />
             </>
           ) : (

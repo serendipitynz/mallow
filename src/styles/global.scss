@@ -324,16 +324,25 @@ $segmented-inset: calc(var(--snz-space-xs) / 2);
 }
 
 // ---- Notice -----------------------------------------------------------------
-// The band, the figure and the face each carry the level, so the level is not
-// told by colour alone (snz-design doc-9 §6.4).
+// The band, the figure and the words each carry the level, so the level is not
+// told by colour alone (snz-design doc-9 §6.4). Warning and degraded draw the
+// same colours and differ by figure alone; the words take `attention-fg` because
+// Solarized Dark's warning colour is not one to set text in (doc-6 §6.2). The
+// information level takes `control-border`, not `border-strong`: that one is
+// tuned for decorative rules and measures 2.3:1 and 1.4:1 against its face in
+// Dracula and Nord, where the figure needs 3:1.
 .notice {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 6px;
   padding: 5px 8px;
-  border-left: var(--snz-border-band) solid $border-strong;
+  border-left: var(--snz-border-band) solid $control-border;
   border-radius: $radius-control;
   white-space: normal;
+  // A notice appearing fades in; reduced motion keeps the fade because opacity
+  // is not the movement doc-5 §4.2 rules out.
+  animation: notice-in var(--snz-motion-state) ease-out;
 
   &[data-level='failure'] {
     border-left-color: $danger;
@@ -343,6 +352,32 @@ $segmented-inset: calc(var(--snz-space-xs) / 2);
     .notice__figure {
       color: $danger;
     }
+  }
+
+  &[data-level='warning'],
+  &[data-level='degraded'] {
+    border-left-color: $orange;
+    background: var(--color-attention-bg);
+    color: var(--color-attention-fg);
+
+    .notice__figure {
+      color: $orange;
+    }
+  }
+
+  &[data-level='info'] {
+    background: $surface;
+    color: $muted;
+
+    .notice__figure {
+      color: $control-border;
+    }
+  }
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
   }
 }
 
@@ -354,8 +389,28 @@ $segmented-inset: calc(var(--snz-space-xs) / 2);
 }
 
 .notice__body {
+  flex: 1 1 12rem;
+  min-width: 0;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.notice__actions {
+  flex: 0 0 auto;
+}
+
+// The close control is 30px square and the words are one line: pulled out of
+// the flow's height so it does not make a one-line notice taller than its text.
+.notice__close {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin: -3px -4px -3px 0;
+}
+
+// Placed between a document and the view above or below it.
+.notice--doc {
+  margin: 0 0 12px;
 }
 
 // ---- Busy -------------------------------------------------------------------
