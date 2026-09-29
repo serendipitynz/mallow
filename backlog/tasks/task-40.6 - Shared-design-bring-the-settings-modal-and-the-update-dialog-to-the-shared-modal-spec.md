@@ -3,10 +3,10 @@ id: TASK-40.6
 title: >-
   Shared design: bring the settings modal and the update dialog to the shared
   modal spec
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-28 03:59'
-updated_date: '2026-09-29 01:15'
+updated_date: '2026-09-29 01:54'
 labels:
   - design
 milestone: m-4
@@ -39,7 +39,7 @@ snz-design references: doc-9 §6.6 (modal), §6.12 (segmented control, as revise
 - [x] #3 The action area follows the alignment and order of doc-9 §6.6
 - [x] #4 The settings' segmented controls take the form of doc-9 §6.12: one Tab stop per group, arrows move without choosing, and the chosen surface slides, cross-fading under reduced motion
 - [x] #5 At the update stages that cannot be closed, the × is handled per doc-9 §6.6 (removed, or disabled with a reason) and the choice is recorded; the indeterminate progress slows rather than stops under reduced motion (doc-8 §6.7.1)
-- [ ] #6 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
+- [x] #6 Contrast at the measuring points of snz-design doc-5 §3.2 in the four schemes, keyboard reach to every control of the screen, and the environment (doc-5 §5.3) are recorded in Implementation Notes; the real-window (WKWebView) check records the owner's confirmation
 - [x] #7 pnpm test, pnpm lint and pnpm build pass
 <!-- AC:END -->
 
@@ -93,4 +93,7 @@ snz-design references: doc-9 §6.6 (modal), §6.12 (segmented control, as revise
 
 ## 追記(2026-09-29、オーナー指示)
 - エクスプローラの位置と言語を「外観」の区画へ移し、配色・明暗と同じ行の形(ラベル左、設定右)に揃えた。起動時の更新確認の行も同じ形にした(オン/オフの語はそのまま)。狭い幅(320)では組が縦積みのまま行に収まることをブラウザ窓で確認。
+
+## 実窓の確認(2026-09-29、オーナー)
+- WKWebView の実窓で目視確認済み。AC #6 を確認済みとして記録した。
 <!-- SECTION:NOTES:END -->
