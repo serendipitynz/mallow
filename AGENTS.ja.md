@@ -63,7 +63,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   MediaView（画像/PDF/動画を asset protocol 経由で表示）、
   RecentFolders（アプリ内の Open Recent 一覧。エクスプローラの空状態に出る）、Outline、Toolbar、
   OpenWith、ModeMenu（明暗の値のメニュー）、`color`（配色の軸を選んで全ウィンドウへ
-  伝える）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
+  伝える）、Modal（2 つのダイアログが共有する面。焦点を入れ・閉じ込め・返し、見出しと操作域を固定して
+  本体だけをスクロールさせる）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
   ExplorerResizer（分割つまみ。ドラッグ・押して掴み押して置く・キー操作）、
   Segmented（セグメント。各ビューアの表示切替）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、

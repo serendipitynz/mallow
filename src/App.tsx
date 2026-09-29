@@ -75,6 +75,7 @@ export default function App() {
   const [explorerSide, setExplorerSide] = useState<'left' | 'right'>(DEFAULT_SIDE);
   const [explorerShown, setExplorerShown] = useState(DEFAULT_EXPLORER_SHOWN);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(DEFAULT_AUTO_CHECK_UPDATES);
   const [restoreSettled, setRestoreSettled] = useState(false);
@@ -806,6 +807,7 @@ export default function App() {
       </div>
       <footer className="app__footer">
         <button
+          ref={settingsButtonRef}
           type="button"
           className="icon-btn"
           title={t('settings')}
@@ -829,6 +831,7 @@ export default function App() {
         updateCheck={updater.check}
         onCheckForUpdate={() => checkForUpdate('manual')}
         covered={updater.flow.phase !== 'none'}
+        returnFocusTo={settingsButtonRef}
       />
       {/* After the settings modal in document order, so it paints over it when a
           manual check turns one up while the modal is still open. */}

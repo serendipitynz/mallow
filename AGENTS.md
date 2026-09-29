@@ -64,7 +64,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   MediaView (image/pdf/video via the asset protocol), RecentFolders (the in-app
   Open Recent list, shown in the explorer's empty state), Outline, Toolbar, OpenWith,
   ModeMenu (the light / dark value menu), `color` (choosing a colour axis and
-  telling every window), SettingsModal, UpdateDialog (target version, consent,
+  telling every window), Modal (the surface both dialogs share: focus in, held
+  and returned, a fixed heading and action area around a body that alone scrolls),
+  SettingsModal, UpdateDialog (target version, consent,
   progress), ExplorerResizer (the split handle: drag, grab-and-place, and its
   keys), Segmented (a segmented control — each viewer's view switch), ViewPanel
   (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
