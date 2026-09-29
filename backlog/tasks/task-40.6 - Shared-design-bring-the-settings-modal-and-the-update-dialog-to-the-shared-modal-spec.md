@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-28 03:59'
-updated_date: '2026-09-29 01:05'
+updated_date: '2026-09-29 01:15'
 labels:
   - design
 milestone: m-4
@@ -90,4 +90,7 @@ snz-design references: doc-9 §6.6 (modal), §6.12 (segmented control, as revise
 - **AC #6 は未チェック**: 実窓(WKWebView)での確認は済んでいない。見てほしい点: 焦点の入り・Tab の折り返し・Escape と焦点の返り、開いた選択欄のポップアップ中の Escape がモーダルを閉じないか(WebKit のポップアップが keydown を奪うかは未測定)、設定の上の更新ダイアログ、狭い窓と低い窓での本体域のスクロール、動きを減らす設定での進捗の遅さ。
 - reduced-motion の進捗は CSS(`animation-duration: 5s`)を書いただけで、設定を有効にした状態では測っていない。
 - キーボード到達は Chromium のブラウザ窓でのみ確認(WKWebView は wry が Tab で全操作部品へ届く設定)。環境の記録(doc-5 §5.3): Chromium(ブラウザ窓)、macOS、標準 Light を基準に4配色を computed style で測定。
+
+## 追記(2026-09-29、オーナー指示)
+- エクスプローラの位置と言語を「外観」の区画へ移し、配色・明暗と同じ行の形(ラベル左、設定右)に揃えた。起動時の更新確認の行も同じ形にした(オン/オフの語はそのまま)。狭い幅(320)では組が縦積みのまま行に収まることをブラウザ窓で確認。
 <!-- SECTION:NOTES:END -->
