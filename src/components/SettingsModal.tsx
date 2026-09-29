@@ -214,6 +214,7 @@ export function SettingsModal({
             type="button"
             className="btn"
             aria-disabled={checking || undefined}
+            aria-busy={checking || undefined}
             aria-describedby={checking ? checkStatusId : undefined}
             onClick={checking ? undefined : onCheckForUpdate}
           >
