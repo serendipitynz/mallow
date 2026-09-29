@@ -4,7 +4,7 @@ title: Carry the shared design (snz-design) across every screen of mallow
 status: In Progress
 assignee: []
 created_date: '2026-09-28 03:58'
-updated_date: '2026-09-29 04:01'
+updated_date: '2026-09-29 04:21'
 labels:
   - design
 milestone: m-4
@@ -54,4 +54,9 @@ Work is split by screen into the subtasks, one PR each. The first subtask holds 
 - #4 (回帰確認) と #5 (test / lint / build) は上の記録を根拠にチェックした。
 - #1〜#3 は snz-design の mallow 適用記録が作られるまで残す。#3 のコントラスト・キーボード到達・実窓確認の根拠は各子タスクのノートにあり、適用記録でまとめる。
 - PR #72 のレビューで、問い合わせを仕様の書き方 `max-inline-size` にそろえ、容器の宣言の決まりを AGENTS.md / AGENTS.ja.md の Segmented の項に書いた。
+
+## 適用記録 (snz-design doc-18) で見つかった未適用 2 件を直した (2026-09-29)
+- 設定モーダルの「クリア」と「今すぐ確認」が native の `disabled` で焦点から外れ、理由の語を持たなかった (doc-8 §5.4)。TASK-40.1 が 40.3〜40.6 に回した項目で、TASK-40.6 で見落としていた。どちらも `aria-disabled` にして焦点を残し、理由の語に `aria-describedby` で結んだ。クリアの理由は上の「未設定」の行。今すぐ確認の理由は下の「確認しています…」の行で、そこに処理中の図形 (Busy) を置いた。ボタンの中に処理中の図形を出さないのは、このボタンが図形域を持たず、出すとボタンの幅が変わるため (doc-8 §6.1)。`.btn` に `[aria-disabled='true']` の描き方を足した。
+- 通知帯が消えるときに即時に消えていた (doc-9 §6.4 は不透明度のフェードで出入りする)。`hooks/useExitFade` が消える値をフェードの終わりまで残し、その間は `inert` にする。動きを減らす設定でも残す (不透明度だけなので doc-5 §4.2 に反しない)。
+- 確認 (Chromium のブラウザ窓、Tauri は stub): 最近のフォルダの消えた項目を選んで通知帯を出し、閉じると `notice-out` が走って `inert`、焦点は本体の最初の操作 (Open Folder) へ移り、動きの後に要素が消える。設定モーダルのクリアとテスト中の今すぐ確認は、焦点を受け、破線・不透明度 0.45、理由の語 (Not set / Checking…) を持つ。押しても何も起きない。`pnpm lint` / `pnpm build` / `pnpm test` (444) 通過。
 <!-- SECTION:NOTES:END -->
