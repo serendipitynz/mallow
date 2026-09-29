@@ -1,10 +1,10 @@
 ---
 id: TASK-40
 title: Carry the shared design (snz-design) across every screen of mallow
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-28 03:58'
-updated_date: '2026-09-29 09:20'
+updated_date: '2026-09-29 09:44'
 labels:
   - design
 milestone: m-4
@@ -28,8 +28,8 @@ Work is split by screen into the subtasks, one PR each. The first subtask holds 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Every subtask is Done, and snz-design's adoption record for mallow lists each subtask with its merged revision
-- [ ] #2 Every screen and component in the adoption record has a result; no required item is left unapplied, and each intentional exception has its reason and handling
+- [x] #1 Every subtask is Done, and snz-design's adoption record for mallow lists each subtask with its merged revision
+- [x] #2 Every screen and component in the adoption record has a result; no required item is left unapplied, and each intentional exception has its reason and handling
 - [x] #3 The four schemes (Standard Light / Dark, Solarized Light / Dark) meet the contrast criteria, stored settings are kept, and the keyboard reaches every control; the environment and evidence are recorded (snz-design doc-5 §5.3). Checks in the real window (WKWebView) record the owner's confirmation
 - [x] #4 Document, code and mermaid rendering, the explorer, the toolbar, the settings and the theme sync across several windows are regression-checked; Dracula and Nord keep their own palettes
 - [x] #5 pnpm test, pnpm lint and pnpm build pass
@@ -64,4 +64,8 @@ Work is split by screen into the subtasks, one PR each. The first subtask holds 
 - serendipitynz/mallow#73 (main `52f0241`) をオーナーが実窓 (WKWebView) で目視確認した。設定モーダルの「クリア」と「今すぐ確認」が焦点を受けて押しても何も起きないこと、通知帯が閉じるときにフェードすることを含む。
 - これで子タスク 40.1〜40.6 と #72・#73 のすべてに実窓の確認がそろったので、AC#3 をチェックした (4配色の比・キーボードの到達・環境は各子タスクと上のノートにある)。
 - AC#1・#2 は snz-design の適用記録 doc-18 の更新 (serendipitynz/snz-design#31) の統合を待つ。
+
+## 完了 (2026-09-29)
+- AC#1: 子タスク 40.1〜40.6 はすべて Done。snz-design の適用記録 doc-18 (snz-design main `354de86`、serendipitynz/snz-design#30・#31) が、各子タスクと TASK-37・TASK-40 (#72・#73) を PR と統合済みリビジョン付きで持つ。
+- AC#2: doc-18 §2 の全行が適用の結果を持ち、§5 (未適用) は空。§3 の意図的な例外 3 件 (アウトラインの読み順・今すぐ確認の処理中・ビューアとエクスプローラの中の告知の退出) はどれも理由と扱い (恒久) を持つ。アウトラインの読み順はオーナー判断 (2026-09-29、いったんこの扱い)。
 <!-- SECTION:NOTES:END -->
