@@ -65,6 +65,7 @@ export function SettingsModal({
   const familyId = useId();
   const modeId = useId();
   const reasonId = useId();
+  const langId = useId();
   const oneSided = isOneSided(choice.family);
 
   /** The language is app-wide (TASK-12 puts a per-window one out of scope), so
@@ -129,35 +130,28 @@ export function SettingsModal({
           </p>
         )}
         {unrecognized && <p className="settings-group__hint">{t('colorUnrecognized')}</p>}
-      </section>
-
-      <section className="settings-group">
-        <h3 className="settings-group__label">{t('explorerPosition')}</h3>
-        <Segmented
-          label={t('explorerPosition')}
-          options={[
-            { value: 'left', label: t('left') },
-            { value: 'right', label: t('right') },
-          ]}
-          value={side}
-          onSelect={onSideChange}
-        />
-      </section>
-
-      <section className="settings-group">
-        <h3 className="settings-group__label">{t('language')}</h3>
-        <select
-          className="select settings-group__select"
-          aria-label={t('language')}
-          value={lang}
-          onChange={(e) => changeLang(e.target.value as Lang)}
-        >
-          {LANGS.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.label}
-            </option>
-          ))}
-        </select>
+        <div className="settings-field">
+          <span>{t('explorerPosition')}</span>
+          <Segmented
+            label={t('explorerPosition')}
+            options={[
+              { value: 'left', label: t('left') },
+              { value: 'right', label: t('right') },
+            ]}
+            value={side}
+            onSelect={onSideChange}
+          />
+        </div>
+        <div className="settings-field">
+          <label htmlFor={langId}>{t('language')}</label>
+          <select id={langId} className="select" value={lang} onChange={(e) => changeLang(e.target.value as Lang)}>
+            {LANGS.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </section>
 
       <section className="settings-group">
@@ -186,16 +180,18 @@ export function SettingsModal({
         <p className="settings-path">
           {runningVersion ? t('updateRunningVersion', { version: runningVersion }) : t('loading')}
         </p>
-        <p className="settings-group__hint">{t('updateAutoCheck')}</p>
-        <Segmented
-          label={t('updateAutoCheck')}
-          options={[
-            { value: 'on', label: t('on') },
-            { value: 'off', label: t('off') },
-          ]}
-          value={autoCheckUpdates ? 'on' : 'off'}
-          onSelect={(next) => onAutoCheckChange(next === 'on')}
-        />
+        <div className="settings-field">
+          <span>{t('updateAutoCheck')}</span>
+          <Segmented
+            label={t('updateAutoCheck')}
+            options={[
+              { value: 'on', label: t('on') },
+              { value: 'off', label: t('off') },
+            ]}
+            value={autoCheckUpdates ? 'on' : 'off'}
+            onSelect={(next) => onAutoCheckChange(next === 'on')}
+          />
+        </div>
         <p className="settings-group__hint">{t('updateAutoCheckHint')}</p>
         <div className="seg">
           <button type="button" className="btn" disabled={updateCheck.status === 'checking'} onClick={onCheckForUpdate}>
