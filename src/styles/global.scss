@@ -386,6 +386,18 @@ $segmented-inset: calc(var(--snz-space-xs) / 2);
   }
 }
 
+// Kept under reduced motion as notice-in is: only opacity changes, and doc-5
+// §4.2 restricts movement, not fades (snz-design doc-9 §6.4).
+.notice.is-leaving {
+  animation: notice-out var(--snz-motion-state) ease-in forwards;
+}
+
+@keyframes notice-out {
+  to {
+    opacity: 0;
+  }
+}
+
 .notice__figure {
   display: inline-flex;
   flex: 0 0 auto;

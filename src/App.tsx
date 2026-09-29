@@ -7,6 +7,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
 import { UpdateDialog } from './components/UpdateDialog';
 import { Viewer } from './components/Viewer';
+import { useExitFade } from './hooks/useExitFade';
 import { useFileTree } from './hooks/useFileTree';
 import { useUpdater } from './hooks/useUpdater';
 import { useWindowEvent } from './hooks/useWindowEvent';
@@ -84,6 +85,7 @@ export default function App() {
    *  like it would. One slot, because only one thing can have just happened —
    *  the next notice replaces it rather than stacking. */
   const [notice, setNotice] = useState<string | null>(null);
+  const noticeFade = useExitFade(notice, 'notice-out');
   const updater = useUpdater();
 
   const selectedRef = useRef<FileEntry | null>(null);
@@ -774,10 +776,10 @@ export default function App() {
       {/* Under the toolbar rather than inside the explorer: what it reports can
           be a menu choice made while a folder is open, which the explorer's empty
           state is not on screen for. */}
-      {notice && (
-        <div className="app__notice">
-          <Notice level="info" onDismiss={dismissNotice}>
-            {notice}
+      {noticeFade.shown && (
+        <div className="app__notice" inert={noticeFade.leaving} onAnimationEnd={noticeFade.onAnimationEnd}>
+          <Notice level="info" onDismiss={dismissNotice} className={noticeFade.leaving ? 'is-leaving' : undefined}>
+            {noticeFade.shown}
           </Notice>
         </div>
       )}
