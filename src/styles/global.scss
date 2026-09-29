@@ -80,7 +80,10 @@ a {
     @include focus-ring;
   }
 
-  &:disabled {
+  // `aria-disabled` keeps the focus, so the reason reaches the keyboard
+  // (snz-design doc-8 §5.4).
+  &:disabled,
+  &[aria-disabled='true'] {
     @include disabled-control;
 
     background: $surface-raised;
@@ -379,6 +382,21 @@ $segmented-inset: calc(var(--snz-space-xs) / 2);
 
 @keyframes notice-in {
   from {
+    opacity: 0;
+  }
+}
+
+// Kept under reduced motion as notice-in is: only opacity changes, and doc-5
+// §4.2 restricts movement, not fades (snz-design doc-9 §6.4). It goes on the
+// strip holding the notice, so the band fades with it rather than being left
+// empty for a frame. `useExitFade` removes the strip when this animation ends
+// and matches it by name, so renaming it leaves the strip on screen for good.
+.app__notice.is-leaving {
+  animation: notice-out var(--snz-motion-state) ease-in forwards;
+}
+
+@keyframes notice-out {
+  to {
     opacity: 0;
   }
 }

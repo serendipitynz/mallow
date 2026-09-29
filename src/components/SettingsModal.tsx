@@ -12,6 +12,7 @@ import { LANGS, type Lang, useI18n } from '../lib/i18n';
 import { broadcastSetting } from '../lib/settings-sync';
 import { getColorChoice, onColorChoiceChange } from '../lib/theme';
 import type { CheckState } from '../lib/update-flow';
+import { Busy } from './Busy';
 import { chooseColorEverywhere, useFamilyLabel } from './color';
 import { Modal } from './Modal';
 import { Segmented } from './Segmented';
@@ -65,6 +66,9 @@ export function SettingsModal({
   const familyId = useId();
   const modeId = useId();
   const reasonId = useId();
+  const emojiDirId = useId();
+  const checkStatusId = useId();
+  const checking = updateCheck.status === 'checking';
   const langId = useId();
   const oneSided = isOneSided(choice.family);
 
@@ -157,14 +161,23 @@ export function SettingsModal({
       <section className="settings-group">
         <h3 className="settings-group__label">{t('customEmoji')}</h3>
         <p className="settings-group__hint">{t('customEmojiHint')}</p>
-        <p className="settings-path" title={emoji.dir ?? undefined}>
+        <p id={emojiDirId} className="settings-path" title={emoji.dir ?? undefined}>
           {emoji.dir ?? t('customEmojiUnset')}
         </p>
         <div className="seg">
           <button type="button" className="btn" onClick={onPickEmojiDir}>
             {t('chooseFolder')}
           </button>
-          <button type="button" className="btn" disabled={!emoji.dir} onClick={onClearEmojiDir}>
+          {/* `aria-disabled` rather than `disabled`, so the button keeps the focus
+              and the line above saying no folder is set reaches the keyboard as
+              its reason (snz-design doc-8 §5.4). */}
+          <button
+            type="button"
+            className="btn"
+            aria-disabled={emoji.dir ? undefined : true}
+            aria-describedby={emoji.dir ? undefined : emojiDirId}
+            onClick={emoji.dir ? onClearEmojiDir : undefined}
+          >
             {t('clear')}
           </button>
         </div>
@@ -194,7 +207,17 @@ export function SettingsModal({
         </div>
         <p className="settings-group__hint">{t('updateAutoCheckHint')}</p>
         <div className="seg">
-          <button type="button" className="btn" disabled={updateCheck.status === 'checking'} onClick={onCheckForUpdate}>
+          {/* The check under way is told by the busy line below rather than inside
+              the button: the button has no figure for a busy figure to take the
+              place of, so one would change its width (snz-design doc-8 §6.1). */}
+          <button
+            type="button"
+            className="btn"
+            aria-disabled={checking || undefined}
+            aria-busy={checking || undefined}
+            aria-describedby={checking ? checkStatusId : undefined}
+            onClick={checking ? undefined : onCheckForUpdate}
+          >
             {t('updateCheckNow')}
           </button>
         </div>
@@ -203,10 +226,11 @@ export function SettingsModal({
                  screen: offline is the normal outcome here, and the sentence is what
                  the user acts on. The text is also logged. */
           <p
+            id={checkStatusId}
             className={`settings-group__hint${updateCheck.status === 'failed' ? ' is-error' : ''}`}
             title={updateCheck.status === 'failed' ? updateCheck.message : undefined}
           >
-            {updateCheck.status === 'checking' ? t('updateChecking') : null}
+            {checking ? <Busy>{t('updateChecking')}</Busy> : null}
             {updateCheck.status === 'upToDate' ? t('updateUpToDate') : null}
             {updateCheck.status === 'failed' ? t('updateCheckFailed') : null}
           </p>
