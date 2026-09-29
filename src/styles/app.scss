@@ -701,10 +701,10 @@
 }
 
 .settings-group {
-  // The segmented control stacks its options by the width of its nearest size
+  // The segmented control stacks its options by the width of the `segmented`
   // container, so each group declares one: the modal's width is what runs out
   // on a narrow window (snz-design doc-9 §6.12).
-  container-type: inline-size;
+  container: segmented / inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;

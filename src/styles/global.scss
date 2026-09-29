@@ -305,10 +305,12 @@ $segmented-inset: calc(var(--snz-space-xs) / 2);
 }
 
 // Narrow enough and the options stack, the face travelling down instead of across.
-// It keys on the nearest size container, which the host declares: the rule is
-// there so words are never cut short, and the viewers' bar declares none because
-// its options are figures (snz-design doc-9 §6.12).
-@container (max-width: 22rem) {
+// It asks a container named `segmented`, which a host of worded options declares:
+// the rule is there so words are never cut short, and figure-only groups such as
+// the viewers' bar must never stack. Unnamed, the query would answer to whatever
+// container is nearest, so one declared around the bar would stack it too
+// (snz-design doc-9 §6.12).
+@container segmented (max-inline-size: 22rem) {
   .segmented {
     grid-auto-flow: row;
     grid-auto-rows: 1fr;
