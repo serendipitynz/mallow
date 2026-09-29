@@ -80,7 +80,10 @@ a {
     @include focus-ring;
   }
 
-  &:disabled {
+  // `aria-disabled` keeps the focus, so the reason reaches the keyboard
+  // (snz-design doc-8 §5.4).
+  &:disabled,
+  &[aria-disabled='true'] {
     @include disabled-control;
 
     background: $surface-raised;
