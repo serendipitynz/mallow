@@ -4,7 +4,7 @@ title: Carry the shared design (snz-design) across every screen of mallow
 status: In Progress
 assignee: []
 created_date: '2026-09-28 03:58'
-updated_date: '2026-09-29 03:55'
+updated_date: '2026-09-29 04:01'
 labels:
   - design
 milestone: m-4
@@ -31,8 +31,8 @@ Work is split by screen into the subtasks, one PR each. The first subtask holds 
 - [ ] #1 Every subtask is Done, and snz-design's adoption record for mallow lists each subtask with its merged revision
 - [ ] #2 Every screen and component in the adoption record has a result; no required item is left unapplied, and each intentional exception has its reason and handling
 - [ ] #3 The four schemes (Standard Light / Dark, Solarized Light / Dark) meet the contrast criteria, stored settings are kept, and the keyboard reaches every control; the environment and evidence are recorded (snz-design doc-5 §5.3). Checks in the real window (WKWebView) record the owner's confirmation
-- [ ] #4 Document, code and mermaid rendering, the explorer, the toolbar, the settings and the theme sync across several windows are regression-checked; Dracula and Nord keep their own palettes
-- [ ] #5 pnpm test, pnpm lint and pnpm build pass
+- [x] #4 Document, code and mermaid rendering, the explorer, the toolbar, the settings and the theme sync across several windows are regression-checked; Dracula and Nord keep their own palettes
+- [x] #5 pnpm test, pnpm lint and pnpm build pass
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -49,4 +49,9 @@ Work is split by screen into the subtasks, one PR each. The first subtask holds 
 ## セグメントの container に名前を付けた
 - snz-design TASK-33 が doc-9 §6.12 に「問い合わせる容器に名前を付け、図形だけの組にはその名前の容器を持たせない」を足した。mallow は名前の無い `@container (max-width: 22rem)` だったので、`.settings-group` を `container: segmented / inline-size` にし、問い合わせを `@container segmented (max-width: 22rem)` にした。
 - 確認 (Chromium のブラウザ窓、Tauri は stub): 幅 1024 で設定の区画 386px → 2 組とも横並び、幅 320 で区画 238px → 2 組とも縦積み。名前の無い容器 (幅 200px) の中に置いたセグメントは横並びのまま (名前を付ける前は縦積みになっていた条件)。`pnpm lint` / `pnpm build` / `pnpm test` (444) 通過。
+
+## AC の状態 (2026-09-29)
+- #4 (回帰確認) と #5 (test / lint / build) は上の記録を根拠にチェックした。
+- #1〜#3 は snz-design の mallow 適用記録が作られるまで残す。#3 のコントラスト・キーボード到達・実窓確認の根拠は各子タスクのノートにあり、適用記録でまとめる。
+- PR #72 のレビューで、問い合わせを仕様の書き方 `max-inline-size` にそろえ、容器の宣言の決まりを AGENTS.md / AGENTS.ja.md の Segmented の項に書いた。
 <!-- SECTION:NOTES:END -->
