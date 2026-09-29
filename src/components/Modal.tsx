@@ -1,11 +1,13 @@
 import { type ReactNode, type RefObject, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../lib/i18n';
+import { keyboardOwner, type ModalEntry } from '../lib/modal-stack';
 import { CloseIcon } from './icons';
 
-// Innermost last. The update dialog opens over the settings modal, and both
-// listen on the document, so without this one Escape would close both and Tab
-// would wrap inside the one underneath (snz-design doc-9 §5.2).
-const openModals: object[] = [];
+// The update dialog opens over the settings modal, and both listen on the
+// document, so without this one Escape would close both and Tab would wrap
+// inside the one underneath (snz-design doc-9 §5.2). Which one is on top is
+// `covered`, not mount order — see `keyboardOwner`.
+const openModals: ModalEntry[] = [];
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -56,6 +58,8 @@ export function Modal({
   const [opener] = useState(() => (document.activeElement instanceof HTMLElement ? document.activeElement : null));
   const latest = useRef({ onClose, dismissible });
   latest.current = { onClose, dismissible };
+  const entry = useRef<ModalEntry>({ covered });
+  entry.current.covered = covered;
   const returnTarget = useRef(returnFocusTo);
   returnTarget.current = returnFocusTo;
 
@@ -64,16 +68,17 @@ export function Modal({
     if (!card) {
       return;
     }
-    const token = {};
+    const token = entry.current;
     openModals.push(token);
-    if (!card.contains(document.activeElement)) {
+    // A modal that mounts underneath another leaves the focus where it is.
+    if (!token.covered && !card.contains(document.activeElement)) {
       // A work modal opens on its first input; with none to prefer the surface
       // takes the focus, and Tab goes on from there (snz-design doc-9 §6.6).
       (card.querySelector<HTMLElement>('[data-autofocus]') ?? card).focus();
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (openModals[openModals.length - 1] !== token) {
+      if (keyboardOwner(openModals) !== token) {
         return;
       }
       // A conversion in progress is cancelled by Escape, not the dialog.
