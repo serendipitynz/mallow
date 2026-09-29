@@ -57,6 +57,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - `hooks/useOutlineFocusReturn.ts` — where the focus goes when the outline
   disappears while holding it: the toggle, or the chosen view option when the
   toggle went too (snz-design doc-9 §6.3.1).
+- `hooks/useExitFade.ts` — keeping a notice on screen, inert, until its fade-out
+  ends, so it leaves the way it came in (snz-design doc-9 §6.4).
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
