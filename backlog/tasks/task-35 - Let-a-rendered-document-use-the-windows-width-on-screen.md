@@ -1,10 +1,10 @@
 ---
 id: TASK-35
 title: 'Let a rendered document use the window''s width, on screen'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-16 00:38'
-updated_date: '2026-10-01 02:43'
+updated_date: '2026-10-01 02:53'
 labels:
   - feature
 milestone: m-4
@@ -53,7 +53,7 @@ visible at once. On paper the same declarations lose content outright.
 - [x] #3 Prose measure is not sacrificed to the table — at the standard and wide values of decision-15's preference, a paragraph does not become one line across a 2560px monitor whatever the table does; full is the reader explicitly choosing no limit and is exempt
 - [x] #4 The rendered HTML frame reaches the same width as the markdown article, since both sit in the same .doc__body grid cell
 - [x] #5 The change is what TASK-34's decision says, not a number chosen here; if implementing it shows the decision cannot hold, the decision is revised rather than departed from
-- [ ] #6 pnpm build and pnpm test pass, and the outline jump and scroll spy still land correctly — they read scroll-margin-top off a heading, so a layout change is exactly what can break them
+- [x] #6 pnpm build and pnpm test pass, and the outline jump and scroll spy still land correctly — they read scroll-margin-top off a heading, so a layout change is exactly what can break them
 - [x] #7 The prose measure is decision-15's proseMeasure preference — standard 53rem, wide 72rem, full with no limit — held in localStorage and propagated to every window the way outlineOpen is, chosen in the settings modal, and applied to prose alone: a wide element follows the window whichever value is chosen
 - [x] #8 Every view decision-15 §4 names reaches the article column: the HTML frame in both outline states, a .mmd diagram, the config and XML trees with their 960px removed, and every source view; the CSV / TSV view keeps no cap
 <!-- AC:END -->
