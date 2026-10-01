@@ -1680,7 +1680,13 @@ hold rather than as an exhaustive style guide.
   (`tauri.linux.conf.json`, `linux/mallow.desktop` — tauri's stock template has
   no field code), and **Windows registers nothing**, because tauri's NSIS and MSI
   registrations both write the extension's default ProgID — taking the default
-  is the only kind it has. **`tauri-plugin-single-instance` is pinned `~2.4`**:
+  is the only kind it has. **"Candidate, never the default" describes what is
+  written, not what every desktop does with it**: on Ubuntu 24.04 with no default
+  chosen for `.md`, installing the deb made mallow the default (measured
+  2026-10-02), and `.desktop` has no candidate-only rank to ask for — decision-16's
+  addendum keeps the registration and README warns the reader. The macOS
+  equivalent, a Mac where nothing else claims the type, is unmeasured.
+  **`tauri-plugin-single-instance` is pinned `~2.4`**:
   2.5 requires `tauri ^2.12`. None of the routes is reachable under `pnpm tauri
   dev` except a drop and the forwarded argv; `Opened` and the registrations need
   a bundled app.

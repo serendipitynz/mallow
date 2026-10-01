@@ -130,3 +130,28 @@ no objection):
   comparison `session.rs` and `recentFolders` use.
 - **Each route was measured only where noted in TASK-38**; a route measured on one
   platform is not evidence for another.
+
+## Addendum (2026-10-02, after the v0.9.0 release)
+
+**"Never as the default" holds for what mallow writes, not for what every desktop
+does with it.** Measured on Ubuntu 24.04.4 LTS (GNOME) with the v0.9.0 deb, on a
+machine where no default had been chosen for `.md`: installing mallow **made it
+the default**. The Linux bullet in Context left exactly this unmeasured. The
+mechanism is inferred rather than measured: with no default recorded, GIO prefers
+an application declaring the exact type over one declaring a parent type, the
+stock text editor declares `text/plain`, and mallow was the only one declaring
+`text/markdown`.
+
+The registration is kept (the user's choice, 2026-10-02). Dropping `MimeType=`
+would also take mallow out of the file manager's Open With list, which the same
+round measured working, and **the freedesktop `.desktop` format has no
+candidate-only rank** — `InitialPreference=` is KDE's alone — so on Linux the
+choice is between registering and possibly becoming the default where nothing
+was chosen, and not registering at all. README says this to the reader instead.
+
+**The other two platforms' "unchanged" results do not cover the case Linux
+failed in.** On Windows and macOS the default was left as it was, but the reader
+had already chosen an app for `.md` there. On Windows that changes nothing, since
+nothing is registered to compete with the choice. **On macOS a Mac where nothing else claims the type is
+unmeasured**: `Alternate` ranks below an `Owner` or `Default` claim, which is not
+the same as never being chosen when no such claim exists.
