@@ -1,10 +1,10 @@
 ---
 id: TASK-36
 title: Stop a table wider than the page falling off the printed paper
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-16 00:39'
-updated_date: '2026-10-01 06:31'
+updated_date: '2026-10-01 07:45'
 labels:
   - bug
 milestone: m-4
