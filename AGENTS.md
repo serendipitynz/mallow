@@ -831,6 +831,30 @@ hold rather than as an exhaustive style guide.
   toolbar's stacking context. Measured on macOS / WKWebView only, and **nothing
   automated can catch a regression here** — no check in the suite sees paint
   order.
+- **What caps a rendered document's width is the prose measure alone, and the
+  stylesheets do not say so yet** (decision-15; TASK-35 lands it on screen and
+  TASK-36 on paper). **Until they do, two caps swap with the outline**:
+  `.doc`'s 1180px leaves the markdown article 828px with the outline open, and
+  `.markdown-body`'s 53rem (848px) binds once `.doc.is-outline-closed` collapses
+  the grid — so raising the 1180px alone changes nothing in the closed state.
+  **The contract**: the cap exists so a reader's eye can get from the end of one
+  line of prose back to the start of the next, and a change to its number is
+  judged against that. It is a preference, `proseMeasure` (`standard` 53rem,
+  `wide` 72rem, `full` none), held in localStorage and propagated the way
+  `outlineOpen` is, and it applies to prose only. **A wide element** — a table,
+  a code block, a rendered diagram or an image alone in its paragraph, at the top
+  level of the article — takes **the article column** (the grid column the article
+  sits in, which grows with the window once `.doc`'s 1180px goes), and past it
+  keeps its own horizontal scroll or scales down, as today. The HTML frame, a
+  `.mmd` diagram, the config and XML trees (their 960px goes) and every source view
+  take the article column and ignore the preference; the CSV / TSV view keeps no
+  cap. **On paper the page's text block is the column**, narrower than every
+  measure: a wide element fits it by wrapping, and neither the document nor the
+  element is scaled down. **The scroll invariant decision-3, decision-9 and
+  TASK-8 rest on is vertical** — one vertical scroller, `.doc-scroll`. An
+  element's own horizontal scroll is fine; `.doc-scroll` itself scrolling
+  sideways is allowed in the CSV / TSV view alone, where there is no prose or
+  outline to slide away with it.
 - **The heading jump and the outline's scroll spy are one number crossing from
   TypeScript into CSS and back, and all three files have to hold.** `.doc__bar` is
   pinned over the top of the scroll container, so a heading must clear it to be
