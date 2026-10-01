@@ -115,10 +115,11 @@ export function markersPresent(text, needles) {
  *  that lost them — this is what fails it. Values rather than the header, so a
  *  column dropped from some rows and not others still shows.
  *
- *  **Letters, not digits, and that is measured**: on macOS the text layer gives
- *  the body font's digits back as other characters (`EDGE1` read as `EDGE*`,
- *  `TASK-36` as `TASK-:=`), so a numbered marker reports a column the paper
- *  carries as missing. */
+ *  **Letters, not digits, and that is measured**: the macOS export's text layer
+ *  gives the body font's digits back as other characters (`EDGE1` read as
+ *  `EDGE*`, `TASK-36` as `TASK-:=`), so a numbered marker reports a column the
+ *  paper carries as missing. The print route's paper of the same page reads its
+ *  digits correctly, so this belongs to the export's PDF, not to the font. */
 export const WIDE_TABLE_EDGE_MARKERS = ['EDGEA', 'EDGEB', 'EDGEC', 'EDGED', 'EDGEE', 'EDGEF', 'EDGEG', 'EDGEH'];
 
 /** How far past the page's right edge a word may end before it counts as off the
