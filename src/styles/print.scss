@@ -89,7 +89,6 @@
   // side-by-side grid rather than one named culprit, and the result has to be
   // reprinted to confirm.
   .doc {
-    max-width: none;
     margin: 0;
     padding: 0;
   }
@@ -98,8 +97,11 @@
     display: block;
   }
 
-  .doc .markdown-body {
-    max-width: none;
+  // The reader's measure is a screen preference and does not reach the paper
+  // (decision-15 §3): the page's text block is the column there. Same
+  // specificity as the screen rules, and this file is imported last.
+  .markdown-body[data-prose-measure] {
+    --prose-measure: 100%;
   }
 
   // Anything that scrolls on screen has to spill instead, or its overflow is

@@ -1,10 +1,6 @@
 @use './vars' as *;
 
 // ---- Config viewer ----------------------------------------------------------
-.doc.cfg {
-  max-width: 960px;
-}
-
 .cfg-expand {
   display: flex;
   gap: 4px;
