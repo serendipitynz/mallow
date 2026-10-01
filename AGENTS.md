@@ -38,8 +38,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   width/side, the mount-time open, settings-modal open state (footer button, the
   `menu:settings` event, and the Cmd/Ctrl+, shortcut all open it), and the
   launch update check (deferred behind that open; the `autoCheckUpdates`
-  preference turns it off). `openLocation` is the one sequence the picker and a
-  created or restored window's initial location both take; the mount effect asks
+  preference turns it off). `openLocation` is the one sequence the picker, a
+  created or restored window's initial location and a location the OS handed over
+  (TASK-38) all take; the mount effect asks
   `take_window_init` for that location, and nothing consults a stored folder any
   more. One effect keyed on the displayed folder and selection is what reports
   this window's content to the restored session — a predicate, not a call site.
@@ -110,7 +111,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   items), `close-window` (`CmdOrCtrl+W`, which on Windows is the *only* thing
   that closes a window — see the gotcha below), `print` / `pdf-export` / `new-window` / `close-window` (each entry's key,
   gate and reason — the last two have no gate), `window-init` (what a
-  window opens at mount, given what it was told at creation), `build-flags` (the unattended switch Vite substitutes), `render-signal`
+  window opens at mount, given what it was told at creation), `handover` (what
+  a window does with a location the OS handed over — opened or reported — and
+  which of several dropped items it opens), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
 - `unattended/` — the unattended export's driver (TASK-30), reached only from
@@ -244,9 +247,17 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   for the window for the reason `print_window` is. The three arms carry the one
   thing to check first on each: whether `@media print` applies (see the gotcha
   below), which is why macOS does not use `WKWebView.createPDF`.
-- `lib.rs` — plugin registration (opener, dialog, store, **the session**,
-  window-state, updater, process — none `cfg(desktop)`-gated, per decision-11;
-  the session's position in that list is load-bearing, see the gotcha below), the
+- `handover.rs` — locations the OS hands to mallow (TASK-38, decision-16):
+  `classify` and `resolve`, the pure halves that say what a handed path opens and
+  how an argument becomes one; `relaunched`, the single-instance callback;
+  `opened`, macOS's `RunEvent::Opened`; `open_handed_at_launch`, this process's
+  own argv; and `take_handover` / `inspect_dropped`, the two commands a window
+  calls. **A live window takes what it was handed rather than being sent it**,
+  so a restored window that has not mounted loses nothing. See the gotcha below.
+- `lib.rs` — plugin registration (**single-instance, first**, then opener,
+  dialog, store, **the session**, window-state, updater, process — none
+  `cfg(desktop)`-gated, per decision-11; both positions in that list are
+  load-bearing, see the gotchas below), the
   `invoke_handler`, the per-window `Destroyed` / `Focused(true)` hooks, the
   `RunEvent::Exit` callback that flushes the session, the `on_menu_event` that is
   one line handing the id to `menu.rs`, and the `setup` that builds the menu and
@@ -1628,6 +1639,42 @@ hold rather than as an exhaustive style guide.
   collapse labels with the plugin's `map_label`** (`src/lib.rs:377`) — it gives
   every window one shared geometry, which is exactly what a restored set must not
   have.
+- **A location the OS hands over arrives by three routes, and none of them is
+  the picker** (TASK-38, decision-16): a command-line argument (a CLI invocation
+  everywhere, and the route a Windows or Linux association takes),
+  `RunEvent::Opened` (macOS only — Finder, Open With, `open -a`), and a drop onto
+  a window. **Each one ends in `openLocation`**, as a created window's initial
+  location or as an item a live window takes from its queue, so the media grant
+  and the watch come with it — a fourth path would open a window that renders no
+  images and notices no edits. **A second launch is forwarded, not run**:
+  tauri-plugin-single-instance hands its argv to the running process and exits,
+  and it is registered **first** because every plugin set up before it would
+  have run in the doomed process — the session plugin's setup writes
+  settings.json and the window-state file. It exits through
+  `cleanup_before_exit` and `process::exit`, which run no plugin's exit hook.
+  This also closes what two launches from the Start menu used to do: two
+  processes each calling their first window `w1`, colliding in the restored
+  session and the window-state file. **Linux without a DBus session bus still
+  gets the old behaviour**, since the plugin finds nothing to forward to.
+  **Arrivals are held until the restored windows exist** — the forwarded
+  callback runs in the plugin's setup, before `setup`, and a cold launch's
+  `Opened` is not ordered against `applicationDidFinishLaunching` by anything
+  this code controls; routed early, an item creates a window under the lowest
+  free label and the restore then fails to build that label. **Routing is
+  spawned, never inline**: on Windows the callback runs inside `WM_COPYDATA`, a
+  window procedure, which is the deadlock `create_window` warns about.
+  **Arguments are folded lexically, not canonicalized**, so "a window already
+  shows this folder" stays the exact string match `session.rs` uses. **What is
+  registered with the OS differs per platform on purpose**: macOS claims
+  markdown and mermaid at `LSHandlerRank` Alternate (`tauri.macos.conf.json`),
+  Linux claims `text/markdown` through a `.desktop` template carrying `%F`
+  (`tauri.linux.conf.json`, `linux/mallow.desktop` — tauri's stock template has
+  no field code), and **Windows registers nothing**, because tauri's NSIS and MSI
+  registrations both write the extension's default ProgID — taking the default
+  is the only kind it has. **`tauri-plugin-single-instance` is pinned `~2.4`**:
+  2.5 requires `tauri ^2.12`. None of the routes is reachable under `pnpm tauri
+  dev` except a drop and the forwarded argv; `Opened` and the registrations need
+  a bundled app.
 - **Closing the last window exits the app, on every platform including macOS.**
   The platform convention there is to stay alive with only the menu bar, and that
   is declined rather than overlooked: a menu-bar-only state needs New Window to
@@ -1645,7 +1692,8 @@ hold rather than as an exhaustive style guide.
   `chord` (accelerator matching, the app-wide handler, and the click modifier the
   in-app Open Recent list reads — all three take the platform
   as an argument so none needs `navigator`), `window-init` (what a
-  window opens in each of the three creation states),
+  window opens in each of the three creation states), `handover` (what each
+  handed answer becomes, and which dropped item is opened),
   `markdown-preview` (the gate, and that it notifies only on a change — one
   invocation reaches Rust per notification), `print`,
   `pdf-export`, `new-window`, `close-window` and `explorer-toggle` (each chord's key, gate and what the handler does
@@ -1673,7 +1721,10 @@ hold rather than as an exhaustive style guide.
   emptied under the reader is told apart from a folder deleted under them), and
   `session`'s live-set functions
   (reporting, focus order, the last-window rule, the cap, both halves of the
-  migration, and which window is showing a folder) and `settings`'s raise rule
+  migration, which window is showing a folder, and which live window was focused
+  last), `handover`'s argument resolution and classification (a file opening its
+  folder, the three refusals, and the wire shape the frontend switches on) and
+  `settings`'s raise rule
   (that a stamp at or below the mark is put past it, and that a change made after
   a settings read outranks it whichever key either touched) are covered without a GUI — the
   last three because they take what

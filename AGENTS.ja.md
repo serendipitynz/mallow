@@ -38,8 +38,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   幅/左右、mount 時に開く処理、設定モーダルの開閉（フッターのボタン・`menu:settings`
   イベント・`Cmd/Ctrl+,` ショートカットのいずれからも開く）、起動時の更新確認
   （その処理の後ろへ遅らせる。`autoCheckUpdates` 設定で切れる）。
-  フォルダに辿り着く 2 経路 — フォルダ選択と、作られた／復元されたウィンドウが
-  受け取る initial location — は `openLocation` という 1 つの手順を通る。
+  フォルダに辿り着く経路 — フォルダ選択、作られた／復元されたウィンドウが
+  受け取る initial location、OS から渡された場所（TASK-38） — は `openLocation` という
+  1 つの手順を通る。
   mount 時の効果は `take_window_init` へ initial location を要求し、
   保存されたフォルダはもうどこからも読まない。表示中のフォルダと選択を見る効果 1 つが
   restored session への報告で、**呼び出し箇所ではなく述語**として書いてある。
@@ -106,6 +107,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   下の gotcha を見る）、
   `print` / `pdf-export` / `new-window` / `close-window`（各入口のキー・ゲート・理由。
   後ろ 2 つは閉じるゲートを持たない）、
+  `handover`（OS から渡された場所をウィンドウがどうするか — 開くか知らせるか — と、
+  複数ドロップされたときにどれを開くか）、
   `build-flags`（Vite が置き換える無人書き出しのスイッチ）、
   `render-signal`（描画済みの本文が変化し終わった時点）、
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
@@ -229,9 +232,15 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   — **Linux ではこれが紙への唯一の道**になる。`print_window` と同じ理由でウィンドウで命名した。
   3 つの分岐が共通に抱える確認事項は **`@media print` が当たるか**で（下の落とし穴を見る）、
   それが macOS で `WKWebView.createPDF` を採らない理由でもある。
-- `lib.rs` — プラグイン登録（opener, dialog, store, **session**, window-state,
-  updater, process。decision-11 によりどれも `cfg(desktop)` で括らない。
-  session の位置は load-bearing —下の gotcha を読む）、`invoke_handler`、
+- `handover.rs` — OS が mallow に渡す場所（TASK-38、decision-16）。渡されたパスが何を開くかと、
+  引数をパスにする手順を言う純関数 `classify` と `resolve`、single-instance のコールバック
+  `relaunched`、macOS の `RunEvent::Opened` を受ける `opened`、このプロセス自身の argv を扱う
+  `open_handed_at_launch`、ウィンドウが呼ぶ 2 つのコマンド `take_handover` / `inspect_dropped`。
+  **生きているウィンドウには送りつけず、ウィンドウの側が取りに来る** — まだ mount していない
+  復元ウィンドウでも取りこぼさないため。下の gotcha を読む。
+- `lib.rs` — プラグイン登録（**single-instance を最初に**、続けて opener, dialog, store,
+  **session**, window-state, updater, process。decision-11 によりどれも `cfg(desktop)` で括らない。
+  2 つの位置はどちらも load-bearing —下の gotcha を読む）、`invoke_handler`、
   ウィンドウごとの `Destroyed` / `Focused(true)` フック、restored session を
   flush する `RunEvent::Exit` コールバック、id を `menu.rs` に渡すだけの 1 行に
   なった `on_menu_event`、そしてメニューを組んでから**すべての**ウィンドウを作る
@@ -1442,6 +1451,35 @@ Comments と Functions の規約は機械的に検査されない。コメント
   **プラグインの `map_label` でラベルを畳まないこと**（`src/lib.rs:377`） —
   全ウィンドウが 1 つの geometry を共有することになり、復元された集合が最もそうであっては
   ならない状態になる。
+- **OS から渡される場所は 3 つの経路で届き、どれもピッカーではない**（TASK-38、decision-16）:
+  コマンドライン引数（全環境の CLI 呼び出しと、Windows / Linux の関連付けが通る経路）、
+  `RunEvent::Opened`（macOS 専用 — Finder・「このアプリケーションで開く」・`open -a`）、
+  ウィンドウへのドロップ。**どれも最後は `openLocation` を通る** — 作られたウィンドウの
+  initial location として、または生きているウィンドウがキューから取る項目として。だから
+  メディアの許可と watch が付いてくる。4 本目の道を作ると、画像を描けず編集にも気づかない
+  ウィンドウが開く。**2 度目の起動は走らせずに転送する**: tauri-plugin-single-instance が
+  argv を起動中のプロセスへ渡して終了する。**最初に**登録するのは、それより前に setup された
+  プラグインがすべて、終わる運命のプロセスの中で走ってしまうから — session プラグインの setup は
+  settings.json と window-state のファイルを書く。終了は `cleanup_before_exit` と
+  `process::exit` を通り、どのプラグインの exit フックも走らない。これで、スタートメニューから
+  2 回起動すると 2 プロセスがそれぞれ最初のウィンドウを `w1` と名乗り、復元セッションと
+  window-state のファイルで衝突していた件も塞がる。**DBus のセッションバスが無い Linux は従来の
+  挙動のまま** — プラグインが転送先を見つけられないため。**届いたものは復元ウィンドウが
+  揃うまで保留する** — 転送のコールバックはプラグインの setup、つまり `setup` より前に走り、
+  冷えた起動の `Opened` が `applicationDidFinishLaunching` とどちらが先かは、このコードが
+  決められることではない。早く配ると、項目が最小の空きラベルでウィンドウを作り、復元が
+  そのラベルを作れずに失敗する。**配送は spawn し、その場では行わない**: Windows では
+  コールバックが `WM_COPYDATA`（ウィンドウプロシージャ）の中で走り、`create_window` が
+  警告しているデッドロックそのものになる。**引数は字面で畳み、canonicalize しない** —
+  「そのフォルダを表示中のウィンドウがある」を `session.rs` と同じ完全一致の文字列比較の
+  ままにするため。**OS への登録はプラットフォームごとに意図して違う**: macOS は markdown と
+  mermaid を `LSHandlerRank` Alternate で（`tauri.macos.conf.json`）、Linux は `text/markdown`
+  を `%F` 付きの `.desktop` テンプレートで（`tauri.linux.conf.json`・`linux/mallow.desktop`。
+  tauri 標準のテンプレートには field code が無い）登録し、**Windows は何も登録しない** —
+  tauri の NSIS と MSI の登録はどちらも拡張子の既定 ProgID を書き換え、既定を奪う形しか
+  持たないため。**`tauri-plugin-single-instance` は `~2.4` に固定する**: 2.5 は
+  `tauri ^2.12` を要求する。`pnpm tauri dev` で届くのはドロップと転送された argv だけで、
+  `Opened` と登録はバンドルしたアプリでないと試せない。
 - **最後のウィンドウを閉じるとアプリは終了する。macOS を含め全環境で同じ。**
   macOS の作法はメニューバーだけ残して生き続けることだが、見落としではなく選ばなかった:
   メニューバーのみの状態は「フォーカスされたウィンドウが無い状態で New Window が動く」
@@ -1460,6 +1498,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   読む click の修飾キー。いずれもプラットフォームを
   引数で受けるので `navigator` を要しない・
   `window-init`＝3 つの生成状態それぞれでウィンドウが何を開くか・
+  `handover`＝渡された答えそれぞれが何になるかと、ドロップされたどれを開くか・
   `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
   Rust への invoke が 1 回走る）・
   `print`・`pdf-export`・`new-window`・`close-window`・`explorer-toggle`＝各 chord のキー・ゲートと、
@@ -1489,7 +1528,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   ウィンドウがあっても replace 分岐は逸れないこと、利用者の下で一覧が空にされた場合と
   フォルダが削除された場合を言い分けることを含む）、`session` のライブ集合まわり（報告・
   フォーカス順・last-window rule・上限・移行の両半分・どのウィンドウがそのフォルダを
-  表示しているか）、`settings` の押し上げ規則（mark 以下の stamp がその先へ
+  表示しているか・最後にフォーカスされた生きているウィンドウ）、`handover` の引数の解決と
+  分類（ファイルはそのフォルダを開くこと、3 つの拒否、フロントが分岐に使う形）、`settings` の押し上げ規則（mark 以下の stamp がその先へ
   置かれること、設定の読み出しの後に行われた変更が、どちらがどのキーに触れたかに
   関わらずその読み出しを上回ること）も
   GUI なしで検査する。
