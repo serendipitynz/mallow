@@ -1,9 +1,10 @@
 ---
 id: TASK-34
 title: 'Decide what governs the width of a rendered document, on screen and on paper'
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-16 00:38'
+updated_date: '2026-10-01 00:25'
 labels:
   - feature
 milestone: m-4
@@ -67,10 +68,16 @@ widening — it is the defect those three went to some trouble to avoid.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The contract states which of the two caps applies in which outline state, with the measured numbers: .doc's 1180px leaves the article 828px with the outline open, and .markdown-body's 53rem (848px) is what binds once .doc.is-outline-closed collapses the grid to one column
-- [ ] #2 The contract states whether the cap is a fixed value, a per-window state, or a persisted preference, and if a preference, which key holds it and how it reaches every window
-- [ ] #3 The contract states whether an element wider than the cap may exceed it, and if so which elements and by what mechanism — a table is the case that motivated this, but the same question is open for pre, img and the rendered HTML frame
-- [ ] #4 The contract states what the cap is for, so a later change can be judged against a reason rather than against a number
-- [ ] #5 The answer is recorded as a decision under backlog/decisions, and the affected AGENTS.md / AGENTS.ja.md paragraphs are revised in the same PR with the two files carrying the same content
-- [ ] #6 The decision names which views the answer binds: markdown is the one asked about, but .doc is shared by ConfigView, MermaidView, TableView and HtmlView, and config.scss and xml.scss set 960px of their own
+- [x] #1 The contract states which of the two caps applies in which outline state, with the measured numbers: .doc's 1180px leaves the article 828px with the outline open, and .markdown-body's 53rem (848px) is what binds once .doc.is-outline-closed collapses the grid to one column
+- [x] #2 The contract states whether the cap is a fixed value, a per-window state, or a persisted preference, and if a preference, which key holds it and how it reaches every window
+- [x] #3 The contract states whether an element wider than the cap may exceed it, and if so which elements and by what mechanism — a table is the case that motivated this, but the same question is open for pre, img and the rendered HTML frame
+- [x] #4 The contract states what the cap is for, so a later change can be judged against a reason rather than against a number
+- [x] #5 The answer is recorded as a decision under backlog/decisions, and the affected AGENTS.md / AGENTS.ja.md paragraphs are revised in the same PR with the two files carrying the same content
+- [x] #6 The decision names which views the answer binds: markdown is the one asked about, but .doc is shared by ConfigView, MermaidView, TableView and HtmlView, and config.scss and xml.scss set 960px of their own
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Answered 2026-10-01 and recorded as decision-15. Owner's answers: the cap exists for the prose measure only; it is a preference with three values (standard / wide / full). AI-side consequences: wide elements (top-level table, code block, rendered diagram, image alone in its paragraph) take the article column; .doc's 1180px and config/XML's 960px go; the HTML frame takes the article column in both outline states; the scroll invariant of decision-3 / decision-9 / TASK-8 is named as the vertical one, with .doc-scroll scrolling sideways allowed in the CSV / TSV view alone. TASK-35 gained two AC for the preference and the views.
+<!-- SECTION:NOTES:END -->
