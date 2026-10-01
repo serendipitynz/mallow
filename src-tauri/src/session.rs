@@ -28,6 +28,7 @@
 // reports dead code the usual way.
 #![cfg_attr(unattended, allow(dead_code))]
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -223,6 +224,40 @@ pub fn window_showing(app: &AppHandle, folder: &str) -> Option<String> {
     let state = live(app)?;
     let entries = state.0.lock().ok()?;
     showing_folder(&entries, folder)
+}
+
+/// The most recently focused of the windows in `alive`, or of those showing no
+/// folder when `empty_only` is set.
+///
+/// `alive` is passed rather than trusted from the rows: a restored row whose
+/// window failed to build stays in the live set on purpose (see
+/// `open_restored_windows`), and handing a location to that label would hand it
+/// to nothing.
+fn most_recent(entries: &[WindowEntry], alive: &HashSet<String>, empty_only: bool) -> Option<String> {
+    entries
+        .iter()
+        .rev()
+        .filter(|entry| alive.contains(&entry.label))
+        .find(|entry| !empty_only || entry.folder.is_none())
+        .map(|entry| entry.label.clone())
+}
+
+/// The label of the most recently focused live window — where something reaches
+/// that was not aimed at any one window.
+pub fn most_recent_window(app: &AppHandle) -> Option<String> {
+    most_recent_live(app, false)
+}
+
+/// The label of the most recently focused live window showing no folder.
+pub fn most_recent_empty_window(app: &AppHandle) -> Option<String> {
+    most_recent_live(app, true)
+}
+
+fn most_recent_live(app: &AppHandle, empty_only: bool) -> Option<String> {
+    let alive: HashSet<String> = app.webview_windows().into_keys().collect();
+    let state = live(app)?;
+    let entries = state.0.lock().ok()?;
+    most_recent(&entries, &alive, empty_only)
 }
 
 /// `entries` with `label`'s row moved to the end.
@@ -586,6 +621,26 @@ mod tests {
     fn a_window_showing_nothing_matches_no_folder() {
         let entries = vec![entry("w1", None, None)];
         assert_eq!(showing_folder(&entries, "/docs"), None);
+    }
+
+    fn alive(labels: &[&str]) -> HashSet<String> {
+        labels.iter().map(|l| l.to_string()).collect()
+    }
+
+    #[test]
+    fn the_most_recent_window_is_the_last_row_still_alive() {
+        let entries = vec![entry("w1", Some("/a"), None), entry("w2", Some("/b"), None)];
+        assert_eq!(most_recent(&entries, &alive(&["w1", "w2"]), false), Some("w2".to_string()));
+        // A restored row whose window never built is skipped, not handed anything.
+        assert_eq!(most_recent(&entries, &alive(&["w1"]), false), Some("w1".to_string()));
+        assert_eq!(most_recent(&entries, &alive(&[]), false), None);
+    }
+
+    #[test]
+    fn the_most_recent_empty_window_skips_windows_showing_a_folder() {
+        let entries = vec![entry("w1", None, None), entry("w2", Some("/b"), None)];
+        assert_eq!(most_recent(&entries, &alive(&["w1", "w2"]), true), Some("w1".to_string()));
+        assert_eq!(most_recent(&entries, &alive(&["w2"]), true), None);
     }
 
     #[test]
