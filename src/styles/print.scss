@@ -117,13 +117,49 @@
   // `pre.shiki` rather than `pre`: the rule that makes it scroll is written that
   // way, so matching it is what wins without `!important`. `.code-block` sets no
   // overflow of its own, so it is not listed — a rule that overrides nothing.
-  .markdown-body pre.shiki,
-  .markdown-body table {
+  .markdown-body pre.shiki {
     overflow: visible;
   }
 
   .markdown-body pre {
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  // **A table cannot take either half of the `<pre>` fix** (TASK-36). On screen
+  // it is a `display: block` box at `width: max-content` that scrolls, and
+  // `overflow: visible` does not help it for the reason it does not help a
+  // `white-space: pre` line: the width is still `max-content`, so the columns
+  // past the page's edge run off it with no scrollbar to reach them. Nor does
+  // wrapping the text, because a table's width comes from its columns rather
+  // than from a line of text.
+  //
+  // So it is a table again here, at `width: auto`: the auto table layout gives
+  // it its content's width up to the text block and no further, and squeezes
+  // the columns instead of the type (decision-15 §2). The `min-width` the screen
+  // gives a narrow one is released, so a narrow table stays as narrow as it is,
+  // and the margin keeps its left edge on the prose's rather than centring it.
+  // Both selectors because the top-level one is the screen's, and it outranks
+  // the plain one.
+  .markdown-body table:not(.doc-frontmatter),
+  .doc__body > .markdown-body[data-prose-measure] > table:not(.doc-frontmatter) {
+    display: table;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  // What lets the columns squeeze at all. The auto layout never makes a column
+  // narrower than its longest unbreakable run, and `break-word` (inherited from
+  // `.markdown-body`) does not count as a break there — so a path or a
+  // snake_case name holds its column open and the table overflows again.
+  // `anywhere` is the one value that does count, which is why the `<pre>` above
+  // carries it too. The price is that a short word in a squeezed column can be
+  // split mid-word; decision-15 prefers that to losing a column or shrinking
+  // the type. Every table, front matter included, since a long value there
+  // overflows the same way.
+  .markdown-body table :is(th, td) {
     overflow-wrap: anywhere;
   }
 

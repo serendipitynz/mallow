@@ -37,7 +37,8 @@ export const SHELL_MARKERS = [
  *  `本文`, so a longer needle would fail on a paper that is perfectly fine. */
 export const LAST_SECTION_MARKER = '最後の節';
 
-/** Words as `pdftotext -bbox` reports them, with the page they sit on.
+/** Words as `pdftotext -bbox` reports them, with the page they sit on and that
+ *  page's width — the width is what a word past the right edge is judged by.
  *
  *  The XML is read with a scanner rather than a parser because poppler's output
  *  is machine-written and flat — `<page>` elements holding `<word>` elements —
@@ -45,15 +46,19 @@ export const LAST_SECTION_MARKER = '最後の節';
 export function parseBboxWords(xml) {
   const words = [];
   let page = 0;
+  let pageWidth;
   const token =
     /<page\b[^>]*>|<word xMin="([\d.-]+)" yMin="([\d.-]+)" xMax="([\d.-]+)" yMax="([\d.-]+)"[^>]*>([^<]*)<\/word>/g;
   for (const match of xml.matchAll(token)) {
     if (match[0].startsWith('<page')) {
       page += 1;
+      const width = match[0].match(/\bwidth="([\d.]+)"/);
+      pageWidth = width ? Number(width[1]) : undefined;
       continue;
     }
     words.push({
       page,
+      pageWidth,
       text: decodeEntities(match[5]),
       x0: Number(match[1]),
       y0: Number(match[2]),
@@ -102,6 +107,34 @@ export function textExtentX(words, page) {
 /** Which of `needles` the paper carries. */
 export function markersPresent(text, needles) {
   return needles.filter((needle) => text.includes(needle));
+}
+
+/** The values in the right-hand column of the fixture's nine-column table
+ *  (§12), one per row. **A table wider than the page loses its right-hand
+ *  columns, not its tail** (TASK-36), so `reaches-last-section` passes a paper
+ *  that lost them — this is what fails it. Values rather than the header, so a
+ *  column dropped from some rows and not others still shows.
+ *
+ *  **Letters, not digits, and that is measured**: the macOS export's text layer
+ *  gives the body font's digits back as other characters (`EDGE1` read as
+ *  `EDGE*`, `TASK-36` as `TASK-:=`), so a numbered marker reports a column the
+ *  paper carries as missing. The print route's paper of the same page reads its
+ *  digits correctly, so this belongs to the export's PDF, not to the font. */
+export const WIDE_TABLE_EDGE_MARKERS = ['EDGEA', 'EDGEB', 'EDGEC', 'EDGED', 'EDGEE', 'EDGEF', 'EDGEG', 'EDGEH'];
+
+/** How far past the page's right edge a word may end before it counts as off the
+ *  paper: rounding in poppler's coordinates, not a margin. */
+const RIGHT_EDGE_SLACK_PT = 0.5;
+
+/** Words that end past their page's right edge.
+ *
+ *  **Both halves of the wide-table check are needed, because which one a lost
+ *  column shows up in depends on the engine**: one that drops what it clips
+ *  leaves the marker absent, one that writes it anyway leaves it in the text
+ *  layer at an x the paper does not have. A word whose page width is unknown is
+ *  not judged. */
+export function wordsPastRightEdge(words) {
+  return words.filter((word) => word.pageWidth !== undefined && word.x1 > word.pageWidth + RIGHT_EDGE_SLACK_PT);
 }
 
 /** WebView2 prints its own header and footer, which the reader can switch off and
@@ -172,6 +205,7 @@ export function judgePaper({ os, key, bytes, maxBytes, pages, pageSize, words, b
       ok: shell.length === 0,
       detail: shell.length === 0 ? 'no shell strings' : `shell strings on the paper: ${shell.join(', ')}`,
     },
+    wideTableCheck(text, words),
     {
       id: 'file-size',
       ok: bytes <= maxBytes,
@@ -227,6 +261,58 @@ export function judgePaper({ os, key, bytes, maxBytes, pages, pageSize, words, b
       wordsOnPage2: words.filter((word) => word.page === 2).length,
       bytes,
     },
+  };
+}
+
+/** The words that share a left edge, read top to bottom and on across pages.
+ *
+ *  **What a squeezed column needs, because the text layer reads by line, not by
+ *  cell**: measured on macOS, a value wrapped one letter per line (`E`, `D`, `G`,
+ *  `E`, `A`) comes back interleaved with the other cells of each line, so no
+ *  joining of the stream order puts it together again. A wrapped cell's lines
+ *  all start at the cell's left edge, which is what this groups on. Across
+ *  pages, because a row can straddle a break — measured too, `EDGE` at the foot
+ *  of one page and `G` at the head of the next. */
+export function columnStrips(words) {
+  const strips = new Map();
+  for (const word of words) {
+    const key = Math.round(word.x0);
+    strips.set(key, [...(strips.get(key) ?? []), word]);
+  }
+  return [...strips.values()].map((strip) =>
+    strip
+      .sort((a, b) => a.page - b.page || a.y0 - b.y0)
+      .map((word) => word.text)
+      .join(''),
+  );
+}
+
+/** A value is present if either reading carries it whole: the stream order, as
+ *  `reaches-last-section` reads it, or a column strip. */
+function wideTableCheck(text, words) {
+  const strips = columnStrips(words);
+  const missing = WIDE_TABLE_EDGE_MARKERS.filter(
+    (marker) => !text.includes(marker) && !strips.some((strip) => strip.includes(marker)),
+  );
+  const past = wordsPastRightEdge(words);
+  const problems = [];
+  if (missing.length > 0) {
+    problems.push(`right-hand column MISSING: ${missing.join(', ')}`);
+  }
+  if (past.length > 0) {
+    const sample = past
+      .slice(0, 5)
+      .map((word) => `${word.text}@${word.x1.toFixed(1)}/${word.pageWidth}`)
+      .join(', ');
+    problems.push(`${past.length} word(s) end past the page's right edge: ${sample}`);
+  }
+  return {
+    id: 'wide-table-in-full',
+    ok: problems.length === 0,
+    detail:
+      problems.length === 0
+        ? `all ${WIDE_TABLE_EDGE_MARKERS.length} right-hand values present, nothing past the right edge`
+        : problems.join('; '),
   };
 }
 
