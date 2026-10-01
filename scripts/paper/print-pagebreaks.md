@@ -281,7 +281,25 @@ markdown-it は `html: false` で走り、`validateLink` が `asset:` を落と�
 
 水平線の上下。区切りが紙に出るか。
 
-## 12. 最後の節（本文が最後まで出たことの目印）
+## 12. ページより広い表（右端の列が紙に出たことの目印）
+
+**見る点**: 9 列の表が版面の幅に収まり、**右端の列（`EDGE` で始まる値）が全行で紙に出ているか**。
+列の幅は内容から決まるので、`<pre>` の折り返しでは収まらない。収まらなければ、右側の列が
+紙から落ちる（TASK-36）。**文字が縮んで収まっていたら、それも失敗である** — 収め方は
+列の中で折り返すことであって、縮小ではない。
+
+| No | サービス区分 | ホスト | メソッド | パス | 機能名 | 主なパラメータ | 認証 | 右端の列 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | catalogue_listing_service | storefront | GET | `/s1/library/v3/catalogues/{catalogue_id}/editions` | 版の一覧取得 | catalogue_id, page_size | 不要 | EDGEA |
+| 2 | catalogue_listing_service | storefront | GET | `/s1/library/v3/catalogues/{catalogue_id}/editions/{edition_id}` | 単一の版の取得 | catalogue_id, edition_id | 不要 | EDGEB |
+| 3 | reader_profile_service | storefront | PUT | `/s1/library/v3/readers/me/reading-preferences` | 読書設定の更新 | preferred_language, font_scale | 要 | EDGEC |
+| 4 | reader_profile_service | storefront | DELETE | `/s1/library/v3/readers/me/saved-searches/{saved_search_id}` | 保存した検索の削除 | saved_search_id | 要 | EDGED |
+| 5 | lending_subscription_service | storefront | POST | `/s1/library/v3/lending-subscriptions/{id}/auto-renewal` | 自動更新の切り替え | is_auto_renewal_enabled | 要 | EDGEE |
+| 6 | lending_subscription_service | storefront | GET | `/s1/library/v3/lending-subscriptions/{id}/renewal-discount` | 更新割引の取得 | id | 要 | EDGEF |
+| 7 | session_service | accounts | POST | `/s1/oauth/v3/refresh_token` | アクセストークンの更新 | refresh_token, grant_type | 不要 | EDGEG |
+| 8 | service_status_service | status | GET | `/s1/status` | 稼働状況の取得 | なし | 不要 | EDGEH |
+
+## 13. 最後の節（本文が最後まで出たことの目印）
 
 **この行が刷り上がりの最後のページに出ていれば、`.doc-scroll` は紙を切っていない。**
 出ていなければ、`overflow: visible; height: auto` を `@media print` で当てる必要がある。

@@ -4,13 +4,16 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   assertMarkersAreAbsentFromFixture,
+  columnStrips,
   judgePaper,
   markersPresent,
   medianWordHeight,
   parseBboxWords,
   SHELL_MARKERS,
   textExtentX,
+  WIDE_TABLE_EDGE_MARKERS,
   webView2ChromeFound,
+  wordsPastRightEdge,
 } from './measure.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +41,10 @@ describe('parseBboxWords', () => {
       [1, '&world'],
       [2, 'second'],
     ]);
+  });
+
+  it('carries the width of the page each word sits on', () => {
+    expect(parseBboxWords(xml).map((w) => w.pageWidth)).toEqual([595, 595, 595]);
   });
 
   it('reads the box back as numbers', () => {
@@ -104,8 +111,39 @@ describe('webView2ChromeFound', () => {
   });
 });
 
+describe('columnStrips', () => {
+  it('reads the words sharing a left edge top to bottom', () => {
+    const strips = columnStrips([
+      word(1, 'b', { x0: 50.2, y0: 20 }),
+      word(1, 'x', { x0: 10 }),
+      word(1, 'a', { x0: 49.9 }),
+    ]);
+    expect(strips).toEqual(['ab', 'x']);
+  });
+
+  // A row straddling a page break leaves the head of a value on one page and its
+  // tail at the top of the next.
+  it('carries on across a page break', () => {
+    const strips = columnStrips([word(2, 'G', { x0: 50, y0: 40 }), word(1, 'EDGE', { x0: 50, y0: 760 })]);
+    expect(strips).toEqual(['EDGEG']);
+  });
+});
+
+describe('wordsPastRightEdge', () => {
+  it('takes a word ending past its page and leaves one ending at the edge', () => {
+    const inside = word(1, 'in', { x0: 500, x1: 595.3, pageWidth: 595 });
+    const past = word(1, 'out', { x0: 590, x1: 600, pageWidth: 595 });
+    expect(wordsPastRightEdge([inside, past])).toEqual([past]);
+  });
+
+  it('does not judge a word whose page width is unknown', () => {
+    expect(wordsPastRightEdge([word(1, 'x', { x1: 9999 })])).toEqual([]);
+  });
+});
+
 describe('judgePaper', () => {
-  const words = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 18.5 }), word(3, `12. 最後の節`)];
+  const edge = WIDE_TABLE_EDGE_MARKERS.map((marker) => word(3, marker, { x0: 500, x1: 530, pageWidth: 595 }));
+  const words = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 18.5 }), ...edge, word(3, `13. 最後の節`)];
   const base = {
     os: 'macos',
     bytes: 290_000,
@@ -141,14 +179,58 @@ describe('judgePaper', () => {
     expect(check(result, 'no-app-shell').detail).toContain('Outline');
   });
 
+  // TASK-36: the tail is there and the right-hand columns are not, which
+  // `reaches-last-section` alone passes.
+  it('fails a paper whose wide table lost its right-hand column, and names the values', () => {
+    const lost = words.filter((w) => w.text !== 'EDGEC' && w.text !== 'EDGEH');
+    const result = judgePaper({ ...base, words: lost });
+    expect(check(result, 'reaches-last-section').ok).toBe(true);
+    expect(check(result, 'wide-table-in-full').ok).toBe(false);
+    expect(check(result, 'wide-table-in-full').detail).toContain('EDGEC, EDGEH');
+  });
+
+  // The other way an engine can lose a column: the text is written, but where
+  // the paper is not.
+  it('fails a paper with a word past the right edge even when every value is in the text', () => {
+    const spilled = [...words, word(3, 'agencies', { x0: 590, x1: 640, pageWidth: 595 })];
+    const result = judgePaper({ ...base, words: spilled });
+    expect(check(result, 'wide-table-in-full').ok).toBe(false);
+    expect(check(result, 'wide-table-in-full').detail).toContain('agencies@640.0/595');
+  });
+
+  // A squeezed column may wrap a value mid-word; that is the fix working.
+  it('reads a value wrapped across two lines as present', () => {
+    const wrapped = words.flatMap((w) =>
+      w.text === 'EDGEA'
+        ? [
+            { ...w, text: 'EDG' },
+            { ...w, text: 'EA', y0: 12, y1: 22 },
+          ]
+        : [w],
+    );
+    expect(check(judgePaper({ ...base, words: wrapped }), 'wide-table-in-full').ok).toBe(true);
+  });
+
+  // What macOS actually wrote: one letter per line, and the text layer putting
+  // each line's other cells between them.
+  it('reads a value wrapped one letter per line, interleaved with other cells, as present', () => {
+    const letters = [...'EDGEA'].map((letter, line) =>
+      word(3, letter, { x0: 525.6, x1: 532, y0: 600 + line * 22, y1: 615 + line * 22, pageWidth: 595 }),
+    );
+    const others = [0, 1, 2, 3, 4].map((line) => word(3, `cell${line}`, { x0: 154, x1: 170, y0: 600 + line * 22 }));
+    const interleaved = letters.flatMap((letter, line) => [others[line], letter]);
+    const rest = words.filter((w) => w.text !== 'EDGEA');
+    expect(check(judgePaper({ ...base, words: [...rest, ...interleaved] }), 'wide-table-in-full').ok).toBe(true);
+  });
+
   // The 0.847 shrink this instrument was written for.
   it('fails a paper whose type is scaled', () => {
-    const scaled = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 15.7 }), word(3, '12. 最後の節')];
+    const scaled = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 15.7 }), ...edge, word(3, '13. 最後の節')];
     expect(check(judgePaper({ ...base, words: scaled }), 'scale').ok).toBe(false);
   });
 
   it('accepts drift inside the tolerance, since fonts differ between machines', () => {
-    const nudged = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 18.0 }), word(3, '12. 最後の節')];
+    const nudged = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 18.0 }), ...edge, word(3, '13. 最後の節')];
     expect(check(judgePaper({ ...base, words: nudged }), 'scale').ok).toBe(true);
   });
 
@@ -191,7 +273,7 @@ describe('a baseline belongs to the environment that produced it', () => {
   const words = (height) => [
     { page: 1, text: '§1', x0: 0, y0: 0, x1: 10, y1: 10 },
     { page: 2, text: 'body', x0: 0, y0: 0, x1: 10, y1: height },
-    { page: 3, text: '12. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
+    { page: 3, text: '13. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
   ];
   const paper = (height, key, baseline) =>
     judgePaper({
@@ -233,7 +315,8 @@ describe('a required baseline cannot be skipped', () => {
       words: [
         { page: 1, text: '§1', x0: 0, y0: 0, x1: 10, y1: 10 },
         { page: 2, text: 'body', x0: 0, y0: 0, x1: 10, y1: 21 },
-        { page: 3, text: '12. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
+        ...WIDE_TABLE_EDGE_MARKERS.map((text) => ({ page: 3, text, x0: 0, y0: 0, x1: 10, y1: 10 })),
+        { page: 3, text: '13. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
       ],
       baseline,
     });
