@@ -97,7 +97,8 @@ notice its edits.
 - **Artifacts** (downloaded from the release): the macOS app's Info.plist carries `md`/`markdown` and `mmd`/`mermaid` at `LSHandlerRank` `Alternate`, role `Viewer`; both debs (amd64, arm64) install a `.desktop` with `Exec=mallow %F` and `MimeType=text/markdown`.
 - **Windows** (installer): with mallow not running, "Open with → Choose another app → mallow.exe" restored the session and opened the file's folder with the file selected; installing left the `.md` default as it was; launching twice from the Start menu brought the existing window forward and left one `mallow.exe`.
 - **Linux** (Ubuntu 24.04.4 LTS, GNOME, deb): mallow is listed under the file manager's Open With, and choosing it with mallow not running opened the file as on Windows. **Installing made mallow the default for `.md`** on a machine where no default had been chosen — decision-16's addendum records this and keeps the registration; README warns the reader.
+- **macOS** (notarized dmg): with mallow not running, Finder's "Open With → mallow" restored the session and opened the file's folder with the file selected; running `mallow.app/Contents/MacOS/mallow` with a path that does not exist while mallow was running reported it in the running window and the command returned at once.
 - **The "default unchanged" results on Windows and macOS were taken where the reader had already chosen an app for `.md`**, so they say nothing about a machine with no choice. That does not matter on Windows, which registers nothing; on macOS it is unmeasured.
 
-**Still not measured**: macOS with mallow not running and with no default chosen for `.md`; the CLI route on macOS; a Linux session with no DBus session bus.
+**Still not measured**: macOS with no default chosen for `.md`; a Linux session with no DBus session bus.
 <!-- SECTION:NOTES:END -->
