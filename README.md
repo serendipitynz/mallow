@@ -166,9 +166,13 @@ window is brought to the front.
   window shows — the same as **Open…**. A file opens its folder with the file
   selected. Of several items dropped at once, only the first is opened.
 - **Open With.** mallow is offered for Markdown (`.md`, `.markdown`) and, on
-  macOS, Mermaid (`.mmd`, `.mermaid`) files, **without becoming their default
-  app** — choose mallow under *Open With* in Finder or your file manager, or make
-  it the default there yourself. **On Windows mallow registers no file type**,
+  macOS, Mermaid (`.mmd`, `.mermaid`) files as one of the apps that can open
+  them — choose mallow under *Open With* in Finder or your file manager, or make
+  it the default there yourself. **mallow does not ask to be the default, but on
+  Linux it can become one**: where no default app had been chosen for Markdown,
+  installing mallow made it the default on Ubuntu 24.04. To use another app,
+  choose it as the default from your file manager's *Open With*. **On Windows
+  mallow registers no file type**,
   because the installer could only do that by taking over the default app; use
   *Open with → Choose another app* and browse to `mallow.exe`.
 - **Command line**: `mallow path/to/file.md` or `mallow path/to/folder`.

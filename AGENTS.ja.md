@@ -1484,7 +1484,12 @@ Comments と Functions の規約は機械的に検査されない。コメント
   を `%F` 付きの `.desktop` テンプレートで（`tauri.linux.conf.json`・`linux/mallow.desktop`。
   tauri 標準のテンプレートには field code が無い）登録し、**Windows は何も登録しない** —
   tauri の NSIS と MSI の登録はどちらも拡張子の既定 ProgID を書き換え、既定を奪う形しか
-  持たないため。**`tauri-plugin-single-instance` は `~2.4` に固定する**: 2.5 は
+  持たないため。**「候補であって既定ではない」は書き込む内容の話であって、各デスクトップが
+  それをどう扱うかの話ではない**: `.md` の既定が決まっていない Ubuntu 24.04 では、deb を入れると
+  mallow が既定になった（2026-10-02 実測）。`.desktop` には候補だけを求める rank が無い —
+  decision-16 の追補で登録は残し、README で読み手に知らせている。macOS で同じ条件
+  （ほかに型を主張するアプリが無い Mac）は未実測。
+  **`tauri-plugin-single-instance` は `~2.4` に固定する**: 2.5 は
   `tauri ^2.12` を要求する。`pnpm tauri dev` で届くのはドロップと転送された argv だけで、
   `Opened` と登録はバンドルしたアプリでないと試せない。
 - **最後のウィンドウを閉じるとアプリは終了する。macOS を含め全環境で同じ。**
