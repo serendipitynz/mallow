@@ -641,23 +641,6 @@ export default function App() {
       .catch((e) => console.error('Failed to open a handed location', e));
   }, [applyHanded]);
 
-  /* **Taken once the restore has settled, and not before**: a restored window
-     opens its own location first, and an item applied while that is in flight
-     would race it over the tree. Rust holds the queue, so an item that arrived
-     earlier is still there to take, and the event only says "take now". */
-  const restoreSettledRef = useRef(false);
-  useEffect(() => {
-    restoreSettledRef.current = restoreSettled;
-    if (restoreSettled) {
-      takeHanded();
-    }
-  }, [restoreSettled, takeHanded]);
-  useWindowEvent('handover:queued', () => {
-    if (restoreSettledRef.current) {
-      takeHanded();
-    }
-  });
-
   /** A drop replaces this window's location, as the picker does: the reader
    *  aimed it at this window, which neither of the other routes does. */
   const openDropped = useCallback(
@@ -678,9 +661,43 @@ export default function App() {
     },
     [applyHanded, t],
   );
-  const openDroppedRef = useRef(openDropped);
+
+  /* **Nothing handed over is applied before the restore has settled**: a
+     restored window opens its own location first, and a location applied while
+     that is in flight would race it over the tree and then be overwritten by it.
+     Rust holds the queued items, so those are simply taken afterwards; a drop
+     has nowhere else to wait, so the latest one is held here. */
+  const restoreSettledRef = useRef(false);
+  const heldDrop = useRef<string[] | null>(null);
   useEffect(() => {
-    openDroppedRef.current = openDropped;
+    restoreSettledRef.current = restoreSettled;
+    if (!restoreSettled) {
+      return;
+    }
+    takeHanded();
+    const held = heldDrop.current;
+    heldDrop.current = null;
+    if (held) {
+      openDropped(held);
+    }
+  }, [restoreSettled, takeHanded, openDropped]);
+  useWindowEvent('handover:queued', () => {
+    if (restoreSettledRef.current) {
+      takeHanded();
+    }
+  });
+
+  const openDroppedRef = useRef((paths: string[]) => {
+    heldDrop.current = paths;
+  });
+  useEffect(() => {
+    openDroppedRef.current = (paths) => {
+      if (restoreSettledRef.current) {
+        openDropped(paths);
+      } else {
+        heldDrop.current = paths;
+      }
+    };
   }, [openDropped]);
 
   useEffect(() => {
