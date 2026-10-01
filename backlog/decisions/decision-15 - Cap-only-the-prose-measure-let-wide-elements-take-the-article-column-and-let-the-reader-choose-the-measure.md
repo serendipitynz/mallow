@@ -135,8 +135,12 @@ against.
   window that changes it persists and broadcasts; a receiving window applies the
   persist-free half. **There is no per-window value** — TASK-12 put those out of
   scope.
-- **The settings modal carries it** as a segmented control (snz-design doc-9
-  §6.12), the pattern its other choices already use.
+- **The settings modal carries it** as a select (snz-design doc-8 §6.3), as it
+  does the language. A segmented control (doc-9 §6.12) was the first choice and
+  was replaced in TASK-35: in the modal, the three worded options did not fit its
+  track — the field's label wrapped and "フル（制限なし）" overflowed its
+  segment — and doc-9 §6.12 sends a choice whose options need not be seen at once
+  to a select anyway.
 - **It does not reach the paper.** The page's text block is narrower than every
   value.
 

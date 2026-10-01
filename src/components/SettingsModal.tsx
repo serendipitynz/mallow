@@ -78,6 +78,8 @@ export function SettingsModal({
   const checkStatusId = useId();
   const checking = updateCheck.status === 'checking';
   const langId = useId();
+  const measureId = useId();
+  const measureHintId = useId();
   const oneSided = isOneSided(choice.family);
 
   /** The language is app-wide (TASK-12 puts a per-window one out of scope), so
@@ -161,15 +163,24 @@ export function SettingsModal({
           />
         </div>
         <div className="settings-field">
-          <span>{t('proseMeasure')}</span>
-          <Segmented
-            label={t('proseMeasure')}
-            options={PROSE_MEASURES.map((measure) => ({ value: measure, label: t(`measure.${measure}`) }))}
+          <label htmlFor={measureId}>{t('proseMeasure')}</label>
+          <select
+            id={measureId}
+            className="select"
             value={proseMeasure}
-            onSelect={changeProseMeasure}
-          />
+            aria-describedby={measureHintId}
+            onChange={(e) => changeProseMeasure(e.target.value as ProseMeasure)}
+          >
+            {PROSE_MEASURES.map((measure) => (
+              <option key={measure} value={measure}>
+                {t(`measure.${measure}`)}
+              </option>
+            ))}
+          </select>
         </div>
-        <p className="settings-group__hint">{t('proseMeasureHint')}</p>
+        <p id={measureHintId} className="settings-group__hint">
+          {t('proseMeasureHint')}
+        </p>
         <div className="settings-field">
           <label htmlFor={langId}>{t('language')}</label>
           <select id={langId} className="select" value={lang} onChange={(e) => changeLang(e.target.value as Lang)}>
