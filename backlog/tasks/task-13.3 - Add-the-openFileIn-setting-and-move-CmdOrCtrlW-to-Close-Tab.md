@@ -4,8 +4,10 @@ title: Add the openFileIn setting and move CmdOrCtrl+W to Close Tab
 status: To Do
 assignee: []
 created_date: '2026-08-05 21:47'
+updated_date: '2026-10-01 20:34'
 labels:
   - feature
+milestone: m-5
 dependencies:
   - TASK-13.1
 parent_task_id: TASK-13

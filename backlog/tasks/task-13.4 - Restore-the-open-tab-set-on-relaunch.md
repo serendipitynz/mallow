@@ -4,8 +4,10 @@ title: Restore the open tab set on relaunch
 status: To Do
 assignee: []
 created_date: '2026-08-05 21:48'
+updated_date: '2026-10-01 20:34'
 labels:
   - feature
+milestone: m-5
 dependencies:
   - TASK-13.1
   - TASK-12.7

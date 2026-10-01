@@ -4,9 +4,10 @@ title: Keep several documents open as tabs in one window
 status: To Do
 assignee: []
 created_date: '2026-08-05 21:44'
-updated_date: '2026-08-05 21:44'
+updated_date: '2026-10-01 20:34'
 labels:
   - feature
+milestone: m-5
 dependencies: []
 priority: high
 type: feature

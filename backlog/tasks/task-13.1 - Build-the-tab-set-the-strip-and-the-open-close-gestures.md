@@ -4,8 +4,10 @@ title: 'Build the tab set, the strip and the open/close gestures'
 status: To Do
 assignee: []
 created_date: '2026-08-05 21:46'
+updated_date: '2026-10-01 20:34'
 labels:
   - feature
+milestone: m-5
 dependencies: []
 parent_task_id: TASK-13
 priority: high

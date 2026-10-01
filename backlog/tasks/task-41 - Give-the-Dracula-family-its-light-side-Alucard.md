@@ -4,8 +4,10 @@ title: Give the Dracula family its light side (Alucard)
 status: To Do
 assignee: []
 created_date: '2026-09-28 08:00'
+updated_date: '2026-10-01 20:34'
 labels:
   - feature
+milestone: m-5
 dependencies:
   - TASK-40.2
 references:
