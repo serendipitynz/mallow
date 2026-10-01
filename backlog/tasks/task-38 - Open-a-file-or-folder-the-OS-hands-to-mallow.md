@@ -1,10 +1,10 @@
 ---
 id: TASK-38
 title: Open a file or folder the OS hands to mallow
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-16 00:39'
-updated_date: '2026-10-01 10:44'
+updated_date: '2026-10-01 10:51'
 labels:
   - feature
 milestone: m-4
