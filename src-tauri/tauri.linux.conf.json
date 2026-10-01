@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown"],
+        "name": "Markdown document",
+        "role": "Viewer",
+        "mimeType": "text/markdown"
+      }
+    ],
+    "linux": {
+      "deb": { "desktopTemplate": "linux/mallow.desktop" },
+      "rpm": { "desktopTemplate": "linux/mallow.desktop" }
+    }
+  }
+}
