@@ -50,7 +50,7 @@ visible at once. On paper the same declarations lose content outright.
 <!-- AC:BEGIN -->
 - [ ] #1 Widening the window widens what the reader can see of a document that is wider than the current cap, in both outline states — the failure today is that the outline-closed state is governed by a different cap than the one the reader would think to change
 - [ ] #2 A table wider than the article keeps its horizontal scroll rather than forcing the page to scroll horizontally: .doc-scroll must stay the single scroll region TASK-8 and decision-3 rest on
-- [ ] #3 Prose measure is not sacrificed to the table — whatever the answer, a paragraph does not become one line across a 2560px monitor
+- [ ] #3 Prose measure is not sacrificed to the table — at the standard and wide values of decision-15's preference, a paragraph does not become one line across a 2560px monitor whatever the table does; full is the reader explicitly choosing no limit and is exempt
 - [ ] #4 The rendered HTML frame reaches the same width as the markdown article, since both sit in the same .doc__body grid cell
 - [ ] #5 The change is what TASK-34's decision says, not a number chosen here; if implementing it shows the decision cannot hold, the decision is revised rather than departed from
 - [ ] #6 pnpm build and pnpm test pass, and the outline jump and scroll spy still land correctly — they read scroll-margin-top off a heading, so a layout change is exactly what can break them
