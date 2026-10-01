@@ -228,11 +228,11 @@ fn route(app: &AppHandle, items: Vec<Handed>) {
 /// **Never the focused window's folder**: nothing about these routes points at a
 /// window, so replacing what the reader has in front of them would be a guess.
 ///
-/// **The choice is recorded in the session as it is made** (`session.rs`'s
-/// `claim_window_for_handover`), so it holds for the next item and the next
-/// delivery before the window has opened anything.
+/// **The chosen window is claimed as it is chosen** (`session.rs`'s
+/// `claim_window_for_handover`), so the choice holds for the next item and the
+/// next delivery until the window reports the folder.
 fn open(app: &AppHandle, folder: String, file: Option<String>) {
-    match crate::session::claim_window_for_handover(app, &folder, file.clone()) {
+    match crate::session::claim_window_for_handover(app, &folder) {
         HandoverTarget::Showing(label) | HandoverTarget::Empty(label) => {
             enqueue(app, &label, Handed::Open { folder, file });
             bring_forward(app, &label);

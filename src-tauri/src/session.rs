@@ -28,7 +28,7 @@
 // reports dead code the usual way.
 #![cfg_attr(unattended, allow(dead_code))]
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -87,8 +87,13 @@ pub struct WindowEntry {
 /// The live set, in focus order. A `Vec` rather than a map plus an order beside
 /// it: the order is half the meaning of this value, and two structures that can
 /// disagree about which labels exist is a state nothing would notice being in.
+///
+/// The second half is the handover claims: label → the folder a handed location
+/// was routed to in that window and not yet reported by it (see
+/// `claimed_for_handover`). **Locked only after the first, never alone before
+/// it**, so the two cannot deadlock.
 #[derive(Default)]
-pub struct SessionState(Mutex<Vec<WindowEntry>>);
+pub struct SessionState(Mutex<Vec<WindowEntry>>, Mutex<HashMap<String, String>>);
 
 /// The live set, or `None` in an unattended build, which registers no session at
 /// all: a measurement run must leave the reader's settings where it found them,
@@ -266,56 +271,90 @@ pub enum HandoverTarget {
     New,
 }
 
-/// Choose where `folder` opens and, when that is a live window, **record the
-/// folder against it at once** rather than when its frontend gets round to
+/// Choose where `folder` opens and, when that is a live window, **claim the
+/// window for it at once** rather than when its frontend gets round to
 /// reporting.
 ///
-/// The record is what makes the choice hold beyond this call. A window handed a
+/// The claim is what makes the choice hold beyond this call. A window handed a
 /// location reports it only after it has taken the item and opened it, so until
-/// then its row still says what it showed before — and an empty window still
-/// reads as empty. A second location arriving in that gap would pick the same
-/// empty window and replace the first, and a second file in the first's folder
-/// would find no window showing it and create a duplicate. `create_window`
-/// records a created window's folder synchronously for the same reason; this is
-/// the same rule for the windows that already exist.
+/// then its row says what it showed before — and an empty window reads as empty.
+/// A second location arriving in that gap would pick the same empty window and
+/// replace the first, and a second file in the first's folder would find no
+/// window showing it and create a duplicate.
+///
+/// **The claim is kept apart from the row, not written into it**, because the
+/// row is the frontend's to overwrite: a window whose restore settles reports
+/// what it shows at that moment — nothing, for a window still waiting to take
+/// its item — and that report would erase a claim written there. `with_report`
+/// decides what a report does to a claim.
 fn claimed_for_handover(
-    entries: Vec<WindowEntry>,
+    entries: &[WindowEntry],
+    claims: &mut HashMap<String, String>,
     alive: &HashSet<String>,
     folder: &str,
-    file: Option<String>,
-) -> (Vec<WindowEntry>, HandoverTarget) {
+) -> HandoverTarget {
     let showing = entries
         .iter()
         .rev()
         .filter(|entry| alive.contains(&entry.label))
-        .find(|entry| entry.folder.as_deref() == Some(folder))
+        .find(|entry| {
+            claims
+                .get(&entry.label)
+                .map_or(entry.folder.as_deref() == Some(folder), |claimed| claimed == folder)
+        })
         .map(|entry| HandoverTarget::Showing(entry.label.clone()));
     let target = showing
-        .or_else(|| most_recent(&entries, alive, true).map(HandoverTarget::Empty))
+        .or_else(|| {
+            entries
+                .iter()
+                .rev()
+                .filter(|entry| alive.contains(&entry.label) && !claims.contains_key(&entry.label))
+                .find(|entry| entry.folder.is_none())
+                .map(|entry| HandoverTarget::Empty(entry.label.clone()))
+        })
         .unwrap_or(HandoverTarget::New);
-    match &target {
-        HandoverTarget::Showing(label) | HandoverTarget::Empty(label) => {
-            let label = label.clone();
-            (with_reported(entries, &label, Some(folder.to_string()), file), target)
-        }
-        HandoverTarget::New => (entries, target),
+    if let HandoverTarget::Showing(label) | HandoverTarget::Empty(label) = &target {
+        claims.insert(label.clone(), folder.to_string());
     }
+    target
+}
+
+/// What a window's report does, given the claim on it.
+///
+/// **A report of no folder leaves a claimed window as it is**: it is the report
+/// a window makes while it is still to take its item, and taking it as the truth
+/// would hand the window to the next arrival. **Any folder clears the claim** —
+/// the claimed one because the window has arrived, another because the reader
+/// has moved it on since.
+///
+/// The cost to accept: a claimed location that fails to open (its folder went
+/// away in between) leaves the window claimed until it shows some folder, so
+/// another folder's location goes to a new window rather than to it.
+fn with_report(
+    entries: Vec<WindowEntry>,
+    claims: &mut HashMap<String, String>,
+    label: &str,
+    folder: Option<String>,
+    file: Option<String>,
+) -> Vec<WindowEntry> {
+    if folder.is_none() && claims.contains_key(label) {
+        return entries;
+    }
+    claims.remove(label);
+    with_reported(entries, label, folder, file)
 }
 
 /// `claimed_for_handover` against the live set, under the session's own lock.
 /// An unattended build has no session and always creates.
-pub fn claim_window_for_handover(app: &AppHandle, folder: &str, file: Option<String>) -> HandoverTarget {
+pub fn claim_window_for_handover(app: &AppHandle, folder: &str) -> HandoverTarget {
     let alive: HashSet<String> = app.webview_windows().into_keys().collect();
-    let mut target = HandoverTarget::New;
-    let claimed = update(app, |entries| {
-        let (entries, chosen) = claimed_for_handover(entries, &alive, folder, file);
-        target = chosen;
-        entries
-    });
-    if let Err(e) = claimed {
-        eprintln!("mallow: a handed location could not be recorded in the session ({e})");
-    }
-    target
+    let Some(state) = live(app) else {
+        return HandoverTarget::New;
+    };
+    let (Ok(entries), Ok(mut claims)) = (state.0.lock(), state.1.lock()) else {
+        return HandoverTarget::New;
+    };
+    claimed_for_handover(&entries, &mut claims, &alive, folder)
 }
 
 /// `entries` with `label`'s row moved to the end.
@@ -477,7 +516,13 @@ fn update(app: &AppHandle, change: impl FnOnce(Vec<WindowEntry>) -> Vec<WindowEn
 #[tauri::command]
 pub fn report_window_content(folder: Option<String>, file: Option<String>, window: Window) -> Result<(), String> {
     let label = window.label().to_string();
-    update(window.app_handle(), |entries| with_reported(entries, &label, folder, file))
+    let Some(state) = live(window.app_handle()) else {
+        return Ok(());
+    };
+    update(window.app_handle(), |entries| match state.1.lock() {
+        Ok(mut claims) => with_report(entries, &mut claims, &label, folder, file),
+        Err(_) => with_reported(entries, &label, folder, file),
+    })
 }
 
 /// Give a created window a row if it has none, carrying what it was created to
@@ -504,7 +549,14 @@ pub fn note_window_destroyed(window: &Window) {
     // behind the `unstable` cargo feature this project does not enable.
     let others_alive = !app.webview_windows().is_empty();
     let label = window.label().to_string();
-    if let Err(e) = update(app, |entries| without_destroyed(entries, &label, others_alive)) {
+    if let Err(e) = update(app, |entries| {
+        if let Some(state) = live(app) {
+            if let Ok(mut claims) = state.1.lock() {
+                claims.remove(&label);
+            }
+        }
+        without_destroyed(entries, &label, others_alive)
+    }) {
         eprintln!("mallow: a closed window could not be dropped from the session ({e})");
     }
 }
@@ -694,34 +746,63 @@ mod tests {
         assert_eq!(most_recent(&entries, &alive(&[]), false), None);
     }
 
+    fn claims() -> HashMap<String, String> {
+        HashMap::new()
+    }
+
     /// The two failures a claim recorded only by the frontend allowed: two
     /// locations arriving before an empty window reported its first, and a second
     /// file in a folder just handed to an empty window.
     #[test]
     fn a_window_claimed_for_a_handed_folder_stops_reading_as_empty() {
         let all = alive(&["w1"]);
-        let (entries, first) =
-            claimed_for_handover(vec![entry("w1", None, None)], &all, "/a", Some("/a/one.md".into()));
-        assert_eq!(first, HandoverTarget::Empty("w1".into()));
-        let (entries, other) = claimed_for_handover(entries, &all, "/b", Some("/b/two.md".into()));
-        assert_eq!(other, HandoverTarget::New);
-        let (_, same) = claimed_for_handover(entries, &all, "/a", Some("/a/three.md".into()));
-        assert_eq!(same, HandoverTarget::Showing("w1".into()));
+        let entries = vec![entry("w1", None, None)];
+        let mut held = claims();
+        assert_eq!(claimed_for_handover(&entries, &mut held, &all, "/a"), HandoverTarget::Empty("w1".into()));
+        assert_eq!(claimed_for_handover(&entries, &mut held, &all, "/b"), HandoverTarget::New);
+        assert_eq!(claimed_for_handover(&entries, &mut held, &all, "/a"), HandoverTarget::Showing("w1".into()));
+    }
+
+    /// The window's restore settles and reports what it shows — nothing yet —
+    /// before it takes the claimed item. That report must not hand it to `/b`.
+    #[test]
+    fn an_empty_report_before_the_item_is_taken_keeps_the_claim() {
+        let all = alive(&["w1"]);
+        let mut held = claims();
+        let entries = vec![entry("w1", None, None)];
+        claimed_for_handover(&entries, &mut held, &all, "/a");
+        let entries = with_report(entries, &mut held, "w1", None, None);
+        assert_eq!(claimed_for_handover(&entries, &mut held, &all, "/b"), HandoverTarget::New);
+        assert_eq!(claimed_for_handover(&entries, &mut held, &all, "/a"), HandoverTarget::Showing("w1".into()));
+    }
+
+    #[test]
+    fn reporting_a_folder_settles_the_claim() {
+        let all = alive(&["w1"]);
+        let mut held = claims();
+        let entries = vec![entry("w1", None, None)];
+        claimed_for_handover(&entries, &mut held, &all, "/a");
+        let entries = with_report(entries, &mut held, "w1", Some("/a".into()), Some("/a/x.md".into()));
+        assert!(held.is_empty());
+        assert_eq!(entries[0].folder.as_deref(), Some("/a"));
+        // The reader moving the window elsewhere settles it just as well.
+        claimed_for_handover(&entries, &mut held, &all, "/a");
+        let entries = with_report(entries, &mut held, "w1", Some("/c".into()), None);
+        assert!(held.is_empty());
+        assert_eq!(claimed_for_handover(&entries, &mut held, &all, "/a"), HandoverTarget::New);
     }
 
     #[test]
     fn a_window_showing_the_folder_wins_over_an_empty_one() {
         let entries = vec![entry("w1", None, None), entry("w2", Some("/a"), None)];
-        let (entries, target) = claimed_for_handover(entries, &alive(&["w1", "w2"]), "/a", Some("/a/x.md".into()));
+        let target = claimed_for_handover(&entries, &mut claims(), &alive(&["w1", "w2"]), "/a");
         assert_eq!(target, HandoverTarget::Showing("w2".into()));
-        assert_eq!(entries[1].active.as_deref(), Some("/a/x.md"));
     }
 
     #[test]
     fn a_row_whose_window_never_built_is_not_handed_anything() {
         let entries = vec![entry("w1", Some("/a"), None), entry("w2", None, None)];
-        let (_, target) = claimed_for_handover(entries, &alive(&[]), "/a", None);
-        assert_eq!(target, HandoverTarget::New);
+        assert_eq!(claimed_for_handover(&entries, &mut claims(), &alive(&[]), "/a"), HandoverTarget::New);
     }
 
     #[test]

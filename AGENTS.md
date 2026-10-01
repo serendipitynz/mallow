@@ -1663,10 +1663,13 @@ hold rather than as an exhaustive style guide.
   free label and the restore then fails to build that label. **Routing is
   spawned, never inline**: on Windows the callback runs inside `WM_COPYDATA`, a
   window procedure, which is the deadlock `create_window` warns about. **The
-  window chosen is recorded in the session as it is chosen**
-  (`claim_window_for_handover`), not when its frontend reports: until then an
-  empty window still reads as empty, so a second arrival would take it too, and
-  a second file in the same folder would open a duplicate window. **A drop is
+  window chosen is claimed as it is chosen** (`claim_window_for_handover`), not
+  when its frontend reports: until then an empty window still reads as empty, so
+  a second arrival would take it too, and a second file in the same folder would
+  open a duplicate window. **The claim sits beside the session's rows, not in
+  them**, because the window reports "no folder" when its restore settles,
+  before it takes the item, and that report would erase a claim written into its
+  row; a report of no folder leaves a claim alone and any folder settles it. **A drop is
   held until the window's own restore has settled**, for the reason the queue
   is taken only then.
   **Arguments are folded lexically, not canonicalized**, so "a window already
@@ -1728,8 +1731,8 @@ hold rather than as an exhaustive style guide.
   `session`'s live-set functions
   (reporting, focus order, the last-window rule, the cap, both halves of the
   migration, which window is showing a folder, which live window was focused
-  last, and where a handed folder opens — including that the choice holds before
-  the window reports it), `handover`'s argument resolution and classification (a file opening its
+  last, and where a handed folder opens — including that the claim survives the
+  window's empty report and is settled by a folder), `handover`'s argument resolution and classification (a file opening its
   folder, the three refusals, and the wire shape the frontend switches on) and
   `settings`'s raise rule
   (that a stamp at or below the mark is put past it, and that a change made after
