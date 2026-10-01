@@ -187,6 +187,12 @@ worked around.
   the column's far side would sit well apart — and checks that the outline jump,
   the scroll spy and the HTML frame's height loop still converge, since a width
   change asks that loop for a restart by design.
+  **Placed (TASK-35)**: the outline keeps its column at the far side, and every
+  top-level child of the article is centred in the article column, so the prose
+  sits mid-column in both outline states and the spare width is split either side
+  of it rather than all of it falling between the prose and the outline. A wide
+  element narrower than the measure keeps the measure as its minimum width, so
+  its content starts where the prose does.
 - **TASK-36** measures the paper on all three platforms, and adds the wide table
   to the paper fixture if that is what keeps it from regressing unseen.
 

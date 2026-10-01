@@ -93,7 +93,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   pure coordinate conversion), `scroll` (anchor preservation), `watch`, `settings`
   (plugin-store), `settings-sync` (one changed preference reaching every window),
   `outline-pref` (whether the outline is open — one preference across the views
-  that have one, and across windows), `color-choice` (the two colour axes, the
+  that have one, and across windows), `prose-measure` (how long a line of
+  markdown prose may run — `standard`, `wide` or `full`, the widths themselves
+  being `markdown.scss`'s), `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
   a menu's focus), `segmented-nav` (where a key moves a segmented control's focus),
@@ -831,31 +833,40 @@ hold rather than as an exhaustive style guide.
   toolbar's stacking context. Measured on macOS / WKWebView only, and **nothing
   automated can catch a regression here** — no check in the suite sees paint
   order.
-- **What caps a rendered document's width is the prose measure alone, and the
-  stylesheets do not say so yet** (decision-15; TASK-35 lands it on screen and
-  TASK-36 on paper). **Until they do, two caps swap with the outline**:
-  `.doc`'s 1180px leaves the markdown article 828px with the outline open, and
-  `.markdown-body`'s 53rem (848px) binds once `.doc.is-outline-closed` collapses
-  the grid — so raising the 1180px alone changes nothing in the closed state.
-  **The contract**: the cap exists so a reader's eye can get from the end of one
-  line of prose back to the start of the next, and a change to its number is
-  judged against that. It is a preference, `proseMeasure` (`standard` 53rem,
-  `wide` 72rem, `full` none), held in localStorage and propagated the way
-  `outlineOpen` is, and it applies to prose only. **A wide element** — a table,
-  a code block, a rendered diagram or an image alone in its paragraph, at the top
-  level of the article — takes **the article column** (the grid column the article
-  sits in, which grows with the window once `.doc`'s 1180px goes), and past it
-  keeps its own horizontal scroll or scales down, as today. The HTML frame, a
-  `.mmd` diagram, the config and XML trees (their 960px goes) and every source view
-  take the article column and ignore the preference; the CSV / TSV view keeps no
-  cap. **On paper the page's text block is the column**, narrower than every
-  measure: a table or code block fits it by wrapping, an image or diagram by
-  scaling down in proportion as on screen, and no text is scaled down — neither
-  the whole document nor one element. **The scroll invariant decision-3, decision-9 and
-  TASK-8 rest on is vertical** — one vertical scroller, `.doc-scroll`. An
-  element's own horizontal scroll is fine; `.doc-scroll` itself scrolling
-  sideways is allowed in the CSV / TSV view alone, where there is no prose or
-  outline to slide away with it.
+- **What caps a rendered document's width is the prose measure alone**
+  (decision-15; TASK-35 on screen, TASK-36 on paper). **There used to be two
+  caps that swapped with the outline** — `.doc`'s 1180px with it open and
+  `.markdown-body`'s 53rem with it closed — and **both are gone**, along with the
+  config and XML trees' 960px; reintroducing a cap on `.doc` or on the article
+  would stop a wide table at it again. **The contract**: the measure exists so a
+  reader's eye can get from the end of one line of prose back to the start of the
+  next, and a change to its number is judged against that. It is a preference,
+  `proseMeasure` (`standard` 53rem, `wide` 72rem, `full` none), held in
+  localStorage and propagated the way `outlineOpen` is; `MarkdownView` puts it on
+  the article as `data-prose-measure` and `markdown.scss` turns that into
+  `--prose-measure`. **It is applied to each top-level child of the article,
+  never to the article**, which takes its whole grid column — a measure on the
+  article is what held a table to the length of a line. **A wide element** — a
+  table (not the front-matter one), a code block, a rendered diagram or an image
+  alone in its paragraph, at the top level only — takes **the article column**
+  and past it keeps its own horizontal scroll or scales down. Every child is
+  centred in the column, so the prose sits mid-column in both outline states
+  rather than leaving the whole spare width between it and the outline; a narrow
+  wide element keeps the measure as its minimum width so its content still starts
+  where the prose does. **"An image alone in its paragraph" is a class
+  `lib/markdown` sets** (`lone-image`), because `p:has(> img:only-child)` ignores
+  text nodes and would also take an image inside a sentence. The HTML frame, a
+  `.mmd` diagram, the config and XML trees and every source view take the article
+  column and ignore the preference; the CSV / TSV view has no cap. **On paper the
+  page's text block is the column**, narrower than every measure, and
+  `print.scss` sets the measure to the column so a wide paper does not bring the
+  screen preference back: a table or code block fits it by wrapping, an image or
+  diagram by scaling down in proportion as on screen, and no text is scaled down —
+  neither the whole document nor one element. **The scroll invariant decision-3,
+  decision-9 and TASK-8 rest on is vertical** — one vertical scroller,
+  `.doc-scroll`. An element's own horizontal scroll is fine; `.doc-scroll` itself
+  scrolling sideways is allowed in the CSV / TSV view alone, where there is no
+  prose or outline to slide away with it.
 - **The heading jump and the outline's scroll spy are one number crossing from
   TypeScript into CSS and back, and all three files have to hold.** `.doc__bar` is
   pinned over the top of the scroll container, so a heading must clear it to be
@@ -1367,10 +1378,10 @@ hold rather than as an exhaustive style guide.
   setter instead would write a second time **and** send an echo back out.
   **`saveSetting` is one call that persists and propagates**, so the store-backed preferences
   (explorer width and side, the custom emoji folder, the launch update check)
-  need nothing at their call sites; the colour, language and the outline toggle
-  are sent from `components/color`, `SettingsModal` and the two views instead, which is
-  what keeps `lib/theme`, `lib/i18n` and `lib/outline-pref` free of the Tauri
-  layer. **The store half of `SettingChange` is derived from `Settings`** rather
+  need nothing at their call sites; the colour, language, prose measure and the
+  outline toggle are sent from `components/color`, `SettingsModal` and the two views
+  instead, which is what keeps `lib/theme`, `lib/i18n`, `lib/prose-measure` and
+  `lib/outline-pref` free of the Tauri layer. **The store half of `SettingChange` is derived from `Settings`** rather
   than listed a second time, so a preference added there makes the switch in
   `App` non-exhaustive until it is handled — a setting that broadcasts to
   windows that ignore it is worse than one that does not broadcast. A change can
@@ -1634,8 +1645,9 @@ hold rather than as an exhaustive style guide.
   together, and that New Window has no gate to close), `settings-sync` (the
   ordering, what a commit sends Rust, and that a window applies its own change
   again when Rust raised the stamp — the listener and the emit are Tauri's),
-  `outline-pref`
-  (its cache and its notification), `color-choice` (each pre-split value read
+  `outline-pref` and `prose-measure`
+  (each one's cache and notification, and the stored measure read back),
+  `color-choice` (each pre-split value read
   onto the two axes, and the side a one-sided family draws), `menu-nav`, `segmented-nav`, `tree-nav`,
   `explorer-width`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
