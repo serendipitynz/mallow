@@ -26,6 +26,7 @@ import { applyOutlineOpen } from './lib/outline-pref';
 import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPrintChordHandler } from './lib/print';
+import { applyProseMeasure } from './lib/prose-measure';
 import { loadSettings, saveSetting } from './lib/settings';
 import { onSettingChange, type SettingChange, settingsReadStamp, snapshotStillCurrent } from './lib/settings-sync';
 import {
@@ -333,6 +334,9 @@ export default function App() {
           break;
         case 'outlineOpen':
           applyOutlineOpen(change.value);
+          break;
+        case 'proseMeasure':
+          applyProseMeasure(change.value);
           break;
         case 'explorerSide':
           setExplorerSide(change.value ?? DEFAULT_SIDE);

@@ -120,6 +120,11 @@ const ja: Dict = {
   explorerPosition: 'エクスプローラの位置',
   left: '左',
   right: '右',
+  proseMeasure: '文章の幅',
+  'measure.standard': '標準',
+  'measure.wide': '幅広',
+  'measure.full': 'フル（制限なし）',
+  proseMeasureHint: '表・コード・図は、どれを選んでもウィンドウの幅まで広がります。',
   language: '言語',
   customEmoji: 'カスタム絵文字',
   customEmojiHint:
@@ -262,6 +267,11 @@ const en: Dict = {
   explorerPosition: 'Explorer position',
   left: 'Left',
   right: 'Right',
+  proseMeasure: 'Text width',
+  'measure.standard': 'Standard',
+  'measure.wide': 'Wide',
+  'measure.full': 'Full (no limit)',
+  proseMeasureHint: 'Tables, code and diagrams widen with the window whichever you choose.',
   language: 'Language',
   customEmoji: 'Custom emoji',
   customEmojiHint:

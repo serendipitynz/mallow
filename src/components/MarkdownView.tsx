@@ -8,6 +8,7 @@ import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeM
 import { setMarkdownPreviewActive } from '../lib/markdown-preview';
 import { renderMermaid } from '../lib/mermaid';
 import { onOutlineOpenChange, readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
+import { onProseMeasureChange, readProseMeasure } from '../lib/prose-measure';
 import { notifyRenderSettled } from '../lib/render-signal';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { broadcastSetting } from '../lib/settings-sync';
@@ -23,6 +24,7 @@ export function MarkdownView({ source }: { source: string }) {
   const [result, setResult] = useState<RenderResult | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const outlineOpen = useSyncExternalStore(onOutlineOpenChange, readOutlineOpen);
+  const proseMeasure = useSyncExternalStore(onProseMeasureChange, readProseMeasure);
   const [mode, setMode] = useState<'preview' | 'source'>('preview');
   const scrollRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -248,6 +250,7 @@ export function MarkdownView({ source }: { source: string }) {
                 <article
                   ref={articleRef}
                   className="markdown-body"
+                  data-prose-measure={proseMeasure}
                   /* biome-ignore lint/security/noDangerouslySetInnerHtml: markdown is rendered at
                      runtime, so injecting the HTML is the mechanism, not an oversight. What keeps it
                      safe is the boundary AGENTS.md sets out under "Untrusted-Markdown boundary":

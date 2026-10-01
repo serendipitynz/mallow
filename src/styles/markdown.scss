@@ -19,9 +19,10 @@
   scroll-padding-top: var(--doc-bar-height, #{$doc-bar-height});
 }
 
+// No cap on the width: the article column grows with the window, so that a wide
+// element gains from a wider one. What caps a line of prose is the prose measure
+// further down, which is the only cap there is (decision-15).
 .doc {
-  max-width: 1180px;
-  margin: 0 auto;
   // No top padding: the sticky bar owns the top spacing (via its own
   // padding-top) so it can render as one continuous frosted band. Bar-less
   // content (`.raw-view`) re-adds the same top spacing itself.
@@ -584,7 +585,62 @@ $outline-breakpoint: 1024px;
 .doc .markdown-body {
   grid-area: main;
   min-width: 0;
-  max-width: 53rem;
+}
+
+// ---- Prose measure and wide elements (decision-15) -------------------------
+// The article takes its whole column and the measure is applied to each of its
+// top-level children instead, because a measure on the article would hold a
+// table to the length of a line of prose. Its reason is the reader's eye getting
+// from the end of one line back to the start of the next (§1); a change to one
+// of these numbers is judged against that. `MermaidView` draws into a
+// `.markdown-body` too, and carries no `data-prose-measure`: a diagram file is
+// not prose.
+.markdown-body[data-prose-measure='standard'] {
+  --prose-measure: 53rem;
+}
+
+.markdown-body[data-prose-measure='wide'] {
+  --prose-measure: 72rem;
+}
+
+// 100% rather than `none`, which `min()` below could not take.
+.markdown-body[data-prose-measure='full'] {
+  --prose-measure: 100%;
+}
+
+.doc__body > .markdown-body[data-prose-measure] {
+  // Centred, so the prose sits in the middle of what the window gives it in both
+  // outline states. Pinned to the column's start instead, a wide window with the
+  // outline open puts the whole spare width between the prose and the outline.
+  > * {
+    max-width: var(--prose-measure);
+    margin-inline: auto;
+  }
+
+  // A width rather than leaning on the `max-width` above: CSS 2.1 leaves what
+  // `max-width` does to a table box undefined (§10.4), and this one is
+  // `display: table`.
+  > table.doc-frontmatter {
+    width: min(100%, var(--prose-measure));
+  }
+
+  // Wide elements, at the top level only (§2): each takes what its content asks
+  // for, up to the column, and scrolls or scales inside itself past it. The
+  // `min-width` keeps a narrow one at the measure, so its content — which starts
+  // at the box's left edge — lines up with the prose rather than being centred
+  // on its own.
+  > :is(table:not(.doc-frontmatter), pre.shiki, .code-block, p.lone-image) {
+    width: max-content;
+    min-width: min(100%, var(--prose-measure));
+    max-width: 100%;
+  }
+
+  // The diagram centres itself inside its box, so the box can simply be the
+  // column: a `max-content` width cannot be relied on to find an SVG whose own
+  // width is a percentage.
+  > .mermaid-rendered {
+    max-width: none;
+  }
 }
 
 .doc-outline {
@@ -659,10 +715,6 @@ $outline-breakpoint: 1024px;
   .doc-outline {
     display: none;
   }
-
-  .markdown-body {
-    margin-inline: auto;
-  }
 }
 
 @media (max-width: #{$outline-breakpoint - 1px}) {
@@ -671,10 +723,6 @@ $outline-breakpoint: 1024px;
     grid-template-areas:
       'outline'
       'main';
-  }
-
-  .doc .markdown-body {
-    max-width: none;
   }
 
   // A panel's face rather than the sunken one: on that, the rows' hover face

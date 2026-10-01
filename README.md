@@ -112,6 +112,9 @@ Installing an update may need the system's permission.
 - **Colours**: a palette (Standard · Solarized · Dracula · Nord), chosen in
   Settings, and light / dark / auto (OS), chosen from the toolbar or in Settings.
   Dracula and Nord are dark only.
+- **Text width**: how long a line of Markdown prose may run — Standard, Wide
+  or Full (no limit), chosen in Settings. Tables, code blocks, diagrams and an
+  image on its own line widen with the window whichever is chosen.
 - **Self-update**: check for a newer version and install it. See
   [Install and update](#install-and-update).
 - **Multiple windows and the File menu**: New Window, Open…, Open Recent, and
@@ -123,8 +126,8 @@ Installing an update may need the system's permission.
 - **Hide the explorer**: `Cmd/Ctrl+B`, **View → Toggle Explorer** or the panel
   button at the end of the toolbar on the explorer's side gives the document the
   explorer's width, and brings the explorer back at the width it had.
-- **Persisted settings / session restore**: theme, explorer width, side and
-  whether it is shown, the
+- **Persisted settings / session restore**: theme, text width, explorer width,
+  side and whether it is shown, the
   custom emoji folder and the update-check switch are saved and restored on the
   next launch — and so is the set of windows that was open at quit, each with its
   own folder, document, size and position.

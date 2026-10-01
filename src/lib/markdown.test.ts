@@ -145,6 +145,35 @@ describe('renderMarkdown — normal rendering still works', () => {
   });
 });
 
+// The class is what lets an image alone in its paragraph take the article
+// column while one inside a sentence stays in the prose (decision-15 §2).
+describe('renderMarkdown — an image alone in its paragraph', () => {
+  it('marks a top-level paragraph holding only an image', async () => {
+    const { html } = await renderMarkdown('![wide](x.png)\n');
+    expect(html).toMatch(/<p class="lone-image"><img/);
+  });
+
+  it('marks one whose image is a link', async () => {
+    const { html } = await renderMarkdown('[![wide](x.png)](https://example.com)\n');
+    expect(html).toMatch(/<p class="lone-image"><a /);
+  });
+
+  it('leaves an image inside a sentence as prose', async () => {
+    const { html } = await renderMarkdown('See ![inline](x.png) here.\n');
+    expect(html).not.toContain('lone-image');
+  });
+
+  it('leaves two images on one line as prose', async () => {
+    const { html } = await renderMarkdown('![a](a.png) ![b](b.png)\n');
+    expect(html).not.toContain('lone-image');
+  });
+
+  it('leaves an image inside a list item or a quote in that block', async () => {
+    const { html } = await renderMarkdown('- ![a](a.png)\n\n  more\n\n> ![b](b.png)\n');
+    expect(html).not.toContain('lone-image');
+  });
+});
+
 describe('renderMarkdown — emoji', () => {
   afterEach(() => setCustomEmoji(null));
 
@@ -170,6 +199,12 @@ describe('renderMarkdown — emoji', () => {
     setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://localhost/tmnf.png' } });
     const { html } = await renderMarkdown(':tmnf: rinse-dev\n');
     expect(html).toContain('<img class="emoji emoji--custom" src="asset://localhost/tmnf.png" alt=":tmnf:"');
+  });
+
+  it('does not take a custom image shortcode alone on its line for a wide image', async () => {
+    setCustomEmoji({ unicode: {}, images: { tmnf: 'asset://localhost/tmnf.png' } });
+    const { html } = await renderMarkdown(':tmnf:\n');
+    expect(html).not.toContain('lone-image');
   });
 
   it('matches adjacent shortcodes with hyphens in their names', async () => {

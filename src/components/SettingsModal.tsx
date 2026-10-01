@@ -9,6 +9,13 @@ import {
 } from '../lib/color-choice';
 import type { CustomEmojiStatus } from '../lib/custom-emoji';
 import { LANGS, type Lang, useI18n } from '../lib/i18n';
+import {
+  onProseMeasureChange,
+  PROSE_MEASURES,
+  type ProseMeasure,
+  readProseMeasure,
+  writeProseMeasure,
+} from '../lib/prose-measure';
 import { broadcastSetting } from '../lib/settings-sync';
 import { getColorChoice, onColorChoiceChange } from '../lib/theme';
 import type { CheckState } from '../lib/update-flow';
@@ -63,6 +70,7 @@ export function SettingsModal({
   const { t, lang, setLang } = useI18n();
   const familyLabel = useFamilyLabel();
   const { choice, unrecognized } = useSyncExternalStore(onColorChoiceChange, getColorChoice);
+  const proseMeasure = useSyncExternalStore(onProseMeasureChange, readProseMeasure);
   const familyId = useId();
   const modeId = useId();
   const reasonId = useId();
@@ -70,6 +78,8 @@ export function SettingsModal({
   const checkStatusId = useId();
   const checking = updateCheck.status === 'checking';
   const langId = useId();
+  const measureId = useId();
+  const measureHintId = useId();
   const oneSided = isOneSided(choice.family);
 
   /** The language is app-wide (TASK-12 puts a per-window one out of scope), so
@@ -78,6 +88,12 @@ export function SettingsModal({
   const changeLang = (next: Lang) => {
     setLang(next);
     broadcastSetting({ key: 'lang', value: next });
+  };
+
+  /** App-wide for the same reason, and sent from here for the same reason. */
+  const changeProseMeasure = (next: ProseMeasure) => {
+    writeProseMeasure(next);
+    broadcastSetting({ key: 'proseMeasure', value: next });
   };
 
   if (!open) {
@@ -146,6 +162,25 @@ export function SettingsModal({
             onSelect={onSideChange}
           />
         </div>
+        <div className="settings-field">
+          <label htmlFor={measureId}>{t('proseMeasure')}</label>
+          <select
+            id={measureId}
+            className="select"
+            value={proseMeasure}
+            aria-describedby={measureHintId}
+            onChange={(e) => changeProseMeasure(e.target.value as ProseMeasure)}
+          >
+            {PROSE_MEASURES.map((measure) => (
+              <option key={measure} value={measure}>
+                {t(`measure.${measure}`)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p id={measureHintId} className="settings-group__hint">
+          {t('proseMeasureHint')}
+        </p>
         <div className="settings-field">
           <label htmlFor={langId}>{t('language')}</label>
           <select id={langId} className="select" value={lang} onChange={(e) => changeLang(e.target.value as Lang)}>

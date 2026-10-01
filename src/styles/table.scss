@@ -5,10 +5,9 @@
 // be given a height before a sticky header could work inside it, and `.doc-scroll`
 // already scrolls both axes. So a wide table overflows `.doc` and is reached by
 // scrolling the document sideways, and the header sticks against `.doc-scroll`
-// the same way `.doc-outline` does.
-.tbl-doc {
-  max-width: none;
-}
+// the same way `.doc-outline` does. This is the one view where the page itself
+// scrolls sideways (decision-15 §5): the whole content is one table, so there is
+// no prose or outline to slide out of view with it.
 
 .tbl-empty {
   margin: 0;

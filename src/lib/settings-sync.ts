@@ -52,6 +52,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
 import type { ColorFamily, ModeChoice } from './color-choice';
 import type { Lang } from './i18n';
+import type { ProseMeasure } from './prose-measure';
 import type { Settings, WritableKey } from './settings';
 
 /** A store-backed preference and its new value, carrying `null` for a cleared
@@ -67,7 +68,7 @@ type StoredChange = {
 
 /** One changed preference. The two keys Rust owns in settings.json — `windows`
  *  and `recentFolders` — are absent from `WritableKey` because no window writes
- *  them; the four that follow live in localStorage rather than the store.
+ *  them; the five that follow live in localStorage rather than the store.
  *
  *  **The colour choice travels as two keys**, one per axis, because the reader
  *  chooses each on its own: ordered as one value, a family chosen in one window
@@ -78,7 +79,8 @@ export type SettingChange =
   | { key: 'colorFamily'; value: ColorFamily }
   | { key: 'colorMode'; value: ModeChoice }
   | { key: 'lang'; value: Lang }
-  | { key: 'outlineOpen'; value: boolean };
+  | { key: 'outlineOpen'; value: boolean }
+  | { key: 'proseMeasure'; value: ProseMeasure };
 
 /** When a change was made and by which window.
  *

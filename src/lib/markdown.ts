@@ -210,6 +210,38 @@ function taskLists(md: MarkdownIt): void {
 }
 
 /**
+ * Mark a top-level paragraph that holds one image and nothing else, optionally
+ * inside a link, with `lone-image`.
+ *
+ * Such an image is a wide element (decision-15 §2): it may take the article
+ * column rather than the prose measure. The class is how the stylesheet tells
+ * it apart, because CSS cannot — `p:has(> img:only-child)` ignores text nodes,
+ * so it would also match an image sitting inline in a sentence, which is part
+ * of that line of prose. Top level only, for the same decision's reason: an
+ * image inside a list item or a quote stays inside that block's width. A custom
+ * emoji is an `emoji` token rather than an `image`, so it never qualifies.
+ */
+function loneImages(md: MarkdownIt): void {
+  md.core.ruler.after('inline', 'lone-images', (state) => {
+    const tokens = state.tokens;
+    for (let i = 0; i + 1 < tokens.length; i++) {
+      const open = tokens[i];
+      if (open.type !== 'paragraph_open' || open.level !== 0) {
+        continue;
+      }
+      const kinds = (tokens[i + 1].children ?? []).map((child) => child.type);
+      const alone =
+        (kinds.length === 1 && kinds[0] === 'image') ||
+        (kinds.length === 3 && kinds[0] === 'link_open' && kinds[1] === 'image' && kinds[2] === 'link_close');
+      if (alone) {
+        open.attrJoin('class', 'lone-image');
+      }
+    }
+    return true;
+  });
+}
+
+/**
  * Emoji rendering.
  *
  * Unicode emoji are wrapped in a `<span class="emoji">` so CSS can put a colour
@@ -288,6 +320,7 @@ async function getMd(): Promise<MarkdownIt> {
         },
       });
       md.use(taskLists);
+      md.use(loneImages);
       // Must run after the Shiki plugin so it wraps Shiki's fence rule.
       mermaidFence(md);
 
