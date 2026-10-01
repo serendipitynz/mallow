@@ -849,8 +849,9 @@ hold rather than as an exhaustive style guide.
   `.mmd` diagram, the config and XML trees (their 960px goes) and every source view
   take the article column and ignore the preference; the CSV / TSV view keeps no
   cap. **On paper the page's text block is the column**, narrower than every
-  measure: a wide element fits it by wrapping, and neither the document nor the
-  element is scaled down. **The scroll invariant decision-3, decision-9 and
+  measure: a table or code block fits it by wrapping, an image or diagram by
+  scaling down in proportion as on screen, and no text is scaled down — neither
+  the whole document nor one element. **The scroll invariant decision-3, decision-9 and
   TASK-8 rest on is vertical** — one vertical scroller, `.doc-scroll`. An
   element's own horizontal scroll is fine; `.doc-scroll` itself scrolling
   sideways is allowed in the CSV / TSV view alone, where there is no prose or

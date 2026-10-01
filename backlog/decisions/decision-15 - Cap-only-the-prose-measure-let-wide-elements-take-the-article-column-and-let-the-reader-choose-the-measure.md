@@ -95,11 +95,14 @@ It is not held to the prose measure; it may take the whole article column.
   diagram scale down to fit (`max-width: 100%`).
 - **On paper, a wide element fits the page's text block, and nothing is lost off
   its edge.** A code block already wraps there. A table fits by laying out its
-  columns within the block and wrapping its cells' text. **Neither the whole
-  document nor the one element is scaled down to make it fit** — the engine's
-  shrink-to-fit and a smaller type size are the failure mode TASK-27 and TASK-28
-  recorded, not a fix. A table whose narrowest layout still exceeds the block is
-  measured and written down by TASK-36, not solved by shrinking.
+  columns within the block and wrapping its cells' text. An image and a diagram
+  keep scaling down in proportion (`max-width: 100%`), as on screen — a picture
+  has no text to wrap, and scaling it shrinks nothing else. **No text is scaled
+  down to make it fit — neither the whole document nor a table or code block on
+  its own** — the engine's shrink-to-fit and a smaller type size are the failure
+  mode TASK-27 and TASK-28 recorded, not a fix. A table whose narrowest layout
+  still exceeds the block is measured and written down by TASK-36, not solved by
+  shrinking.
 
 ### 3. The measure is a preference with three values
 
