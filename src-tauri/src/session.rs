@@ -248,16 +248,74 @@ pub fn most_recent_window(app: &AppHandle) -> Option<String> {
     most_recent_live(app, false)
 }
 
-/// The label of the most recently focused live window showing no folder.
-pub fn most_recent_empty_window(app: &AppHandle) -> Option<String> {
-    most_recent_live(app, true)
-}
-
 fn most_recent_live(app: &AppHandle, empty_only: bool) -> Option<String> {
     let alive: HashSet<String> = app.webview_windows().into_keys().collect();
     let state = live(app)?;
     let entries = state.0.lock().ok()?;
     most_recent(&entries, &alive, empty_only)
+}
+
+/// Where a location the OS handed over opens (decision-16).
+#[derive(Clone, Debug, PartialEq)]
+pub enum HandoverTarget {
+    /// A live window already showing the folder.
+    Showing(String),
+    /// The most recently focused live window showing no folder.
+    Empty(String),
+    /// Neither exists, so a window is to be created.
+    New,
+}
+
+/// Choose where `folder` opens and, when that is a live window, **record the
+/// folder against it at once** rather than when its frontend gets round to
+/// reporting.
+///
+/// The record is what makes the choice hold beyond this call. A window handed a
+/// location reports it only after it has taken the item and opened it, so until
+/// then its row still says what it showed before — and an empty window still
+/// reads as empty. A second location arriving in that gap would pick the same
+/// empty window and replace the first, and a second file in the first's folder
+/// would find no window showing it and create a duplicate. `create_window`
+/// records a created window's folder synchronously for the same reason; this is
+/// the same rule for the windows that already exist.
+fn claimed_for_handover(
+    entries: Vec<WindowEntry>,
+    alive: &HashSet<String>,
+    folder: &str,
+    file: Option<String>,
+) -> (Vec<WindowEntry>, HandoverTarget) {
+    let showing = entries
+        .iter()
+        .rev()
+        .filter(|entry| alive.contains(&entry.label))
+        .find(|entry| entry.folder.as_deref() == Some(folder))
+        .map(|entry| HandoverTarget::Showing(entry.label.clone()));
+    let target = showing
+        .or_else(|| most_recent(&entries, alive, true).map(HandoverTarget::Empty))
+        .unwrap_or(HandoverTarget::New);
+    match &target {
+        HandoverTarget::Showing(label) | HandoverTarget::Empty(label) => {
+            let label = label.clone();
+            (with_reported(entries, &label, Some(folder.to_string()), file), target)
+        }
+        HandoverTarget::New => (entries, target),
+    }
+}
+
+/// `claimed_for_handover` against the live set, under the session's own lock.
+/// An unattended build has no session and always creates.
+pub fn claim_window_for_handover(app: &AppHandle, folder: &str, file: Option<String>) -> HandoverTarget {
+    let alive: HashSet<String> = app.webview_windows().into_keys().collect();
+    let mut target = HandoverTarget::New;
+    let claimed = update(app, |entries| {
+        let (entries, chosen) = claimed_for_handover(entries, &alive, folder, file);
+        target = chosen;
+        entries
+    });
+    if let Err(e) = claimed {
+        eprintln!("mallow: a handed location could not be recorded in the session ({e})");
+    }
+    target
 }
 
 /// `entries` with `label`'s row moved to the end.
@@ -634,6 +692,36 @@ mod tests {
         // A restored row whose window never built is skipped, not handed anything.
         assert_eq!(most_recent(&entries, &alive(&["w1"]), false), Some("w1".to_string()));
         assert_eq!(most_recent(&entries, &alive(&[]), false), None);
+    }
+
+    /// The two failures a claim recorded only by the frontend allowed: two
+    /// locations arriving before an empty window reported its first, and a second
+    /// file in a folder just handed to an empty window.
+    #[test]
+    fn a_window_claimed_for_a_handed_folder_stops_reading_as_empty() {
+        let all = alive(&["w1"]);
+        let (entries, first) =
+            claimed_for_handover(vec![entry("w1", None, None)], &all, "/a", Some("/a/one.md".into()));
+        assert_eq!(first, HandoverTarget::Empty("w1".into()));
+        let (entries, other) = claimed_for_handover(entries, &all, "/b", Some("/b/two.md".into()));
+        assert_eq!(other, HandoverTarget::New);
+        let (_, same) = claimed_for_handover(entries, &all, "/a", Some("/a/three.md".into()));
+        assert_eq!(same, HandoverTarget::Showing("w1".into()));
+    }
+
+    #[test]
+    fn a_window_showing_the_folder_wins_over_an_empty_one() {
+        let entries = vec![entry("w1", None, None), entry("w2", Some("/a"), None)];
+        let (entries, target) = claimed_for_handover(entries, &alive(&["w1", "w2"]), "/a", Some("/a/x.md".into()));
+        assert_eq!(target, HandoverTarget::Showing("w2".into()));
+        assert_eq!(entries[1].active.as_deref(), Some("/a/x.md"));
+    }
+
+    #[test]
+    fn a_row_whose_window_never_built_is_not_handed_anything() {
+        let entries = vec![entry("w1", Some("/a"), None), entry("w2", None, None)];
+        let (_, target) = claimed_for_handover(entries, &alive(&[]), "/a", None);
+        assert_eq!(target, HandoverTarget::New);
     }
 
     #[test]

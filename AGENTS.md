@@ -1662,7 +1662,13 @@ hold rather than as an exhaustive style guide.
   this code controls; routed early, an item creates a window under the lowest
   free label and the restore then fails to build that label. **Routing is
   spawned, never inline**: on Windows the callback runs inside `WM_COPYDATA`, a
-  window procedure, which is the deadlock `create_window` warns about.
+  window procedure, which is the deadlock `create_window` warns about. **The
+  window chosen is recorded in the session as it is chosen**
+  (`claim_window_for_handover`), not when its frontend reports: until then an
+  empty window still reads as empty, so a second arrival would take it too, and
+  a second file in the same folder would open a duplicate window. **A drop is
+  held until the window's own restore has settled**, for the reason the queue
+  is taken only then.
   **Arguments are folded lexically, not canonicalized**, so "a window already
   shows this folder" stays the exact string match `session.rs` uses. **What is
   registered with the OS differs per platform on purpose**: macOS claims
@@ -1721,8 +1727,9 @@ hold rather than as an exhaustive style guide.
   emptied under the reader is told apart from a folder deleted under them), and
   `session`'s live-set functions
   (reporting, focus order, the last-window rule, the cap, both halves of the
-  migration, which window is showing a folder, and which live window was focused
-  last), `handover`'s argument resolution and classification (a file opening its
+  migration, which window is showing a folder, which live window was focused
+  last, and where a handed folder opens — including that the choice holds before
+  the window reports it), `handover`'s argument resolution and classification (a file opening its
   folder, the three refusals, and the wire shape the frontend switches on) and
   `settings`'s raise rule
   (that a stamp at or below the mark is put past it, and that a change made after

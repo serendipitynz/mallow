@@ -19,13 +19,14 @@
 //! builds Rust on Windows and macOS, and it builds unattended.
 #![cfg_attr(unattended, allow(dead_code))]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State, Url, Window};
 
+use crate::session::HandoverTarget;
 use crate::window::InitialLocation;
 
 /// What one handed path resolves to. The three refusals are reported to the
@@ -210,12 +211,9 @@ fn spawn_route(app: &AppHandle, items: Vec<Handed>) {
 fn route(app: &AppHandle, items: Vec<Handed>) {
     let lock = app.state::<RouteLock>();
     let _held = lock.0.lock();
-    // An empty window claimed by an earlier item still reads as empty until its
-    // frontend opens the location, so this delivery remembers what it claimed.
-    let mut claimed: HashSet<String> = HashSet::new();
     for item in items {
         match item {
-            Handed::Open { folder, file } => open(app, folder, file, &mut claimed),
+            Handed::Open { folder, file } => open(app, folder, file),
             refused => report(app, refused),
         }
     }
@@ -229,16 +227,17 @@ fn route(app: &AppHandle, items: Vec<Handed>) {
 ///
 /// **Never the focused window's folder**: nothing about these routes points at a
 /// window, so replacing what the reader has in front of them would be a guess.
-fn open(app: &AppHandle, folder: String, file: Option<String>, claimed: &mut HashSet<String>) {
-    let target = crate::session::window_showing(app, &folder)
-        .or_else(|| crate::session::most_recent_empty_window(app).filter(|label| !claimed.contains(label)));
-    match target {
-        Some(label) => {
-            claimed.insert(label.clone());
+///
+/// **The choice is recorded in the session as it is made** (`session.rs`'s
+/// `claim_window_for_handover`), so it holds for the next item and the next
+/// delivery before the window has opened anything.
+fn open(app: &AppHandle, folder: String, file: Option<String>) {
+    match crate::session::claim_window_for_handover(app, &folder, file.clone()) {
+        HandoverTarget::Showing(label) | HandoverTarget::Empty(label) => {
             enqueue(app, &label, Handed::Open { folder, file });
             bring_forward(app, &label);
         }
-        None => {
+        HandoverTarget::New => {
             if let Err(e) = crate::window::create_window(app, Some(InitialLocation { folder, file }), None, None) {
                 eprintln!("mallow: a handed location could not be opened in a window ({e})");
             }
