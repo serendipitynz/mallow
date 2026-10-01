@@ -1,9 +1,10 @@
 ---
 id: TASK-38
 title: Open a file or folder the OS hands to mallow
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-09-16 00:39'
+updated_date: '2026-10-01 09:29'
 labels:
   - feature
 milestone: m-4
@@ -70,11 +71,11 @@ notice its edits.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The three routes are settled before implementation and each is named separately, because they are structurally different: a command-line argument (Windows and Linux file associations, and a CLI invocation), RunEvent::Opened (macOS only — tauri 2.11.3 app.rs:257-266 gates it on cfg(any(macos, ios, android))), and a drag onto the window
-- [ ] #2 What happens when the app is already running is decided and written down: on Windows and Linux an association opens a second process, which sits outside the single lock that recent.rs and session.rs hold — settings.json, recentFolders and the restored session are all written on the assumption of one process
-- [ ] #3 Whether mallow registers itself as a handler for any extension is decided by the user, not assumed: bundle.fileAssociations claims the type system-wide, and claiming .md from a reader's editor is a change to their machine rather than to this app
-- [ ] #4 A handed-over location goes through openLocation and the WindowInitRegistry like every other one — it is a third caller of the one sequence the picker and a restored window already take, not a fourth path of its own
-- [ ] #5 A handed-over file gets its folder's asset-protocol grant (allow_media_dir) and its watch, or media in it will not render and edits to it will not reload
-- [ ] #6 A path that does not exist, is not a kind mallow opens, or is a folder where a file was expected, is reported rather than opening an empty window with no explanation
+- [x] #1 The three routes are settled before implementation and each is named separately, because they are structurally different: a command-line argument (Windows and Linux file associations, and a CLI invocation), RunEvent::Opened (macOS only — tauri 2.11.3 app.rs:257-266 gates it on cfg(any(macos, ios, android))), and a drag onto the window
+- [x] #2 What happens when the app is already running is decided and written down: on Windows and Linux an association opens a second process, which sits outside the single lock that recent.rs and session.rs hold — settings.json, recentFolders and the restored session are all written on the assumption of one process
+- [x] #3 Whether mallow registers itself as a handler for any extension is decided by the user, not assumed: bundle.fileAssociations claims the type system-wide, and claiming .md from a reader's editor is a change to their machine rather than to this app
+- [x] #4 A handed-over location goes through openLocation and the WindowInitRegistry like every other one — it is a third caller of the one sequence the picker and a restored window already take, not a fourth path of its own
+- [x] #5 A handed-over file gets its folder's asset-protocol grant (allow_media_dir) and its watch, or media in it will not render and edits to it will not reload
+- [x] #6 A path that does not exist, is not a kind mallow opens, or is a folder where a file was expected, is reported rather than opening an empty window with no explanation
 - [ ] #7 Each route is exercised on the platform it exists on; a route measured on one platform is not evidence for another, and any route not measured is recorded as not measured
 <!-- AC:END -->
