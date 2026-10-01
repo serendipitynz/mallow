@@ -612,7 +612,14 @@ hold rather than as an exhaustive style guide.
   print** (`pre-wrap` +
   `overflow-wrap: anywhere`), because `overflow: visible` does not wrap
   `white-space: pre` and one over-wide line otherwise makes the engine shrink the
-  whole document to fit the page; and **printing from a dark palette gives monochrome code**,
+  whole document to fit the page; **it lays a table out as a table again**
+  (`display: table; width: auto`, and `overflow-wrap: anywhere` in its cells),
+  because neither half of the code fix reaches one — a table's width comes from
+  its columns, not from a line of text, and measured on macOS (TASK-36) a
+  nine-column table both lost its right-hand columns *and* shrank the whole paper
+  to 0.45 of its size. `anywhere` is what lets a column narrow past its longest
+  word, so the price is that a short word in a squeezed column can split mid-word,
+  which decision-15 prefers to a lost column; and **printing from a dark palette gives monochrome code**,
   because Shiki's dark tokens are inline `--shiki-dark` values applied with
   `!important` over the inline light colour and CSS cannot un-apply a
   declaration. **Two traps it was written around, both found by printing rather
@@ -860,7 +867,8 @@ hold rather than as an exhaustive style guide.
   column and ignore the preference; the CSV / TSV view has no cap. **On paper the
   page's text block is the column**, narrower than every measure, and
   `print.scss` sets the measure to the column so a wide paper does not bring the
-  screen preference back: a table or code block fits it by wrapping, an image or
+  screen preference back: a table or code block fits it by wrapping (a table by
+  narrowing its columns and wrapping inside its cells), an image or
   diagram by scaling down in proportion as on screen, and no text is scaled down —
   neither the whole document nor one element. **The scroll invariant decision-3,
   decision-9 and TASK-8 rest on is vertical** — one vertical scroller,
@@ -1679,7 +1687,9 @@ hold rather than as an exhaustive style guide.
   --out paper.pdf --theme light` — and
   `node scripts/paper/measure-paper.mjs paper.pdf --os macos --theme light` says
   whether that paper is right. **It answers only what a number can settle**: the
-  last section is there, no shell string reached the page, the type is within 5%
+  last section is there, the right-hand column of its nine-column table is there
+  and no word ends past the page's edge (TASK-36), no shell string reached the
+  page, the type is within 5%
   of **its own environment's** baseline in `scripts/paper/baseline.json`, the file
   is not a runaway, and on Windows WebView2 added no header or footer. **The
   baseline is keyed by environment rather than by platform, and that is measured

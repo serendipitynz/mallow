@@ -75,8 +75,8 @@ Three widths are named here, from the outside in:
 - **The page's text block** is the paper's width minus `@page`'s margin. On paper
   it is the article column, and it is narrower than every prose measure below
   (A4 at 16mm is about 504pt, against 53rem ≈ 636pt), so on paper the page binds
-  and the measure never does — which `print.scss` already reflects with
-  `.markdown-body { max-width: none }`.
+  and the measure never does — which `print.scss` reflects by setting the
+  measure to the column (`--prose-measure: 100%`).
 
 ### 2. Wide elements take the article column
 
@@ -103,6 +103,15 @@ It is not held to the prose measure; it may take the whole article column.
   mode TASK-27 and TASK-28 recorded, not a fix. A table whose narrowest layout
   still exceeds the block is measured and written down by TASK-36, not solved by
   shrinking.
+  **Measured (TASK-36, macOS unattended export, A4 at 16mm)**: the table is laid
+  out as a table again on paper, and its cells take `overflow-wrap: anywhere`,
+  which is what lets a column narrow past its longest word at all. Its narrowest
+  layout — each column about one glyph plus its cell padding — fits up to **24
+  columns** and loses the right-hand ones from 25; that is the limit this
+  decision accepts rather than shrinking past. Below it the price is that a short
+  word in a squeezed column can split mid-word: in the nine-column fixture
+  `GET` and the right-hand values are set one letter per line, because WebKit
+  shares the block out in proportion to each column's content width.
 
 ### 3. The measure is a preference with three values
 
@@ -183,6 +192,13 @@ class as a table's own horizontal scroll and is accepted as such; TASK-35
 measures whether it appears and whether the outline jump and keyboard scrolling
 still act on the parent. If they do not, this decision is reopened rather than
 worked around.
+**Seen 2026-10-01** (the owner, `pnpm tauri dev`,
+`_sandbox/samples/rendered-wide-table.html`): the frame does take a horizontal
+scroll of its own; the outline jump and keyboard scrolling still act on the
+parent, and scrolling does not change the frame's height (a window-width change
+does, which is the designed restart). **Not seen**: classic, space-taking
+scrollbars (Windows, some Linux setups), where the horizontal bar takes height
+and could open a second vertical scroll region inside the frame.
 
 ### 6. What is left to the implementing tasks
 
@@ -199,6 +215,11 @@ worked around.
   its content starts where the prose does.
 - **TASK-36** measures the paper on all three platforms, and adds the wide table
   to the paper fixture if that is what keeps it from regressing unseen.
+  **Done (TASK-36)**: the fixture carries a nine-column table, and
+  `measure-paper.mjs` fails a paper missing any of its right-hand values or with
+  a word ending past the page's edge. Without the fix, macOS lost columns 6–9 and
+  the engine shrank the whole paper to 0.45; with it, every column is there at
+  the baseline type size.
 
 ## Consequences
 
