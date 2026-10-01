@@ -120,6 +120,10 @@ Installing an update may need the system's permission.
 - **Multiple windows and the File menu**: New Window, Open…, Open Recent, and
   one window per folder so two folders can be read side by side. See
   [Multiple windows and the File menu](#multiple-windows-and-the-file-menu).
+- **Open from outside mallow**: drop a file or folder onto a window, open a
+  Markdown file with mallow from Finder or the file manager, or pass a path on
+  the command line. See
+  [Opening files from outside mallow](#opening-files-from-outside-mallow).
 - **Printing and PDF export**: print a rendered Markdown document, or write it
   to PDF with no print dialog. See
   [Printing and PDF export](#printing-and-pdf-export).
@@ -155,6 +159,25 @@ Closing the last window quits mallow — on macOS as well as on Windows and Linu
 (macOS) or Ctrl (Windows, Linux) while choosing an entry to open it in another
 window instead.** If a window is already showing the folder you chose, that
 window is brought to the front.
+
+### Opening files from outside mallow
+
+- **Drop** a file or folder onto a window to open it there, replacing what that
+  window shows — the same as **Open…**. A file opens its folder with the file
+  selected. Of several items dropped at once, only the first is opened.
+- **Open With.** mallow is offered for Markdown (`.md`, `.markdown`) and, on
+  macOS, Mermaid (`.mmd`, `.mermaid`) files, **without becoming their default
+  app** — choose mallow under *Open With* in Finder or your file manager, or make
+  it the default there yourself. **On Windows mallow registers no file type**,
+  because the installer could only do that by taking over the default app; use
+  *Open with → Choose another app* and browse to `mallow.exe`.
+- **Command line**: `mallow path/to/file.md` or `mallow path/to/folder`.
+
+A file or folder handed over this way opens in the window already showing its
+folder, if there is one, and otherwise in a window of its own. **mallow runs one
+copy at a time**: opening something while it is running reaches the running
+mallow rather than starting a second one. A path that does not exist or is a kind
+of file mallow does not show is reported in the window instead of being opened.
 
 Quitting and relaunching restores the folders that were open at quit. Each
 window reopens the folder and document it had, at the size and position it had.

@@ -18,6 +18,7 @@ import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/
 import { createToggleExplorerChordHandler } from './lib/explorer-toggle';
 import { clampExplorerWidth, DEFAULT_EXPLORER_WIDTH } from './lib/explorer-width';
 import { fileEntryFromPath } from './lib/file';
+import { droppedToOpen, type Handed, handedAction } from './lib/handover';
 import { useI18n, useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { isMarkdownPreviewActive, onMarkdownPreviewChange } from './lib/markdown-preview';
@@ -33,7 +34,9 @@ import {
   allowMediaDir,
   chooseRecent,
   closeWindow,
+  inspectDropped,
   listRecent,
+  onDroppedPaths,
   openWindow,
   pathExists,
   pickFolder,
@@ -43,6 +46,7 @@ import {
   reportMarkdownPreview,
   reportWindowContent,
   showErrorDialog,
+  takeHandover,
   takeWindowInit,
   writeWindowPdf,
 } from './lib/tauri';
@@ -600,6 +604,122 @@ export default function App() {
   useWindowEvent<{ folder: string; gone: boolean }>('menu:recent-missing', ({ folder, gone }) =>
     reportMissingRecent(folder, gone),
   );
+
+  /* ---- Locations the OS hands over (TASK-38, decision-16) -------------------
+     Rust decides which window a command-line argument or a macOS `Opened`
+     reaches and queues it there; a drop names its window and arrives here
+     directly. Either way the location goes through `openLocation`, so it gets
+     the media grant and the watch every other location gets. */
+
+  /** Chained so two arrivals open one after the other rather than interleaving
+   *  two `openLocation`s over one tree. */
+  const handoverChain = useRef<Promise<void>>(Promise.resolve());
+
+  /** Resolves to whether a location was opened, as against reported. */
+  const applyHanded = useCallback(
+    async (item: Handed): Promise<boolean> => {
+      const action = handedAction(item);
+      if ('notice' in action) {
+        setNotice(t(action.notice.key, { path: action.notice.path }));
+        return false;
+      }
+      setNotice(null);
+      setSelected(null);
+      await openLocation(action.open.folder, action.open.file, () => false);
+      return true;
+    },
+    [t, openLocation],
+  );
+
+  const takeHanded = useCallback(() => {
+    handoverChain.current = handoverChain.current
+      .then(async () => {
+        for (const item of await takeHandover()) {
+          await applyHanded(item);
+        }
+      })
+      .catch((e) => console.error('Failed to open a handed location', e));
+  }, [applyHanded]);
+
+  /** A drop replaces this window's location, as the picker does: the reader
+   *  aimed it at this window, which neither of the other routes does. */
+  const openDropped = useCallback(
+    (paths: string[]) => {
+      const dropped = droppedToOpen(paths);
+      if (!dropped) {
+        return;
+      }
+      handoverChain.current = handoverChain.current
+        .then(async () => {
+          const opened = await applyHanded(await inspectDropped(dropped.path));
+          // A refusal's own sentence matters more than the count, so it stays.
+          if (opened && dropped.skipped > 0) {
+            setNotice(t('handoverDroppedMany', { count: paths.length }));
+          }
+        })
+        .catch((e) => console.error('Failed to open a dropped location', e));
+    },
+    [applyHanded, t],
+  );
+
+  /* **Nothing handed over is applied before the restore has settled**: a
+     restored window opens its own location first, and a location applied while
+     that is in flight would race it over the tree and then be overwritten by it.
+     Rust holds the queued items, so those are simply taken afterwards; a drop
+     has nowhere else to wait, so the latest one is held here. */
+  const restoreSettledRef = useRef(false);
+  const heldDrop = useRef<string[] | null>(null);
+  useEffect(() => {
+    restoreSettledRef.current = restoreSettled;
+    if (!restoreSettled) {
+      return;
+    }
+    takeHanded();
+    const held = heldDrop.current;
+    heldDrop.current = null;
+    if (held) {
+      openDropped(held);
+    }
+  }, [restoreSettled, takeHanded, openDropped]);
+  useWindowEvent('handover:queued', () => {
+    if (restoreSettledRef.current) {
+      takeHanded();
+    }
+  });
+
+  const openDroppedRef = useRef((paths: string[]) => {
+    heldDrop.current = paths;
+  });
+  useEffect(() => {
+    openDroppedRef.current = (paths) => {
+      if (restoreSettledRef.current) {
+        openDropped(paths);
+      } else {
+        heldDrop.current = paths;
+      }
+    };
+  }, [openDropped]);
+
+  useEffect(() => {
+    if (UNATTENDED) {
+      return;
+    }
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    onDroppedPaths((paths) => openDroppedRef.current(paths))
+      .then((fn) => {
+        if (disposed) {
+          fn();
+        } else {
+          unlisten = fn;
+        }
+      })
+      .catch((e) => console.error('Failed to listen for drops', e));
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -25,10 +25,10 @@ copyleft (no GPL / LGPL / AGPL).
   - (MPL-2.0 OR Apache-2.0): 1
   - BSD-2-Clause: 1
   - Unknown (see bundled text): 1
-- Rust (Cargo) dependencies: 521
+- Rust (Cargo) dependencies: 522
   - MIT OR Apache-2.0: 236
   - MIT: 120
-  - Apache-2.0 OR MIT: 54
+  - Apache-2.0 OR MIT: 55
   - MIT/Apache-2.0: 21
   - Zlib OR Apache-2.0 OR MIT: 18
   - Unicode-3.0: 18
@@ -3741,6 +3741,13 @@ copyleft (no GPL / LGPL / AGPL).
 - Repository: https://github.com/tauri-apps/plugins-workspace
 - License text: [T61](#t61), [T59](#t59), [T60](#t60)
 
+### tauri-plugin-single-instance 2.4.5
+
+- License: Apache-2.0 OR MIT
+- Authors: Tauri Programme within The Commons Conservancy
+- Repository: https://github.com/tauri-apps/plugins-workspace
+- License text: [T61](#t61), [T59](#t59), [T289](#t289)
+
 ### tauri-plugin-store 2.4.3
 
 - License: Apache-2.0 OR MIT
@@ -3788,21 +3795,21 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT
 - Authors: Tauri Programme within The Commons Conservancy, Max Resch <resch.max@gmail.com>
 - Repository: https://github.com/tauri-apps/winres
-- License text: [T289](#t289)
+- License text: [T290](#t290)
 
 ### tempfile 3.27.0
 
 - License: MIT OR Apache-2.0
 - Authors: Steven Allen <steven@stebalien.com>, The Rust Project Developers, Ashley Mannix <ashleymannix@live.com.au>, Jason White <me@jasonwhite.io>
 - Repository: https://github.com/Stebalien/tempfile
-- License text: [T100](#t100), [T290](#t290)
+- License text: [T100](#t100), [T291](#t291)
 
 ### tendril 0.5.0
 
 - License: MIT OR Apache-2.0
 - Authors: Keegan McAllister <mcallister.keegan@gmail.com>, Simon Sapin <simon.sapin@exyr.org>, Chris Morgan <me@chrismorgan.info>
 - Repository: https://github.com/servo/html5ever
-- License text: [T100](#t100), [T291](#t291)
+- License text: [T100](#t100), [T292](#t292)
 
 ### thiserror 1.0.69
 
@@ -3837,21 +3844,21 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT OR Apache-2.0
 - Authors: Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 - Repository: https://github.com/time-rs/time
-- License text: [T59](#t59), [T292](#t292)
+- License text: [T59](#t59), [T293](#t293)
 
 ### time-core 0.1.9
 
 - License: MIT OR Apache-2.0
 - Authors: Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 - Repository: https://github.com/time-rs/time
-- License text: [T59](#t59), [T292](#t292)
+- License text: [T59](#t59), [T293](#t293)
 
 ### time-macros 0.2.30
 
 - License: MIT OR Apache-2.0
 - Authors: Jacob Pratt <open-source@jhpratt.dev>, Time contributors
 - Repository: https://github.com/time-rs/time
-- License text: [T59](#t59), [T292](#t292)
+- License text: [T59](#t59), [T293](#t293)
 
 ### tinystr 0.8.3
 
@@ -3872,34 +3879,34 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT OR Apache-2.0 OR Zlib
 - Authors: Soveu <marx.tomasz@gmail.com>
 - Repository: https://github.com/Soveu/tinyvec_macros
-- License text: [T293](#t293), [T294](#t294), [T295](#t295)
+- License text: [T294](#t294), [T295](#t295), [T296](#t296)
 
 ### tokio 1.52.3
 
 - License: MIT
 - Authors: Tokio Contributors <team@tokio.rs>
 - Repository: https://github.com/tokio-rs/tokio
-- License text: [T296](#t296)
+- License text: [T297](#t297)
 
 ### tokio-macros 2.7.0
 
 - License: MIT
 - Authors: Tokio Contributors <team@tokio.rs>
 - Repository: https://github.com/tokio-rs/tokio
-- License text: [T297](#t297)
+- License text: [T298](#t298)
 
 ### tokio-rustls 0.26.4
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/rustls/tokio-rustls
-- License text: [T298](#t298), [T299](#t299)
+- License text: [T299](#t299), [T300](#t300)
 
 ### tokio-util 0.7.18
 
 - License: MIT
 - Authors: Tokio Contributors <team@tokio.rs>
 - Repository: https://github.com/tokio-rs/tokio
-- License text: [T296](#t296)
+- License text: [T297](#t297)
 
 ### toml 0.8.2
 
@@ -3976,62 +3983,62 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT
 - Authors: Tower Maintainers <team@tower-rs.com>
 - Repository: https://github.com/tower-rs/tower
-- License text: [T300](#t300)
+- License text: [T301](#t301)
 
 ### tower-http 0.6.11
 
 - License: MIT
 - Authors: Tower Maintainers <team@tower-rs.com>
 - Repository: https://github.com/tower-rs/tower-http
-- License text: [T301](#t301)
+- License text: [T302](#t302)
 
 ### tower-layer 0.3.3
 
 - License: MIT
 - Authors: Tower Maintainers <team@tower-rs.com>
 - Repository: https://github.com/tower-rs/tower
-- License text: [T300](#t300)
+- License text: [T301](#t301)
 
 ### tower-service 0.3.3
 
 - License: MIT
 - Authors: Tower Maintainers <team@tower-rs.com>
 - Repository: https://github.com/tower-rs/tower
-- License text: [T300](#t300)
+- License text: [T301](#t301)
 
 ### tracing 0.1.44
 
 - License: MIT
 - Authors: Eliza Weisman <eliza@buoyant.io>, Tokio Contributors <team@tokio.rs>
 - Repository: https://github.com/tokio-rs/tracing
-- License text: [T302](#t302)
+- License text: [T303](#t303)
 
 ### tracing-attributes 0.1.31
 
 - License: MIT
 - Authors: Tokio Contributors <team@tokio.rs>, Eliza Weisman <eliza@buoyant.io>, David Barsky <dbarsky@amazon.com>
 - Repository: https://github.com/tokio-rs/tracing
-- License text: [T302](#t302)
+- License text: [T303](#t303)
 
 ### tracing-core 0.1.36
 
 - License: MIT
 - Authors: Tokio Contributors <team@tokio.rs>
 - Repository: https://github.com/tokio-rs/tracing
-- License text: [T302](#t302)
+- License text: [T303](#t303)
 
 ### tray-icon 0.24.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/tauri-apps/tray-icon
-- License text: [T100](#t100), [T225](#t225), [T303](#t303)
+- License text: [T100](#t100), [T225](#t225), [T304](#t304)
 
 ### try-lock 0.2.5
 
 - License: MIT
 - Authors: Sean McArthur <sean@seanmonstar.com>
 - Repository: https://github.com/seanmonstar/try-lock
-- License text: [T304](#t304)
+- License text: [T305](#t305)
 
 ### typeid 1.0.3
 
@@ -4044,14 +4051,14 @@ copyleft (no GPL / LGPL / AGPL).
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/paholg/typenum
-- License text: [T305](#t305), [T306](#t306), [T307](#t307)
+- License text: [T306](#t306), [T307](#t307), [T308](#t308)
 
 ### uds_windows 1.2.1
 
 - License: MIT
 - Authors: Azure IoT Edge Devs, Harald Hoyer <harald@redhat.com>
 - Repository: https://github.com/haraldh/rust_uds_windows
-- License text: [T308](#t308)
+- License text: [T309](#t309)
 
 ### unic-char-property 0.9.0
 
@@ -4093,7 +4100,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: (MIT OR Apache-2.0) AND Unicode-3.0
 - Authors: David Tolnay <dtolnay@gmail.com>
 - Repository: https://github.com/dtolnay/unicode-ident
-- License text: [T99](#t99), [T93](#t93), [T309](#t309)
+- License text: [T99](#t99), [T93](#t93), [T310](#t310)
 
 ### unicode-segmentation 1.13.3
 
@@ -4107,7 +4114,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: ISC
 - Authors: Brian Smith <brian@briansmith.org>
 - Repository: https://github.com/briansmith/untrusted
-- License text: [T310](#t310)
+- License text: [T311](#t311)
 
 ### url 2.5.8
 
@@ -4121,7 +4128,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT
 - Authors: the Deno authors, crowlKats <crowlkats@toaxl.com>
 - Repository: https://github.com/denoland/rust-urlpattern
-- License text: [T311](#t311)
+- License text: [T312](#t312)
 
 ### utf-8 0.7.6
 
@@ -4135,42 +4142,42 @@ copyleft (no GPL / LGPL / AGPL).
 - License: Apache-2.0 OR MIT
 - Authors: Henri Sivonen <hsivonen@hsivonen.fi>
 - Repository: https://github.com/hsivonen/utf8_iter
-- License text: [T58](#t58), [T312](#t312)
+- License text: [T58](#t58), [T313](#t313)
 
 ### uuid 1.23.4
 
 - License: Apache-2.0 OR MIT
 - Authors: Ashley Mannix<ashleymannix@live.com.au>, Dylan DPC<dylan.dpc@gmail.com>, Hunar Roop Kahlon<hunar.roop@gmail.com>
 - Repository: https://github.com/uuid-rs/uuid
-- License text: [T100](#t100), [T313](#t313)
+- License text: [T100](#t100), [T314](#t314)
 
 ### version_check 0.9.5
 
 - License: MIT/Apache-2.0
 - Authors: Sergio Benitez <sb@sergio.bz>
 - Repository: https://github.com/SergioBenitez/version_check
-- License text: [T100](#t100), [T315](#t315)
+- License text: [T100](#t100), [T316](#t316)
 
 ### version-compare 0.2.1
 
 - License: MIT
 - Authors: Tim Visee <3a4fb3964f@sinenomine.email>
 - Repository: https://gitlab.com/timvisee/version-compare
-- License text: [T314](#t314)
+- License text: [T315](#t315)
 
 ### vswhom 0.1.0
 
 - License: MIT
 - Authors: nabijaczleweli <nabijaczleweli@gmail.com>
 - Repository: https://github.com/nabijaczleweli/vswhom.rs
-- License text: [T316](#t316)
+- License text: [T317](#t317)
 
 ### vswhom-sys 0.1.3
 
 - License: MIT
 - Authors: наб <nabijaczleweli@nabijaczleweli.xyz>, forrestsmithfb <forrest.smith@fb.com>
 - Repository: https://github.com/nabijaczleweli/vswhom-sys.rs
-- License text: [T316](#t316)
+- License text: [T317](#t317)
 
 ### walkdir 2.5.0
 
@@ -4184,7 +4191,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT
 - Authors: Sean McArthur <sean@seanmonstar.com>
 - Repository: https://github.com/seanmonstar/want
-- License text: [T317](#t317)
+- License text: [T318](#t318)
 
 ### wasi 0.11.1+wasi-snapshot-preview1
 
@@ -4259,19 +4266,19 @@ copyleft (no GPL / LGPL / AGPL).
 
 - License: MIT
 - Repository: https://github.com/tauri-apps/webkit2gtk-rs
-- License text: [T318](#t318)
+- License text: [T319](#t319)
 
 ### webkit2gtk-sys 2.0.2
 
 - License: MIT
 - Repository: https://github.com/tauri-apps/webkit2gtk-rs
-- License text: [T319](#t319)
+- License text: [T320](#t320)
 
 ### webpki-root-certs 1.0.9
 
 - License: CDLA-Permissive-2.0
 - Repository: https://github.com/rustls/webpki-roots
-- License text: [T320](#t320)
+- License text: [T321](#t321)
 
 ### webview2-com 0.38.2
 
@@ -4296,7 +4303,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT/Apache-2.0
 - Authors: Peter Atashian <retep998@gmail.com>
 - Repository: https://github.com/retep998/winapi-rs
-- License text: [T130](#t130), [T321](#t321)
+- License text: [T130](#t130), [T322](#t322)
 
 ### winapi-i686-pc-windows-gnu 0.4.0
 
@@ -4324,341 +4331,341 @@ copyleft (no GPL / LGPL / AGPL).
 - License: Apache-2.0 OR MIT
 - Authors: Tauri Programme within The Commons Conservancy
 - Repository: https://github.com/tauri-apps/tauri-plugin-vibrancy
-- License text: [T100](#t100), [T322](#t322), [T323](#t323)
+- License text: [T100](#t100), [T323](#t323), [T324](#t324)
 
 ### windows 0.61.3
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_aarch64_gnullvm 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_aarch64_gnullvm 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_aarch64_gnullvm 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_aarch64_msvc 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_aarch64_msvc 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_aarch64_msvc 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_gnu 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_gnu 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_gnu 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_gnullvm 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_gnullvm 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_msvc 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_msvc 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_i686_msvc 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_gnu 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_gnu 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_gnu 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_gnullvm 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_gnullvm 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_gnullvm 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_msvc 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_msvc 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows_x86_64_msvc 0.53.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-collections 0.2.0
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-core 0.61.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-core 0.62.2
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-future 0.2.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-implement 0.60.2
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-interface 0.59.3
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-link 0.1.3
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-link 0.2.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-numerics 0.2.0
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-result 0.3.4
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-result 0.4.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-strings 0.4.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-strings 0.5.1
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-sys 0.45.0
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-sys 0.52.0
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-sys 0.59.0
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-sys 0.60.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-sys 0.61.2
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-targets 0.42.2
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-targets 0.52.6
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-targets 0.53.5
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-threading 0.1.0
 
 - License: MIT OR Apache-2.0
 - Authors: Microsoft
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### windows-version 0.1.7
 
 - License: MIT OR Apache-2.0
 - Repository: https://github.com/microsoft/windows-rs
-- License text: [T324](#t324), [T8](#t8)
+- License text: [T325](#t325), [T8](#t8)
 
 ### winnow 0.5.40
 
 - License: MIT
 - Repository: https://github.com/winnow-rs/winnow
-- License text: [T325](#t325)
+- License text: [T326](#t326)
 
 ### winnow 0.7.15
 
 - License: MIT
 - Repository: https://github.com/winnow-rs/winnow
-- License text: [T325](#t325)
+- License text: [T326](#t326)
 
 ### winnow 1.0.3
 
 - License: MIT
 - Repository: https://github.com/winnow-rs/winnow
-- License text: [T325](#t325)
+- License text: [T326](#t326)
 
 ### winreg 0.55.0
 
 - License: MIT
 - Authors: Igor Shaula <gentoo90@gmail.com>
 - Repository: https://github.com/gentoo90/winreg-rs
-- License text: [T326](#t326)
+- License text: [T327](#t327)
 
 ### wit-bindgen 0.57.1
 
@@ -4679,7 +4686,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: Apache-2.0 OR MIT
 - Authors: Tauri Programme within The Commons Conservancy
 - Repository: https://github.com/tauri-apps/wry
-- License text: [T100](#t100), [T327](#t327), [T328](#t328)
+- License text: [T100](#t100), [T328](#t328), [T329](#t329)
 
 ### x11 2.21.0
 
@@ -4700,7 +4707,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT OR Apache-2.0
 - Authors: Steven Allen <steven@stebalien.com>
 - Repository: https://github.com/Stebalien/xattr
-- License text: [T100](#t100), [T290](#t290)
+- License text: [T100](#t100), [T291](#t291)
 
 ### yoke 0.8.3
 
@@ -4721,21 +4728,21 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT
 - Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
 - Repository: https://github.com/z-galaxy/zbus/
-- License text: [T329](#t329)
+- License text: [T330](#t330)
 
 ### zbus_macros 5.16.0
 
 - License: MIT
 - Authors: Marc-André Lureau <marcandre.lureau@redhat.com>, Zeeshan Ali Khan <zeeshanak@gnome.org>
 - Repository: https://github.com/z-galaxy/zbus/
-- License text: [T329](#t329)
+- License text: [T330](#t330)
 
 ### zbus_names 4.3.2
 
 - License: MIT
 - Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
 - Repository: https://github.com/z-galaxy/zbus/
-- License text: [T329](#t329)
+- License text: [T330](#t330)
 
 ### zerofrom 0.1.8
 
@@ -4756,7 +4763,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: Apache-2.0 OR MIT
 - Authors: The RustCrypto Project Developers
 - Repository: https://github.com/RustCrypto/utils
-- License text: [T58](#t58), [T330](#t330)
+- License text: [T58](#t58), [T331](#t331)
 
 ### zerotrie 0.2.4
 
@@ -4784,7 +4791,7 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT
 - Authors: Mathijs van de Nes <git@mathijs.vd-nes.nl>, Marli Frost <marli@frost.red>, Ryan Levick <ryan.levick@gmail.com>, Chris Hennick <hennickc@amazon.com>
 - Repository: https://github.com/zip-rs/zip2.git
-- License text: [T331](#t331)
+- License text: [T332](#t332)
 
 ### zmij 1.0.21
 
@@ -4798,14 +4805,14 @@ copyleft (no GPL / LGPL / AGPL).
 - License: MIT
 - Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
 - Repository: https://github.com/z-galaxy/zbus/
-- License text: [T329](#t329)
+- License text: [T330](#t330)
 
 ### zvariant_derive 5.12.0
 
 - License: MIT
 - Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>
 - Repository: https://github.com/z-galaxy/zbus/
-- License text: [T329](#t329)
+- License text: [T330](#t330)
 
 ### zvariant_utils 3.4.0
 
@@ -20899,6 +20906,32 @@ DEALINGS IN THE SOFTWARE.
 ### T289
 
 ```text
+MIT License
+
+Copyright (c) 2017 - Present The Tauri Programme in the Commons Conservancy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### T290
+
+```text
 The MIT License (MIT)
 
 Copyright (c) 2023 - Present Tauri Apps Contributors
@@ -20929,7 +20962,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T290
+### T291
 
 ```text
 Copyright (c) 2015 Steven Allen
@@ -20959,7 +20992,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T291
+### T292
 
 ```text
 Copyright (c) 2015 Keegan McAllister
@@ -20989,7 +21022,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T292
+### T293
 
 ```text
 Copyright (c) Jacob Pratt et al.
@@ -21013,7 +21046,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T293
+### T294
 
 ```text
                                  Apache License
@@ -21219,7 +21252,7 @@ SOFTWARE.
    limitations under the License.
 ```
 
-### T294
+### T295
 
 ```text
 MIT License
@@ -21245,7 +21278,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T295
+### T296
 
 ```text
 zlib License
@@ -21269,7 +21302,7 @@ freely, subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 ```
 
-### T296
+### T297
 
 ```text
 MIT License
@@ -21295,7 +21328,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T297
+### T298
 
 ```text
 MIT License
@@ -21322,7 +21355,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T298
+### T299
 
 ```text
                               Apache License
@@ -21528,7 +21561,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### T299
+### T300
 
 ```text
 Copyright (c) 2017 quininer kel
@@ -21558,7 +21591,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T300
+### T301
 
 ```text
 Copyright (c) 2019 Tower Contributors
@@ -21588,7 +21621,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T301
+### T302
 
 ```text
 Copyright (c) 2019-2021 Tower Contributors
@@ -21618,7 +21651,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T302
+### T303
 
 ```text
 Copyright (c) 2019 Tokio Contributors
@@ -21648,7 +21681,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T303
+### T304
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -21672,7 +21705,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/tray-icon.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T304
+### T305
 
 ```text
 Copyright (c) 2018-2023 Sean McArthur
@@ -21697,13 +21730,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T305
+### T306
 
 ```text
 MIT OR Apache-2.0
 ```
 
-### T306
+### T307
 
 ```text
                               Apache License
@@ -21909,7 +21942,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ```
 
-### T307
+### T308
 
 ```text
 The MIT License (MIT)
@@ -21935,7 +21968,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T308
+### T309
 
 ```text
     MIT License
@@ -21961,7 +21994,7 @@ SOFTWARE.
     SOFTWARE
 ```
 
-### T309
+### T310
 
 ```text
 UNICODE LICENSE V3
@@ -22005,7 +22038,7 @@ dealings in these Data Files or Software without prior written
 authorization of the copyright holder.
 ```
 
-### T310
+### T311
 
 ```text
 // Copyright 2015-2016 Brian Smith.
@@ -22023,7 +22056,7 @@ authorization of the copyright holder.
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### T311
+### T312
 
 ```text
 MIT License
@@ -22049,7 +22082,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T312
+### T313
 
 ```text
 Copyright Mozilla Foundation
@@ -22079,7 +22112,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T313
+### T314
 
 ```text
 Copyright (c) 2014 The Rust Project Developers
@@ -22110,7 +22143,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T314
+### T315
 
 ```text
 Copyright (c) 2017 Tim Visée
@@ -22134,7 +22167,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T315
+### T316
 
 ```text
 The MIT License (MIT)
@@ -22158,7 +22191,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T316
+### T317
 
 ```text
 The MIT License (MIT)
@@ -22184,7 +22217,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T317
+### T318
 
 ```text
 Copyright (c) 2018-2019 Sean McArthur
@@ -22208,7 +22241,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T318
+### T319
 
 ```text
 Copyright (c) 2016 Boucher, Antoni <bouanto@zoho.com>
@@ -22233,7 +22266,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T319
+### T320
 
 ```text
 Copyright (c) 2016 Boucher, Antoni <bouanto@zoho.com>
@@ -22256,7 +22289,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T320
+### T321
 
 ```text
 # Community Data License Agreement - Permissive - Version 2.0
@@ -22322,7 +22355,7 @@ of Data, including for example machine learning models and models'
 insights.
 ```
 
-### T321
+### T322
 
 ```text
 Copyright (c) 2015-2018 The winapi-rs Developers
@@ -22346,7 +22379,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T322
+### T323
 
 ```text
 MIT License
@@ -22372,7 +22405,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T323
+### T324
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -22396,7 +22429,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/window-vibrancy.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T324
+### T325
 
 ```text
                                  Apache License
@@ -22602,7 +22635,7 @@ Creator: Person: Daniel Thompson-Yvetot
    limitations under the License.
 ```
 
-### T325
+### T326
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining
@@ -22625,7 +22658,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### T326
+### T327
 
 ```text
 Copyright (c) 2015 Igor Shaula
@@ -22649,7 +22682,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-### T327
+### T328
 
 ```text
 MIT License
@@ -22675,7 +22708,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### T328
+### T329
 
 ```text
 SPDXVersion: SPDX-2.1
@@ -22700,7 +22733,7 @@ PackageDownloadLocation: git+ssh://github.com/tauri-apps/wry.git
 Creator: Person: Daniel Thompson-Yvetot
 ```
 
-### T329
+### T330
 
 ```text
 Copyright (c) 2024 Zeeshan Ali Khan & zbus contributors
@@ -22730,7 +22763,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T330
+### T331
 
 ```text
 Copyright (c) 2018-2026 The RustCrypto Project Developers
@@ -22760,7 +22793,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### T331
+### T332
 
 ```text
 The MIT License (MIT)

@@ -31,6 +31,9 @@ tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 notify = "8"
+# `~2.4` rather than `2`: 2.5 requires `tauri ^2.12`, and mallow is on 2.11.3,
+# which the tauri citations throughout AGENTS are pinned to (decision-16).
+tauri-plugin-single-instance = "~2.4.5"
 
 # Platform code for PDF export (decision-14). Tauri exposes none of the three
 # PDF APIs, so each platform's arm reaches for its own bindings — and only its

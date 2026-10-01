@@ -2,6 +2,7 @@ use tauri::Manager;
 
 mod commands;
 mod editors;
+mod handover;
 mod menu;
 mod modifier;
 mod open_recent;
@@ -43,7 +44,9 @@ macro_rules! app_handler {
             session::report_window_content,
             settings::commit_setting,
             settings::settings_read_stamp,
-            menu::report_markdown_preview
+            menu::report_markdown_preview,
+            handover::take_handover,
+            handover::inspect_dropped
             $(, $extra)*
         ]
     };
@@ -64,7 +67,22 @@ pub fn run() {
     #[cfg(unattended)]
     let request = unattended::request_or_exit();
 
-    let builder = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // **First, and that is load-bearing.** A second launch is forwarded to the
+    // running process and exits inside this plugin's setup; every plugin set up
+    // before it would already have run in that doomed process — and the session
+    // plugin's setup writes settings.json and the window-state file. The
+    // relaunched process then exits through `cleanup_before_exit` and
+    // `process::exit`, which run no plugin's exit hook, so the window-state
+    // plugin's write-back at exit does not happen there either.
+    //
+    // **An unattended build is never forwarded**: it is a measurement run, and
+    // handing its document to a reader's running mallow would export nothing.
+    #[cfg(not(unattended))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(handover::relaunched));
+
+    let builder = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build());
@@ -92,6 +110,8 @@ pub fn run() {
         .manage(window::WindowInitRegistry::default())
         .manage(recent::RecentLock::default())
         .manage(settings::SettingsOrder::default())
+        .manage(handover::HandoverState::default())
+        .manage(handover::RouteLock::default())
         .on_window_event(|window, event| match event {
             // A closed window must leave neither its watch running nor its
             // slot reserved by an initial location nothing will ever take, and
@@ -101,6 +121,7 @@ pub fn run() {
                 crate::window::drop_window_init(window);
                 session::note_window_destroyed(window);
                 menu::drop_window_gate(window);
+                handover::drop_window_queue(window);
             }
             // **The `true` edge only.** The restored session is ordered
             // least-recently-focused first, so reordering on the `false` edge
@@ -146,6 +167,11 @@ pub fn run() {
             #[cfg(not(unattended))]
             session::open_restored_windows(app.handle())?;
 
+            // After the restore, so a handed location finds the restored window
+            // already showing its folder instead of racing it for a label.
+            #[cfg(not(unattended))]
+            handover::open_handed_at_launch(app.handle());
+
             Ok(())
         })
         .invoke_handler(handler());
@@ -162,8 +188,11 @@ pub fn run() {
             // The flush covers the quit paths that emit no destroy events at all
             // (macOS ⌘Q, a predefined Quit item, `AppHandle::exit`), which is
             // most of them.
-            if matches!(event, tauri::RunEvent::Exit) {
-                session::flush_at_exit(app);
+            match event {
+                tauri::RunEvent::Exit => session::flush_at_exit(app),
+                #[cfg(all(target_os = "macos", not(unattended)))]
+                tauri::RunEvent::Opened { urls } => handover::opened(app, &urls),
+                _ => {}
             }
         });
 }

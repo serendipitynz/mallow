@@ -62,7 +62,7 @@ pub struct FileEntry {
 /// platform's WebView can decode. `heic`/`heif` only decode on macOS (WKWebView),
 /// so they are gated behind `cfg`; other media formats are advertised on every
 /// platform and fall back gracefully when the WebView cannot render them.
-fn file_kind(name: &str) -> Option<String> {
+pub(crate) fn file_kind(name: &str) -> Option<String> {
     let ext = name.rsplit('.').next()?;
     // No extension at all (rsplit yields the whole name when there is no dot).
     if !name.contains('.') {

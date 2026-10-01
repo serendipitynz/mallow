@@ -1,7 +1,9 @@
 /** Thin typed wrappers around the Rust commands and Tauri plugin APIs. */
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { message as messageDialog, open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import type { Handed } from './handover';
 import { type ReadResult, toReadError } from './read-error';
 import type { EditorInfo, FileEntry, InitialLocation, WindowInit } from './types';
 
@@ -203,4 +205,25 @@ export function reportWindowContent(folder: string | null, file: string | null):
  *  what each one opens, which since TASK-12.7 is nothing in both cases. */
 export function takeWindowInit(): Promise<WindowInit | null> {
   return invoke<WindowInit | null>('take_window_init');
+}
+
+/** Take the locations handed to this window by the OS, in arrival order. Each is
+ *  answered once, so the mount and the `handover:queued` event can both ask. */
+export function takeHandover(): Promise<Handed[]> {
+  return invoke<Handed[]>('take_handover');
+}
+
+/** Classify a path dropped onto this window. */
+export function inspectDropped(path: string): Promise<Handed> {
+  return invoke<Handed>('inspect_dropped', { path });
+}
+
+/** Call `onDrop` with the paths dropped onto this window. Resolves to the
+ *  unsubscribe function. */
+export function onDroppedPaths(onDrop: (paths: string[]) => void): Promise<() => void> {
+  return getCurrentWebview().onDragDropEvent((event) => {
+    if (event.payload.type === 'drop') {
+      onDrop(event.payload.paths);
+    }
+  });
 }
