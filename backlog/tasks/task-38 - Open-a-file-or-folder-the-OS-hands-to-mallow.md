@@ -4,7 +4,7 @@ title: Open a file or folder the OS hands to mallow
 status: In Review
 assignee: []
 created_date: '2026-09-16 00:39'
-updated_date: '2026-10-01 09:29'
+updated_date: '2026-10-01 10:44'
 labels:
   - feature
 milestone: m-4
@@ -77,5 +77,18 @@ notice its edits.
 - [x] #4 A handed-over location goes through openLocation and the WindowInitRegistry like every other one — it is a third caller of the one sequence the picker and a restored window already take, not a fourth path of its own
 - [x] #5 A handed-over file gets its folder's asset-protocol grant (allow_media_dir) and its watch, or media in it will not render and edits to it will not reload
 - [x] #6 A path that does not exist, is not a kind mallow opens, or is a folder where a file was expected, is reported rather than opening an empty window with no explanation
-- [ ] #7 Each route is exercised on the platform it exists on; a route measured on one platform is not evidence for another, and any route not measured is recorded as not measured
+- [x] #7 Each route is exercised on the platform it exists on; a route measured on one platform is not evidence for another, and any route not measured is recorded as not measured
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+**Measured 2026-10-01 (PR #77, HEAD `eb76f2b`), owner's machines.** Each route was exercised on the platform it exists on; nothing below is evidence for a platform it was not run on.
+
+- **Windows, (a) command-line argument** (`pnpm tauri dev` running, then `src-tauri\target\debug\mallow.exe` as the second launch): a `.md` in another folder opened in a new window with the file selected, and `tasklist` listed **one** `mallow.exe` with two windows, so the second launch was forwarded and exited. A second file in the same folder switched the existing window rather than opening a third. A relative argument resolved against the launching directory.
+- **macOS, (b) `RunEvent::Opened`** (debug `.app` bundle, running): Finder's Open With lists mallow **without** the default mark, and choosing it opened the file's folder with the file selected.
+- **Linux, (a) command-line argument** (`pnpm tauri dev` running, then `src-tauri/target/debug/mallow <file>`): the running window opened the file's folder, the command returned at once, and `pgrep -c mallow` was 1.
+- **(c) drop, all three**: a `.md` from another folder replaced the window's folder with the file selected. On Windows a dropped `.docx` was reported in the notice and not opened (AC #6).
+
+**Not measured**: the Linux association itself (the deb's `.desktop` `Exec ... %F` and `MimeType=text/markdown`, whether mallow appears under the file manager's Open With, and whether a desktop environment then makes it the default); the Windows installer registering nothing, and a second launch from the Start menu; a handed location reaching mallow when it is not running, on all three; the CLI route on macOS; a Linux session with no DBus session bus. Steps for the rest: `_sandbox/handoff/task-38/measure.md`.
+<!-- SECTION:NOTES:END -->
