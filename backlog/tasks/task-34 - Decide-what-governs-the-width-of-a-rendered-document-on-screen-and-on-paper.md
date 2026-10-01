@@ -1,10 +1,10 @@
 ---
 id: TASK-34
 title: 'Decide what governs the width of a rendered document, on screen and on paper'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-16 00:38'
-updated_date: '2026-10-01 00:25'
+updated_date: '2026-10-01 01:18'
 labels:
   - feature
 milestone: m-4
