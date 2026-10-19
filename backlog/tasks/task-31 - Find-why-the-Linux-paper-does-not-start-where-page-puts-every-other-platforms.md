@@ -6,9 +6,10 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-08 20:52'
-updated_date: '2026-10-01 20:34'
+updated_date: '2026-10-18 22:53'
 labels:
   - bug
+  - 差し込み
 milestone: m-5
 dependencies: []
 ordinal: 42000
