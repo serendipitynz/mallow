@@ -72,7 +72,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   本体だけをスクロールさせる）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
   ExplorerResizer（分割つまみ。ドラッグ・押して掴み押して置く・キー操作）、
   Segmented（セグメント。各ビューアの表示切替と設定の選択。語を持つ組を置く側は
-  `container: segmented / inline-size` を宣言し、22rem の縦積みはこの名前で問い合わせる。図形だけの組を置く側は宣言しない）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
+  `container: segmented / inline-size` を宣言し、22rem の縦積みはこの名前で問い合わせる。図形だけの組を置く側は宣言しない）、Select（ネイティブの select にシェブロンを重ねて描く。data URL のシェブロンは配色に追従できないため）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
