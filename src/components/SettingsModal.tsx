@@ -23,6 +23,7 @@ import { Busy } from './Busy';
 import { chooseColorEverywhere, useFamilyLabel } from './color';
 import { Modal } from './Modal';
 import { Segmented } from './Segmented';
+import { Select } from './Select';
 
 interface SettingsModalProps {
   open: boolean;
@@ -110,9 +111,8 @@ export function SettingsModal({
         <h3 className="settings-group__label">{t('appearance')}</h3>
         <div className="settings-field">
           <label htmlFor={familyId}>{t('colorFamily')}</label>
-          <select
+          <Select
             id={familyId}
-            className="select"
             data-autofocus
             value={choice.family}
             onChange={(e) => chooseColorEverywhere({ family: e.target.value as ColorFamily })}
@@ -122,13 +122,12 @@ export function SettingsModal({
                 {familyLabel(family)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="settings-field">
           <label htmlFor={modeId}>{t('colorMode')}</label>
-          <select
+          <Select
             id={modeId}
-            className="select"
             value={choice.mode}
             aria-describedby={oneSided ? reasonId : undefined}
             onChange={(e) => chooseColorEverywhere({ mode: e.target.value as ModeChoice })}
@@ -142,7 +141,7 @@ export function SettingsModal({
                 </option>
               );
             })}
-          </select>
+          </Select>
         </div>
         {oneSided && (
           <p id={reasonId} className="settings-group__hint">
@@ -164,9 +163,8 @@ export function SettingsModal({
         </div>
         <div className="settings-field">
           <label htmlFor={measureId}>{t('proseMeasure')}</label>
-          <select
+          <Select
             id={measureId}
-            className="select"
             value={proseMeasure}
             aria-describedby={measureHintId}
             onChange={(e) => changeProseMeasure(e.target.value as ProseMeasure)}
@@ -176,20 +174,20 @@ export function SettingsModal({
                 {t(`measure.${measure}`)}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <p id={measureHintId} className="settings-group__hint">
           {t('proseMeasureHint')}
         </p>
         <div className="settings-field">
           <label htmlFor={langId}>{t('language')}</label>
-          <select id={langId} className="select" value={lang} onChange={(e) => changeLang(e.target.value as Lang)}>
+          <Select id={langId} value={lang} onChange={(e) => changeLang(e.target.value as Lang)}>
             {LANGS.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </section>
 

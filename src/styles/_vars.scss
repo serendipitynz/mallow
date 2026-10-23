@@ -26,6 +26,7 @@ $border-strong: var(--color-border-strong);
 $control-border: var(--color-control-border);
 $surface: var(--color-surface);
 $surface-raised: var(--color-surface-raised);
+$surface-nested: var(--color-surface-nested);
 $success: var(--color-success);
 $danger: var(--color-danger);
 $on-accent: var(--color-on-accent);
@@ -75,6 +76,7 @@ $shared-roles: (
   bg: surface,
   surface: surface-alt,
   surface-raised: surface,
+  surface-nested: surface-nested,
   sidebar-bg: canvas,
   panel: surface,
   ink: fg,
@@ -128,6 +130,7 @@ $shared-roles: (
   --color-bg: #282a36;
   --color-surface: #21222c;
   --color-surface-raised: #343746;
+  --color-surface-nested: #2b2d3a;
   --color-sidebar-bg: #21222c;
   --color-panel: #21222c;
   --color-ink: #f8f8f2;
@@ -163,6 +166,7 @@ $shared-roles: (
   --color-bg: #2e3440;
   --color-surface: #3b4252;
   --color-surface-raised: #434c5e;
+  --color-surface-nested: #3b4252;
   --color-sidebar-bg: #2e3440;
   --color-panel: #2e3440;
   --color-ink: #eceff4;

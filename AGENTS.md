@@ -77,7 +77,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   keys), Segmented (a segmented control — each viewer's view switch and the settings'
   choices; a host of worded options declares `container: segmented / inline-size`,
   which is what its 22rem stacking asks for by name, and a figure-only group's
-  host declares none), ViewPanel
+  host declares none), Select (a native select with the chevron drawn over it,
+  since a data-URL chevron cannot follow the palette), ViewPanel
   (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
   (the turning figure beside its words), icons (inlined Lucide SVGs, no runtime
   dependency).
