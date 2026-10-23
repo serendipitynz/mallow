@@ -1,7 +1,7 @@
 ---
 id: TASK-42
 title: Bring the settings modal's selects and sections to snz_studio's look
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-10-23 20:37'
 updated_date: '2026-10-23 21:31'
