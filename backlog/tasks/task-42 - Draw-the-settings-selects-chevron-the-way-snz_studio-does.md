@@ -1,10 +1,10 @@
 ---
 id: TASK-42
 title: Bring the settings modal's selects and sections to snz_studio's look
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-10-23 20:37'
-updated_date: '2026-10-23 21:31'
+updated_date: '2026-10-23 23:53'
 labels:
   - design
 milestone: m-5
@@ -47,4 +47,6 @@ The chevron cannot be a CSS background here as it is in snz_studio, because ther
 - `pnpm lint` / `pnpm build` / `pnpm test` (468) 通過。
 
 - 2026-10-24: オーナーが `pnpm tauri dev` の実窓 (WKWebView) で確認し、問題なし。AC #3 をチェック。
+
+- 2026-10-24: PR #79 がマージされた (`06cea94`)。Codex のレビューは 1 回目で指摘なしの承認。
 <!-- SECTION:NOTES:END -->
