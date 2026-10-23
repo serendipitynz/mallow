@@ -645,7 +645,10 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 420px;
+  // Wide enough that a settings group's box still leaves more than the 22rem a
+  // worded segmented control stacks at, so the stacking is left to narrow
+  // windows (snz-design doc-9 §6.12).
+  max-width: 440px;
   max-height: 100%;
   // The heading and the action area stay put and only the body scrolls, so
   // the card itself must not scroll (snz-design doc-9 §6.6).
@@ -708,6 +711,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 14px 16px;
+  background: $surface-nested;
+  border: 1px solid $border;
+  border-radius: $radius-surface;
 }
 
 .settings-group__label {
