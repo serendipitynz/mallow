@@ -4,10 +4,10 @@ title: Bring the settings modal's selects and sections to snz_studio's look
 status: Done
 assignee: []
 created_date: '2026-10-23 20:37'
-updated_date: '2026-10-23 23:53'
+updated_date: '2026-10-25 06:10'
 labels:
   - design
-milestone: m-5
+milestone: m-6
 dependencies: []
 priority: low
 ordinal: 58000
