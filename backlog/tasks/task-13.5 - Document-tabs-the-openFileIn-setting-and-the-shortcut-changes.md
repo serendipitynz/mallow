@@ -4,10 +4,9 @@ title: 'Document tabs, the openFileIn setting and the shortcut changes'
 status: To Do
 assignee: []
 created_date: '2026-08-05 21:49'
-updated_date: '2026-10-01 20:34'
+updated_date: '2026-10-29 22:22'
 labels:
   - documentation
-milestone: m-5
 dependencies:
   - TASK-13.2
   - TASK-13.3
