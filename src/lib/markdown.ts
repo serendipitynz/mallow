@@ -279,11 +279,16 @@ interface RenderEnv {
  * Whether an image source is an asset-protocol URL in either platform's
  * spelling: `asset://localhost/…` on macOS and Linux, `http://asset.localhost/…`
  * on Windows.
+ *
+ * Parsed against a base so a protocol-relative `//asset.localhost/…` is read as
+ * the host it names rather than thrown out as unparseable — on Windows the
+ * WebView resolves it to the asset endpoint. The base's own host is one no
+ * relative path can turn into `asset.localhost`.
  */
 function isAssetUrl(src: string): boolean {
   let url: URL;
   try {
-    url = new URL(src);
+    url = new URL(src, 'http://document.invalid/');
   } catch {
     return false;
   }

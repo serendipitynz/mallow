@@ -233,6 +233,7 @@ describe('renderMarkdown — an asset: URL the document wrote itself (decision-1
     ['ASSET://localhost/x.png'],
     ['http://asset.localhost/C%3A%5Cx.png'],
     ['https://ASSET.localhost./x.png'],
+    ['//asset.localhost/C%3A%5Cnotes%5Cx.png'],
   ])('emits %s as an image with no src', async (written) => {
     for (const options of [{}, { images }]) {
       const { html } = await renderMarkdown(`![kept alt](${written})\n`, options);
