@@ -3,10 +3,10 @@ id: TASK-44
 title: >-
   Go back and forward through the files a window has shown, and remember how
   each was being read
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-10-29 21:50'
-updated_date: '2026-10-29 22:22'
+updated_date: '2026-10-29 22:39'
 labels:
   - feature
 milestone: m-5
@@ -46,9 +46,50 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 - [ ] #2 Back and forward are reachable from the keyboard (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right on Windows and Linux), from the mouse's back / forward buttons, and from menu items that are disabled when there is nowhere to go
 - [ ] #3 Each chord is consumed even where there is nowhere to go, so WebView2's own Alt+Left navigation never reaches the app shell
 - [ ] #4 Returning to a file by history or by the tree restores its view mode and scroll position, for every kind that offers a view switch
-- [ ] #5 A history entry whose file no longer exists is skipped rather than shown as an error
+- [x] #5 A history entry whose file no longer exists is skipped rather than shown as an error
 - [ ] #6 Changing the window's folder empties its visit history and its file view state; another window's history is untouched
-- [ ] #7 The history and the view-state memory are bounded, with the limits and the reason for them stated where they are defined
-- [ ] #8 The history logic is a pure module with unit tests; pnpm lint, pnpm build and pnpm test pass, and cargo check / cargo test pass if the menu changes
-- [ ] #9 README describes back / forward and the chords on each platform
+- [x] #7 The history and the view-state memory are bounded, with the limits and the reason for them stated where they are defined
+- [x] #8 The history logic is a pure module with unit tests; pnpm lint, pnpm build and pnpm test pass, and cargo check / cargo test pass if the menu changes
+- [x] #9 README describes back / forward and the chords on each platform
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. src/lib/visit-history.ts: pure module — visit history (entries + cursor, capped), file view state memory (LRU, capped, never evicts a path the history still holds), an epoch bumped on folder change so a view leaving the previous folder cannot write into the new one, and an async travel() that skips entries whose file is gone. Unit tests beside it.
+2. src/lib/history-nav.ts: chord / mouse-button classification (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right elsewhere, buttons 3 / 4) and the keydown / mouseup handlers, always consuming. Unit tests.
+3. App: one showFile() for every route that shows a file (tree, mount-time location, handover) appending to the history; openLocation empties history + view state only when the folder actually changes; back / forward travel via pathExists; report can-go-back / can-go-forward to Rust.
+4. Views: a shared hook captures {mode, anchor} at unmount (against the still-attached container) and a shared hook restores the remembered anchor while the content is still filling. MarkdownView, HtmlView, ConfigView, TableView, XmlView take the remembered mode; MermaidView and the plain source arm get the scroll half.
+5. menu.rs: View > Back / Forward with per-platform accelerators, gated per window like Print / Export (report_history_moves), menu:back / menu:forward events. cargo test for the id map.
+6. README: back / forward and the chords per platform.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## 実装
+
+- 純粋モジュール `src/lib/visit-history.ts`: 訪問履歴（entries + cursor）とファイル表示状態（path → { mode, anchor }）を 1 つの値 `Visits` に持つ。フォルダ変更で `epoch` を進め、両方を空にする。`travel` は存在しないファイルを飛ばし、履歴からも取り除く（次の押下でまた飛ばすのではなく、Back が効くかを履歴だけで決められるようにするため）。取り除いた結果、表示中のファイルと同じファイルが隣に来たらそれも消す。
+- 上限（AC #7）: 履歴 `MAX_VISITS = 50`（Chromium の `kMaxSessionHistoryEntries` と同じ）、表示状態 `MAX_REMEMBERED_VIEWS = 100`。表示状態は最も昔に離れたものから捨てるが、履歴にまだ残っているパスは捨てない。履歴の異なるパスは最大 50 なので 100 なら必ず捨てられるものがあり、Back で届くファイルは必ず状態が残る。
+- `src/lib/history-nav.ts`: macOS は `Cmd+[` / `Cmd+]`、Windows・Linux は `Alt+Left` / `Alt+Right`、マウスはボタン 3 / 4。chord は移動先がなくても常に preventDefault（AC #3）。ゲートを置かないのは、移動先がない移動は `travel` がそのまま何もしないため。マウスは mousedown / mouseup の両方を消費し、動くのは mouseup だけ。
+- `src/hooks/useViewMemory.ts`: 離脱時の状態取得はレイアウトエフェクトの後始末で行う。React 19 のソース（`commitDeletionEffectsOnFiber`）で、関数コンポーネントのレイアウト後始末が配下のホスト要素の ref 解除・DOM 取り外しより先に走ることを確認した。`leave` はマウント時に受け取ったものを使う。フォルダ変更でアンマウントされたビューが新しいフォルダの記憶に書き込まないようにするため（新しいフォルダが古いフォルダを含む場合に実害が出る）。
+- 復元は「マウント時に 1 回 + 内容が伸びるたびに 1.5 秒間」。ライブ更新側の「次フレームでもう 1 回」にしなかったのは、Shiki の着色と mermaid の描画が 1 フレーム以内に終わる保証がないため。wheel / pointerdown / touchstart / keydown で読み手が動かしたら止める（scroll イベントは復元自身の書き込みでも発火するので使えない）。
+- `HtmlView` の描画モードは既存の収束ループ（`anchor` → `pendingRestore`）に覚えていたアンカーを渡すだけにし、共通の復元フックは使わない。ループの最中に横から復元すると収束途中で動くため。ソースモードは共通フック。
+- `MarkdownView`: 初回レンダリングでは空のコンテナを測らない（比率 0 を測って、覚えていた位置を打ち消していた）。ソースモードでも復元するようになった。
+- view の切り替えがある種別（markdown・html・json/yaml/toml・csv・xml、JSON の plist）はモードとスクロール、mermaid とテキスト系（text/ini/diff/sql）はスクロールだけを覚える。`default:` の枝は到達しないので対象外。
+- App: 表示経路（ツリー・初期位置・OS からの受け渡し）は `showFile` を通り、そこで visit になる。フォルダが実際に変わるときだけ履歴を空にする（同じフォルダの 2 つ目のファイルを OS から渡された場合は visit として足すため）。Back / Forward は `pathExists` で確かめ、待っている間に履歴が動いた場合は結果を捨てる。
+- メニュー: View → Back / Forward。ウィンドウごとのゲートを `report_history_moves` で受け、`apply_preview_gate` を `apply_focused_gates` に改名して 4 項目まとめて切り替える。
+
+## 確認したこと
+
+- `pnpm lint` / `pnpm build` / `pnpm test`（41 ファイル・517 件）が通った。新規テストは `visit-history.test.ts` と `history-nav.test.ts` の 26 件。
+- `cargo fmt --check` / `cargo check` / `cargo test`（109 件）が通った。`MALLOW_UNATTENDED=1 cargo check` も警告なし。
+- muda 0.19.3 のアクセラレータ解析が `[`・`]`・`Left`・`Right` を受け付けることをソースで確認した。
+
+## 測っていないこと（オーナーの確認が要る）
+
+- GUI 上の動作はどのプラットフォームでも見ていない。AC #1・#2・#4・#6 は実機で、AC #3 は Windows（WebView2 の Alt+Left が本当に止まるか）で確認が要る。
+- サイドボタンが各 WebView でページに届くか（button 3 / 4）。
+- Linux で GTK のアクセラレータとフロントエンドの keydown が両方動いて 2 歩戻らないか。Ctrl+N では 1 回だけ動いたという過去の観察（2026-09-12）に頼っている。
+- 描画中の HTML フレームの中にフォーカスやポインタがあるときは、ウィンドウのリスナーに届かない。既存の chord 全部に共通の穴で、README に書いた。
+<!-- SECTION:NOTES:END -->
