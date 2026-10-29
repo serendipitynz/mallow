@@ -42,6 +42,8 @@ const EXPORT_PDF: &str = "file:export-pdf";
 const CLOSE_WINDOW: &str = "file:close-window";
 const EXIT: &str = "file:exit";
 const TOGGLE_EXPLORER: &str = "view:toggle-explorer";
+const BACK: &str = "view:back";
+const FORWARD: &str = "view:forward";
 /// Unprefixed because it predates this module and nothing is gained by churning
 /// it; the event it sends is still `menu:settings`.
 const SETTINGS: &str = "settings";
@@ -62,6 +64,20 @@ const PRINTING_IS_REACHABLE: bool = false;
 #[cfg(not(target_os = "linux"))]
 const PRINTING_IS_REACHABLE: bool = true;
 
+/// Back and forward follow each platform's browser rather than `CmdOrCtrl`
+/// (TASK-44): Safari and Finder on macOS, every browser on Windows and Linux.
+/// `lib/history-nav` binds the same keys in the frontend, which is what acts on
+/// Windows, where a menu accelerator does not reach a WebView2-focused window
+/// (`lib/close-window`) — and where `Alt+Left` is WebView2's own back navigation.
+#[cfg(target_os = "macos")]
+const BACK_ACCELERATOR: &str = "Cmd+[";
+#[cfg(target_os = "macos")]
+const FORWARD_ACCELERATOR: &str = "Cmd+]";
+#[cfg(not(target_os = "macos"))]
+const BACK_ACCELERATOR: &str = "Alt+Left";
+#[cfg(not(target_os = "macos"))]
+const FORWARD_ACCELERATOR: &str = "Alt+Right";
+
 /// What is shown in place of the recent folders when there are none. Disabled, so
 /// it reads as the list being empty rather than as an entry that does nothing.
 const NO_RECENT_TEXT: &str = "No Recent Folders";
@@ -69,17 +85,28 @@ const NO_RECENT_TEXT: &str = "No Recent Folders";
 /// The parts of the menu that change after it is built, plus what they change
 /// from.
 ///
-/// `previews` is **per window** because the menu is not: one menu bar serves
-/// whichever window is focused on macOS, so `Print…` and `Export as PDF…` have to
-/// show the focused window's answer and change as focus moves. A single boolean
-/// would show whichever window last reported.
+/// `previews` and `moves` are **per window** because the menu is not: one menu
+/// bar serves whichever window is focused on macOS, so `Print…`, `Export as PDF…`,
+/// Back and Forward have to show the focused window's answer and change as focus
+/// moves. A single value would show whichever window last reported.
 pub struct MenuState {
     recent: Submenu<Wry>,
     clear_recent: MenuItem<Wry>,
     print: MenuItem<Wry>,
     export_pdf: MenuItem<Wry>,
+    back: MenuItem<Wry>,
+    forward: MenuItem<Wry>,
     /// window label → whether that window's active view is a markdown preview.
     previews: Mutex<HashMap<String, bool>>,
+    /// window label → where that window's visit history can move.
+    moves: Mutex<HashMap<String, HistoryMoves>>,
+}
+
+/// Whether a window's visit history has anywhere to go in each direction.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+struct HistoryMoves {
+    back: bool,
+    forward: bool,
 }
 
 /// What a menu id asks for.
@@ -99,6 +126,8 @@ pub enum MenuAction {
     CloseWindow,
     Exit,
     ToggleExplorer,
+    Back,
+    Forward,
 }
 
 pub fn menu_action(id: &str) -> MenuAction {
@@ -112,6 +141,8 @@ pub fn menu_action(id: &str) -> MenuAction {
         CLOSE_WINDOW => MenuAction::CloseWindow,
         EXIT => MenuAction::Exit,
         TOGGLE_EXPLORER => MenuAction::ToggleExplorer,
+        BACK => MenuAction::Back,
+        FORWARD => MenuAction::Forward,
         path => MenuAction::OpenRecent(path.to_string()),
     }
 }
@@ -260,22 +291,50 @@ pub fn report_markdown_preview(active: bool, window: Window) -> Result<(), Strin
         .lock()
         .map_err(|e| e.to_string())?
         .insert(window.label().to_string(), active);
-    apply_preview_gate(app);
+    apply_focused_gates(app);
     Ok(())
 }
 
-/// Enable or disable `Print…` and `Export as PDF…` from the focused window's
-/// reported state.
-pub fn apply_preview_gate(app: &AppHandle) {
+/// Record where this window's visit history can move, and show it on Back and
+/// Forward if this window is the focused one. The history lives in the
+/// frontend, so the answer is pushed as `report_markdown_preview`'s is; and like
+/// that one it answers `Ok` where there is no menu.
+#[tauri::command]
+pub fn report_history_moves(back: bool, forward: bool, window: Window) -> Result<(), String> {
+    let app = window.app_handle();
+    let Some(state) = app.try_state::<MenuState>() else {
+        return Ok(());
+    };
+    state
+        .moves
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(window.label().to_string(), HistoryMoves { back, forward });
+    apply_focused_gates(app);
+    Ok(())
+}
+
+/// Enable or disable every entry gated per window — `Print…` and `Export as PDF…`
+/// on the active view, Back and Forward on the visit history — from the focused
+/// window's reported state.
+pub fn apply_focused_gates(app: &AppHandle) {
     let Some(state) = app.try_state::<MenuState>() else {
         return;
     };
-    let active = match (focused_window(app), state.previews.lock()) {
-        (Some(window), Ok(previews)) => previews.get(window.label()).copied().unwrap_or(false),
+    let focused = focused_window(app);
+    let label = focused.as_ref().map(|window| window.label());
+    let active = match (label, state.previews.lock()) {
+        (Some(label), Ok(previews)) => previews.get(label).copied().unwrap_or(false),
         _ => false,
+    };
+    let moves = match (label, state.moves.lock()) {
+        (Some(label), Ok(moves)) => moves.get(label).copied().unwrap_or_default(),
+        _ => HistoryMoves::default(),
     };
     let _ = state.print.set_enabled(active && PRINTING_IS_REACHABLE);
     let _ = state.export_pdf.set_enabled(active);
+    let _ = state.back.set_enabled(moves.back);
+    let _ = state.forward.set_enabled(moves.forward);
 }
 
 /// Forget a destroyed window's reported state, and show whoever has focus now.
@@ -287,7 +346,10 @@ pub fn drop_window_gate(window: &Window) {
     if let Ok(mut previews) = state.previews.lock() {
         previews.remove(window.label());
     }
-    apply_preview_gate(app);
+    if let Ok(mut moves) = state.moves.lock() {
+        moves.remove(window.label());
+    }
+    apply_focused_gates(app);
 }
 
 /// Route one menu event to the focused window.
@@ -320,6 +382,8 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         MenuAction::ExportPdf => emit_focused(app, "menu:export-pdf", ()),
         MenuAction::Settings => emit_focused(app, "menu:settings", ()),
         MenuAction::ToggleExplorer => emit_focused(app, "menu:toggle-explorer", ()),
+        MenuAction::Back => emit_focused(app, "menu:back", ()),
+        MenuAction::Forward => emit_focused(app, "menu:forward", ()),
         MenuAction::ClearRecent => {
             if let Err(e) = crate::recent::clear_recent_list(app) {
                 eprintln!("mallow: the recent folders could not be cleared ({e})");
@@ -405,6 +469,16 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
     let toggle_explorer = MenuItemBuilder::with_id(TOGGLE_EXPLORER, "Toggle Explorer")
         .accelerator("CmdOrCtrl+B")
         .build(app)?;
+    // Disabled until the focused window reports a history with somewhere to go,
+    // for the reason `Print…` starts disabled.
+    let back = MenuItemBuilder::with_id(BACK, "Back")
+        .accelerator(BACK_ACCELERATOR)
+        .enabled(false)
+        .build(app)?;
+    let forward = MenuItemBuilder::with_id(FORWARD, "Forward")
+        .accelerator(FORWARD_ACCELERATOR)
+        .enabled(false)
+        .build(app)?;
 
     let about = tauri::menu::AboutMetadataBuilder::new()
         .name(Some("mallow"))
@@ -424,12 +498,23 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
         &export_pdf,
         &settings,
         &toggle_explorer,
+        &back,
+        &forward,
         about,
     )?;
     app.set_menu(menu)?;
     register_windows_menu(window_menu)?;
 
-    app.manage(MenuState { recent, clear_recent, print, export_pdf, previews: Mutex::new(HashMap::new()) });
+    app.manage(MenuState {
+        recent,
+        clear_recent,
+        print,
+        export_pdf,
+        back,
+        forward,
+        previews: Mutex::new(HashMap::new()),
+        moves: Mutex::new(HashMap::new()),
+    });
     refresh_recent(app);
     Ok(())
 }
@@ -502,11 +587,18 @@ fn compose(
     export_pdf: &MenuItem<Wry>,
     settings: &MenuItem<Wry>,
     toggle_explorer: &MenuItem<Wry>,
+    back: &MenuItem<Wry>,
+    forward: &MenuItem<Wry>,
     about: tauri::menu::AboutMetadata<'_>,
 ) -> tauri::Result<(Menu<Wry>, Option<Submenu<Wry>>)> {
-    // The same View menu on all three, and made of an ordinary item only, so no
+    // The same View menu on all three, and made of ordinary items only, so no
     // backend has a predefined kind to skip.
-    let view_menu = SubmenuBuilder::new(app, "View").item(toggle_explorer).build()?;
+    let view_menu = SubmenuBuilder::new(app, "View")
+        .item(toggle_explorer)
+        .separator()
+        .item(back)
+        .item(forward)
+        .build()?;
 
     #[cfg(target_os = "macos")]
     {
@@ -626,6 +718,8 @@ mod tests {
         assert_eq!(menu_action(CLOSE_WINDOW), MenuAction::CloseWindow);
         assert_eq!(menu_action(EXIT), MenuAction::Exit);
         assert_eq!(menu_action(TOGGLE_EXPLORER), MenuAction::ToggleExplorer);
+        assert_eq!(menu_action(BACK), MenuAction::Back);
+        assert_eq!(menu_action(FORWARD), MenuAction::Forward);
     }
 
     /// The id a recent entry carries is the path, which is what makes this the
@@ -640,7 +734,19 @@ mod tests {
     /// id spaces cannot meet.
     #[test]
     fn no_fixed_id_looks_like_an_absolute_path() {
-        for id in [NEW_WINDOW, OPEN, CLEAR_RECENT, PRINT, EXPORT_PDF, SETTINGS, CLOSE_WINDOW, EXIT, TOGGLE_EXPLORER] {
+        for id in [
+            NEW_WINDOW,
+            OPEN,
+            CLEAR_RECENT,
+            PRINT,
+            EXPORT_PDF,
+            SETTINGS,
+            CLOSE_WINDOW,
+            EXIT,
+            TOGGLE_EXPLORER,
+            BACK,
+            FORWARD,
+        ] {
             assert!(!id.starts_with('/') && !id.starts_with('\\') && !id.contains('/') && !id.contains('\\'));
         }
     }
