@@ -187,7 +187,7 @@ function ViewerBody({
 }) {
   switch (file.kind) {
     case 'markdown':
-      return <MarkdownView source={content} />;
+      return <MarkdownView source={content} path={file.path} />;
     case 'mermaid':
       return <MermaidView source={content} />;
     case 'json':

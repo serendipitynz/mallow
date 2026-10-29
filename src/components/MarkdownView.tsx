@@ -1,3 +1,4 @@
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useOutlineFocusReturn } from '../hooks/useOutlineFocusReturn';
@@ -8,6 +9,7 @@ import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeM
 import { setMarkdownPreviewActive } from '../lib/markdown-preview';
 import { renderMermaid } from '../lib/mermaid';
 import { onOutlineOpenChange, readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
+import { dirname } from '../lib/path';
 import { onProseMeasureChange, readProseMeasure } from '../lib/prose-measure';
 import { notifyRenderSettled } from '../lib/render-signal';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
@@ -19,7 +21,7 @@ import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
 import { ViewPanel } from './ViewPanel';
 
-export function MarkdownView({ source }: { source: string }) {
+export function MarkdownView({ source, path }: { source: string; path: string }) {
   const t = useT();
   const [result, setResult] = useState<RenderResult | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export function MarkdownView({ source }: { source: string }) {
     // Capture against the still-mounted previous content before swapping it.
     pendingRestore.current = captureScrollAnchor(scrollRef.current, resultRef.current?.headings ?? []);
     setRenderError(null);
-    renderMarkdown(source)
+    renderMarkdown(source, { images: { dir: dirname(path), toAssetUrl: convertFileSrc } })
       .then((r) => {
         if (!cancelled) {
           setResult(r);
@@ -62,7 +64,7 @@ export function MarkdownView({ source }: { source: string }) {
     return () => {
       cancelled = true;
     };
-  }, [source, configVersion]);
+  }, [source, path, configVersion]);
 
   // After the article mounts (in preview mode), run the imperative enhancements,
   // bind external-link handling, and restore the scroll position. Keyed on `mode`

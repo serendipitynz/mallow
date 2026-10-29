@@ -13,6 +13,7 @@ import githubAlerts from 'markdown-it-github-alerts';
 import type { BundledLanguage } from 'shiki';
 import { extractFrontMatter, renderFrontMatterTable } from './frontmatter';
 import type { Heading } from './heading';
+import { type RefResolver, rewriteRef } from './html-doc';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from './shiki';
 
 export interface RenderResult {
@@ -269,6 +270,62 @@ function emojiRenderer(md: MarkdownIt): void {
   };
 }
 
+/** What one render is given beyond the source, through markdown-it's `env`. */
+interface RenderEnv {
+  images?: RefResolver;
+}
+
+/**
+ * Whether an image source is an asset-protocol URL in either platform's
+ * spelling: `asset://localhost/…` on macOS and Linux, `http://asset.localhost/…`
+ * on Windows.
+ */
+function isAssetUrl(src: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(src);
+  } catch {
+    return false;
+  }
+  return url.protocol === 'asset:' || url.hostname.replace(/\.$/, '') === 'asset.localhost';
+}
+
+/**
+ * Local images (decision-17).
+ *
+ * A path relative to the document is resolved against the document's own
+ * directory by the rendered HTML view's rule — `rewriteRef` itself, so the two
+ * views cannot drift apart on which references count as local. An `asset:` URL
+ * the document wrote itself is refused by dropping the `src`, so every asset URL
+ * in the article is one mallow built: that is what keeps the boundary statable
+ * as "only what the app wrote", and the URL's spelling differs per platform
+ * anyway. Refusing it reaches nothing a relative path could not, since `..` is
+ * allowed to climb into any granted folder; what decides readability is the
+ * asset-protocol scope.
+ *
+ * Done in the render rule rather than a core rule because the resolver arrives
+ * per render through `env`, while the MarkdownIt instance is cached across
+ * documents.
+ */
+function localImages(md: MarkdownIt): void {
+  /* biome-ignore lint/style/noNonNullAssertion: markdown-it always installs an image rule; see
+     the same assertion on the fence rule for why a fabricated fallback would be worse. */
+  const defaultImage = md.renderer.rules.image!;
+  md.renderer.rules.image = (tokens, idx, options, env: RenderEnv, self) => {
+    const token = tokens[idx];
+    const src = token.attrGet('src') ?? '';
+    if (isAssetUrl(src)) {
+      token.attrs = token.attrs?.filter(([name]) => name !== 'src') ?? null;
+    } else if (env.images) {
+      const rewritten = rewriteRef(src, env.images);
+      if (rewritten !== null) {
+        token.attrSet('src', rewritten);
+      }
+    }
+    return defaultImage(tokens, idx, options, env, self);
+  };
+}
+
 let mdPromise: Promise<MarkdownIt> | null = null;
 
 async function getMd(): Promise<MarkdownIt> {
@@ -321,6 +378,7 @@ async function getMd(): Promise<MarkdownIt> {
       });
       md.use(taskLists);
       md.use(loneImages);
+      md.use(localImages);
       // Must run after the Shiki plugin so it wraps Shiki's fence rule.
       mermaidFence(md);
 
@@ -330,14 +388,22 @@ async function getMd(): Promise<MarkdownIt> {
   return mdPromise;
 }
 
+export interface RenderOptions {
+  /** How an image path relative to the document becomes a loadable URL. Without
+   *  it such a path is left as written; a document-written `asset:` URL is
+   *  refused either way. */
+  images?: RefResolver;
+}
+
 /** Render markdown source to HTML and extract its heading outline. Leading
  *  front-matter (YAML / TOML) is shown as a key/value table above the body. */
-export async function renderMarkdown(src: string): Promise<RenderResult> {
+export async function renderMarkdown(src: string, options: RenderOptions = {}): Promise<RenderResult> {
   const md = await getMd();
   const { data, body } = extractFrontMatter(src);
   slugger.reset();
   headingSink = [];
-  const bodyHtml = md.render(body);
+  const env: RenderEnv = { images: options.images };
+  const bodyHtml = md.render(body, env);
   const html = data && Object.keys(data).length > 0 ? renderFrontMatterTable(data) + bodyHtml : bodyHtml;
   return { html, headings: headingSink.slice() };
 }
