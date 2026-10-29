@@ -19,6 +19,7 @@ import { createToggleExplorerChordHandler } from './lib/explorer-toggle';
 import { clampExplorerWidth, DEFAULT_EXPLORER_WIDTH } from './lib/explorer-width';
 import { fileEntryFromPath } from './lib/file';
 import { droppedToOpen, type Handed, handedAction } from './lib/handover';
+import { createHistoryButtonHandler, createHistoryChordHandler } from './lib/history-nav';
 import { useI18n, useT } from './lib/i18n';
 import { type CustomEmojiSet, setCustomEmoji } from './lib/markdown';
 import { isMarkdownPreviewActive, onMarkdownPreviewChange } from './lib/markdown-preview';
@@ -43,6 +44,7 @@ import {
   pickPdfDestination,
   printWindow,
   recordRecent,
+  reportHistoryMoves,
   reportMarkdownPreview,
   reportWindowContent,
   showErrorDialog,
@@ -52,6 +54,18 @@ import {
 } from './lib/tauri';
 import { applyColorChoice } from './lib/theme';
 import type { FileEntry } from './lib/types';
+import {
+  canGo,
+  type Direction,
+  type FileViewState,
+  NO_VISITS,
+  rememberedView,
+  rememberView,
+  startFolder,
+  travel,
+  type Visits,
+  visit,
+} from './lib/visit-history';
 import { onFsChange, startWatch } from './lib/watch';
 import { locationToOpenAtMount } from './lib/window-init';
 
@@ -102,9 +116,37 @@ export default function App() {
 
   const { open: openTree, refresh, expandPaths } = tree;
 
-  const selectFile = useCallback((entry: FileEntry) => {
-    setSelected(entry);
+  /* ---- Visit history and file view state (TASK-44) -------------------------
+     Held in a ref as well as in state because back / forward reads it across an
+     await, and has to know whether anything moved in the meantime. */
+  const [visits, setVisits] = useState<Visits>(NO_VISITS);
+  const visitsRef = useRef(visits);
+  const updateVisits = useCallback((next: (current: Visits) => Visits) => {
+    visitsRef.current = next(visitsRef.current);
+    setVisits(visitsRef.current);
   }, []);
+  /** The folder the history belongs to. A ref rather than `tree.rootDir`, which
+   *  is set only once the tree has been read — after the file it opens with. */
+  const historyFolder = useRef<string | null>(null);
+
+  /** Every route that shows a file — the tree, a window's initial location, a
+   *  location the OS handed over — goes through here, which is what makes each
+   *  of them a visit. Back and forward do not: they move the cursor instead. */
+  const showFile = useCallback(
+    (entry: FileEntry) => {
+      setSelected(entry);
+      updateVisits((current) => visit(current, entry.path));
+    },
+    [updateVisits],
+  );
+
+  /** Bound to the epoch it was made under; a view keeps the one it was mounted
+   *  with (`useLeaveReport`), so a view the folder change unmounted is ignored. */
+  const epoch = visits.epoch;
+  const onLeave = useCallback(
+    (path: string, state: FileViewState) => updateVisits((current) => rememberView(current, epoch, path, state)),
+    [updateVisits, epoch],
+  );
 
   /** Show `folder`, and select `file` inside it when the location carries one.
    *
@@ -128,6 +170,13 @@ export default function App() {
          export reaches none of this, so a measurement run still leaves the
          reader's session where it found it. */
       void recordRecent(folder).catch((e) => console.error('Failed to record the recent folder', e));
+      /* Only a folder that actually changes empties the history: a location the
+         OS hands over can be a second file in the folder already open, and that
+         is a visit like any other (decision-4's rule 7 for tabs, TASK-44 here). */
+      if (historyFolder.current !== folder) {
+        historyFolder.current = folder;
+        updateVisits(startFolder);
+      }
       await allowMediaDir(folder).catch((e) => console.error('Failed to allow media dir', e));
       if (cancelled()) {
         return;
@@ -140,10 +189,47 @@ export default function App() {
       await expandPaths(ancestorDirs(folder, file));
       const entry = fileEntryFromPath(file);
       if (!cancelled() && entry) {
-        setSelected(entry);
+        showFile(entry);
       }
     },
-    [openTree, expandPaths],
+    [openTree, expandPaths, updateVisits, showFile],
+  );
+
+  /** Serialised, so two presses in quick succession take two steps from where
+   *  each other landed rather than both from the same place. */
+  const travelChain = useRef<Promise<void>>(Promise.resolve());
+  const go = useCallback(
+    (direction: Direction) => {
+      travelChain.current = travelChain.current
+        .then(async () => {
+          const from = visitsRef.current;
+          if (!canGo(from, direction)) {
+            return;
+          }
+          const { visits: next, path } = await travel(from, direction, (candidate) =>
+            pathExists(candidate).catch(() => false),
+          );
+          const now = visitsRef.current;
+          // A folder change or a visit landed while the files were being checked;
+          // the step was taken from a history that no longer exists. A view
+          // reporting how it was left changes neither, so it does not count.
+          if (now.epoch !== from.epoch || now.entries !== from.entries || now.cursor !== from.cursor) {
+            return;
+          }
+          updateVisits((current) => ({ ...next, views: current.views }));
+          const entry = path === null ? null : fileEntryFromPath(path);
+          if (!entry) {
+            return;
+          }
+          setSelected(entry);
+          const folder = historyFolder.current;
+          if (folder) {
+            await expandPaths(ancestorDirs(folder, entry.path));
+          }
+        })
+        .catch((e) => console.error('Failed to move through the visit history', e));
+    },
+    [updateVisits, expandPaths],
   );
 
   const openFolder = useCallback(async () => {
@@ -853,6 +939,37 @@ export default function App() {
   }, [toggleExplorer]);
   useWindowEvent('menu:toggle-explorer', toggleExplorer);
 
+  /* ---- Back / forward (TASK-44) ---------------------------------------------
+     Registered and consumed for the life of the app on `lib/chord`'s rule; on
+     Windows the chord is WebView2's own back navigation, which is why
+     consuming it matters there (`lib/history-nav`). The mouse's side buttons go
+     the same way. The menu items gate on the history and the chord does not
+     need to: a move with nowhere to go is already nothing. */
+  useEffect(() => {
+    const onKey = createHistoryChordHandler({ onMac: onMacPlatform(), go });
+    const onButton = createHistoryButtonHandler(go);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('mousedown', onButton);
+    window.addEventListener('mouseup', onButton);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onButton);
+      window.removeEventListener('mouseup', onButton);
+    };
+  }, [go]);
+  useWindowEvent('menu:back', () => go('back'));
+  useWindowEvent('menu:forward', () => go('forward'));
+
+  // Pushed rather than read, for the reason the preview gate is: the menu lives
+  // in Rust and the history lives here.
+  const canGoBack = canGo(visits, 'back');
+  const canGoForward = canGo(visits, 'forward');
+  useEffect(() => {
+    void reportHistoryMoves(canGoBack, canGoForward).catch((e) =>
+      console.error('Failed to report where the history can move', e),
+    );
+  }, [canGoBack, canGoForward]);
+
   // ---- Explorer resize ------------------------------------------------------
   const commitExplorerWidth = useCallback((width: number) => {
     setExplorerWidth(width);
@@ -869,7 +986,7 @@ export default function App() {
       id={EXPLORER_ID}
       tree={tree}
       selectedPath={selected?.path ?? null}
-      onSelect={selectFile}
+      onSelect={showFile}
       onOpenFolder={openFolder}
       recentFolders={recentFolders}
       onChooseRecent={chooseRecentFolder}
@@ -884,7 +1001,14 @@ export default function App() {
       onCommit={commitExplorerWidth}
     />
   );
-  const viewer = <Viewer file={selected} reloadToken={reloadToken} />;
+  const viewer = (
+    <Viewer
+      file={selected}
+      reloadToken={reloadToken}
+      remembered={selected ? rememberedView(visits, selected.path) : null}
+      onLeave={onLeave}
+    />
+  );
 
   return (
     <div className="app">

@@ -1,7 +1,10 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
+import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { delimiterFor, parseDelimited, TABLE_MAX_CELL_CHARS, tableExtent } from '../lib/delimited';
 import { useT } from '../lib/i18n';
+import { captureScrollAnchor } from '../lib/scroll';
 import type { FileEntry } from '../lib/types';
+import { rememberedMode } from '../lib/visit-history';
 import { CodeIcon, TableIcon } from './icons';
 import { Notice } from './Notice';
 import { Segmented } from './Segmented';
@@ -11,19 +14,25 @@ import { ViewPanel } from './ViewPanel';
 interface TableViewProps {
   source: string;
   file: FileEntry;
+  memory: ViewMemory;
 }
+
+const MODES = ['table', 'source'] as const;
 
 /**
  * CSV / TSV as a table, with the source view as the other half of the toggle.
  * What the table leaves out is bounded by decision-7 and stated above it; the
  * document itself is never withheld, since the source half shows all of it.
  */
-export function TableView({ source, file }: TableViewProps) {
+export function TableView({ source, file, memory }: TableViewProps) {
   const t = useT();
   const delimiter = useMemo(() => delimiterFor(file.name), [file.name]);
   const table = useMemo(() => parseDelimited(source, delimiter), [source, delimiter]);
   const extent = useMemo(() => tableExtent(table), [table]);
-  const [mode, setMode] = useState<'table' | 'source'>('table');
+  const [mode, setMode] = useState<'table' | 'source'>(() => rememberedMode(memory.remembered, MODES) ?? 'table');
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRememberedScroll(scrollRef, memory.remembered?.anchor ?? null);
+  useLeaveReport(memory, scrollRef, (scroller) => ({ mode, anchor: captureScrollAnchor(scroller, []) }));
   const idBase = useId();
 
   const notice: string[] = [];
@@ -41,7 +50,7 @@ export function TableView({ source, file }: TableViewProps) {
   }
 
   return (
-    <div className="doc-scroll">
+    <div className="doc-scroll" ref={scrollRef}>
       <div className="doc tbl-doc">
         <div className="doc__bar">
           <Segmented

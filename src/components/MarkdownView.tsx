@@ -2,6 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useOutlineFocusReturn } from '../hooks/useOutlineFocusReturn';
+import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { UNATTENDED } from '../lib/build-flags';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
@@ -14,6 +15,7 @@ import { onProseMeasureChange, readProseMeasure } from '../lib/prose-measure';
 import { notifyRenderSettled } from '../lib/render-signal';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { broadcastSetting } from '../lib/settings-sync';
+import { rememberedMode } from '../lib/visit-history';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Notice } from './Notice';
 import { Outline } from './Outline';
@@ -21,13 +23,15 @@ import { Segmented } from './Segmented';
 import { SourceView } from './SourceView';
 import { ViewPanel } from './ViewPanel';
 
-export function MarkdownView({ source, path }: { source: string; path: string }) {
+const MODES = ['preview', 'source'] as const;
+
+export function MarkdownView({ source, path, memory }: { source: string; path: string; memory: ViewMemory }) {
   const t = useT();
   const [result, setResult] = useState<RenderResult | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const outlineOpen = useSyncExternalStore(onOutlineOpenChange, readOutlineOpen);
   const proseMeasure = useSyncExternalStore(onProseMeasureChange, readProseMeasure);
-  const [mode, setMode] = useState<'preview' | 'source'>('preview');
+  const [mode, setMode] = useState<'preview' | 'source'>(() => rememberedMode(memory.remembered, MODES) ?? 'preview');
   const scrollRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLDivElement>(null);
@@ -38,6 +42,12 @@ export function MarkdownView({ source, path }: { source: string; path: string })
   const pendingRestore = useRef<ScrollAnchor>(null);
   const resultRef = useRef<RenderResult | null>(null);
   resultRef.current = result;
+  useRememberedScroll(scrollRef, memory.remembered?.anchor ?? null);
+  // In source mode the headings are not in the DOM, so the ratio is all there is.
+  useLeaveReport(memory, scrollRef, (scroller) => ({
+    mode,
+    anchor: captureScrollAnchor(scroller, mode === 'preview' ? (result?.headings ?? []) : []),
+  }));
   // Re-render the open document when the pipeline is reconfigured (custom emoji
   // changed in Settings) instead of making the user reopen the file.
   const configVersion = useSyncExternalStore(subscribeMarkdownConfig, getMarkdownConfigVersion);
@@ -48,7 +58,11 @@ export function MarkdownView({ source, path }: { source: string; path: string })
   useEffect(() => {
     let cancelled = false;
     // Capture against the still-mounted previous content before swapping it.
-    pendingRestore.current = captureScrollAnchor(scrollRef.current, resultRef.current?.headings ?? []);
+    // Only once there is one: against the empty first mount this would be a
+    // ratio of 0, and restoring it would undo the remembered position.
+    pendingRestore.current = resultRef.current
+      ? captureScrollAnchor(scrollRef.current, resultRef.current.headings)
+      : null;
     setRenderError(null);
     renderMarkdown(source, { images: { dir: dirname(path), toAssetUrl: convertFileSrc } })
       .then((r) => {

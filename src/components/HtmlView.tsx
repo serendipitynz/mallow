@@ -2,6 +2,7 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useOutlineFocusReturn } from '../hooks/useOutlineFocusReturn';
+import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import type { Heading, HeadingRoot } from '../lib/heading';
 import { neutralizeAppOriginLinks, transformHtmlDocument } from '../lib/html-doc';
 import { assignHeadingIds } from '../lib/html-headings';
@@ -13,6 +14,7 @@ import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../
 import { broadcastSetting } from '../lib/settings-sync';
 import { openInDefaultApp } from '../lib/tauri';
 import type { FileEntry } from '../lib/types';
+import { rememberedMode } from '../lib/visit-history';
 import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Notice } from './Notice';
 import { Outline } from './Outline';
@@ -125,6 +127,8 @@ function addressesDocumentStart(name: string): boolean {
   return name === '' || name.toLowerCase() === 'top';
 }
 
+const MODES = ['rendered', 'source'] as const;
+
 /**
  * The HTML rendered view: the document in an iframe fed through `srcdoc`, with a
  * toggle to the source view (decision-3, amended by decision-9).
@@ -146,9 +150,11 @@ export function HtmlView({
   source,
   file,
   onDocumentTitle,
+  memory,
 }: {
   source: string;
   file: FileEntry;
+  memory: ViewMemory;
   /** Reports the document's `<title>` upward, because the native window title has
    *  one writer and it is `Viewer` — this view supplies the value and never sets
    *  it. Taken from the transform, so the document is not parsed a second time. */
@@ -163,7 +169,7 @@ export function HtmlView({
       }),
     [source, file.path],
   );
-  const [mode, setMode] = useState<'rendered' | 'source'>('rendered');
+  const [mode, setMode] = useState<'rendered' | 'source'>(() => rememberedMode(memory.remembered, MODES) ?? 'rendered');
   const outlineOpen = useSyncExternalStore(onOutlineOpenChange, readOutlineOpen);
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [tooTall, setTooTall] = useState(false);
@@ -185,7 +191,12 @@ export function HtmlView({
   const appliedHeight = useRef<number | null>(null);
   const pendingMeasure = useRef(0);
   const disposeFrame = useRef<(() => void) | null>(null);
-  const anchor = useRef<ScrollAnchor>(null);
+  /* Seeded with the remembered position when the file comes back in the rendered
+     mode: the load pass already carries this anchor across the convergence, so
+     the frame's own sizing loop is what lands it — a restore running beside that
+     loop would act mid-convergence. The source mode has no loop, and takes the
+     shared restore instead. */
+  const anchor = useRef<ScrollAnchor>(mode === 'rendered' ? (memory.remembered?.anchor ?? null) : null);
   /** Where the reader was when a restart shrank the frame under them. */
   const pendingRestore = useRef<ScrollAnchor>(null);
   /** Tallest height this convergence has measured; see the budget branch. */
@@ -217,6 +228,15 @@ export function HtmlView({
     () => renderedNoticeLines(transform.counts, { runsParentListeners: listenersRun, outlineVisible: showOutline }),
     [transform.counts, listenersRun, showOutline],
   );
+
+  useRememberedScroll(scrollRef, mode === 'source' ? (memory.remembered?.anchor ?? null) : null);
+  // The frame is still attached when this runs, so its headings can be read.
+  useLeaveReport(memory, scrollRef, (scroller) => ({
+    mode,
+    anchor: showRendered
+      ? captureScrollAnchor(scroller, headingsRef.current, frameRoot)
+      : captureScrollAnchor(scroller, []),
+  }));
 
   /**
    * Size the frame to its document, one step of a convergence the observers

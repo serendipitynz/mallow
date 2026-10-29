@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { useT } from '../lib/i18n';
 import { renderMermaid } from '../lib/mermaid';
+import { captureScrollAnchor } from '../lib/scroll';
 import { Notice } from './Notice';
 
 /** Render a standalone `.mmd` / `.mermaid` file as a single diagram. */
-export function MermaidView({ source }: { source: string }) {
+export function MermaidView({ source, memory }: { source: string; memory: ViewMemory }) {
   const t = useT();
   const hostRef = useRef<HTMLDivElement>(null);
   const [empty, setEmpty] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRememberedScroll(scrollRef, memory.remembered?.anchor ?? null);
+  useLeaveReport(memory, scrollRef, (scroller) => ({ mode: null, anchor: captureScrollAnchor(scroller, []) }));
 
   useEffect(() => {
     const host = hostRef.current;
@@ -42,7 +47,7 @@ export function MermaidView({ source }: { source: string }) {
   }, [source, t]);
 
   return (
-    <div className="doc-scroll">
+    <div className="doc-scroll" ref={scrollRef}>
       <div className="doc">
         {empty && (
           <Notice level="info" className="notice--doc">
