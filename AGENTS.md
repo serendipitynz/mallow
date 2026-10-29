@@ -537,9 +537,17 @@ hold rather than as an exhaustive style guide.
   widened per opened folder by `allow_media_dir` (called from `App.tsx` on open and
   on session restore). The CSP allows `asset:` / `http://asset.localhost` for
   `img-src` / `media-src` / `frame-src` (frame for the WebView's native PDF viewer).
-  This does not widen the untrusted-Markdown boundary: `html: false` + markdown-it's
-  `validateLink` block the `asset:` scheme, so a document cannot emit an `asset:`
-  reference — media only loads for files chosen in the tree. Media support is bounded
+  **In Markdown, mallow is the only author of an `asset:` URL** (decision-17):
+  `lib/markdown`'s image rule resolves a path relative to the document through the
+  HTML view's own `rewriteRef` and refuses — drops the `src` of — an image the
+  document gave an `asset:` URL or an `asset.localhost` host itself. **The claim
+  this replaced was false**: `validateLink` refuses `javascript:`, `vbscript:`,
+  `file:` and non-image `data:` only, so `![x](asset://…)` was a live image. **What
+  a document can reach is every granted folder, not only its own**, because `..`
+  climbs freely and the scope decides readability — the refusal buys a boundary
+  stated as "only what the app wrote" and keeps a per-platform URL spelling out of
+  documents, not a smaller reach. A path starting with `/`, a drive path and a
+  UNC path are left as written. Media support is bounded
   by the platform WebView (heic/heif are gated to macOS in `file_kind`; PDF is absent
   on some Linux WebKitGTK builds). `<img>`/`<video>` fall back to a message on decode
   error; `<iframe>` (PDF) has no reliable error signal, so it can show blank.
