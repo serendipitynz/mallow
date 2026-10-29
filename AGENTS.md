@@ -2041,7 +2041,10 @@ that keeps the hand-published draft's generated notes intact.
 
 ## Known follow-ups
 
-- Config-tree expansion state is not preserved across a live reload.
+- Config-tree expansion state is not preserved across a live reload, nor across
+  a return by back / forward or the tree (TASK-44), and the XML tree's is in the
+  same state. A return lands on a scroll ratio of a tree laid out at its default
+  expansion, so a place inside a branch the reader opened is not recovered.
 - Math (KaTeX) is intentionally not implemented.
 - The native menu's labels are English on every platform whatever the app's UI
   language is. The app's own UI has `ja` / `en`; it is `menu.rs`'s item text that

@@ -181,8 +181,10 @@ previous one and **Forward** undoes that, the way a browser does:
 Opening a file from the tree, or one handed to mallow from outside, adds it to
 the list and drops anything you had gone back past. A file shown again — by
 Back, Forward or the tree — comes back in the view you left it in (preview or
-source, tree or table) and at the same place in the document. A file deleted
-since is skipped. The list belongs to the window's folder: opening another
+source, tree or table) and at the same place in the document. Which branches
+of a JSON, YAML, TOML or XML tree you had expanded is not remembered, so a place
+inside a branch you opened may come back elsewhere. A file deleted since is
+skipped. The list belongs to the window's folder: opening another
 folder in the window starts it again, and it is not kept across a relaunch.
 
 The mouse buttons do nothing over a rendered HTML document, and on Windows
