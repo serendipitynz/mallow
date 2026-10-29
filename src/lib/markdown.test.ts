@@ -174,6 +174,81 @@ describe('renderMarkdown — an image alone in its paragraph', () => {
   });
 });
 
+// A stand-in for `convertFileSrc` that shows which path it was handed, so a
+// test reads the resolved path rather than one platform's URL encoding of it.
+const images = { dir: '/notes/docs', toAssetUrl: (path: string) => `asset-test:${path}` };
+
+describe('renderMarkdown — images relative to the document (decision-17)', () => {
+  it.each([
+    ['media/logo@2x.png', '/notes/docs/media/logo@2x.png'],
+    ['./x.png', '/notes/docs/x.png'],
+    ['../x.png', '/notes/x.png'],
+    ['my%20pic.png', '/notes/docs/my pic.png'],
+    ['<my pic.png>', '/notes/docs/my pic.png'],
+    ['日本語.png', '/notes/docs/日本語.png'],
+    ['x.png?v=1#top', '/notes/docs/x.png'],
+  ])('resolves %s against the directory it is given', async (written, resolved) => {
+    const { html } = await renderMarkdown(`![a](${written})\n`, { images });
+    expect(html).toContain(`src="asset-test:${resolved}"`);
+  });
+
+  it('resolves against a Windows directory with its own separator', async () => {
+    const win = { dir: 'C:\\notes\\docs', toAssetUrl: (path: string) => `asset-test:${path}` };
+    const { html } = await renderMarkdown('![a](../media/x.png)\n', { images: win });
+    expect(html).toContain('src="asset-test:C:\\notes\\media\\x.png"');
+  });
+
+  it.each([
+    ['https://example.com/x.png'],
+    ['//example.com/x.png'],
+    ['data:image/png;base64,AAAA'],
+    ['/abs/x.png'],
+    ['C:/dir/x.png'],
+    ['C:%5Cdir%5Cx.png'],
+  ])('leaves %s as written', async (written) => {
+    const { html } = await renderMarkdown(`![a](${written})\n`, { images });
+    expect(html).toContain(`src="${written}"`);
+  });
+
+  it('leaves a relative path as written when no resolver is given', async () => {
+    const { html } = await renderMarkdown('![a](media/x.png)\n');
+    expect(html).toContain('src="media/x.png"');
+  });
+
+  it('rewrites an image inside a link without touching the link', async () => {
+    const { html } = await renderMarkdown('[![a](x.png)](other.md)\n', { images });
+    expect(html).toContain('href="other.md"');
+    expect(html).toContain('src="asset-test:/notes/docs/x.png"');
+  });
+
+  it('keeps the rest of the document when one image is unresolvable', async () => {
+    const { html } = await renderMarkdown('# T\n\n![a](/missing.png)\n\nafter\n', { images });
+    expect(html).toContain('<p>after</p>');
+  });
+});
+
+describe('renderMarkdown — an asset: URL the document wrote itself (decision-17)', () => {
+  it.each([
+    ['asset://localhost/%2Ftmp%2Fx.png'],
+    ['ASSET://localhost/x.png'],
+    ['http://asset.localhost/C%3A%5Cx.png'],
+    ['https://ASSET.localhost./x.png'],
+    ['//asset.localhost/C%3A%5Cnotes%5Cx.png'],
+  ])('emits %s as an image with no src', async (written) => {
+    for (const options of [{}, { images }]) {
+      const { html } = await renderMarkdown(`![kept alt](${written})\n`, options);
+      expect(html).toMatch(/<img alt="kept alt">/);
+      expect(html).not.toContain('asset.localhost');
+      expect(html).not.toMatch(/asset:\/\//i);
+    }
+  });
+
+  it('leaves a host that only contains asset.localhost alone', async () => {
+    const { html } = await renderMarkdown('![a](https://asset.localhost.example.com/x.png)\n');
+    expect(html).toContain('src="https://asset.localhost.example.com/x.png"');
+  });
+});
+
 describe('renderMarkdown — emoji', () => {
   afterEach(() => setCustomEmoji(null));
 

@@ -41,6 +41,8 @@ Installing an update may need the system's permission.
     GFM alerts `> [!NOTE]`, …)
   - Code-block syntax highlighting (Shiki / github-light · github-dark) with copy
   - mermaid diagrams (copy as PNG / SVG)
+  - Local images by a path relative to the document (`![logo](media/logo.png)`,
+    `../x.png`); a path starting with `/` or a drive letter is not resolved
   - Table of contents (outline with scroll-spy)
   - Preview / source toggle (source view has line numbers)
 - **Custom emoji**: point Settings at a folder of images and each file name
@@ -258,9 +260,13 @@ Markdown document never becomes live DOM and an HTML one does:
   inline scripts and event handlers cannot run even if they reached the DOM.
 - **Local media** (images / PDFs / videos) is served over the Tauri asset
   protocol, whose scope starts empty and is widened only to folders the user
-  opens. The CSP allows `asset:` URLs for `img`/`media`/`frame` sources, but a
-  document cannot inject one: `html: false` and markdown-it's link validation
-  block the `asset:` scheme, so media only loads for files chosen in the tree.
+  opens (and to the custom emoji folder). The CSP allows `asset:` URLs for
+  `img`/`media`/`frame` sources. In a Markdown document, mallow is the only
+  thing that writes one: an image path relative to the document is resolved
+  against the document's folder and turned into an `asset:` URL, while an
+  `asset:` URL the document writes itself is dropped from the image. A relative
+  path may climb with `..`, so a document can show an image from any folder
+  mallow has opened in this session — never from one it has not.
 - **Rendered HTML** is the one file kind whose content really does become DOM,
   so it is contained by the frame around it rather than by escaping. The
   document is loaded into an iframe with `sandbox="allow-same-origin"` and

@@ -489,9 +489,16 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `tauri.conf.json` の `assetProtocol.enable` が必要。スコープは空から始まり、開いたフォルダ
   ごとに `allow_media_dir`（`App.tsx` が開いた時とセッション復元時に呼ぶ）で広げる。CSP は
   `img-src` / `media-src` / `frame-src` に `asset:` / `http://asset.localhost` を許可する
-  （frame は WebView 内蔵 PDF ビューア用）。これは未信頼 Markdown の境界を広げない:
-  `html: false` と `validateLink` が `asset:` scheme を弾くため、文書側から `asset:` 参照を
-  出すことはできず、メディアはツリーで選んだファイルのみ読み込まれる。対応可否はプラット
+  （frame は WebView 内蔵 PDF ビューア用）。**Markdown の中で `asset:` URL を書くのは
+  mallow だけ**（decision-17）: `lib/markdown` の画像ルールが、文書からの相対パスを HTML
+  ビューと同じ `rewriteRef` で解決し、文書自身が `asset:` URL や `asset.localhost` ホストを
+  書いた画像は拒否する（`src` を外す）。**以前の記述は誤りだった**: `validateLink` が弾くのは
+  `javascript:`・`vbscript:`・`file:`・画像以外の `data:` だけで、`![x](asset://…)` は
+  生きた画像になっていた。**文書が届く範囲は自分のフォルダではなく許可済みの全フォルダ**
+  である。`..` は制限なく上へたどれ、読めるかどうかはスコープが決めるからだ。拒否で得るのは
+  到達範囲の縮小ではなく、「アプリが書いたものだけ」と一文で言える境界と、プラット
+  フォームごとに違う URL 表記を文書に持ち込ませないことである。`/` で始まるパス、ドライブ
+  パス、UNC パスは書かれたまま残す。対応可否はプラット
   フォームの WebView に依存する（heic/heif は `file_kind` で macOS に限定。PDF は一部 Linux の
   WebKitGTK では非対応）。`<img>` / `<video>` は復号失敗時にフォールバック文言を出す。
   `<iframe>`（PDF）は信頼できるエラー信号がないため、空表示になることがある。
