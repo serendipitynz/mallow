@@ -1,10 +1,10 @@
 ---
 id: TASK-43
 title: Show images a Markdown document references by a path relative to itself
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-10-29 20:32'
-updated_date: '2026-10-29 21:55'
+updated_date: '2026-10-29 22:20'
 labels:
   - feature
   - 決定先行
@@ -34,7 +34,7 @@ Scope is images written with Markdown image syntax. A link to a local file (`[x]
 - [x] #1 A decision records whether a Markdown document may write an asset: URL itself, and how a path starting with / and a Windows drive path are treated
 - [x] #2 An image written as a path relative to the document (media/x.png, ./x.png, ../x.png, a percent-encoded name, an angle-bracketed name with a space) shows in the preview on macOS, resolved against the document's own directory
 - [x] #3 A path that cannot be read (missing file, or outside every granted folder) shows as a broken image and breaks nothing else in the document
-- [ ] #4 The image is on the paper from Print and Export as PDF on macOS
+- [x] #4 The image is on the paper from Print and Export as PDF on macOS
 - [x] #5 README Security and AGENTS.md describe the asset: boundary as the decision leaves it
 - [x] #6 lib/markdown stays free of Tauri APIs, and the rewriting is covered by unit tests
 - [x] #7 pnpm lint, pnpm build and pnpm test pass
@@ -79,4 +79,10 @@ decision-17 を新設。オーナーの選択は次の 2 点。
 
 - Windows / Linux での表示（`http://asset.localhost` 経路）は見ていない。
 - Print から出した紙面。
+
+## Print の紙面（マージ後、オーナー確認、2026-10-30）
+
+オーナーが `pnpm tauri dev` で `_sandbox/task-43/docs/images.md` を開き、印刷 UI から PDF に保存した（Creator: mallow、Producer: macOS Quartz PDFContext）。`pdfimages -list` では相対パスの 6 形の画像（240×80）がすべて 1 ページ目に載り、存在しない画像と許可外フォルダの画像の 2 枚は壊れた画像のアイコン（16×16）、文書が書いた `asset:` は alt だけが残った。Export as PDF の紙面と同じ結果で、これを AC #4 の Print 側の根拠とした。
+
+PR: https://github.com/serendipitynz/mallow/pull/80
 <!-- SECTION:NOTES:END -->
