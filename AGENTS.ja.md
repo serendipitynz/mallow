@@ -61,6 +61,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   残す。出るときと同じ形で消えるようにするため（snz-design doc-9 §6.4）。使うのは通知帯
   だけ。ビューアの中の帯は下の文書が差し替わるときに消えるので、フェードの間残すと前の
   ファイルの帯が新しいファイルの上に出る。
+- `hooks/useViewMemory.ts` — ビューのファイル表示状態（TASK-44）。アンマウント時に
+  離れたときの状態をマウント時に受け取った `leave` で報告し、内容が埋まりきるまでの間、
+  覚えていたスクロールのアンカーへ戻し続ける。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
@@ -95,7 +98,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
   メニューの焦点をどこへ移すか）、`segmented-nav`（キーがセグメントの焦点をどこへ移すか）、
   `explorer-toggle`（エクスプローラを出し入れする
-  `CmdOrCtrl+B` の chord。ゲートなし）、`tree-nav`（ツリーに出ている行・行の上でキーが
+  `CmdOrCtrl+B` の chord。ゲートなし）、`visit-history`（ウィンドウの訪問履歴と
+  ファイル表示状態、その上限、削除されたファイルの読み飛ばし。純粋関数）、`history-nav`
+  （プラットフォームごとの戻る / 進むの chord とマウスのサイドボタン。常に消費する）、`tree-nav`（ツリーに出ている行・行の上でキーが
   何をするか・Tab の止まりになる行）、`explorer-width`（エクスプローラの幅の上下限・
   つまみのキーの刻み・置く押下が決める幅）、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
@@ -173,8 +178,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   id → 動作の純粋な対応、`recent_label` が最近のフォルダの表示文字列の純関数、
   `focused_window` がすべてのメニューイベントが配送先を決める
   `webview_windows()` の走査、`MenuState` がメニュー構築後に変わるもの
-  （Open Recent サブメニュー・`Clear Recent`・アクティブビューでゲートされる 2 項目）。
-  **ゲートはウィンドウごと**（`report_markdown_preview`）で、メニューはそうではない。
+  （Open Recent サブメニュー・`Clear Recent`・アクティブビューでゲートされる 2 項目・
+  訪問履歴でゲートされる Back / Forward）。**ゲートはどれもウィンドウごと**
+  （`report_markdown_preview`・`report_history_moves`）で、メニューはそうではない。
   3 環境で何がどう違い、なぜそうなのかは下の gotcha にある。
 - `session.rs` — restored session。settings.json の `windows` キーで、quit 時に
   開いていたウィンドウ 1 つにつき 1 エントリ（`{ label, folder, files, active }`）を
@@ -1070,9 +1076,11 @@ Comments と Functions の規約は機械的に検査されない。コメント
   muda は `NSApplication.mainMenu()` とその delegate 経由で NSMenu を解決し
   （muda-0.19.3 `src/platform_impl/macos/mod.rs:741-746`）、main menu が無ければ
   何もせずに返る。だから登録は `set_menu` の後で、メニューを組んでいる最中ではない。Windows と Linux はアプリサブメニューを持たず、
-  Settings… と Exit を File の中に、About を Help の下に置く。**View だけは 3 つとも同じ**
-  — 普通の項目の Toggle Explorer（`CmdOrCtrl+B`）だけなので、どのバックエンドにも
-  飛ばされる定義済みの種類が無い。チェック付きの項目にしないのは、チェックが
+  Settings… と Exit を File の中に、About を Help の下に置く。**View だけは 3 つとも項目が同じ**
+  — 普通の項目の Toggle Explorer（`CmdOrCtrl+B`）・Back・Forward だけなので、どのバックエンドにも
+  飛ばされる定義済みの種類が無い。Back と Forward で違うのはアクセラレータだけで、macOS は
+  `Cmd+[` / `Cmd+]`、それ以外は `Alt+Left` / `Alt+Right`。それぞれのプラットフォームの
+  ブラウザの chord に合わせている（TASK-44）。Toggle Explorer をチェック付きの項目にしないのは、チェックが
   `settings.rs` が中身を読まずに中継する設定を追わなければならなくなるため。
   **Linux だけは違いが一覧ではなく規則である**: muda の GTK バックエンドは
   predefined の種別のうち Separator・Copy・Cut・Paste・SelectAll・About しか
@@ -1532,6 +1540,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `segmented-nav`・
   `tree-nav`・
   `explorer-width`・
+  `visit-history`・
+  `history-nav`・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で

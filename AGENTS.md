@@ -63,6 +63,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   bar uses it: the banners inside a viewer go when the document under them is
   replaced, and holding one for the fade would show the previous file's banner
   over the new file.
+- `hooks/useViewMemory.ts` — a view's file view state (TASK-44): reporting how
+  it is left at unmount, through the `leave` it was mounted with, and putting a
+  remembered scroll anchor back while the content is still filling.
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
@@ -102,7 +105,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
   a menu's focus), `segmented-nav` (where a key moves a segmented control's focus),
   `explorer-toggle` (the `CmdOrCtrl+B` chord that shows and
-  hides the explorer — no gate), `tree-nav` (the tree's shown rows, what a key does on one, and
+  hides the explorer — no gate), `visit-history` (a window's visit history and
+  file view state, their bounds, and the skip over a deleted file — pure),
+  `history-nav` (the back / forward chords per platform and the mouse's side
+  buttons, always consumed), `tree-nav` (the tree's shown rows, what a key does on one, and
   which row holds the tab stop), `explorer-width` (the explorer's width limits,
   the handle's key steps and where a placing press puts it), `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
@@ -184,8 +190,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `recent_label` the pure display text for a recent folder, `focused_window` the
   `webview_windows()` scan every menu event resolves its target with, and
   `MenuState` what has to change after the menu is built: the Open Recent
-  submenu, `Clear Recent`, and the two entries gated on the active view. The
-  gate is per window (`report_markdown_preview`) because the menu is not. See
+  submenu, `Clear Recent`, the two entries gated on the active view, and Back /
+  Forward, gated on the visit history. Each gate is per window
+  (`report_markdown_preview`, `report_history_moves`) because the menu is not. See
   the gotcha below for what differs between the three platforms and why.
 - `session.rs` — the restored session: the `windows` key in settings.json, one
   entry per window open at quit (`{ label, folder, files, active }`), ordered
@@ -1228,9 +1235,12 @@ hold rather than as an exhaustive style guide.
   there is none, so it is registered after `set_menu` rather than while the menu
   is being composed; Windows
   and Linux have no app submenu, carry Settings… and Exit inside File and About
-  under Help. **View is the one submenu identical on all three** — Toggle
-  Explorer (`CmdOrCtrl+B`), an ordinary item, so no backend has a predefined kind
-  to skip — and it is a plain item rather than a check item, since a check would
+  under Help. **View is the one submenu with the same items on all three** —
+  Toggle Explorer (`CmdOrCtrl+B`), Back and Forward, ordinary items, so no
+  backend has a predefined kind to skip. Back and Forward differ only in their
+  accelerators, `Cmd+[` / `Cmd+]` on macOS and `Alt+Left` / `Alt+Right`
+  elsewhere, each platform's browser chord (TASK-44). Toggle Explorer is a
+  plain item rather than a check item, since a check would
   have to follow a preference `settings.rs` relays without reading. **On Linux the difference is a rule rather than a list**: muda's GTK
   backend supports only Separator, Copy, Cut, Paste, SelectAll and About as
   predefined kinds (muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`) and
@@ -1729,7 +1739,7 @@ hold rather than as an exhaustive style guide.
   (each one's cache and notification, and the stored measure read back),
   `color-choice` (each pre-split value read
   onto the two axes, and the side a one-sided family draws), `menu-nav`, `segmented-nav`, `tree-nav`,
-  `explorer-width`, and `custom-emoji`
+  `explorer-width`, `visit-history`, `history-nav`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
