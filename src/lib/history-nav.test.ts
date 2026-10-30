@@ -6,6 +6,7 @@ import {
   type HandledButtonEvent,
   historyButtonDirection,
   historyChordDirection,
+  historyChordLabel,
 } from './history-nav';
 import type { Direction } from './visit-history';
 
@@ -36,6 +37,15 @@ describe('historyChordDirection', () => {
     expect(historyChordDirection({ ...NONE, key: 'ArrowLeft', altKey: true, ctrlKey: true }, false)).toBeNull();
     expect(historyChordDirection({ ...NONE, key: 'ArrowLeft' }, false)).toBeNull();
     expect(historyChordDirection({ ...NONE, key: '[' }, true)).toBeNull();
+  });
+});
+
+describe('historyChordLabel', () => {
+  it('names the chord each platform reads', () => {
+    expect(historyChordLabel('back', true)).toBe('⌘[');
+    expect(historyChordLabel('forward', true)).toBe('⌘]');
+    expect(historyChordLabel('back', false)).toBe('Alt+←');
+    expect(historyChordLabel('forward', false)).toBe('Alt+→');
   });
 });
 

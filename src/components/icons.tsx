@@ -107,6 +107,26 @@ export function FolderOpenIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** lucide: arrow-left (back through the visit history) */
+export function ArrowLeftIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m12 19-7-7 7-7" />
+      <path d="M19 12H5" />
+    </Icon>
+  );
+}
+
+/** lucide: arrow-right (forward through the visit history) */
+export function ArrowRightIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </Icon>
+  );
+}
+
 /** lucide: share */
 export function ShareIcon({ size = 16 }: IconProps) {
   return (

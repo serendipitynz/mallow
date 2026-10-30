@@ -35,6 +35,15 @@ export function historyChordDirection(event: ChordEvent, onMac: boolean): Direct
   return event.key === 'ArrowLeft' ? 'back' : event.key === 'ArrowRight' ? 'forward' : null;
 }
 
+/** How a tooltip writes the chord `historyChordDirection` reads, so the two
+ *  cannot name different keys. */
+export function historyChordLabel(direction: Direction, onMac: boolean): string {
+  if (onMac) {
+    return direction === 'back' ? '⌘[' : '⌘]';
+  }
+  return direction === 'back' ? 'Alt+←' : 'Alt+→';
+}
+
 export function createHistoryChordHandler(deps: {
   onMac: boolean;
   go: (direction: Direction) => void;

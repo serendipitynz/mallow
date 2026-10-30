@@ -1023,6 +1023,9 @@ export default function App() {
         explorerId={EXPLORER_ID}
         onToggleExplorer={toggleExplorer}
         explorerToggleRef={explorerToggleRef}
+        canGoBack={canGoBack}
+        canGoForward={canGoForward}
+        onGo={go}
       />
       {/* Under the toolbar rather than inside the explorer: what it reports can
           be a menu choice made while a folder is open, which the explorer's empty
