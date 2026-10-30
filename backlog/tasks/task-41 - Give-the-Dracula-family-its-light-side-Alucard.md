@@ -1,10 +1,10 @@
 ---
 id: TASK-41
 title: Give the Dracula family its light side (Alucard)
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-28 08:00'
-updated_date: '2026-10-30 07:04'
+updated_date: '2026-10-30 20:00'
 labels:
   - feature
   - 決定先行
