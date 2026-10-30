@@ -298,7 +298,7 @@ mallow の配色・操作部品の状態・部品の振る舞いは、serendipit
   `node ../snz-design/tokens/vendor.mjs verify src/styles/snz-tokens.css
   src/styles/_snz-tokens.scss`。先に `../snz-design/tokens/CHANGELOG.md` で、2 つの
   版の間の利用側の作業を読む。どちらも Biome の対象外なので、整形で書き換わらない。
-- **mallow が持つ値は mallow のファイルに置く**: Dracula と Nord のパレット、各
+- **mallow が持つ値は mallow のファイルに置く**: Dracula（Alucard を含む）と Nord のパレット、各
   `--color-*` 変数をどの共通の役割に当てるかの対応（`_vars.scss` の `$shared-roles`）。
 - **コメントで仕様を引くときは `snz-design doc-N §X` の形にし**、仕様を言い換えず
   理由を 1 行で指す。
@@ -735,12 +735,14 @@ Comments と Functions の規約は機械的に検査されない。コメント
   分割前の `theme` キーは読むだけで書かない**: 自分のキーを持たない軸は
   `lib/color-choice` の `readChoice` が `theme` から読むので、1 つの軸を選んでも
   書くのはその軸のキーだけで、もう一方はちょうど描かれていた値に落ちる。
-  **その系統が描けない明暗は書き換えずに残す**（Dracula と Nord は暗い側だけ）:
+  **その系統が描けない明暗は書き換えずに残す**（Nord は暗い側だけで、Dracula の明るい側は Alucard）:
   系統が持つ側で描き、選択は選べない印と理由付きで残し、両側を持つ系統へ戻れば
   そのまま効く。`index.html` は `readChoice` と `drawnMode` の写しを持つ（モジュール
   より前に走るため）。2 つの写しは一緒に直す。系統が持つ側はどちらでも表 1 つである。
   `on-dark` は `data-color-mode='dark'` を見るので、パレットを足すときは 2 つの写しに
-  その側を足し、`global.scss` にブロックを足す。
+  その側を足し、`global.scss` にブロックを足す。**2 属性で選ぶブロックは `print.scss`
+  の `:root[data-color-family]` に勝つ**（Alucard のために、そのリストにも 2 属性の
+  セレクタを入れてある）。紙は Standard Light のままにする。
 - i18n は `lib/i18n.tsx` の自作辞書（ライブラリ不使用）。UI 文言は `useT()` /
   `t(key, params)` 経由にし、キーは `ja` と `en` の**両方**の辞書に追加する。言語は
   localStorage → OS ロケール → 日本語 の順で決定。

@@ -162,6 +162,49 @@ $shared-roles: (
   --color-attention-border: rgb(255 184 108 / 40%);
 }
 
+// Dracula's light side. The named colours are Alucard Classic's, and the focus
+// ring its Functional Purple, from the official specification
+// (https://draculatheme.com/spec, which carries no version; read 2026-10-30).
+// The specification has no hover, pressed, soft or strong steps, nor an ink for
+// text on an accent: `ink-strong`, `faint`, `surface-nested`, `teal-dark`,
+// `accent-pressed`, `on-danger-soft` and `attention-fg` are mallow's own, and
+// every alpha is mallow's over a specification colour.
+@mixin theme-alucard {
+  --color-bg: #fffbeb;
+  --color-surface: #ece9df;
+  --color-surface-raised: #efeddc;
+  --color-surface-nested: #f6f3e3;
+  --color-sidebar-bg: #ece9df;
+  --color-panel: #fffbeb;
+  --color-ink: #1f1f1f;
+  --color-ink-strong: #000000;
+  --color-muted: #6c664b;
+  --color-faint: #868063;
+  --color-link: #036a96;
+  --color-border: #dedccf;
+  --color-border-strong: #ceccc0;
+  --color-control-border: #6c664b;
+  --color-teal: #14710a;
+  --color-teal-dark: #0f5c08;
+  --color-accent-pressed: #0b4806;
+  --color-on-accent: #fffbeb;
+  --color-orange: #a34d14;
+  --color-success: #14710a;
+  --color-danger: #cb3a2a;
+  --color-danger-soft: rgb(203 58 42 / 12%);
+  --color-on-danger-soft: #8f2417;
+  --color-selection-bg: rgb(3 106 150 / 16%);
+  --color-selected: #036a96;
+  --color-hover-bg: rgb(31 31 31 / 6%);
+  --color-pressed-bg: rgb(31 31 31 / 11%);
+  --color-code-inline-bg: rgb(108 102 75 / 16%);
+  --color-focus-ring: #815cd6;
+  --color-figure: #6c664b;
+  --color-attention-bg: rgb(163 77 20 / 12%);
+  --color-attention-fg: #7d3a0e;
+  --color-attention-border: rgb(163 77 20 / 40%);
+}
+
 @mixin theme-nord {
   --color-bg: #2e3440;
   --color-surface: #3b4252;
@@ -199,8 +242,8 @@ $shared-roles: (
 }
 
 // Apply `@content` only when the document is drawn dark. `data-color-mode` is
-// already resolved by `lib/theme` (never auto), and the dark-only palettes
-// (Dracula, Nord) set it to dark as well, so no media query is needed here.
+// already resolved by `lib/theme` (never auto), and the dark-only palette (Nord)
+// sets it to dark as well, so no media query is needed here.
 @mixin on-dark {
   :root[data-color-mode='dark'] & {
     @content;

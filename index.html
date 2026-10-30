@@ -26,7 +26,7 @@
           dracula: ['dracula', 'dark'],
           nord: ['nord', 'dark'],
         };
-        var sides = { standard: ['light', 'dark'], solarized: ['light', 'dark'], dracula: ['dark'], nord: ['dark'] };
+        var sides = { standard: ['light', 'dark'], solarized: ['light', 'dark'], dracula: ['light', 'dark'], nord: ['dark'] };
         var old = get('theme');
         var base = old !== null && legacy.hasOwnProperty(old) ? legacy[old] : ['standard', 'auto'];
         var family = get('colorFamily');

@@ -323,7 +323,8 @@ this repository as `../snz-design`; every command below assumes that layout.
   src/styles/_snz-tokens.scss`. Read `../snz-design/tokens/CHANGELOG.md` for the
   consumer-side work between the two versions first. Neither file is in Biome's
   scope, so no formatter rewrites them.
-- **Values mallow owns stay in mallow's own files**: the Dracula and Nord
+- **Values mallow owns stay in mallow's own files**: the Dracula (with Alucard)
+  and Nord
   palettes, and the mapping from each `--color-*` variable to a shared role
   (`$shared-roles` in `_vars.scss`).
 - **Comments cite the specification as `snz-design doc-N §X`**, and give the
@@ -821,14 +822,17 @@ hold rather than as an exhaustive style guide.
   read and never written**: an axis with no key of its own is read from `theme`
   by `readChoice` in `lib/color-choice`, so choosing one axis writes only that
   axis's key — the other falls back to exactly what was being drawn. **A mode the
-  family cannot draw is kept, not rewritten** (Dracula and Nord are dark only):
+  family cannot draw is kept, not rewritten** (Nord is dark only; Dracula draws
+  Alucard as its light side):
   it is drawn as the side the family carries, shown selected but disabled with
   its reason, and comes back when the reader returns to a two-sided family.
   `index.html` carries a copy of `readChoice` and `drawnMode` because it runs
   before any module is loaded, and the two copies have to move together; a
   family's sides are one table in each. `on-dark` keys on
   `data-color-mode='dark'`, so a new palette needs its sides in both copies and
-  its block in `global.scss`.
+  its block in `global.scss`. **A block selected on both attributes outranks
+  `print.scss`'s `:root[data-color-family]`** (Alucard's is why that list also
+  names both), and paper has to stay Standard Light.
 - i18n is a hand-rolled dictionary in `lib/i18n.tsx` (no library). UI strings go
   through `useT()` / `t(key, params)`; add the key to **both** the `ja` and `en`
   dictionaries. Language follows localStorage → OS locale → Japanese.

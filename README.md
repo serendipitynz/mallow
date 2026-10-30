@@ -113,7 +113,7 @@ Installing an update may need the system's permission.
   Notepad++ / Sakura (Windows), etc. Can also reveal the file in the OS file manager.
 - **Colours**: a palette (Standard · Solarized · Dracula · Nord), chosen in
   Settings, and light / dark / auto (OS), chosen from the toolbar or in Settings.
-  Dracula and Nord are dark only.
+  Dracula's light side is Alucard; Nord is dark only.
 - **Text width**: how long a line of Markdown prose may run — Standard, Wide
   or Full (no limit), chosen in Settings. Tables, code blocks, diagrams and an
   image on its own line widen with the window whichever is chosen.
