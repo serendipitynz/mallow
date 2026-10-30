@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-10-29 21:50'
-updated_date: '2026-10-30 00:02'
+updated_date: '2026-10-30 00:19'
 labels:
   - feature
 milestone: m-5
@@ -43,7 +43,7 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Showing a file from the tree, Open Recent or a location the OS handed over appends it to the window's visit history; showing the file already on screen, a live reload, and a move by back / forward append nothing
-- [ ] #2 Back and forward are reachable from the keyboard (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right on Windows and Linux), from the mouse's back / forward buttons, and from menu items that are disabled when there is nowhere to go
+- [x] #2 Back and forward are reachable from the keyboard (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right on Windows and Linux), from the mouse's back / forward buttons, and from menu items that are disabled when there is nowhere to go
 - [x] #3 Each chord is consumed even where there is nowhere to go, so WebView2's own Alt+Left navigation never reaches the app shell
 - [x] #4 Returning to a file by history or by the tree restores its view mode and scroll position, for every kind that offers a view switch
 - [x] #5 A history entry whose file no longer exists is skipped rather than shown as an error
@@ -107,4 +107,10 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 - `src-tauri/src/side_buttons.rs`: `NSEvent` のローカルモニタで `buttonNumber` 3 / 4 の `otherMouseDown` / `otherMouseUp` を受け取り、両方を消費して、離したときにクリックされたウィンドウ（なければフォーカス中のウィンドウ）へ `history:go` を送る。消費するので、WebKit が将来ボタンをページに渡すようになっても 2 歩は動かない。
 - `block2` を直接の本番依存に加えた（オーナー承認済み）。もともと objc2-app-kit 経由で依存グラフに入っていたので、新たにコンパイルされるクレートはなく、`pnpm notices` の差分もない。objc2-app-kit には feature `block2` を足した。
 - 未確認: このネイティブ処理が実機で効くか（オーナーの再確認待ち）。Windows / Linux でサイドボタンがページに届くか。AC #1 のうち OS から渡されたファイルの追加と、AC #6 も未確認。
+
+## サイドボタンの再調査（2026-10-30）
+
+- `otherMouse` のモニタでも効かなかったため、全種類のイベントを一時的にログへ出して調べた。Logi Options+ 下の MX Anywhere 3S は、1 回の押下を `NSEventTypeSwipe` の 2 イベントとして送っていた（`deltaX` が 0 の後、Back は +1、Forward は -1）。マウスボタンのイベントは 1 つも来ていない。
+- `side_buttons.rs` のモニタにスワイプを加えた。`deltaX` が 0 のイベントは通し、±1 のイベントを消費して移動する。ボタン 3 / 4 の処理は Options+ のないマウス向けに残している（未計測）。
+- オーナーが macOS で戻る / 進むが効くことを確認した。これで AC #2 の 3 経路（キー・マウス・メニュー）はどれも少なくとも 1 つのプラットフォームで確かめられた。キーは 3 プラットフォームとも確認済み、マウスは macOS のみ。Windows / Linux のマウス、トラックパッドのスワイプは未計測。
 <!-- SECTION:NOTES:END -->
