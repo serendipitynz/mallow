@@ -49,9 +49,11 @@ export function createHistoryChordHandler(deps: {
   };
 }
 
-/** `MouseEvent.button` for the side buttons: 3 is back and 4 is forward on all
- *  three engines' event model. Whether each WebView delivers them to the page at
- *  all is not measured. */
+/** `MouseEvent.button` for the side buttons: 3 is back and 4 is forward in the
+ *  DOM's event model. **On macOS this handler did not move the history** (measured
+ *  2026-10-30, Logitech MX Anywhere 3S), so `side_buttons.rs` takes the buttons
+ *  natively there and consumes them before the page could see one; whether
+ *  WebView2 and WebKitGTK deliver them is not measured. */
 export function historyButtonDirection(button: number): Direction | null {
   return button === 3 ? 'back' : button === 4 ? 'forward' : null;
 }

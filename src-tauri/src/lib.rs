@@ -11,6 +11,7 @@ mod print;
 mod recent;
 mod session;
 mod settings;
+mod side_buttons;
 #[cfg(unattended)]
 mod unattended;
 mod watch;
@@ -150,6 +151,8 @@ pub fn run() {
             // be measuring.
             #[cfg(not(unattended))]
             menu::init(app.handle())?;
+            #[cfg(not(unattended))]
+            side_buttons::init(app.handle());
 
             // **Every window is created here, restored or not.** The configured
             // window carries `"create": false`, so tauri creates none of its own

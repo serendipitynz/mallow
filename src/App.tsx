@@ -959,6 +959,9 @@ export default function App() {
   }, [go]);
   useWindowEvent('menu:back', () => go('back'));
   useWindowEvent('menu:forward', () => go('forward'));
+  // macOS's side buttons, taken natively because the page did not get them
+  // (`side_buttons.rs`).
+  useWindowEvent<Direction>('history:go', go);
 
   // Pushed rather than read, for the reason the preview gate is: the menu lives
   // in Rust and the history lives here.
