@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-10-29 21:50'
-updated_date: '2026-10-29 22:39'
+updated_date: '2026-10-30 00:02'
 labels:
   - feature
 milestone: m-5
@@ -44,8 +44,8 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 <!-- AC:BEGIN -->
 - [ ] #1 Showing a file from the tree, Open Recent or a location the OS handed over appends it to the window's visit history; showing the file already on screen, a live reload, and a move by back / forward append nothing
 - [ ] #2 Back and forward are reachable from the keyboard (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right on Windows and Linux), from the mouse's back / forward buttons, and from menu items that are disabled when there is nowhere to go
-- [ ] #3 Each chord is consumed even where there is nowhere to go, so WebView2's own Alt+Left navigation never reaches the app shell
-- [ ] #4 Returning to a file by history or by the tree restores its view mode and scroll position, for every kind that offers a view switch
+- [x] #3 Each chord is consumed even where there is nowhere to go, so WebView2's own Alt+Left navigation never reaches the app shell
+- [x] #4 Returning to a file by history or by the tree restores its view mode and scroll position, for every kind that offers a view switch
 - [x] #5 A history entry whose file no longer exists is skipped rather than shown as an error
 - [ ] #6 Changing the window's folder empties its visit history and its file view state; another window's history is untouched
 - [x] #7 The history and the view-state memory are bounded, with the limits and the reason for them stated where they are defined
@@ -92,4 +92,19 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 - サイドボタンが各 WebView でページに届くか（button 3 / 4）。
 - Linux で GTK のアクセラレータとフロントエンドの keydown が両方動いて 2 歩戻らないか。Ctrl+N では 1 回だけ動いたという過去の観察（2026-09-12）に頼っている。
 - 描画中の HTML フレームの中にフォーカスやポインタがあるときは、ウィンドウのリスナーに届かない。既存の chord 全部に共通の穴で、README に書いた。
+
+## オーナーによる実機確認（2026-10-30）
+
+- 履歴で戻ったとき・ツリーから開き直したときに表示モードとスクロール位置が戻る: OK（AC #4）
+- View メニューの Back / Forward が移動先のないときに無効: OK
+- Windows で Alt+Left が WebView2 の戻る操作に渡らない。移動先がないときの押下でも画面は変わらない: OK（AC #3）
+- Linux で 1 回の押下で 2 つ戻らない: OK
+- macOS でマウスのサイドボタン（Logitech MX Anywhere 3S）が効かなかった。Chrome では効く。
+
+## サイドボタンの対応（macOS）
+
+- フロントエンドの `mouseup`（button 3 / 4）のハンドラでは履歴が動かなかった。Chrome はネイティブのイベントを自分で処理しているので、ページに届いているかとは無関係。WKWebView が落としていると読むのが実測に合うが、そこを切り分けたわけではない。
+- `src-tauri/src/side_buttons.rs`: `NSEvent` のローカルモニタで `buttonNumber` 3 / 4 の `otherMouseDown` / `otherMouseUp` を受け取り、両方を消費して、離したときにクリックされたウィンドウ（なければフォーカス中のウィンドウ）へ `history:go` を送る。消費するので、WebKit が将来ボタンをページに渡すようになっても 2 歩は動かない。
+- `block2` を直接の本番依存に加えた（オーナー承認済み）。もともと objc2-app-kit 経由で依存グラフに入っていたので、新たにコンパイルされるクレートはなく、`pnpm notices` の差分もない。objc2-app-kit には feature `block2` を足した。
+- 未確認: このネイティブ処理が実機で効くか（オーナーの再確認待ち）。Windows / Linux でサイドボタンがページに届くか。AC #1 のうち OS から渡されたファイルの追加と、AC #6 も未確認。
 <!-- SECTION:NOTES:END -->
