@@ -4,14 +4,18 @@
 // Standard and Solarized come from the shared tokens and are selected by
 // `data-color-family` / `data-color-mode`, which the bootstrap in index.html
 // sets before first paint; `snz-tokens.css` also sets `color-scheme` from the
-// mode. Dracula and Nord keep their own literal palettes, keyed on the same
-// family attribute.
+// mode. Dracula (with Alucard as its light side) and Nord keep their own literal
+// palettes, keyed on the same attributes.
 :root {
   @include theme-shared;
 }
 
 :root[data-color-family='dracula'] {
   @include theme-dracula;
+}
+
+:root[data-color-family='dracula'][data-color-mode='light'] {
+  @include theme-alucard;
 }
 
 :root[data-color-family='nord'] {

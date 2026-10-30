@@ -55,8 +55,8 @@ describe('readChoice', () => {
   });
 
   it('keeps a carried-over pair the family cannot draw rather than treating it as unknown', () => {
-    expect(readChoice(stored({ family: 'dracula', mode: 'auto' }))).toEqual({
-      choice: { family: 'dracula', mode: 'auto' },
+    expect(readChoice(stored({ family: 'nord', mode: 'auto' }))).toEqual({
+      choice: { family: 'nord', mode: 'auto' },
       unrecognized: false,
     });
   });
@@ -78,14 +78,26 @@ describe('drawnMode', () => {
   });
 
   it('draws the side a one-sided family carries whatever mode was carried over', () => {
-    expect(drawnMode({ family: 'dracula', mode: 'light' }, false)).toBe('dark');
+    expect(drawnMode({ family: 'nord', mode: 'light' }, false)).toBe('dark');
     expect(drawnMode({ family: 'nord', mode: 'auto' }, false)).toBe('dark');
+  });
+
+  it('draws Dracula on the side chosen, and on the OS side when it follows the OS', () => {
+    expect(drawnMode({ family: 'dracula', mode: 'light' }, true)).toBe('light');
+    expect(drawnMode({ family: 'dracula', mode: 'dark' }, false)).toBe('dark');
+    expect(drawnMode({ family: 'dracula', mode: 'auto' }, false)).toBe('light');
+    expect(drawnMode({ family: 'dracula', mode: 'auto' }, true)).toBe('dark');
+  });
+
+  it('still draws the pre-split dracula value dark, whatever the OS', () => {
+    expect(drawnMode(readChoice(stored({ legacy: 'dracula' })).choice, false)).toBe('dark');
   });
 });
 
 describe('modeAvailable', () => {
   it('offers every mode on a two-sided family and only the carried side on a one-sided one', () => {
     expect(['light', 'dark', 'auto'].map((m) => modeAvailable('standard', m as 'light'))).toEqual([true, true, true]);
+    expect(['light', 'dark', 'auto'].map((m) => modeAvailable('dracula', m as 'light'))).toEqual([true, true, true]);
     expect(['light', 'dark', 'auto'].map((m) => modeAvailable('nord', m as 'light'))).toEqual([false, true, false]);
   });
 });

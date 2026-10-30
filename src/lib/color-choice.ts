@@ -30,7 +30,7 @@ export const INITIAL_CHOICE: ColorChoice = { family: 'standard', mode: 'auto' };
 const SIDES: Record<ColorFamily, readonly Resolved[]> = {
   standard: ['light', 'dark'],
   solarized: ['light', 'dark'],
-  dracula: ['dark'],
+  dracula: ['light', 'dark'],
   nord: ['dark'],
 };
 
@@ -84,7 +84,7 @@ function isModeChoice(value: string): value is ModeChoice {
  *  from, so writing only the chosen axis's key never changes the one not chosen.
  *
  *  Each axis is judged on its own before any pair is: judging the pair first
- *  would send a carried-over Dracula + auto to the initial choice
+ *  would send a carried-over Nord + auto to the initial choice
  *  (snz-design doc-7 §4.3). */
 export function readChoice(stored: StoredColor): ReadChoice {
   const legacy = stored.legacy === null ? INITIAL_CHOICE : (LEGACY.get(stored.legacy) ?? null);
