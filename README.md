@@ -129,6 +129,9 @@ Installing an update may need the system's permission.
 - **Printing and PDF export**: print a rendered Markdown document, or write it
   to PDF with no print dialog. See
   [Printing and PDF export](#printing-and-pdf-export).
+- **Back and forward**: go back to a file the window showed before, in the
+  view and at the scroll position you left it in. See
+  [Back and forward](#back-and-forward).
 - **Hide the explorer**: `Cmd/Ctrl+B`, **View → Toggle Explorer** or the panel
   button at the end of the toolbar on the explorer's side gives the document the
   explorer's width, and brings the explorer back at the width it had.
@@ -154,6 +157,8 @@ change in every open window at once.
 | Print… | `Cmd/Ctrl+P` |
 | Export as PDF… | `Cmd/Ctrl+E` |
 | Toggle Explorer (View menu) | `Cmd/Ctrl+B` |
+| Back (View menu) | `Cmd+[` on macOS, `Alt+Left` on Windows and Linux |
+| Forward (View menu) | `Cmd+]` on macOS, `Alt+Right` on Windows and Linux |
 
 Closing the last window quits mallow — on macOS as well as on Windows and Linux.
 
@@ -161,6 +166,30 @@ Closing the last window quits mallow — on macOS as well as on Windows and Linu
 (macOS) or Ctrl (Windows, Linux) while choosing an entry to open it in another
 window instead.** If a window is already showing the folder you chose, that
 window is brought to the front.
+
+### Back and forward
+
+Each window remembers the files it has shown, in order. **Back** returns to the
+previous one and **Forward** undoes that, the way a browser does:
+
+- **Keyboard**: `Cmd+[` / `Cmd+]` on macOS, `Alt+Left` / `Alt+Right` on
+  Windows and Linux.
+- **Mouse**: the back and forward side buttons.
+- **Menu**: **View → Back** and **View → Forward**, disabled when there is
+  nowhere to go.
+
+Opening a file from the tree, or one handed to mallow from outside, adds it to
+the list and drops anything you had gone back past. A file shown again — by
+Back, Forward or the tree — comes back in the view you left it in (preview or
+source, tree or table) and at the same place in the document. Which branches
+of a JSON, YAML, TOML or XML tree you had expanded is not remembered, so a place
+inside a branch you opened may come back elsewhere. A file deleted since is
+skipped. The list belongs to the window's folder: opening another
+folder in the window starts it again, and it is not kept across a relaunch.
+
+On Windows and Linux the mouse buttons do nothing over a rendered HTML
+document, and on Windows neither do the keys while it has the focus — click
+outside it first.
 
 ### Opening files from outside mallow
 

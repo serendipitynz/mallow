@@ -54,6 +54,10 @@ tauri-plugin-single-instance = "~2.4.5"
 # asks GDK through the `gtk` already here. Only Windows needed something new —
 # `GetKeyState` lives in neither webview2-com nor windows-core.
 #
+# The mouse's side buttons on macOS (TASK-44) cost `block2` and two AppKit
+# features: AppKit takes an event monitor as an Objective-C block, and `block2` is
+# what builds one. It was already in the graph through objc2-app-kit itself.
+#
 # All of them are already in the dependency graph through tauri and wry, so what
 # this adds is `THIRD-PARTY-NOTICES.md` entries rather than compilation — but only
 # while the objc2 crates keep `default-features = false`. Their defaults enable
@@ -62,9 +66,11 @@ tauri-plugin-single-instance = "~2.4.5"
 # and into the notices for classes nothing here touches.
 
 [target.'cfg(target_os = "macos")'.dependencies]
+block2 = { version = "0.6", default-features = false, features = ["std"] }
 objc2 = { version = "0.6", default-features = false, features = ["std"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = [
   "std",
+  "block2",
   "NSEvent",
   "NSPrintInfo",
   "NSPrintOperation",

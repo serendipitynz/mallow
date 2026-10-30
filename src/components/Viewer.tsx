@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { isJsonPlist } from '../lib/file';
 import { useT } from '../lib/i18n';
 import { type ReadError, readErrorMessage } from '../lib/read-error';
+import { captureScrollAnchor } from '../lib/scroll';
 import { readFile, setWindowTitle } from '../lib/tauri';
 import { documentTitle, windowTitle } from '../lib/title';
 import type { FileEntry } from '../lib/types';
+import type { FileViewState } from '../lib/visit-history';
 import { Busy } from './Busy';
 import { ConfigView } from './ConfigView';
 import { HtmlView } from './HtmlView';
@@ -20,6 +23,10 @@ interface ViewerProps {
   file: FileEntry | null;
   /** Bumped by the watcher when the open file changes on disk, forcing a re-read. */
   reloadToken: number;
+  /** How the open file was last left in this window, and where the view reports
+   *  how it is left this time (TASK-44). */
+  remembered: FileViewState | null;
+  onLeave: (path: string, state: FileViewState) => void;
 }
 
 /** Kinds rendered by the WebView from the file itself, not by reading its text. */
@@ -27,7 +34,7 @@ function isMediaKind(kind: FileEntry['kind']): boolean {
   return kind === 'image' || kind === 'pdf' || kind === 'video';
 }
 
-export function Viewer({ file, reloadToken }: ViewerProps) {
+export function Viewer({ file, reloadToken, remembered, onLeave }: ViewerProps) {
   const t = useT();
   /* The text is held with the path it was read from, and a view is only ever
      given text whose path is the one now open. Without that the previous file's
@@ -171,7 +178,13 @@ export function Viewer({ file, reloadToken }: ViewerProps) {
 
   return (
     <main className="viewer">
-      <ViewerBody key={file.path} file={file} content={text} onDocumentTitle={reportTitle} />
+      <ViewerBody
+        key={file.path}
+        file={file}
+        content={text}
+        onDocumentTitle={reportTitle}
+        memory={{ remembered, leave: (state) => onLeave(file.path, state) }}
+      />
     </main>
   );
 }
@@ -180,35 +193,37 @@ function ViewerBody({
   file,
   content,
   onDocumentTitle,
+  memory,
 }: {
   file: FileEntry;
   content: string;
   onDocumentTitle: (title: string | null) => void;
+  memory: ViewMemory;
 }) {
   switch (file.kind) {
     case 'markdown':
-      return <MarkdownView source={content} path={file.path} />;
+      return <MarkdownView source={content} path={file.path} memory={memory} />;
     case 'mermaid':
-      return <MermaidView source={content} />;
+      return <MermaidView source={content} memory={memory} />;
     case 'json':
     case 'yaml':
     case 'toml':
-      return <ConfigView source={content} file={file} />;
+      return <ConfigView source={content} file={file} memory={memory} />;
     case 'csv':
-      return <TableView source={content} file={file} />;
+      return <TableView source={content} file={file} memory={memory} />;
     // A `.plist` carries either markup or JSON under one extension, so this kind
     // is the one whose view is settled by the text rather than by the name.
     case 'xml':
       return isJsonPlist(file.name, content) ? (
-        <ConfigView source={content} file={file} />
+        <ConfigView source={content} file={file} memory={memory} />
       ) : (
-        <XmlView source={content} />
+        <XmlView source={content} memory={memory} />
       );
     // The rendered view is the default mode and owns the toggle to the source
     // one (decision-3), so `html` is a second kind whose view is not settled by
     // the kind alone.
     case 'html':
-      return <HtmlView source={content} file={file} onDocumentTitle={onDocumentTitle} />;
+      return <HtmlView source={content} file={file} onDocumentTitle={onDocumentTitle} memory={memory} />;
     // The kind name doubles as the Shiki grammar id, so no kind→lang table is
     // needed: ini, diff and sql are in `lib/shiki`'s LANGS, and `text` is what
     // SourceView already falls back to for a grammar it has not loaded.
@@ -216,13 +231,7 @@ function ViewerBody({
     case 'ini':
     case 'diff':
     case 'sql':
-      return (
-        <div className="doc-scroll">
-          <div className="doc doc--no-bar">
-            <SourceView source={content} lang={file.kind} />
-          </div>
-        </div>
-      );
+      return <SourceDocument source={content} lang={file.kind} memory={memory} />;
     default:
       return (
         <div className="doc-scroll">
@@ -232,4 +241,19 @@ function ViewerBody({
         </div>
       );
   }
+}
+
+/** A kind whose whole view is its source, so the scroll position is all there is
+ *  to remember of it. */
+function SourceDocument({ source, lang, memory }: { source: string; lang: string; memory: ViewMemory }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRememberedScroll(scrollRef, memory.remembered?.anchor ?? null);
+  useLeaveReport(memory, scrollRef, (scroller) => ({ mode: null, anchor: captureScrollAnchor(scroller, []) }));
+  return (
+    <div className="doc-scroll" ref={scrollRef}>
+      <div className="doc doc--no-bar">
+        <SourceView source={source} lang={lang} />
+      </div>
+    </div>
+  );
 }

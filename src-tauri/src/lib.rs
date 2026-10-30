@@ -11,6 +11,7 @@ mod print;
 mod recent;
 mod session;
 mod settings;
+mod side_buttons;
 #[cfg(unattended)]
 mod unattended;
 mod watch;
@@ -45,6 +46,7 @@ macro_rules! app_handler {
             settings::commit_setting,
             settings::settings_read_stamp,
             menu::report_markdown_preview,
+            menu::report_history_moves,
             handover::take_handover,
             handover::inspect_dropped
             $(, $extra)*
@@ -127,12 +129,12 @@ pub fn run() {
             // least-recently-focused first, so reordering on the `false` edge
             // would invert it — the window losing focus would be the one moved
             // to the end.
-            // One menu bar serves whichever window is focused, so the two
-            // entries gated on the active view have to show the newly focused
-            // window's answer rather than whichever window last reported one.
+            // One menu bar serves whichever window is focused, so the entries
+            // gated per window have to show the newly focused window's answer
+            // rather than whichever window last reported one.
             tauri::WindowEvent::Focused(true) => {
                 session::note_window_focused(window);
-                menu::apply_preview_gate(window.app_handle());
+                menu::apply_focused_gates(window.app_handle());
             }
             _ => {}
         })
@@ -149,6 +151,8 @@ pub fn run() {
             // be measuring.
             #[cfg(not(unattended))]
             menu::init(app.handle())?;
+            #[cfg(not(unattended))]
+            side_buttons::init(app.handle());
 
             // **Every window is created here, restored or not.** The configured
             // window carries `"create": false`, so tauri creates none of its own

@@ -1,7 +1,10 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
+import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { configFormat, parseConfig, shikiLangFor } from '../lib/config-parse';
 import { useI18n } from '../lib/i18n';
+import { captureScrollAnchor } from '../lib/scroll';
 import type { FileEntry } from '../lib/types';
+import { rememberedMode } from '../lib/visit-history';
 import { ConfigTree } from './ConfigTree';
 import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
@@ -12,13 +15,23 @@ import { ViewPanel } from './ViewPanel';
 interface ConfigViewProps {
   source: string;
   file: FileEntry;
+  memory: ViewMemory;
 }
 
-export function ConfigView({ source, file }: ConfigViewProps) {
+const MODES = ['tree', 'source'] as const;
+
+export function ConfigView({ source, file, memory }: ConfigViewProps) {
   const { t } = useI18n();
   const format = useMemo(() => configFormat(file.name), [file.name]);
   const outcome = useMemo(() => parseConfig(source, format), [source, format]);
-  const [mode, setMode] = useState<'tree' | 'source'>(outcome.ok ? 'tree' : 'source');
+  // A document that no longer parses has no tree to come back to, whatever was
+  // remembered.
+  const [mode, setMode] = useState<'tree' | 'source'>(() =>
+    outcome.ok ? (rememberedMode(memory.remembered, MODES) ?? 'tree') : 'source',
+  );
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRememberedScroll(scrollRef, memory.remembered?.anchor ?? null);
+  useLeaveReport(memory, scrollRef, (scroller) => ({ mode, anchor: captureScrollAnchor(scroller, []) }));
   // Bumping the key remounts the tree so a new forceOpen applies to every node.
   const [treeKey, setTreeKey] = useState(0);
   const [forceOpen, setForceOpen] = useState<boolean | undefined>(undefined);
@@ -34,7 +47,7 @@ export function ConfigView({ source, file }: ConfigViewProps) {
   }
 
   return (
-    <div className="doc-scroll">
+    <div className="doc-scroll" ref={scrollRef}>
       <div className="doc cfg">
         <div className="doc__bar">
           {outcome.ok && mode === 'tree' && (

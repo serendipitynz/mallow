@@ -3,10 +3,10 @@ id: TASK-44
 title: >-
   Go back and forward through the files a window has shown, and remember how
   each was being read
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-10-29 21:50'
-updated_date: '2026-10-29 22:22'
+updated_date: '2026-10-30 02:51'
 labels:
   - feature
 milestone: m-5
@@ -43,12 +43,78 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Showing a file from the tree, Open Recent or a location the OS handed over appends it to the window's visit history; showing the file already on screen, a live reload, and a move by back / forward append nothing
-- [ ] #2 Back and forward are reachable from the keyboard (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right on Windows and Linux), from the mouse's back / forward buttons, and from menu items that are disabled when there is nowhere to go
-- [ ] #3 Each chord is consumed even where there is nowhere to go, so WebView2's own Alt+Left navigation never reaches the app shell
-- [ ] #4 Returning to a file by history or by the tree restores its view mode and scroll position, for every kind that offers a view switch
-- [ ] #5 A history entry whose file no longer exists is skipped rather than shown as an error
+- [x] #2 Back and forward are reachable from the keyboard (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right on Windows and Linux), from the mouse's back / forward buttons, and from menu items that are disabled when there is nowhere to go
+- [x] #3 Each chord is consumed even where there is nowhere to go, so WebView2's own Alt+Left navigation never reaches the app shell
+- [x] #4 Returning to a file by history or by the tree restores its view mode and scroll position, for every kind that offers a view switch
+- [x] #5 A history entry whose file no longer exists is skipped rather than shown as an error
 - [ ] #6 Changing the window's folder empties its visit history and its file view state; another window's history is untouched
-- [ ] #7 The history and the view-state memory are bounded, with the limits and the reason for them stated where they are defined
-- [ ] #8 The history logic is a pure module with unit tests; pnpm lint, pnpm build and pnpm test pass, and cargo check / cargo test pass if the menu changes
-- [ ] #9 README describes back / forward and the chords on each platform
+- [x] #7 The history and the view-state memory are bounded, with the limits and the reason for them stated where they are defined
+- [x] #8 The history logic is a pure module with unit tests; pnpm lint, pnpm build and pnpm test pass, and cargo check / cargo test pass if the menu changes
+- [x] #9 README describes back / forward and the chords on each platform
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. src/lib/visit-history.ts: pure module — visit history (entries + cursor, capped), file view state memory (LRU, capped, never evicts a path the history still holds), an epoch bumped on folder change so a view leaving the previous folder cannot write into the new one, and an async travel() that skips entries whose file is gone. Unit tests beside it.
+2. src/lib/history-nav.ts: chord / mouse-button classification (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right elsewhere, buttons 3 / 4) and the keydown / mouseup handlers, always consuming. Unit tests.
+3. App: one showFile() for every route that shows a file (tree, mount-time location, handover) appending to the history; openLocation empties history + view state only when the folder actually changes; back / forward travel via pathExists; report can-go-back / can-go-forward to Rust.
+4. Views: a shared hook captures {mode, anchor} at unmount (against the still-attached container) and a shared hook restores the remembered anchor while the content is still filling. MarkdownView, HtmlView, ConfigView, TableView, XmlView take the remembered mode; MermaidView and the plain source arm get the scroll half.
+5. menu.rs: View > Back / Forward with per-platform accelerators, gated per window like Print / Export (report_history_moves), menu:back / menu:forward events. cargo test for the id map.
+6. README: back / forward and the chords per platform.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## 実装
+
+- 純粋モジュール `src/lib/visit-history.ts`: 訪問履歴（entries + cursor）とファイル表示状態（path → { mode, anchor }）を 1 つの値 `Visits` に持つ。フォルダ変更で `epoch` を進め、両方を空にする。`travel` は存在しないファイルを飛ばし、履歴からも取り除く（次の押下でまた飛ばすのではなく、Back が効くかを履歴だけで決められるようにするため）。取り除いた結果、表示中のファイルと同じファイルが隣に来たらそれも消す。
+- 上限（AC #7）: 履歴 `MAX_VISITS = 50`（Chromium の `kMaxSessionHistoryEntries` と同じ）、表示状態 `MAX_REMEMBERED_VIEWS = 100`。表示状態は最も昔に離れたものから捨てるが、履歴にまだ残っているパスは捨てない。履歴の異なるパスは最大 50 なので 100 なら必ず捨てられるものがあり、Back で届くファイルは必ず状態が残る。
+- `src/lib/history-nav.ts`: macOS は `Cmd+[` / `Cmd+]`、Windows・Linux は `Alt+Left` / `Alt+Right`、マウスはボタン 3 / 4。chord は移動先がなくても常に preventDefault（AC #3）。ゲートを置かないのは、移動先がない移動は `travel` がそのまま何もしないため。マウスは mousedown / mouseup の両方を消費し、動くのは mouseup だけ。
+- `src/hooks/useViewMemory.ts`: 離脱時の状態取得はレイアウトエフェクトの後始末で行う。React 19 のソース（`commitDeletionEffectsOnFiber`）で、関数コンポーネントのレイアウト後始末が配下のホスト要素の ref 解除・DOM 取り外しより先に走ることを確認した。`leave` はマウント時に受け取ったものを使う。フォルダ変更でアンマウントされたビューが新しいフォルダの記憶に書き込まないようにするため（新しいフォルダが古いフォルダを含む場合に実害が出る）。
+- 復元は「マウント時に 1 回 + 内容が伸びるたびに 1.5 秒間」。ライブ更新側の「次フレームでもう 1 回」にしなかったのは、Shiki の着色と mermaid の描画が 1 フレーム以内に終わる保証がないため。wheel / pointerdown / touchstart / keydown で読み手が動かしたら止める（scroll イベントは復元自身の書き込みでも発火するので使えない）。
+- `HtmlView` の描画モードは既存の収束ループ（`anchor` → `pendingRestore`）に覚えていたアンカーを渡すだけにし、共通の復元フックは使わない。ループの最中に横から復元すると収束途中で動くため。ソースモードは共通フック。
+- `MarkdownView`: 初回レンダリングでは空のコンテナを測らない（比率 0 を測って、覚えていた位置を打ち消していた）。ソースモードでも復元するようになった。
+- view の切り替えがある種別（markdown・html・json/yaml/toml・csv・xml、JSON の plist）はモードとスクロール、mermaid とテキスト系（text/ini/diff/sql）はスクロールだけを覚える。`default:` の枝は到達しないので対象外。
+- App: 表示経路（ツリー・初期位置・OS からの受け渡し）は `showFile` を通り、そこで visit になる。フォルダが実際に変わるときだけ履歴を空にする（同じフォルダの 2 つ目のファイルを OS から渡された場合は visit として足すため）。Back / Forward は `pathExists` で確かめ、待っている間に履歴が動いた場合は結果を捨てる。
+- メニュー: View → Back / Forward。ウィンドウごとのゲートを `report_history_moves` で受け、`apply_preview_gate` を `apply_focused_gates` に改名して 4 項目まとめて切り替える。
+
+## 確認したこと
+
+- `pnpm lint` / `pnpm build` / `pnpm test`（41 ファイル・517 件）が通った。新規テストは `visit-history.test.ts` と `history-nav.test.ts` の 26 件。
+- `cargo fmt --check` / `cargo check` / `cargo test`（109 件）が通った。`MALLOW_UNATTENDED=1 cargo check` も警告なし。
+- muda 0.19.3 のアクセラレータ解析が `[`・`]`・`Left`・`Right` を受け付けることをソースで確認した。
+
+## 測っていないこと（オーナーの確認が要る）
+
+- GUI 上の動作はどのプラットフォームでも見ていない。AC #1・#2・#4・#6 は実機で、AC #3 は Windows（WebView2 の Alt+Left が本当に止まるか）で確認が要る。
+- サイドボタンが各 WebView でページに届くか（button 3 / 4）。
+- Linux で GTK のアクセラレータとフロントエンドの keydown が両方動いて 2 歩戻らないか。Ctrl+N では 1 回だけ動いたという過去の観察（2026-09-12）に頼っている。
+- 描画中の HTML フレームの中にフォーカスやポインタがあるときは、ウィンドウのリスナーに届かない。既存の chord 全部に共通の穴で、README に書いた。
+
+## オーナーによる実機確認（2026-10-30）
+
+- 履歴で戻ったとき・ツリーから開き直したときに表示モードとスクロール位置が戻る: OK（AC #4）
+- View メニューの Back / Forward が移動先のないときに無効: OK
+- Windows で Alt+Left が WebView2 の戻る操作に渡らない。移動先がないときの押下でも画面は変わらない: OK（AC #3）
+- Linux で 1 回の押下で 2 つ戻らない: OK
+- macOS でマウスのサイドボタン（Logitech MX Anywhere 3S）が効かなかった。Chrome では効く。
+
+## サイドボタンの対応（macOS）
+
+- フロントエンドの `mouseup`（button 3 / 4）のハンドラでは履歴が動かなかった。Chrome はネイティブのイベントを自分で処理しているので、ページに届いているかとは無関係。WKWebView が落としていると読むのが実測に合うが、そこを切り分けたわけではない。
+- `src-tauri/src/side_buttons.rs`: `NSEvent` のローカルモニタで `buttonNumber` 3 / 4 の `otherMouseDown` / `otherMouseUp` を受け取り、両方を消費して、離したときにクリックされたウィンドウ（なければフォーカス中のウィンドウ）へ `history:go` を送る。消費するので、WebKit が将来ボタンをページに渡すようになっても 2 歩は動かない。
+- `block2` を直接の本番依存に加えた（オーナー承認済み）。もともと objc2-app-kit 経由で依存グラフに入っていたので、新たにコンパイルされるクレートはなく、`pnpm notices` の差分もない。objc2-app-kit には feature `block2` を足した。
+- 未確認: このネイティブ処理が実機で効くか（オーナーの再確認待ち）。Windows / Linux でサイドボタンがページに届くか。AC #1 のうち OS から渡されたファイルの追加と、AC #6 も未確認。
+
+## サイドボタンの再調査（2026-10-30）
+
+- `otherMouse` のモニタでも効かなかったため、全種類のイベントを一時的にログへ出して調べた。Logi Options+ 下の MX Anywhere 3S は、1 回の押下を `NSEventTypeSwipe` の 2 イベントとして送っていた（`deltaX` が 0 の後、Back は +1、Forward は -1）。マウスボタンのイベントは 1 つも来ていない。
+- `side_buttons.rs` のモニタにスワイプを加えた。`deltaX` が 0 のイベントは通し、±1 のイベントを消費して移動する。ボタン 3 / 4 の処理は Options+ のないマウス向けに残している（未計測）。
+- オーナーが macOS で戻る / 進むが効くことを確認した。これで AC #2 の 3 経路（キー・マウス・メニュー）はどれも少なくとも 1 つのプラットフォームで確かめられた。キーは 3 プラットフォームとも確認済み、マウスは macOS のみ。Windows / Linux のマウス、トラックパッドのスワイプは未計測。
+
+- 復元を続ける時間（RESTORE_WINDOW_MS）を 1.5 秒から 10 秒に変えた（PR #81 のレビュー P3）。1.5 秒には実測の根拠がなかったため、表示してから内容が最後に伸びるまでの時間を測った（2026-10-30、Apple M2、`pnpm tauri dev`）。Mermaid 図 24 個の Markdown は 1.5 秒、着色上限のすぐ下（約 250 KiB）の SQL は 1.6 秒、ソース表示の長い Markdown は 0.1〜0.4 秒、ノード 250 個の .mmd は 0.4〜1.0 秒。SQL では戻ったときの伸び（1542 ms）が 1.5 秒の打ち切りより後に来ており、位置を戻し損ねる条件が実際にあった。10 秒は遅いマシン・エンジンに最大実測の約 6 倍を残す値。長すぎる場合の害は、読み手が触らずに待っている間に内容が変わったとき覚えていた位置へ戻すことだけで、そのとき読み手はまだ動いていないので戻す先は正しい。Windows / Linux では測っていない。
+
+- 10 秒に変えた後、計測用の 4 ファイル（mermaid-heavy.md、near-cap.sql、long-source.md のソース表示、big.mmd）で戻ったときの位置が離れたときと合うことを、オーナーが dev 版で目視確認した（2026-10-30、macOS）。
+<!-- SECTION:NOTES:END -->

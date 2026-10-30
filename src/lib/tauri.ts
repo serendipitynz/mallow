@@ -71,6 +71,12 @@ export function reportMarkdownPreview(active: boolean): Promise<void> {
   return invoke<void>('report_markdown_preview', { active });
 }
 
+/** Whether this window's visit history can move back and forward, for the
+ *  View menu's two entries — per window, as the preview gate is. */
+export function reportHistoryMoves(back: boolean, forward: boolean): Promise<void> {
+  return invoke<void>('report_history_moves', { back, forward });
+}
+
 /** Prompt the user to pick a folder; returns its path or null if cancelled. */
 export async function pickFolder(): Promise<string | null> {
   const result = await openDialog({ directory: true, multiple: false });

@@ -1,5 +1,8 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
+import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { useT } from '../lib/i18n';
+import { captureScrollAnchor } from '../lib/scroll';
+import { rememberedMode } from '../lib/visit-history';
 import { buildXmlTree, XML_MAX_VALUE_CHARS, type XmlErrorInfo, xmlErrorInfo } from '../lib/xml-tree';
 import { ErrorBanner } from './ErrorBanner';
 import { CodeIcon, ListChevronsDownUpIcon, ListChevronsUpDownIcon, ListTreeIcon } from './icons';
@@ -18,6 +21,8 @@ import { XmlTree } from './XmlTree';
  */
 
 const MIME = 'text/xml';
+
+const MODES = ['tree', 'source'] as const;
 
 type ParseOutcome = { ok: true; doc: Document } | { ok: false; error: XmlErrorInfo };
 
@@ -54,11 +59,18 @@ function parseXml(source: string): ParseOutcome {
   return { ok: true, doc };
 }
 
-export function XmlView({ source }: { source: string }) {
+export function XmlView({ source, memory }: { source: string; memory: ViewMemory }) {
   const t = useT();
   const outcome = useMemo(() => parseXml(source), [source]);
   const tree = useMemo(() => (outcome.ok ? buildXmlTree(outcome.doc) : null), [outcome]);
-  const [mode, setMode] = useState<'tree' | 'source'>(outcome.ok ? 'tree' : 'source');
+  // A document that no longer parses has no tree to come back to, whatever was
+  // remembered.
+  const [mode, setMode] = useState<'tree' | 'source'>(() =>
+    outcome.ok ? (rememberedMode(memory.remembered, MODES) ?? 'tree') : 'source',
+  );
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useRememberedScroll(scrollRef, memory.remembered?.anchor ?? null);
+  useLeaveReport(memory, scrollRef, (scroller) => ({ mode, anchor: captureScrollAnchor(scroller, []) }));
   // Bumping the key remounts the tree so a new forceOpen applies to every node.
   const [treeKey, setTreeKey] = useState(0);
   const [forceOpen, setForceOpen] = useState<boolean | undefined>(undefined);
@@ -85,7 +97,7 @@ export function XmlView({ source }: { source: string }) {
   }
 
   return (
-    <div className="doc-scroll">
+    <div className="doc-scroll" ref={scrollRef}>
       <div className="doc xml-doc">
         <div className="doc__bar">
           {tree !== null && mode === 'tree' && (
