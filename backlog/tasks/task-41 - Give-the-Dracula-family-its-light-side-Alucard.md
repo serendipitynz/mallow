@@ -4,7 +4,7 @@ title: Give the Dracula family its light side (Alucard)
 status: Done
 assignee: []
 created_date: '2026-09-28 08:00'
-updated_date: '2026-10-30 20:00'
+updated_date: '2026-10-30 22:15'
 labels:
   - feature
   - 決定先行
@@ -60,4 +60,6 @@ Alucard の値は公式仕様 https://draculatheme.com/spec の生 HTML で確�
 測っていないもの: 実アプリ (WKWebView / WebView2 / WebKitGTK) での見た目と実際の印刷。設定モーダルは描画せず、ModeMenu と同じ `modeAvailable` / `isOneSided` を読むことをコードで確認し、Dracula の3モードは単体テストで押さえた。
 
 snz-design 側は未更新: doc-7 §4.2 は Dracula を片側の系統として挙げており、doc-16・doc-18 にも同様の記述がある。
+
+実アプリでの確認: オーナーが実アプリで確認した (2026-10-31 の報告)。上の「測っていないもの」のうち、見た目の未確認はこれで閉じる。確認した環境と、実際の印刷まで見たかは報告に含まれていないので、ここには書かない。
 <!-- SECTION:NOTES:END -->
