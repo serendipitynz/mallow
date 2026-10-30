@@ -48,6 +48,11 @@ const ja: Dict = {
   'manager.finder': 'Finder',
   'manager.explorer': 'エクスプローラ',
   'manager.fileManager': 'ファイルマネージャ',
+  // visit history
+  historyBack: '戻る',
+  historyForward: '進む',
+  historyBackNone: '戻る先のファイルがありません',
+  historyForwardNone: '進む先のファイルがありません',
   // explorer
   explorer: 'エクスプローラ',
   noFolderOpen: 'フォルダが開かれていません。',
@@ -197,6 +202,11 @@ const en: Dict = {
   'manager.finder': 'Finder',
   'manager.explorer': 'File Explorer',
   'manager.fileManager': 'File Manager',
+  // visit history
+  historyBack: 'Back',
+  historyForward: 'Forward',
+  historyBackNone: 'No file to go back to',
+  historyForwardNone: 'No file to go forward to',
   // explorer
   explorer: 'Explorer',
   noFolderOpen: 'No folder is open.',
