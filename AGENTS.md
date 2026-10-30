@@ -150,11 +150,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   as "not held" rather than as a failure. See the gotcha below for what it can
   and cannot see, which is the whole of TASK-12.5's spike.
 - `side_buttons.rs` — the mouse's back / forward side buttons on macOS
-  (TASK-44): a local `NSEvent` monitor takes `otherMouseDown` / `otherMouseUp`
-  with `buttonNumber` 3 / 4, consumes both, and on the release sends
-  `history:go` to the window clicked in. **It exists because the page did not
-  get them** — measured 2026-10-30, the frontend's `mouseup` handler never moved
-  the history on macOS while Chrome went back. A no-op elsewhere, where the
+  (TASK-44): a local `NSEvent` monitor sends `history:go` to the window clicked
+  in. **It exists because the page did not get them** — measured 2026-10-30, the
+  frontend's `mouseup` handler never moved the history on macOS while Chrome went
+  back — **and what it takes is a swipe as well as a button**: a Logitech MX
+  Anywhere 3S under Logi Options+ sent each press as a pair of `NSEventTypeSwipe`
+  events (`deltaX` 0, then +1 for Back and -1 for Forward) and no mouse-button
+  event at all. `otherMouseUp` with `buttonNumber` 3 / 4 is kept for a mouse
+  with no remapping driver, which was not measured. A no-op elsewhere, where the
   frontend handler is all there is. Costs `block2` as a direct dependency, which
   was already in the graph.
 - `open_recent.rs` — `recent_choice`, the pure function that says what choosing a
