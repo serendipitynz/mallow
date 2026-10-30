@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-10-29 21:50'
-updated_date: '2026-10-30 00:19'
+updated_date: '2026-10-30 02:45'
 labels:
   - feature
 milestone: m-5
@@ -113,4 +113,6 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 - `otherMouse` のモニタでも効かなかったため、全種類のイベントを一時的にログへ出して調べた。Logi Options+ 下の MX Anywhere 3S は、1 回の押下を `NSEventTypeSwipe` の 2 イベントとして送っていた（`deltaX` が 0 の後、Back は +1、Forward は -1）。マウスボタンのイベントは 1 つも来ていない。
 - `side_buttons.rs` のモニタにスワイプを加えた。`deltaX` が 0 のイベントは通し、±1 のイベントを消費して移動する。ボタン 3 / 4 の処理は Options+ のないマウス向けに残している（未計測）。
 - オーナーが macOS で戻る / 進むが効くことを確認した。これで AC #2 の 3 経路（キー・マウス・メニュー）はどれも少なくとも 1 つのプラットフォームで確かめられた。キーは 3 プラットフォームとも確認済み、マウスは macOS のみ。Windows / Linux のマウス、トラックパッドのスワイプは未計測。
+
+- 復元を続ける時間（RESTORE_WINDOW_MS）を 1.5 秒から 10 秒に変えた（PR #81 のレビュー P3）。1.5 秒には実測の根拠がなかったため、表示してから内容が最後に伸びるまでの時間を測った（2026-10-30、Apple M2、`pnpm tauri dev`）。Mermaid 図 24 個の Markdown は 1.5 秒、着色上限のすぐ下（約 250 KiB）の SQL は 1.6 秒、ソース表示の長い Markdown は 0.1〜0.4 秒、ノード 250 個の .mmd は 0.4〜1.0 秒。SQL では戻ったときの伸び（1542 ms）が 1.5 秒の打ち切りより後に来ており、位置を戻し損ねる条件が実際にあった。10 秒は遅いマシン・エンジンに最大実測の約 6 倍を残す値。長すぎる場合の害は、読み手が触らずに待っている間に内容が変わったとき覚えていた位置へ戻すことだけで、そのとき読み手はまだ動いていないので戻す先は正しい。Windows / Linux では測っていない。
 <!-- SECTION:NOTES:END -->
