@@ -1,10 +1,10 @@
 ---
 id: TASK-45
 title: Put back and forward buttons in the toolbar
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-10-30 04:01'
-updated_date: '2026-10-30 04:19'
+updated_date: '2026-10-30 05:00'
 labels:
   - feature
 milestone: m-5
@@ -38,9 +38,9 @@ Out of scope: a long-press or right-click list of the history entries, and showi
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The toolbar carries a back button and a forward button; pressing one moves the window's visit history one step, through the same move the chords, the side buttons and the View menu use
-- [ ] #2 Each button has a label that reaches the reader in both ja and en, and a tooltip that names the platform's chord (⌘[ / ⌘] on macOS, Alt+← / Alt+→ on Windows and Linux)
-- [ ] #3 Where there is nowhere to go the button is disabled per snz-design doc-8 §5.4 — it keeps the focus, shows the disabled shape, and its reason in words reaches the reader — and its state agrees with the View menu's Back / Forward in every window
+- [x] #1 The toolbar carries a back button and a forward button; pressing one moves the window's visit history one step, through the same move the chords, the side buttons and the View menu use
+- [x] #2 Each button has a label that reaches the reader in both ja and en, and a tooltip that names the platform's chord (⌘[ / ⌘] on macOS, Alt+← / Alt+→ on Windows and Linux)
+- [x] #3 Where there is nowhere to go the button is disabled per snz-design doc-8 §5.4 — it keeps the focus, shows the disabled shape, and its reason in words reaches the reader — and its state agrees with the View menu's Back / Forward in every window
 - [x] #4 The icons are Lucide path data copied into components/icons.tsx, with no new dependency
 - [x] #5 pnpm lint, pnpm build and pnpm test pass
 <!-- AC:END -->
@@ -72,4 +72,6 @@ Out of scope: a long-press or right-click list of the history entries, and showi
 検証:
 - pnpm lint / pnpm build / pnpm test (41 files, 518 tests) が通る。
 - 実ウィンドウでの確認はしていない。AC #1〜#3 (押して1歩動く・ja/en の語と各プラットフォームのコード表記のツールチップ・無効時にフォーカスが残り理由が読み上げへ届く・複数ウィンドウで View メニューと一致) はオーナーの実窓確認に残す。
+
+実窓確認 (オーナー、2026-10-30): AC #1〜#3 を実際のウィンドウで確認済み。PR #82 でマージ。
 <!-- SECTION:NOTES:END -->
