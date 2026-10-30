@@ -187,8 +187,9 @@ inside a branch you opened may come back elsewhere. A file deleted since is
 skipped. The list belongs to the window's folder: opening another
 folder in the window starts it again, and it is not kept across a relaunch.
 
-The mouse buttons do nothing over a rendered HTML document, and on Windows
-neither do the keys while it has the focus — click outside it first.
+On Windows and Linux the mouse buttons do nothing over a rendered HTML
+document, and on Windows neither do the keys while it has the focus — click
+outside it first.
 
 ### Opening files from outside mallow
 

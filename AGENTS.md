@@ -149,6 +149,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   keymap on Linux. **`None` is a build that cannot ask**, which the caller takes
   as "not held" rather than as a failure. See the gotcha below for what it can
   and cannot see, which is the whole of TASK-12.5's spike.
+- `side_buttons.rs` — the mouse's back / forward side buttons on macOS
+  (TASK-44): a local `NSEvent` monitor takes `otherMouseDown` / `otherMouseUp`
+  with `buttonNumber` 3 / 4, consumes both, and on the release sends
+  `history:go` to the window clicked in. **It exists because the page did not
+  get them** — measured 2026-10-30, the frontend's `mouseup` handler never moved
+  the history on macOS while Chrome went back. A no-op elsewhere, where the
+  frontend handler is all there is. Costs `block2` as a direct dependency, which
+  was already in the graph.
 - `open_recent.rs` — `recent_choice`, the pure function that says what choosing a
   recent folder does, and `act_on_recent` / `choose_recent`, which read the facts
   it takes and carry the answer out. **One decision behind two entries** — the

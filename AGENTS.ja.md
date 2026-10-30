@@ -142,6 +142,13 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   **`None` は「この build では問い合わせられない」**で、呼び出し側は失敗ではなく
   「押されていない」として扱う。何が見えて何が見えないかは下の gotcha —
   TASK-12.5 の spike そのもの。
+- `side_buttons.rs` — macOS でのマウスの戻る / 進むサイドボタン（TASK-44）。`NSEvent` の
+  ローカルモニタで `buttonNumber` 3 / 4 の `otherMouseDown` / `otherMouseUp` を受け取って
+  両方を消費し、離したときにクリックされたウィンドウへ `history:go` を送る。
+  **ページにボタンが届かなかったからある**。2026-10-30 の実測で、macOS ではフロントエンドの
+  `mouseup` ハンドラが履歴を動かさず、Chrome では戻れた。他のプラットフォームでは何もせず、
+  フロントエンドのハンドラだけが受け持つ。`block2` を直接依存に加えたが、もともと依存グラフに
+  入っていたクレート。
 - `open_recent.rs` — `recent_choice`（最近のフォルダを選んだとき何が起きるかを答える純関数）と、
   それが取る事実を読んで実行する `act_on_recent` / `choose_recent`。
   **決定は 1 つ、入口は 2 つ** — Open Recent サブメニューとアプリ内一覧は同じ問いを立て、
