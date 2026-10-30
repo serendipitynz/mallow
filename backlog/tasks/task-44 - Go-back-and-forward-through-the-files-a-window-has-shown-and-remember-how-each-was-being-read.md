@@ -3,10 +3,10 @@ id: TASK-44
 title: >-
   Go back and forward through the files a window has shown, and remember how
   each was being read
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-10-29 21:50'
-updated_date: '2026-10-30 02:51'
+updated_date: '2026-10-30 03:48'
 labels:
   - feature
 milestone: m-5
@@ -42,12 +42,12 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Showing a file from the tree, Open Recent or a location the OS handed over appends it to the window's visit history; showing the file already on screen, a live reload, and a move by back / forward append nothing
+- [x] #1 Showing a file from the tree, Open Recent or a location the OS handed over appends it to the window's visit history; showing the file already on screen, a live reload, and a move by back / forward append nothing
 - [x] #2 Back and forward are reachable from the keyboard (Cmd+[ / Cmd+] on macOS, Alt+Left / Alt+Right on Windows and Linux), from the mouse's back / forward buttons, and from menu items that are disabled when there is nowhere to go
 - [x] #3 Each chord is consumed even where there is nowhere to go, so WebView2's own Alt+Left navigation never reaches the app shell
 - [x] #4 Returning to a file by history or by the tree restores its view mode and scroll position, for every kind that offers a view switch
 - [x] #5 A history entry whose file no longer exists is skipped rather than shown as an error
-- [ ] #6 Changing the window's folder empties its visit history and its file view state; another window's history is untouched
+- [x] #6 Changing the window's folder empties its visit history and its file view state; another window's history is untouched
 - [x] #7 The history and the view-state memory are bounded, with the limits and the reason for them stated where they are defined
 - [x] #8 The history logic is a pure module with unit tests; pnpm lint, pnpm build and pnpm test pass, and cargo check / cargo test pass if the menu changes
 - [x] #9 README describes back / forward and the chords on each platform
@@ -117,4 +117,6 @@ Out of scope: following a link to a local `.md` file (the link stays inert; a la
 - 復元を続ける時間（RESTORE_WINDOW_MS）を 1.5 秒から 10 秒に変えた（PR #81 のレビュー P3）。1.5 秒には実測の根拠がなかったため、表示してから内容が最後に伸びるまでの時間を測った（2026-10-30、Apple M2、`pnpm tauri dev`）。Mermaid 図 24 個の Markdown は 1.5 秒、着色上限のすぐ下（約 250 KiB）の SQL は 1.6 秒、ソース表示の長い Markdown は 0.1〜0.4 秒、ノード 250 個の .mmd は 0.4〜1.0 秒。SQL では戻ったときの伸び（1542 ms）が 1.5 秒の打ち切りより後に来ており、位置を戻し損ねる条件が実際にあった。10 秒は遅いマシン・エンジンに最大実測の約 6 倍を残す値。長すぎる場合の害は、読み手が触らずに待っている間に内容が変わったとき覚えていた位置へ戻すことだけで、そのとき読み手はまだ動いていないので戻す先は正しい。Windows / Linux では測っていない。
 
 - 10 秒に変えた後、計測用の 4 ファイル（mermaid-heavy.md、near-cap.sql、long-source.md のソース表示、big.mmd）で戻ったときの位置が離れたときと合うことを、オーナーが dev 版で目視確認した（2026-10-30、macOS）。
+
+- AC #1（OS から渡されたファイルが履歴に加わる）と AC #6（フォルダを変えると履歴が空になり、別ウィンドウの履歴は残る）を、マージ後にオーナーが手で確認した（2026-10-30、macOS）。
 <!-- SECTION:NOTES:END -->
