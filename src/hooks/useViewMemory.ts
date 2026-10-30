@@ -36,11 +36,18 @@ export function useLeaveReport(
   }, [leave, scrollRef]);
 }
 
-/** How long after mount a remembered position keeps being re-applied. Long
- *  enough for Shiki's highlighting and a mermaid render to land, which is what
- *  makes the content grow after the view mounts; the reader moving ends it
- *  sooner. */
-const RESTORE_WINDOW_MS = 1_500;
+/** How long after mount a remembered position keeps being re-applied; the
+ *  reader moving ends it sooner.
+ *
+ *  **Measured, not guessed** (2026-10-30, Apple M2, `pnpm tauri dev`): the last
+ *  growth came 1.5 s after mount for a markdown file of 24 diagrams and 1.6 s
+ *  for a source file just under the highlighting cap — so the 1.5 s this
+ *  replaced let the second land after the restore had stopped. 10 s leaves a
+ *  slower machine or engine about six times that. **Too long costs next to
+ *  nothing and too short loses the position**: the window only outlasts the
+ *  content while the reader has not moved, and then the remembered position is
+ *  still the one they want. */
+const RESTORE_WINDOW_MS = 10_000;
 
 /** What a reader does to move the document themselves. A scroll event cannot
  *  serve, since the restore's own writes raise those too. */
