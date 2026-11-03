@@ -3,10 +3,10 @@ id: TASK-46
 title: >-
   Measure whether the CSS Custom Highlight API works on the three WebViews and
   inside the rendered HTML frame
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-11-03 19:23'
-updated_date: '2026-11-03 21:11'
+updated_date: '2026-11-03 22:00'
 labels:
   - feature
 milestone: m-7
@@ -38,13 +38,13 @@ If any WebView lacks the API, the fallback is decided with the owner before TASK
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 The WebView version is recorded per platform, since support is version-dependent
-- [ ] #2 On each platform, a Highlight registered in the parent document paints its ::highlight() style (the positive control), shown by a screenshot
-- [ ] #3 On each platform, a Highlight whose range spans several text nodes across inline elements (e.g. foo<strong>bar</strong>) paints as one continuous match
-- [ ] #4 On each platform, the parent registers a Highlight on the rendered HTML view's frame document (srcdoc, allow-same-origin, no allow-scripts), with its ::highlight() rule placed during the load pass, and whether it paints is recorded
-- [ ] #5 Registering and clearing highlights in the frame is shown to produce no MutationObserver record, so it cannot trigger HtmlView's restart
-- [ ] #6 On Windows, whether Ctrl+F opens WebView2's own find UI when the app does not consume it is recorded
-- [ ] #7 The check lives in src/probe/ so it can be re-run, and the findings, with each platform's outcome, are recorded on this task
+- [x] #1 The WebView version is recorded per platform, since support is version-dependent
+- [x] #2 On each platform, a Highlight registered in the parent document paints its ::highlight() style (the positive control), shown by a screenshot
+- [x] #3 On each platform, a Highlight whose range spans several text nodes across inline elements (e.g. foo<strong>bar</strong>) paints as one continuous match
+- [x] #4 On each platform, the parent registers a Highlight on the rendered HTML view's frame document (srcdoc, allow-same-origin, no allow-scripts), with its ::highlight() rule placed during the load pass, and whether it paints is recorded
+- [x] #5 Registering and clearing highlights in the frame is shown to produce no MutationObserver record, so it cannot trigger HtmlView's restart
+- [x] #6 On Windows, whether Ctrl+F opens WebView2's own find UI when the app does not consume it is recorded
+- [x] #7 The check lives in src/probe/ so it can be re-run, and the findings, with each platform's outcome, are recorded on this task
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -80,7 +80,24 @@ If any WebView lacks the API, the fallback is decided with the owner before TASK
 - スクリーンショット: `_sandbox/handoff/task-46/mac-wkwebview-paint.png`、`mac-wkwebview-report.png`。
 - 計測方法についての注記: Accessibility 権限を使わずに済ませるため、セクションをマウント時に自動実行し該当箇所へスクロールする一時版をローカルでだけビルドし、`screencapture -l` でウィンドウ単位に撮った。計測後にその変更は元に戻した。計測のロジックはコミットするコードと同一。
 
-## 未計測
+## Linux (WebKitGTK) — 2026-11-04 実測 (オーナー)
 
-Windows (WebView2) と Linux (WebKitGTK、Ubuntu 24.04) は未計測。AC #1〜#6 と AC #7 の後半 (各プラットフォームの結果の記録) は、その 2 つの計測ラウンドを待つ。
+- 環境: Ubuntu 24.04、x86_64 (VMware Workstation 17 Player 上)。webkit2gtk-4.1 2.52.3 (`libwebkit2gtk-4.1-0` 2.52.3-0ubuntu0.24.04.1、pkg-config と apt で確認)。ユーザーエージェントの `Version/60.5` は WebKitGTK のバージョンではないため、パッケージ側の値を記録した。CSP が効いた実ビルドでの計測。
+- 自動判定 7 行すべて pass。両フレームとも MutationObserver の記録は 0、対照は 1。
+- 塗り (スクリーンショットから読んだ): 3 か所・3 段落とも記述どおり。`<code>` の padding による細い隙間は macOS と同じ。
+- 記録: `_sandbox/handoff/task-46/linux-webkitgtk-paint.png`、`linux-report.md`。
+
+## Windows (WebView2) — 2026-11-04 実測 (オーナー)
+
+- 環境: WebView2 156.0.0.0 (ユーザーエージェントの `Edg/156.0.0.0`)。CSP が効いた実ビルドでの計測。
+- 自動判定 7 行すべて pass。両フレームとも MutationObserver の記録は 0、対照は 1。
+- 塗り: 3 か所・3 段落とも記述どおり。`<code>` の padding の隙間も他の 2 つと同じ。
+- AC #6: 何も Ctrl+F を消費しない状態 (プローブは keydown ハンドラを登録しない) で Ctrl+F を押すと、WebView2 自身の検索バーがウィンドウ右上に開いた。TASK-47 がこのキーを全ビューで消費するのは、`Ctrl+P` と同じ理由による。
+- 記録: `_sandbox/handoff/task-46/windows-webview2-paint.png`、`windows-report.md`。
+
+## 結論
+
+3 つの WebView すべてで、CSS Custom Highlight API はアプリ文書でもレンダリング済み HTML ビューのフレーム (srcdoc、allow-same-origin、allow-scripts なし) でも動き、インライン要素をまたぐ Range も 1 本の連続した一致として塗られた。フレームでの登録・変更・解除は MutationObserver に何も記録させないので、HtmlView の再計測 (restart) を起こさない。フレームの realm の Highlight と親の realm の Highlight のどちらでも同じ結果になった。
+
+フォールバックを検討する必要はなく、TASK-47 は前提どおりこの API で進められる。priority を上げた 2 つ目の Highlight で現在位置を別色にする描き方も、3 プラットフォームで意図どおりだった (TASK-47 の AC #3 向けの付記で、本タスクの AC ではない)。
 <!-- SECTION:NOTES:END -->
