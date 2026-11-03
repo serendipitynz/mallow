@@ -7,6 +7,7 @@
  *  evidence for — has to survive a copy and paste. */
 
 import type { Check, ClickCounts, Environment, LateLayout } from './harness';
+import type { HighlightReading, HighlightRun } from './highlight-checks';
 import {
   EXPECTED_ATTEMPTS,
   LINK_ATTEMPT_LABEL,
@@ -300,6 +301,123 @@ export function buildReport(
     '',
     transformBlock(transformChecks),
     linkBlock(link),
+    '### Notes',
+    '',
+    manual.notes || '(none)',
+    '',
+  ].join('\n');
+}
+
+/** TASK-46's hand-recorded answers. The section is reported on its own rather
+ *  than inside TASK-7's report: it needs none of that run, and making a fifteen
+ *  second run that deliberately tries to navigate the app away a precondition of
+ *  a highlight measurement would only cost rounds.
+ *
+ *  One paint field per location per case, because the three locations can fail
+ *  independently and the parent's answer is the positive control for the other
+ *  two: a frame that does not paint means something only where the parent did. */
+export interface HighlightManual {
+  platform: string;
+  osVersion: string;
+  webviewVersion: string;
+  runMode: string;
+  parentSingle: string;
+  parentAcross: string;
+  parentCurrent: string;
+  frameRealmSingle: string;
+  frameRealmAcross: string;
+  frameRealmCurrent: string;
+  parentRealmSingle: string;
+  parentRealmAcross: string;
+  parentRealmCurrent: string;
+  ctrlF: string;
+  screenshots: string;
+  notes: string;
+}
+
+export interface HighlightEnvironment {
+  userAgent: string;
+  cspPresent: boolean;
+  policy: string | null;
+}
+
+function highlightReadingLine(r: HighlightReading): string {
+  const m = r.mutations;
+  const parts = [
+    `CSS.highlights: ${r.registryPresent}`,
+    `Highlight: ${r.constructorPresent}`,
+    `CSS.supports(selector(::highlight())): ${r.selectorSupported ?? 'CSS.supports missing'}`,
+    `rule survived parsing: ${r.ruleParsed}`,
+    `registered at the end: ${r.registered}`,
+    `registry size: ${r.registrySize ?? '-'}`,
+  ];
+  if (m !== null) {
+    parts.push(`mutation records during / control: ${m.during} / ${m.control}`);
+  }
+  if (r.error !== null) {
+    parts.push(`error: \`${r.error}\``);
+  }
+  return `- **${r.where}** — ${parts.join(', ')}`;
+}
+
+export function buildHighlightReport(
+  env: HighlightEnvironment,
+  run: HighlightRun | null,
+  manual: HighlightManual,
+): string {
+  const rows =
+    run === null
+      ? ['not run']
+      : [
+          '| verdict | AC | check | observation |',
+          '|---|---|---|---|',
+          ...run.checks.map(
+            (c) =>
+              `| ${VERDICT_MARK[c.verdict]} | ${c.ac.map((n) => `#${n}`).join(', ')} | ${c.title} | ${c.detail.replace(/\|/g, '\\|')} |`,
+          ),
+        ];
+  const paint = (label: string, value: string) => `- ${label}: ${value || '(not recorded)'}`;
+  return [
+    `## TASK-46 — CSS Custom Highlight API: ${manual.platform || '(platform)'}`,
+    '',
+    `AC numbers in this report are **TASK-46's**.`,
+    '',
+    env.cspPresent
+      ? '**A CSP is in force on this run**, so it is a built app rather than `tauri dev`.'
+      : '**No CSP is in force on this run** — this is what `tauri dev` looks like. The frame was not measured as it ships; rebuild with `MALLOW_PROBE=1 pnpm tauri build --debug --no-bundle`.',
+    '',
+    '### Environment (AC #1)',
+    '',
+    `- platform: ${manual.platform || '(not recorded)'} ${manual.osVersion}`,
+    `- WebView: ${manual.webviewVersion || guessWebViewVersion(env.userAgent)}`,
+    `- run mode: ${manual.runMode || '(not recorded)'}`,
+    `- user agent: \`${env.userAgent}\``,
+    `- effective CSP in the app document: \`${env.policy ?? 'NONE REPORTED'}\``,
+    '',
+    '### Automatic checks',
+    '',
+    'These establish what can be read without looking. None of them says a highlight painted.',
+    '',
+    ...rows,
+    '',
+    ...(run === null ? [] : ['#### Readings', '', ...run.readings.map(highlightReadingLine), '']),
+    '### Paint, recorded by eye against the screenshots (AC #2, #3, #4)',
+    '',
+    paint('AC #2 parent, one text node (the positive control)', manual.parentSingle),
+    paint('AC #3 parent, across inline elements', manual.parentAcross),
+    paint("parent, current match over the others (TASK-47's AC #3)", manual.parentCurrent),
+    paint('AC #4 frame (frame-realm Highlight), one text node', manual.frameRealmSingle),
+    paint('AC #3/#4 frame (frame-realm Highlight), across inline elements', manual.frameRealmAcross),
+    paint('frame (frame-realm Highlight), current match over the others', manual.frameRealmCurrent),
+    paint('AC #4 frame (parent-realm Highlight), one text node', manual.parentRealmSingle),
+    paint('AC #3/#4 frame (parent-realm Highlight), across inline elements', manual.parentRealmAcross),
+    paint('frame (parent-realm Highlight), current match over the others', manual.parentRealmCurrent),
+    `- screenshots: ${manual.screenshots || '(none named)'}`,
+    '',
+    '### Ctrl+F with nothing consuming it (AC #6, Windows)',
+    '',
+    `- ${manual.ctrlF || '(not recorded)'}`,
+    '',
     '### Notes',
     '',
     manual.notes || '(none)',

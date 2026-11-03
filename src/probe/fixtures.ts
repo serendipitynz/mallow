@@ -361,3 +361,41 @@ export function protocolRelativeFixture(): string {
     '<p id="csp-effect-target">CSP inheritance, measured by effect</p>',
   );
 }
+
+/** The text TASK-46 paints, as body markup, so the parent and the frame carry
+ *  the same specimen and a difference between them is the frame's alone.
+ *
+ *  Each paragraph says what a painted run looks like, because a highlight that
+ *  painted is a visual fact: the registry can say a Highlight was registered, not
+ *  that it drew. The `across` paragraph puts its match over four text nodes and
+ *  three inline elements, `<code>` included because it carries a background of
+ *  its own that the highlight has to paint over. `current` overlaps a second
+ *  highlight on one of three matches, which is how TASK-47 draws the match the
+ *  reader is on. */
+export function highlightSpecimen(): string {
+  return [
+    '<div class="hl-specimen">',
+    '<p id="hl-single">One text node: NEEDLE is marked yellow; needle here is not.</p>',
+    '<p id="hl-across">Across inline elements: foo<strong>bar</strong><em>baz</em><code>qux</code> is one yellow run; this tail is not.</p>',
+    '<p id="hl-current">Current match: alpha · alpha · alpha — the middle one orange, the outer two yellow.</p>',
+    '</div>',
+  ].join('');
+}
+
+/** TASK-46's frame. It carries no `::highlight()` rule of its own: the parent
+ *  places one during the load pass, which is where `HtmlView` puts every write
+ *  it makes into the frame (a write anywhere else is a mutation its observer
+ *  turns into a restart). */
+export function highlightFixture(): string {
+  return page(
+    [
+      '<style>',
+      'body { font: 16px/1.6 system-ui, sans-serif; margin: 8px 12px; color: #1a1a1a; }',
+      'p { margin: 4px 0; }',
+      'code { background: #e8e8f0; padding: 0 2px; }',
+      '#alive, details { display: none; }',
+      '</style>',
+    ].join(''),
+    highlightSpecimen(),
+  );
+}
