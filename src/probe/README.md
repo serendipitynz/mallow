@@ -3,11 +3,13 @@
 A measuring instrument, not part of mallow. It builds only when `MALLOW_PROBE=1`
 is set, and the ordinary build does not contain a byte of it.
 
-It was built for TASK-7 and grew two more sections: TASK-5.1's, whose transform
-has to be exercised on a real engine (see **The transform section** below), and
+It was built for TASK-7 and grew three more sections: TASK-5.1's, whose transform
+has to be exercised on a real engine (see **The transform section** below),
 TASK-23's, which measures the link cases decision-10 left open (see **The
-app-origin link section**). All three are kept apart on screen and in the report,
-because their `#N` are different tasks' acceptance criteria.
+app-origin link section**), and TASK-46's, which measures the CSS Custom Highlight
+API that find-in-document paints with (see **The highlight section**). All four
+are kept apart on screen and in the report, because their `#N` are different
+tasks' acceptance criteria.
 
 TASK-7's part answers whether the two behaviours decision-3 rests on actually
 hold on this project's three WebViews:
@@ -280,3 +282,62 @@ nor decision-10's neutralization covers a scheme the OS owns. They point at
 still open, and that is the observation. `counts.links` excludes them until this
 says otherwise. **The `<area>` is no longer one of the exclusions** — TASK-25
 settled it on every engine, and the count says so.
+
+## The highlight section (TASK-46)
+
+TASK-47 paints find matches with `CSS.highlights` and `::highlight()` rather than
+by wrapping them in `<mark>`, because neither the markdown article nor the
+rendered HTML view's frame may be written to. This section says whether that API
+is there to lean on, in the app document and inside the frame.
+
+**It stands alone.** It needs none of the run at the top of the page and has its
+own report box, so a run is: build, open the binary, scroll to the section, press
+**Run the highlight checks**, take one screenshot that shows all three boxes, fill
+in the fields, copy the report. Its first line says whether a CSP was in force,
+which is how a report from `tauri dev` gives itself away.
+
+It paints the same three paragraphs in three places:
+
+- **the app document** — the positive control. A frame that does not paint means
+  something only where this box did.
+- **the frame, with a `Highlight` from the frame's own realm**, registered in the
+  frame's `CSS.highlights`;
+- **the frame, with a `Highlight` from the parent's realm**, registered in the
+  same registry. decision-9 is why the two frame variants are measured rather
+  than one assumed from the other.
+
+In each frame the `::highlight()` rule is written during the load pass and the
+`MutationObserver` attached afterwards — the order `HtmlView` uses — and the
+highlights are then registered, changed, cleared and registered again with a
+paint between every step. **The mutation row passes only if that produced no
+record and one deliberate attribute write afterwards produced at least one**;
+without the second number a zero proves nothing.
+
+**The automatic rows never say a highlight painted.** They establish that the API
+exists, that the rule survived parsing and that registration did not throw — so a
+paint that is missing in the screenshot is not explained by something earlier.
+Each paragraph says what it should look like; record it against the screenshot.
+"Painted, but broken at an element boundary" is its own answer because a run
+that stops at `<strong>`, `<em>` or `<code>` is what AC #3 is for. The `<code>`
+element's own padding is not text, so a hairline gap at its edge is that padding
+rather than a break.
+
+**WebView version (AC #1)** — the user agent is only right on Windows (`Edg/…`).
+On macOS record the OS version and the system WebKit's bundle version:
+
+```sh
+sw_vers -productVersion
+defaults read /System/Library/Frameworks/WebKit.framework/Resources/Info.plist CFBundleVersion
+```
+
+On Linux, `pkg-config --modversion webkit2gtk-4.1` (or
+`apt list --installed | grep webkit2gtk`).
+
+**`Ctrl+F` on Windows (AC #6)** — press it anywhere on the probe page. The probe
+registers no `keydown` handler at all, so whatever appears is WebView2's own.
+Record "not applicable" on the other two platforms rather than leaving it blank.
+
+**The probe shares the app's settings.** It is the same identifier, so a probe
+build restores the windows of the last real session (each showing the probe) and
+writes settings.json and `.window-state.json` back at exit. Copy both aside first
+if their state matters.
