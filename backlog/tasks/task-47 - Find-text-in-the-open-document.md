@@ -4,8 +4,10 @@ title: Find text in the open document
 status: To Do
 assignee: []
 created_date: '2026-11-03 19:23'
+updated_date: '2026-11-03 19:30'
 labels:
   - feature
+milestone: m-7
 dependencies:
   - TASK-46
 references:

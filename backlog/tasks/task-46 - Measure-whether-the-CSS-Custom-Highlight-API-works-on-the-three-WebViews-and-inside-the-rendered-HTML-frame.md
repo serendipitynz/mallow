@@ -6,8 +6,10 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-11-03 19:23'
+updated_date: '2026-11-03 19:30'
 labels:
   - feature
+milestone: m-7
 dependencies: []
 references:
   - src/probe/link-checks.ts
