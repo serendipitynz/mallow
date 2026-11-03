@@ -197,3 +197,23 @@
     cursor: pointer;
   }
 }
+
+// TASK-46: the three boxes side by side, so one screenshot carries the positive
+// control and both frame variants.
+.probe-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+// The parent-document specimen sits on the app's own surface, as the markdown
+// view's text does, with the frame's type size so the boxes compare.
+.probe-host--specimen {
+  padding: 8px 12px;
+  font: 16px/1.6 system-ui, sans-serif;
+
+  p {
+    margin: 4px 0;
+  }
+}

@@ -321,7 +321,7 @@ async function runMarkerInParent(): Promise<boolean> {
  *  policy back off the event, because `tauri.conf.json` is not what ships: the
  *  bootstrap script's sha256 is added to `script-src` at build time. No
  *  violation means there is no CSP on this run at all. */
-async function captureParentCsp(): Promise<{ policy: string | null; present: boolean }> {
+export async function captureParentCsp(): Promise<{ policy: string | null; present: boolean }> {
   const collector = collectViolations(document);
   const script = document.createElement('script');
   script.src = `${BLOCKED_ORIGIN}/parent-csp-control.js`;

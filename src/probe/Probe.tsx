@@ -15,6 +15,7 @@ import {
   armLateLayoutProbe,
   type Check,
   type ClickCounts,
+  captureParentCsp,
   focusHeadingInFrame,
   type Hosts,
   type LateLayout,
@@ -22,6 +23,7 @@ import {
   run,
   runAssetImageCheck,
 } from './harness';
+import { type HighlightRun, runHighlightChecks } from './highlight-checks';
 import {
   armLinkProbe,
   EXPECTED_ATTEMPTS,
@@ -34,7 +36,15 @@ import {
   missingAttempts,
   runLinkChecks,
 } from './link-checks';
-import { buildReport, guessWebViewVersion, type LinkManual, type Manual } from './report';
+import {
+  buildHighlightReport,
+  buildReport,
+  guessWebViewVersion,
+  type HighlightEnvironment,
+  type HighlightManual,
+  type LinkManual,
+  type Manual,
+} from './report';
 import { runTransformChecks, type TransformCheck } from './transform-checks';
 import './probe.scss';
 
@@ -72,6 +82,46 @@ const EMPTY_LINK_MANUAL: LinkManual = {
   neutralizedFragmentClick: CLICK_OUTCOME[0],
   neutralizedAreaClick: CLICK_OUTCOME[0],
   neutralizedKeyboard: KEYBOARD_OUTCOME[0],
+  notes: '',
+};
+
+/** Whether a case painted as its paragraph says it should. "Partly" is its own
+ *  answer rather than a note, because a run that stops at an element boundary is
+ *  the specific failure AC #3 exists to catch. */
+const PAINT_OUTCOME = [
+  '(not recorded)',
+  'painted exactly as the paragraph describes',
+  'nothing painted',
+  'painted, but broken at an element boundary',
+  'something else — see notes',
+];
+
+/** AC #6 is a Windows question; the other two platforms record that it is not
+ *  theirs rather than leaving the field blank, which would read as forgotten. */
+const CTRL_F_OUTCOME = [
+  '(not recorded)',
+  "WebView2's own find bar opened",
+  'nothing visible happened',
+  'something else — see notes',
+  'not Windows — not applicable',
+];
+
+const EMPTY_HIGHLIGHT_MANUAL: HighlightManual = {
+  platform: '',
+  osVersion: '',
+  webviewVersion: '',
+  runMode: '',
+  parentSingle: PAINT_OUTCOME[0],
+  parentAcross: PAINT_OUTCOME[0],
+  parentCurrent: PAINT_OUTCOME[0],
+  frameRealmSingle: PAINT_OUTCOME[0],
+  frameRealmAcross: PAINT_OUTCOME[0],
+  frameRealmCurrent: PAINT_OUTCOME[0],
+  parentRealmSingle: PAINT_OUTCOME[0],
+  parentRealmAcross: PAINT_OUTCOME[0],
+  parentRealmCurrent: PAINT_OUTCOME[0],
+  ctrlF: CTRL_F_OUTCOME[0],
+  screenshots: '',
   notes: '',
 };
 
@@ -119,6 +169,10 @@ export default function Probe() {
   // Chosen before arming rather than described afterwards: every reading an arm
   // produces is attributed to this, which is what the first round could not do.
   const [linkAttempt, setLinkAttempt] = useState<LinkAttempt>(LINK_ATTEMPTS[0]);
+  const [highlightRunning, setHighlightRunning] = useState(false);
+  const [highlightRun, setHighlightRun] = useState<HighlightRun | null>(null);
+  const [highlightEnv, setHighlightEnv] = useState<HighlightEnvironment | null>(null);
+  const [highlightManual, setHighlightManual] = useState<HighlightManual>(EMPTY_HIGHLIGHT_MANUAL);
   // Shown live beside the tall frame so the two hand-recorded scroll answers are
   // a reading rather than a judgement: "yes" is this number changing.
   const [scrollTop, setScrollTop] = useState(0);
@@ -144,6 +198,9 @@ export default function Probe() {
   // The armed link probe polls, so re-arming has to stop the previous one first;
   // two intervals writing the same mode's readings would interleave them.
   const linkTeardownRef = useRef<(() => void) | null>(null);
+  const highlightParentRef = useRef<HTMLDivElement>(null);
+  const highlightFrameRealmRef = useRef<HTMLDivElement>(null);
+  const highlightParentRealmRef = useRef<HTMLDivElement>(null);
 
   // Applied without persisting, rather than through `chooseColor`, which would
   // write into the real app's localStorage — the probe shares its origin.
@@ -258,6 +315,35 @@ export default function Probe() {
     [],
   );
 
+  const onRunHighlights = useCallback(async () => {
+    setHighlightRunning(true);
+    try {
+      // The CSP control is this section's own rather than TASK-7's, so the
+      // section can be run without that run.
+      const csp = await captureParentCsp();
+      setHighlightEnv({ userAgent: navigator.userAgent, cspPresent: csp.present, policy: csp.policy });
+      setHighlightRun(
+        await runHighlightChecks({
+          parent: highlightParentRef.current as HTMLElement,
+          frameRealm: highlightFrameRealmRef.current as HTMLElement,
+          parentRealm: highlightParentRealmRef.current as HTMLElement,
+        }),
+      );
+      setHighlightManual((m) =>
+        m.webviewVersion === '' ? { ...m, webviewVersion: guessWebViewVersion(navigator.userAgent) } : m,
+      );
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setHighlightRunning(false);
+    }
+  }, []);
+
+  const highlightReport = useMemo(
+    () => (highlightEnv === null ? '' : buildHighlightReport(highlightEnv, highlightRun, highlightManual)),
+    [highlightEnv, highlightRun, highlightManual],
+  );
+
   const checks = useMemo(
     () => (result === null ? [] : assetCheck === null ? result.checks : [...result.checks, assetCheck]),
     [result, assetCheck],
@@ -359,6 +445,36 @@ export default function Probe() {
         </ul>
       </div>
     );
+
+  const highlightField = (key: keyof HighlightManual, label: string, options?: string[]) => (
+    <div className="probe-field" key={key}>
+      <label htmlFor={`probe-hl-${key}`}>{label}</label>
+      {options === undefined ? (
+        <input
+          id={`probe-hl-${key}`}
+          type="text"
+          value={highlightManual[key]}
+          onChange={(e) => {
+            setHighlightManual((m) => ({ ...m, [key]: e.target.value }));
+          }}
+        />
+      ) : (
+        <select
+          id={`probe-hl-${key}`}
+          value={highlightManual[key]}
+          onChange={(e) => {
+            setHighlightManual((m) => ({ ...m, [key]: e.target.value }));
+          }}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
 
   const linkField = (key: keyof LinkManual, label: string, options: string[]) => (
     <div className="probe-field" key={key}>
@@ -777,6 +893,111 @@ export default function Probe() {
             }}
           />
         </label>
+      </section>
+
+      <section className="probe-manual">
+        <h2>TASK-46 — CSS Custom Highlight API</h2>
+        <p className="probe-note">
+          AC numbers in this section are <strong>TASK-46&apos;s</strong>, and it needs none of the run at the top of the
+          page. It paints the same three paragraphs in three places: the app document (the positive control), the
+          rendered HTML view&apos;s frame with a <code>Highlight</code> built from the frame&apos;s own realm, and the
+          same frame with one built from the parent&apos;s. The <code>::highlight()</code> rule is placed in the frame
+          during its load pass, before the observer is attached, which is where <code>HtmlView</code> puts every write.
+        </p>
+        <p className="probe-note">
+          <strong>Whether a highlight painted is only visible, not readable.</strong> Run it, then take one screenshot
+          that shows all three boxes, and record each paragraph against what it says it should look like. A frame that
+          does not paint means something only where the app document above it did.
+        </p>
+        <p className="probe-note">
+          <strong>On Windows</strong>, also press <kbd>Ctrl+F</kbd> anywhere on this page. The probe registers no
+          handler for it, so whatever appears is WebView2&apos;s own (AC #6).
+        </p>
+        <div className="probe-controls">
+          <button type="button" onClick={onRunHighlights} disabled={highlightRunning}>
+            {highlightRunning ? 'running…' : 'Run the highlight checks'}
+          </button>
+        </div>
+        {highlightRun !== null && (
+          <table className="probe-table">
+            <thead>
+              <tr>
+                <th>verdict</th>
+                <th>AC</th>
+                <th>check</th>
+                <th>observation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {highlightRun.checks.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <span className={`probe-verdict probe-verdict--${c.verdict}`}>{c.verdict}</span>
+                  </td>
+                  <td>{c.ac.map((n) => `#${n}`).join(', ')}</td>
+                  <td>{c.title}</td>
+                  <td className="probe-detail">{c.detail}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div className="probe-highlights">
+          <div>
+            <h3>App document (positive control)</h3>
+            <div className="probe-host probe-host--specimen" ref={highlightParentRef} />
+          </div>
+          <div>
+            <h3>Frame, frame-realm Highlight</h3>
+            <Host hostRef={highlightFrameRealmRef} />
+          </div>
+          <div>
+            <h3>Frame, parent-realm Highlight</h3>
+            <Host hostRef={highlightParentRealmRef} />
+          </div>
+        </div>
+        <div className="probe-grid">
+          {highlightField('platform', 'platform (macOS / Windows / Linux)')}
+          {highlightField('osVersion', 'OS version')}
+          {highlightField('webviewVersion', 'WebView version (AC #1) — see README for macOS and Linux')}
+          {highlightField('runMode', 'run mode (tauri build --debug / other)')}
+          {highlightField('parentSingle', 'AC #2 app document — one text node', PAINT_OUTCOME)}
+          {highlightField('parentAcross', 'AC #3 app document — across inline elements', PAINT_OUTCOME)}
+          {highlightField('parentCurrent', 'app document — current match over the others', PAINT_OUTCOME)}
+          {highlightField('frameRealmSingle', 'AC #4 frame, frame realm — one text node', PAINT_OUTCOME)}
+          {highlightField('frameRealmAcross', 'AC #3/#4 frame, frame realm — across inline elements', PAINT_OUTCOME)}
+          {highlightField('frameRealmCurrent', 'frame, frame realm — current match over the others', PAINT_OUTCOME)}
+          {highlightField('parentRealmSingle', 'AC #4 frame, parent realm — one text node', PAINT_OUTCOME)}
+          {highlightField('parentRealmAcross', 'AC #3/#4 frame, parent realm — across inline elements', PAINT_OUTCOME)}
+          {highlightField('parentRealmCurrent', 'frame, parent realm — current match over the others', PAINT_OUTCOME)}
+          {highlightField('ctrlF', 'AC #6 Ctrl+F with nothing consuming it', CTRL_F_OUTCOME)}
+          {highlightField('screenshots', 'screenshot file name(s)')}
+        </div>
+        <label className="probe-field probe-field--wide">
+          <span>notes for this section</span>
+          <textarea
+            rows={4}
+            value={highlightManual.notes}
+            onChange={(e) => {
+              setHighlightManual((m) => ({ ...m, notes: e.target.value }));
+            }}
+          />
+        </label>
+        <div className="probe-report">
+          <h3>TASK-46 report — paste this back</h3>
+          <textarea readOnly rows={16} value={highlightReport} />
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard.writeText(highlightReport).catch(() => {
+                /* Clipboard access can be refused; the textarea is selectable. */
+              });
+            }}
+            disabled={highlightReport === ''}
+          >
+            Copy the TASK-46 report
+          </button>
+        </div>
       </section>
 
       <section className="probe-manual">
