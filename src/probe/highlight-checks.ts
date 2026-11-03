@@ -402,14 +402,21 @@ function registerCheck(reading: HighlightReading, ac: number[]): HighlightCheck 
 
 function mutationCheck(reading: HighlightReading): HighlightCheck {
   const m = reading.mutations;
+  // A run that stopped part-way registered less than it claims to have, so its
+  // silence is not the silence of the full sequence.
+  const completed = reading.registered && reading.error === null;
   let verdict: Verdict;
-  if (m === null) {
-    verdict = 'inconclusive';
-  } else if (m.control === 0) {
+  if (m === null || m.control === 0 || !completed) {
     verdict = 'inconclusive';
   } else {
     verdict = m.during === 0 ? 'pass' : 'fail';
   }
+  const caveats = [
+    m !== null && m.control === 0 ? ' — the observer heard nothing, so a zero above is not evidence' : '',
+    completed
+      ? ''
+      : ' — the highlight sequence did not complete (see the register row), so a zero above covers less than it says',
+  ].join('');
   return check(
     `mutation.${reading.where}`,
     [5],
@@ -417,7 +424,7 @@ function mutationCheck(reading: HighlightReading): HighlightCheck {
     verdict,
     m === null
       ? 'not measured'
-      : `records while highlights were registered, changed, cleared and registered again: ${m.during}; records from one deliberate attribute write afterwards (the control): ${m.control}${m.control === 0 ? ' — the observer heard nothing, so a zero above is not evidence' : ''}.`,
+      : `records while highlights were registered, changed, cleared and registered again: ${m.during}; records from one deliberate attribute write afterwards (the control): ${m.control}${caveats}.`,
   );
 }
 
