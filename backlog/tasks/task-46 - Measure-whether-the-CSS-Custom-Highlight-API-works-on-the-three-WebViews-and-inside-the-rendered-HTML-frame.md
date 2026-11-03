@@ -3,10 +3,10 @@ id: TASK-46
 title: >-
   Measure whether the CSS Custom Highlight API works on the three WebViews and
   inside the rendered HTML frame
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-03 19:23'
-updated_date: '2026-11-03 22:00'
+updated_date: '2026-11-03 22:25'
 labels:
   - feature
 milestone: m-7
