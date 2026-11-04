@@ -1,7 +1,9 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Explorer } from './components/Explorer';
 import { ExplorerResizer } from './components/ExplorerResizer';
+import type { FindBarHandle } from './components/FindBar';
 import { SettingsIcon } from './components/icons';
+import { isModalOpen } from './components/Modal';
 import { Notice } from './components/Notice';
 import { SettingsModal } from './components/SettingsModal';
 import { Toolbar } from './components/Toolbar';
@@ -18,6 +20,8 @@ import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/
 import { createToggleExplorerChordHandler } from './lib/explorer-toggle';
 import { clampExplorerWidth, DEFAULT_EXPLORER_WIDTH } from './lib/explorer-width';
 import { fileEntryFromPath } from './lib/file';
+import { createFindChordHandler, createFindStepChordHandler } from './lib/find-chord';
+import { isFindAvailable, onFindTargetChange } from './lib/find-target';
 import { droppedToOpen, type Handed, handedAction } from './lib/handover';
 import { createHistoryButtonHandler, createHistoryChordHandler } from './lib/history-nav';
 import { useI18n, useT } from './lib/i18n';
@@ -44,6 +48,7 @@ import {
   pickPdfDestination,
   printWindow,
   recordRecent,
+  reportFindAvailable,
   reportHistoryMoves,
   reportMarkdownPreview,
   reportWindowContent,
@@ -108,6 +113,7 @@ export default function App() {
   const updater = useUpdater();
 
   const selectedRef = useRef<FileEntry | null>(null);
+  const findRef = useRef<FindBarHandle>(null);
   // Serialises overlapping custom-emoji loads; see `applyEmojiDir`.
   const emojiGeneration = useRef(0);
   useEffect(() => {
@@ -939,6 +945,54 @@ export default function App() {
   }, [toggleExplorer]);
   useWindowEvent('menu:toggle-explorer', toggleExplorer);
 
+  /* ---- Find in the open document (TASK-47) ----------------------------------
+     The three chords are registered and consumed on `lib/chord`'s rule, in every
+     view: on Windows an unconsumed `Ctrl+F` opens WebView2's own find bar
+     (measured, TASK-46). They act only where the active view has find and no
+     modal is open — opening the bar would take the focus out of a modal that
+     holds it. The menu items are gated on the same view state in Rust, and
+     reach the same two calls. */
+  useEffect(() => {
+    const onMac = onMacPlatform();
+    const allowed = () => isFindAvailable() && !isModalOpen();
+    const onFind = createFindChordHandler({ onMac, isAllowed: allowed, open: () => findRef.current?.open() });
+    const onStep = createFindStepChordHandler({
+      onMac,
+      isAllowed: allowed,
+      step: (direction) => findRef.current?.step(direction),
+    });
+    window.addEventListener('keydown', onFind);
+    window.addEventListener('keydown', onStep);
+    return () => {
+      window.removeEventListener('keydown', onFind);
+      window.removeEventListener('keydown', onStep);
+    };
+  }, []);
+  useWindowEvent('menu:find', () => {
+    if (!isModalOpen()) {
+      findRef.current?.open();
+    }
+  });
+  useWindowEvent('menu:find-next', () => {
+    if (!isModalOpen()) {
+      findRef.current?.step('next');
+    }
+  });
+  useWindowEvent('menu:find-previous', () => {
+    if (!isModalOpen()) {
+      findRef.current?.step('previous');
+    }
+  });
+
+  // Pushed with its current value at subscription time, for the reason the
+  // preview gate's is.
+  useEffect(() => {
+    const report = (available: boolean) =>
+      void reportFindAvailable(available).catch((e) => console.error('Failed to report find availability', e));
+    report(isFindAvailable());
+    return onFindTargetChange((target) => report(target !== null));
+  }, []);
+
   /* ---- Back / forward (TASK-44) ---------------------------------------------
      Registered and consumed for the life of the app on `lib/chord`'s rule; on
      Windows the chord is WebView2's own back navigation, which is why
@@ -1010,6 +1064,7 @@ export default function App() {
       reloadToken={reloadToken}
       remembered={selected ? rememberedView(visits, selected.path) : null}
       onLeave={onLeave}
+      findRef={findRef}
     />
   );
 
