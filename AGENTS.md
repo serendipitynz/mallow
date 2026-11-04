@@ -969,10 +969,15 @@ hold rather than as an exhaustive style guide.
   view** on `lib/chord`'s rule: TASK-46 measured WebView2 opening its own find bar
   on an unconsumed `Ctrl+F`, and `F3` is that bar's Find Next. **Matching runs on
   a folded copy** (`lib/find`: NFKC, then lower case), and every folded code unit
-  carries the original stretch it came from, because NFKC changes lengths; a
-  character is folded with the marks after it, and the half-width voiced marks
-  U+FF9E / U+FF9F count as marks there, since they are letters to `\p{M}` and
-  `ｶﾞ` would otherwise never meet `ガ`. Text is joined per block — a new run
+  carries the original stretch it came from, because NFKC changes lengths.
+  **Characters are folded in the smallest stretches NFKC cannot see across** — a
+  character joins the one before it when normalizing the pair differs from
+  normalizing them apart — rather than as a character plus its marks: U+FF9E /
+  U+FF9F and Hangul jamo are letters, so a mark class left `ｶﾞ` apart from `ガ`
+  and jamo apart from their syllable (PR #86's review). Two folded matches that
+  map back to one original stretch (`ﬀ` is `ff`) count once. Folding a 10 MiB
+  source is cheap only because runs of characters that fold to themselves are
+  taken whole. Text is joined per block — a new run
   starts wherever the nearest block element changes — so a match crosses
   `foo**bar**` but never a paragraph boundary. **The bar sits in the viewer's flow
   above the view**, so it hides nothing and the `.doc__bar` clearance needs no

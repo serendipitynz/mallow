@@ -31,6 +31,12 @@ describe('foldQuery', () => {
     expect(foldQuery('ﾊﾟﾝ')).toBe('パン');
   });
 
+  it('composes Hangul jamo, which are letters rather than marks, into one syllable', () => {
+    // Half-width and conjoining jamo both fold to the precomposed U+AC00.
+    expect(foldQuery('\uFFA1\uFFC2')).toBe('\uAC00');
+    expect(foldQuery('\u1100\u1161')).toBe('\uAC00');
+  });
+
   it('keeps hiragana and katakana distinct', () => {
     expect(foldQuery('ひらがな')).not.toBe(foldQuery('ヒラガナ'));
   });
@@ -101,6 +107,24 @@ describe('searchFindIndex', () => {
     expect(matchedText([['xﬁnd ﬁle']], 'find')).toEqual(['ﬁnd']);
     // A match ending inside a ligature takes the whole ligature.
     expect(matchedText([['ﬁ']], 'f')).toEqual(['ﬁ']);
+  });
+
+  it('finds a Hangul syllable whichever way it is spelled, and the reverse', () => {
+    expect(matchedText([['x \uFFA1\uFFC2 y']], '\uAC00')).toEqual(['\uFFA1\uFFC2']);
+    expect(matchedText([['x \u1100\u1161 y']], '\uAC00')).toEqual(['\u1100\u1161']);
+    expect(matchedText([['x \uAC00 y']], '\uFFA1\uFFC2')).toEqual(['\uAC00']);
+  });
+
+  it('counts one original character once, however many characters it folds to', () => {
+    // `ﬀ` folds to `ff`: two folded matches for `f`, one stretch of text.
+    expect(matchedText([['ﬀ']], 'f')).toEqual(['ﬀ']);
+    expect(matchedText([['aﬀb f']], 'f')).toEqual(['ﬀ', 'f']);
+  });
+
+  it('spends the limit on distinct stretches only', () => {
+    const result = searchFindIndex(buildFindIndex([['ﬀ'.repeat(FIND_MATCH_LIMIT)]]), 'f');
+    expect(result.matches).toHaveLength(FIND_MATCH_LIMIT);
+    expect(result.overflow).toBe(false);
   });
 
   it('does not overlap matches', () => {

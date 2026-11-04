@@ -28,17 +28,61 @@ export interface FoldedText {
   end: Int32Array;
 }
 
-/* A character is folded together with the marks that follow it, because NFKC
-   composes across them: `か` + U+3099 is `が`, and so is half-width `ｶﾞ`.
-   U+FF9E / U+FF9F are the half-width voiced and semi-voiced marks, which are
-   letters (Lm) rather than marks, so `\p{M}` alone would fold `ｶ` and `ﾞ` apart
-   into `カ` and a combining mark, and `ガ` would never match `ｶﾞ`. */
-const MARK = /\p{M}/u;
+/* Characters are folded in the smallest stretches NFKC cannot see across: a
+   character joins the stretch before it when normalizing the two together gives
+   something other than normalizing them apart. That is what composes `か` +
+   U+3099 into `が`, half-width `ｶﾞ` into `ガ` — U+FF9E is a letter, not a mark,
+   so no mark class would catch it — and conjoining or half-width Hangul jamo
+   into one syllable, where every piece is a letter. Testing the pair rather than
+   listing the classes means no category is missed by having been left off.
 
-function followsAsMark(codePoint: number): boolean {
+   Some characters can never be the second half of a composition — ASCII, kana
+   other than the two voiced marks, CJK ideographs — so a stretch ends before one
+   without the test. They are the bulk of the documents mallow shows, and
+   skipping two `normalize` calls per character for them is what keeps a long
+   Japanese document quick to fold. */
+function neverComposesBackward(codePoint: number): boolean {
   return (
-    codePoint >= 0x300 && (codePoint === 0xff9e || codePoint === 0xff9f || MARK.test(String.fromCodePoint(codePoint)))
+    codePoint < 0x80 ||
+    (codePoint >= 0x3041 && codePoint <= 0x30ff && codePoint !== 0x3099 && codePoint !== 0x309a) ||
+    (codePoint >= 0x4e00 && codePoint <= 0x9fff)
   );
+}
+
+/* `normalize` is what folding costs, and a document repeats a few thousand
+   distinct characters however long it is, so a character's — or a pair's —
+   NFKC is computed once. Cleared rather than allowed to grow without bound
+   across documents. */
+const nfkcCache = new Map<string, string>();
+const NFKC_CACHE_LIMIT = 50_000;
+
+function nfkc(text: string): string {
+  if (text.length > 4) {
+    return text.normalize('NFKC');
+  }
+  let normalized = nfkcCache.get(text);
+  if (normalized === undefined) {
+    if (nfkcCache.size >= NFKC_CACHE_LIMIT) {
+      nfkcCache.clear();
+    }
+    normalized = text.normalize('NFKC');
+    nfkcCache.set(text, normalized);
+  }
+  return normalized;
+}
+
+/** Per BMP code unit below the surrogates: 0 not yet known, 1 folds to itself,
+ *  2 does not. A fixed property of Unicode, so it is never cleared. */
+const selfFolding = new Uint8Array(0xd800);
+
+function foldsToItself(unit: number): boolean {
+  let known = selfFolding[unit];
+  if (known === 0) {
+    const char = String.fromCharCode(unit);
+    known = char.normalize('NFKC').toLowerCase() === char ? 1 : 2;
+    selfFolding[unit] = known;
+  }
+  return known === 1;
 }
 
 export function foldForFind(source: string): FoldedText {
@@ -48,9 +92,9 @@ export function foldForFind(source: string): FoldedText {
   let end = new Int32Array(capacity);
   let length = 0;
 
-  const push = (folded: string, from: number, to: number) => {
-    if (length + folded.length > capacity) {
-      capacity = Math.max(capacity * 2, length + folded.length);
+  const reserve = (more: number) => {
+    if (length + more > capacity) {
+      capacity = Math.max(capacity * 2, length + more);
       const grownStart = new Int32Array(capacity);
       const grownEnd = new Int32Array(capacity);
       grownStart.set(start);
@@ -58,6 +102,11 @@ export function foldForFind(source: string): FoldedText {
       start = grownStart;
       end = grownEnd;
     }
+  };
+
+  /** One stretch of the original, folded to `folded`. */
+  const push = (folded: string, from: number, to: number) => {
+    reserve(folded.length);
     for (let k = 0; k < folded.length; k++) {
       start[length] = from;
       end[length] = to;
@@ -66,24 +115,61 @@ export function foldForFind(source: string): FoldedText {
     pieces.push(folded);
   };
 
+  /** A run of characters that each fold to one unit of themselves (ASCII
+   *  lower-cased), taken at once: per-character work over a 10 MiB source view
+   *  took seconds, and over a long Japanese document most of a second. */
+  const pushRun = (from: number, to: number) => {
+    reserve(to - from);
+    for (let k = from; k < to; k++) {
+      start[length] = k;
+      end[length] = k + 1;
+      length++;
+    }
+    pieces.push(source.slice(from, to).toLowerCase());
+  };
+
   let i = 0;
+  let runFrom = 0;
   while (i < source.length) {
+    const unit = source.charCodeAt(i);
+    // Batched when it folds to itself and the next character cannot compose
+    // back onto it (`e` + U+0301 must reach the stretch below). Surrogates
+    // never are, so a range cannot end between the halves of a pair.
+    if (
+      (unit < 0x80 || (unit < 0xd800 && foldsToItself(unit))) &&
+      (i + 1 >= source.length || neverComposesBackward(source.codePointAt(i + 1) ?? 0))
+    ) {
+      i++;
+      continue;
+    }
+    if (i > runFrom) {
+      pushRun(runFrom, i);
+    }
     const codePoint = source.codePointAt(i) ?? 0;
     let j = i + (codePoint > 0xffff ? 2 : 1);
+    let stretch = source.slice(i, j);
+    let normalized = nfkc(stretch);
     while (j < source.length) {
       const next = source.codePointAt(j) ?? 0;
-      if (!followsAsMark(next)) {
+      if (neverComposesBackward(next)) {
         break;
       }
-      j += next > 0xffff ? 2 : 1;
+      const width = next > 0xffff ? 2 : 1;
+      const nextText = source.slice(j, j + width);
+      const together = nfkc(stretch + nextText);
+      if (together === normalized + nfkc(nextText)) {
+        break;
+      }
+      stretch += nextText;
+      normalized = together;
+      j += width;
     }
-    // ASCII with no mark after it is the bulk of every document and folds to
-    // itself lower-cased; skipping `normalize` for it is what keeps a 10 MiB
-    // source view from taking seconds.
-    const folded =
-      j - i === 1 && codePoint < 0x80 ? source[i].toLowerCase() : source.slice(i, j).normalize('NFKC').toLowerCase();
-    push(folded, i, j);
+    push(normalized.toLowerCase(), i, j);
     i = j;
+    runFrom = j;
+  }
+  if (i > runFrom) {
+    pushRun(runFrom, i);
   }
 
   return { text: pieces.join(''), start: start.subarray(0, length), end: end.subarray(0, length) };
@@ -181,13 +267,21 @@ export function searchFindIndex(index: FindIndex, query: string, limit = FIND_MA
   for (let b = 0; b < index.blocks.length; b++) {
     const block = index.blocks[b];
     const { text, start, end } = block.folded;
+    // Where the last match ended in the original. One original character can
+    // fold to several (`ﬀ` is `ff`), so two folded matches can map back to the
+    // same stretch of text; the second is not another occurrence, and counting
+    // it would make a step land where the reader already is.
+    let covered = 0;
     let from = text.indexOf(needle);
     while (from !== -1) {
-      if (matches.length === limit) {
-        return { matches, overflow: true };
-      }
       const to = from + needle.length;
-      matches.push({ block: b, start: locate(block, start[from], 'start'), end: locate(block, end[to - 1], 'end') });
+      if (start[from] >= covered) {
+        if (matches.length === limit) {
+          return { matches, overflow: true };
+        }
+        matches.push({ block: b, start: locate(block, start[from], 'start'), end: locate(block, end[to - 1], 'end') });
+        covered = end[to - 1];
+      }
       from = text.indexOf(needle, to);
     }
   }
