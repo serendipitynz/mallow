@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ShikiTransformer } from 'shiki';
+import { setFindTarget } from '../lib/find-target';
 import { useT } from '../lib/i18n';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from '../lib/shiki';
 import { countLines, highlightSkipReason } from '../lib/source-cap';
@@ -88,6 +89,24 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
     hostRef.current?.querySelector('.src-error-line')?.scrollIntoView({ block: 'center' });
   }, [html, code, errorLine]);
 
+  // Every view that shows a source registers it for find, so none of them needs
+  // code of its own for it (TASK-47).
+  useEffect(() => {
+    const host = hostRef.current;
+    const scroller = host?.closest<HTMLElement>('.doc-scroll');
+    if (!host || !scroller) {
+      return;
+    }
+    return setFindTarget({ root: host, scroller });
+  }, []);
+
+  /* Memoised for the reason `MarkdownView` memoises its article (TASK-29): a
+     literal is a new object on every render, and React rewrites `innerHTML`
+     whenever the object differs — which replaces every text node a find match
+     is a range over, so the highlights would drop out on any re-render above
+     this view until find re-ran. */
+  const sourceHtml = useMemo(() => ({ __html: html }), [html]);
+
   return (
     <div className="src-view" ref={hostRef} style={{ '--src-gutter-digits': gutterDigits(lineCount) } as CSSProperties}>
       {skipReason !== null && (
@@ -102,7 +121,7 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
            for the file's text, not the file's text. Shiki escapes what it highlights, so the document
            cannot contribute markup. This is the same boundary AGENTS.md sets out under
            "Untrusted-Markdown boundary", with the CSP as the second layer. */
-        <div dangerouslySetInnerHTML={{ __html: html }} />
+        <div dangerouslySetInnerHTML={sourceHtml} />
       )}
     </div>
   );
