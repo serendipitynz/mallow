@@ -194,8 +194,8 @@ function render(result, args) {
     '|---|---|---|',
     rows,
     '',
-    `records: pages ${records.pages}, page size ${records.pageSize}, median word height ${
-      records.medianWordHeight === null ? 'n/a' : records.medianWordHeight.toFixed(2)
+    `records: pages ${records.pages}, page size ${records.pageSize}, median CJK advance ${
+      records.cjkAdvance === null ? 'n/a' : records.cjkAdvance.toFixed(2)
     }, text x ${extent ? `${extent.min.toFixed(1)}–${extent.max.toFixed(1)}` : 'n/a'}, words on page 2 ${
       records.wordsOnPage2
     }, ${records.bytes} bytes`,
