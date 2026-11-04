@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { isJsonPlist } from '../lib/file';
 import { useT } from '../lib/i18n';
@@ -10,6 +10,7 @@ import type { FileEntry } from '../lib/types';
 import type { FileViewState } from '../lib/visit-history';
 import { Busy } from './Busy';
 import { ConfigView } from './ConfigView';
+import { FindBar, type FindBarHandle } from './FindBar';
 import { HtmlView } from './HtmlView';
 import { MarkdownView } from './MarkdownView';
 import { MediaView } from './MediaView';
@@ -27,6 +28,8 @@ interface ViewerProps {
    *  how it is left this time (TASK-44). */
   remembered: FileViewState | null;
   onLeave: (path: string, state: FileViewState) => void;
+  /** Where `App` drives the find bar from: the chords and the menu. */
+  findRef?: Ref<FindBarHandle>;
 }
 
 /** Kinds rendered by the WebView from the file itself, not by reading its text. */
@@ -34,7 +37,7 @@ function isMediaKind(kind: FileEntry['kind']): boolean {
   return kind === 'image' || kind === 'pdf' || kind === 'video';
 }
 
-export function Viewer({ file, reloadToken, remembered, onLeave }: ViewerProps) {
+export function Viewer({ file, reloadToken, remembered, onLeave, findRef }: ViewerProps) {
   const t = useT();
   /* The text is held with the path it was read from, and a view is only ever
      given text whose path is the one now open. Without that the previous file's
@@ -137,47 +140,29 @@ export function Viewer({ file, reloadToken, remembered, onLeave }: ViewerProps) 
     setWindowTitle(windowTitle(label ?? documentTitle(file, text ?? '')));
   }, [file?.path, file?.kind, file?.name, text, viewTitle, error]);
 
+  /* The find bar is the first child of the one `<main>` every branch renders, so
+     it keeps its place in the tree — and with it the query — across a file
+     change, a reload, and a read that is still in flight (TASK-47). */
+  let body: ReactNode;
   if (!file) {
-    return (
-      <main className="viewer viewer--empty">
-        <p>{t('selectFile')}</p>
-      </main>
+    body = <p>{t('selectFile')}</p>;
+  } else if (isMediaKind(file.kind)) {
+    body = <MediaView key={file.path} file={file} reloadToken={reloadToken} />;
+  } else if (error) {
+    body = (
+      <div className="viewer__placeholder is-error">
+        <code>{file.path}</code>
+        <Notice level="failure">{readErrorMessage(error, t)}</Notice>
+      </div>
     );
-  }
-
-  if (isMediaKind(file.kind)) {
-    return (
-      <main className="viewer">
-        <MediaView key={file.path} file={file} reloadToken={reloadToken} />
-      </main>
+  } else if (text === null) {
+    body = loading && (
+      <div className="viewer__placeholder">
+        <Busy>{t('loading')}</Busy>
+      </div>
     );
-  }
-
-  if (error) {
-    return (
-      <main className="viewer">
-        <div className="viewer__placeholder is-error">
-          <code>{file.path}</code>
-          <Notice level="failure">{readErrorMessage(error, t)}</Notice>
-        </div>
-      </main>
-    );
-  }
-
-  if (text === null) {
-    return (
-      <main className="viewer">
-        {loading && (
-          <div className="viewer__placeholder">
-            <Busy>{t('loading')}</Busy>
-          </div>
-        )}
-      </main>
-    );
-  }
-
-  return (
-    <main className="viewer">
+  } else {
+    body = (
       <ViewerBody
         key={file.path}
         file={file}
@@ -185,6 +170,14 @@ export function Viewer({ file, reloadToken, remembered, onLeave }: ViewerProps) 
         onDocumentTitle={reportTitle}
         memory={{ remembered, leave: (state) => onLeave(file.path, state) }}
       />
+    );
+  }
+
+  const pending = file !== null && !isMediaKind(file.kind) && error === null && text === null;
+  return (
+    <main className={file ? 'viewer' : 'viewer viewer--empty'}>
+      <FindBar ref={findRef} hidden={!file} pending={pending} />
+      {body}
     </main>
   );
 }

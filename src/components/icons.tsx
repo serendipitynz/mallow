@@ -270,6 +270,24 @@ export function SettingsIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** lucide: chevron-up (the previous find match) */
+export function ChevronUpIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m18 15-6-6-6 6" />
+    </Icon>
+  );
+}
+
+/** lucide: chevron-down (the next find match) */
+export function ChevronDownIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m6 9 6 6 6-6" />
+    </Icon>
+  );
+}
+
 /** lucide: x (modal close) */
 export function CloseIcon({ size = 16 }: IconProps) {
   return (

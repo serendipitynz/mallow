@@ -5,6 +5,7 @@ import { useOutlineFocusReturn } from '../hooks/useOutlineFocusReturn';
 import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { UNATTENDED } from '../lib/build-flags';
 import { enhanceCodeBlocks } from '../lib/codeblock';
+import { setFindTarget } from '../lib/find-target';
 import { useT } from '../lib/i18n';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { setMarkdownPreviewActive } from '../lib/markdown-preview';
@@ -189,6 +190,17 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
     }
     setMarkdownPreviewActive(true);
     return () => setMarkdownPreviewActive(false);
+  }, [mode]);
+
+  // Find searches the article in preview; in source the `SourceView` below
+  // registers itself.
+  useEffect(() => {
+    const article = articleRef.current;
+    const scroller = scrollRef.current;
+    if (mode !== 'preview' || !article || !scroller) {
+      return;
+    }
+    return setFindTarget({ root: article, scroller });
   }, [mode]);
 
   /* **Memoised on `result`, and that is the fix for TASK-29 rather than a

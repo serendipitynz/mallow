@@ -9,6 +9,12 @@ import { CloseIcon } from './icons';
 // `covered`, not mount order — see `keyboardOwner`.
 const openModals: ModalEntry[] = [];
 
+/** Whether a modal is open in this window. Find reads it because opening its bar
+ *  would take the focus out of a modal that holds it (snz-design doc-9 §5.3). */
+export function isModalOpen(): boolean {
+  return openModals.length > 0;
+}
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 

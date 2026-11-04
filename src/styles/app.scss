@@ -550,6 +550,69 @@
   background: var(--color-bg);
 }
 
+// ---- Find bar (TASK-47) -----------------------------------------------------
+// In the viewer's flow above the view rather than over it, so it hides nothing
+// the reader is looking for and adds nothing the `.doc__bar` clearance has to
+// account for. The padding leaves room for the input's outside focus ring,
+// which `.viewer`'s `overflow: hidden` would otherwise clip (snz-design doc-16
+// §6.3).
+.find-bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-bg);
+  border-bottom: 1px solid $border;
+}
+
+.find-bar__label {
+  font-size: 13px;
+  color: $ink;
+}
+
+// snz-design doc-8 §6.3's single-line input: the control line, the raised
+// surface, and the focus added outside it.
+.find-bar__input {
+  flex: 0 1 260px;
+  min-width: 0;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 13px;
+  color: $ink;
+  background: $surface-raised;
+  border: 1px solid $control-border;
+  border-radius: $radius-control;
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.find-bar__status {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: $muted;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// The matches, and the current one over them. The text colour changes with the
+// face, so neither is told by the face alone; the current one takes the warn
+// colour as a solid face with the page's own ground as its ink.
+::highlight(mallow-find) {
+  color: var(--color-attention-fg);
+  background-color: var(--color-attention-bg);
+}
+
+::highlight(mallow-find-current) {
+  color: var(--color-bg);
+  background-color: var(--color-orange);
+}
+
 .viewer--empty,
 .viewer__placeholder {
   display: flex;

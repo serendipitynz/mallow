@@ -132,6 +132,9 @@ Installing an update may need the system's permission.
 - **Back and forward**: go back to a file the window showed before, in the
   view and at the scroll position you left it in. See
   [Back and forward](#back-and-forward).
+- **Find in the open document**: `Cmd/Ctrl+F` finds text in a Markdown
+  document (preview or source) and in every source view. See
+  [Find in the open document](#find-in-the-open-document).
 - **Hide the explorer**: `Cmd/Ctrl+B`, **View → Toggle Explorer** or the panel
   button at the end of the toolbar on the explorer's side gives the document the
   explorer's width, and brings the explorer back at the width it had.
@@ -156,6 +159,9 @@ change in every open window at once.
 | Settings… | `Cmd/Ctrl+,` |
 | Print… | `Cmd/Ctrl+P` |
 | Export as PDF… | `Cmd/Ctrl+E` |
+| Find… (Edit menu) | `Cmd/Ctrl+F` |
+| Find Next (Edit menu) | `Cmd+G` on macOS, `F3` on Windows and Linux |
+| Find Previous (Edit menu) | `Cmd+Shift+G` on macOS, `Shift+F3` on Windows and Linux |
 | Toggle Explorer (View menu) | `Cmd/Ctrl+B` |
 | Back (View menu) | `Cmd+[` on macOS, `Alt+Left` on Windows and Linux |
 | Forward (View menu) | `Cmd+]` on macOS, `Alt+Right` on Windows and Linux |
@@ -190,6 +196,29 @@ folder in the window starts it again, and it is not kept across a relaunch.
 On Windows and Linux the mouse buttons do nothing over a rendered HTML
 document, and on Windows neither do the keys while it has the focus — click
 outside it first.
+
+### Find in the open document
+
+`Cmd/Ctrl+F` (or **Edit → Find…**) opens a find bar above the document. Every
+match is highlighted, the current one in a stronger colour, and the bar shows
+where you are (`3 / 12`). **Enter** and **Shift+Enter**, the Find Next / Find
+Previous keys and the bar's arrows move between matches and wrap at the ends;
+**Escape** closes the bar and puts the focus back where it was.
+
+- Case is ignored, and full-width and half-width forms are the same (`ＡＢＣ`
+  finds `abc`, `ｶﾞｲﾄﾞ` finds `ガイド`). Hiragana and katakana are not.
+- A match can run across formatting within a paragraph: `foobar` finds
+  `foo**bar**` in the preview.
+- The bar stays open when the document reloads, when you switch between
+  preview and source, and when you open another file; the same text is found
+  again there.
+- It finds text in a Markdown document's preview and source, and in every
+  source view (JSON, YAML, TOML, XML, CSV and HTML sources, and plain text,
+  INI, diff and SQL). The JSON / YAML / TOML / XML trees, the CSV table and
+  the rendered HTML view have no find yet. Text inside a rendered Mermaid
+  diagram is not searched.
+- The count stops at 1,000 (`1000+`), and only the first 1,000 matches are
+  highlighted and reachable.
 
 ### Opening files from outside mallow
 

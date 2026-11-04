@@ -46,6 +46,7 @@ macro_rules! app_handler {
             settings::commit_setting,
             settings::settings_read_stamp,
             menu::report_markdown_preview,
+            menu::report_find_available,
             menu::report_history_moves,
             handover::take_handover,
             handover::inspect_dropped
