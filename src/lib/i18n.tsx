@@ -85,6 +85,16 @@ const ja: Dict = {
   // markdown view
   outline: 'アウトライン',
   contents: '目次',
+  // find in the open document
+  find: '検索',
+  findPrevious: '前の一致',
+  findNext: '次の一致',
+  findClose: '検索を閉じる',
+  findPosition: '{current} / {total}',
+  findTotal: '{total} 件',
+  findTotalOne: '1 件',
+  findNone: '一致なし',
+  findUnavailable: 'この表示では検索できません',
   preview: 'プレビュー',
   source: 'ソース',
   viewMode: '表示モード',
@@ -237,6 +247,16 @@ const en: Dict = {
   // markdown view
   outline: 'Outline',
   contents: 'Contents',
+  // find in the open document
+  find: 'Find',
+  findPrevious: 'Previous match',
+  findNext: 'Next match',
+  findClose: 'Close find',
+  findPosition: '{current} / {total}',
+  findTotal: '{total} matches',
+  findTotalOne: '1 match',
+  findNone: 'No matches',
+  findUnavailable: 'Find is not available in this view',
   preview: 'Preview',
   source: 'Source',
   viewMode: 'View mode',

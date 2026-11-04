@@ -70,8 +70,18 @@
   .app__footer,
   .doc__bar,
   .doc-outline,
+  .find-bar,
   .modal-overlay {
     display: none;
+  }
+
+  // Find's highlights are registered on the ranges, not written into the
+  // article, so hiding the bar leaves them painted; the paper takes the text
+  // as it would be without a find open.
+  ::highlight(mallow-find),
+  ::highlight(mallow-find-current) {
+    color: var(--color-ink);
+    background-color: transparent;
   }
 
   // The copy controls are screen affordances; on paper they are empty boxes over
