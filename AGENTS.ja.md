@@ -849,7 +849,11 @@ Comments と Functions の規約は機械的に検査されない。コメント
   再実行するときだけ）が許さないので、`lib/find-dom` は Range を `CSS.highlights` に
   登録する（全一致は `mallow-find`、いまの一致は priority 1 の `mallow-find-current`）。
   インライン要素をまたぐ Range も含めて、3 つの WebView すべてで塗られ、
-  `MutationObserver` に記録が出ないことは TASK-46 が測った。**検索対象はウィンドウに
+  `MutationObserver` に記録が出ないことは TASK-46 が測った。**2 つとも登録は一度だけで、
+  変えるのは Range だけ**。登録済みのハイライトを同じ名前の新しいものに置き換えると、
+  WebKit では古い塗りが残る。入力途中の一致がいまの一致の色のまま残るのをオーナーが
+  macOS と Linux で見ており（Windows では出ない）、アプリと同じスクロール枠と sticky の
+  バーを置いた Safari で置き換えは 3/3 で再現し、その場で更新すると 0/3 だった（2026-11-05）。**検索対象はウィンドウに
   1 つで、検索を持つビューが登録する**（`lib/find-target`）。Markdown のプレビューは
   article を、`SourceView` は自分を登録するので、どのソース表示も自前のコードなしで
   検索を持つ。何も登録しないビューには検索がなく、その不在がそのままゲートになる。

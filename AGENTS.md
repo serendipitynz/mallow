@@ -959,7 +959,12 @@ hold rather than as an exhaustive style guide.
   so `lib/find-dom` registers ranges in `CSS.highlights` (`mallow-find`, and
   `mallow-find-current` at priority 1 for the current match), which TASK-46
   measured painting on all three WebViews with no `MutationObserver` record,
-  including a range across inline elements. **What is searched is one target per
+  including a range across inline elements. **Both are registered once and only
+  their ranges change**: replacing a registered highlight with a new one under
+  the same name left the old one's paint behind on WebKit — the owner saw a
+  keystroke's current match stay painted while typing, on macOS and Linux and
+  not on Windows, and Safari reproduced it 3/3 with the app's scroller and
+  sticky bar against 0/3 when updated in place (2026-11-05). **What is searched is one target per
   window, registered by the view that has find** (`lib/find-target`): the markdown
   preview registers its article, and `SourceView` registers itself, which is how
   every source view has find with no code of its own. A view that registers

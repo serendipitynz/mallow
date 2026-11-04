@@ -99,32 +99,55 @@ export function collectFindText(root: HTMLElement): Text[][] {
 const MATCH_HIGHLIGHT = 'mallow-find';
 const CURRENT_HIGHLIGHT = 'mallow-find-current';
 
-function registry(): HighlightRegistry | undefined {
-  return typeof CSS !== 'undefined' ? CSS.highlights : undefined;
+/* The two highlights are registered once and only ever have their ranges
+   changed. **Replacing a registered highlight with a new one under the same
+   name leaves the old one's paint behind on WebKit** — measured 2026-11-05 in
+   Safari (the system WebKit WKWebView uses), and seen by the owner on macOS and
+   Linux, not on Windows: typing `icon` left the `i` the first keystroke had made
+   current painted in the current colour. It took the app's shape to show — text
+   in an `overflow: auto` scroller under a sticky bar with `backdrop-filter` — and
+   on that page replacing failed three runs out of three, while updating the
+   registered highlight in place, or deleting it before setting a new one, left
+   nothing in any run. Updating in place is the one taken: the registry is
+   touched once, so there is no ordering between delete and set to get wrong. */
+let highlights: { match: Highlight; current: Highlight } | null = null;
+
+function registered(): { match: Highlight; current: Highlight } | null {
+  if (highlights) {
+    return highlights;
+  }
+  if (typeof CSS === 'undefined' || !CSS.highlights) {
+    return null;
+  }
+  const match = new Highlight();
+  const current = new Highlight();
+  current.priority = 1;
+  CSS.highlights.set(MATCH_HIGHLIGHT, match);
+  CSS.highlights.set(CURRENT_HIGHLIGHT, current);
+  highlights = { match, current };
+  return highlights;
 }
 
-/** Paint every match, and the current one over them. The current one is a
- *  second highlight at a higher priority rather than a different style on one
- *  range, which is the drawing TASK-46 saw work on all three. */
+/** Paint every match, and the current one over them at a higher priority —
+ *  the drawing TASK-46 saw work on all three WebViews. */
 export function paintMatches(ranges: readonly Range[], current: Range | null): void {
-  const highlights = registry();
-  if (!highlights) {
+  const painted = registered();
+  if (!painted) {
     return;
   }
-  highlights.set(MATCH_HIGHLIGHT, new Highlight(...ranges));
+  painted.match.clear();
+  for (const range of ranges) {
+    painted.match.add(range);
+  }
+  painted.current.clear();
   if (current) {
-    const highlight = new Highlight(current);
-    highlight.priority = 1;
-    highlights.set(CURRENT_HIGHLIGHT, highlight);
-  } else {
-    highlights.delete(CURRENT_HIGHLIGHT);
+    painted.current.add(current);
   }
 }
 
 export function clearMatches(): void {
-  const highlights = registry();
-  highlights?.delete(MATCH_HIGHLIGHT);
-  highlights?.delete(CURRENT_HIGHLIGHT);
+  highlights?.match.clear();
+  highlights?.current.clear();
 }
 
 /** The scroller's `scroll-padding-top`, read back rather than restated: it is the
