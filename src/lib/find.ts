@@ -36,11 +36,19 @@ export interface FoldedText {
    into one syllable, where every piece is a letter. Testing the pair rather than
    listing the classes means no category is missed by having been left off.
 
+   A combining mark stays with the stretch even where the pair test passes,
+   because NFKC reorders the marks after a character before composing: in `a` +
+   U+0315 + U+0300 the first pair is unchanged, yet the grave moves ahead of
+   U+0315 and composes `à` (PR #86's review). Within the marks of one character
+   is the only place that reordering reaches.
+
    Some characters can never be the second half of a composition — ASCII, kana
    other than the two voiced marks, CJK ideographs — so a stretch ends before one
    without the test. They are the bulk of the documents mallow shows, and
    skipping two `normalize` calls per character for them is what keeps a long
    Japanese document quick to fold. */
+const MARK = /\p{M}/u;
+
 function neverComposesBackward(codePoint: number): boolean {
   return (
     codePoint < 0x80 ||
@@ -157,7 +165,7 @@ export function foldForFind(source: string): FoldedText {
       const width = next > 0xffff ? 2 : 1;
       const nextText = source.slice(j, j + width);
       const together = nfkc(stretch + nextText);
-      if (together === normalized + nfkc(nextText)) {
+      if (together === normalized + nfkc(nextText) && !MARK.test(nextText)) {
         break;
       }
       stretch += nextText;

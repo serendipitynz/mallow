@@ -115,6 +115,12 @@ describe('searchFindIndex', () => {
     expect(matchedText([['x \uAC00 y']], '\uFFA1\uFFC2')).toEqual(['\uAC00']);
   });
 
+  it('finds a mark that NFKC moves past another one and composes', () => {
+    // NFKC reorders U+0300 ahead of U+0315 and composes it with `a`.
+    expect(matchedText([['x a\u0315\u0300 y']], '\u00e0\u0315')).toEqual(['a\u0315\u0300']);
+    expect(matchedText([['x \u00e0\u0315 y']], 'a\u0315\u0300')).toEqual(['\u00e0\u0315']);
+  });
+
   it('counts one original character once, however many characters it folds to', () => {
     // `ﬀ` folds to `ff`: two folded matches for `f`, one stretch of text.
     expect(matchedText([['ﬀ']], 'f')).toEqual(['ﬀ']);

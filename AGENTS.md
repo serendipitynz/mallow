@@ -974,7 +974,9 @@ hold rather than as an exhaustive style guide.
   character joins the one before it when normalizing the pair differs from
   normalizing them apart — rather than as a character plus its marks: U+FF9E /
   U+FF9F and Hangul jamo are letters, so a mark class left `ｶﾞ` apart from `ガ`
-  and jamo apart from their syllable (PR #86's review). Two folded matches that
+  and jamo apart from their syllable (PR #86's review). A combining mark stays in
+  the stretch even where the pair test passes, because NFKC reorders marks before
+  composing (`a` + U+0315 + U+0300 composes `à`). Two folded matches that
   map back to one original stretch (`ﬀ` is `ff`) count once. Folding a 10 MiB
   source is cheap only because runs of characters that fold to themselves are
   taken whole. Text is joined per block — a new run
