@@ -4,7 +4,7 @@ title: Find text in the open document
 status: In Review
 assignee: []
 created_date: '2026-11-03 19:23'
-updated_date: '2026-11-04 05:06'
+updated_date: '2026-11-04 20:52'
 labels:
   - feature
 milestone: m-7
@@ -43,14 +43,14 @@ Out of scope, for a follow-up once this lands: the config and XML trees (settled
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Cmd+F on macOS and Ctrl+F on Windows and Linux opens a find bar with the focus in its input, in the markdown preview, the markdown source and every view rendering through SourceView
+- [x] #1 Cmd+F on macOS and Ctrl+F on Windows and Linux opens a find bar with the focus in its input, in the markdown preview, the markdown source and every view rendering through SourceView
 - [x] #2 Matching is a case-insensitive substring match with full-width and half-width forms treated as one (NFKC) and hiragana and katakana kept distinct, and a match may cross inline element boundaries within a block; the pure matching and offset mapping are unit-tested
 - [x] #3 Matches are painted with the CSS Custom Highlight API and the current match is drawn distinctly from the rest; finding writes nothing into the article's DOM
-- [ ] #4 Enter and Shift+Enter, and Cmd+G / Cmd+Shift+G on macOS or F3 / Shift+F3 on Windows and Linux, move to the next and previous match, wrapping at the ends, and the current match is scrolled into view clear of .doc__bar
+- [x] #4 Enter and Shift+Enter, and Cmd+G / Cmd+Shift+G on macOS or F3 / Shift+F3 on Windows and Linux, move to the next and previous match, wrapping at the ends, and the current match is scrolled into view clear of .doc__bar
 - [x] #5 The bar shows the current position and the total (n / m), a zero-match state, and stops counting at 1,000 with 1000+; the count reaches a screen reader through a live region
 - [x] #6 Escape closes the bar, clears every highlight and returns the focus to where it was before the bar opened
-- [ ] #7 The chord is consumed in every view, including those without find, and the Edit menu carries Find…, Find Next and Find Previous on all three platforms, disabled in a window whose active view has no find
-- [ ] #8 A watcher reload, the preview / source toggle and moving to another file keep the bar open and re-run the same query
+- [x] #7 The chord is consumed in every view, including those without find, and the Edit menu carries Find…, Find Next and Find Previous on all three platforms, disabled in a window whose active view has no find
+- [x] #8 A watcher reload, the preview / source toggle and moving to another file keep the bar open and re-run the same query
 - [x] #9 The input follows snz-design doc-8 §6.3, and every string is in both the ja and en dictionaries
 - [x] #10 pnpm lint, pnpm build and pnpm test pass, and cargo fmt --check, cargo check and cargo test pass inside src-tauri/
 <!-- AC:END -->
@@ -99,4 +99,18 @@ Out of scope, for a follow-up once this lands: the config and XML trees (settled
 - Linux で GTK のアクセラレータとフロントエンドの keydown が両方動いて `F3` で 2 つ進まないか (TASK-44 の戻る / 進むでは 1 回だけだった)。
 - IME 変換中の Enter / Escape を受けないことは、ハーネスで IME を動かせないので未確認。
 - ハイライトの色の比は測っていない (全一致は warn-soft の面に on-warn-soft の字、現在の一致は warn の面に地の色の字)。
+
+## オーナーの実窓確認 (2026-11-05)
+
+- AC #1・#4・#7・#8: macOS・Windows・Linux のすべてで OK (オーナー)。Linux は Ubuntu 24.04 (VMware Workstation 17 Player)。
+- 気付き 1: Linux でメニューから選んだ Edit の Find / Find Next / Find Previous と View の Back / Forward が何もしない。chord では動く。別タスク TASK-49 として起票した (`eab1234`)。
+- 気付き 2: macOS と Linux で、入力途中の一致がいまの一致の色のまま残る (`icon` を打つと `i` の段階で選ばれた `luc[i]de` の `i`、`build` を打つと `bu` の段階の `contri[bu]tors`)。Windows では出ない。下の追加修正で直した。
+
+## 追加修正: WebKit で入力途中のハイライトが残る (PR#86 のマージ後、TASK-47 の中で修正)
+
+- 原因: `paintMatches` が打鍵ごとに `CSS.highlights.set` で同じ名前の Highlight を新しいオブジェクトに置き換えていた。WebKit は置き換えで外れた範囲を描き直さない。
+- 計測 (2026-11-05, macOS の Safari = WKWebView と同じシステム WebKit): 単純なページでは置き換えでも再現しなかった。アプリと同じ形 (`overflow: auto` のスクロール枠と、`backdrop-filter` の sticky バー) にすると、置き換えは 3/3 で `i` が残り、登録済みの Highlight をその場で更新 (`clear()` / `add()`) した場合と、`delete` してから `set` した場合はどちらも 0/3。閉じたとき (全消去) も更新と delete-first は何も残らず、置き換えで残った塗りは閉じても消えなかった。
+- 修正: 2 つの Highlight を一度だけ登録し、以後は Range を入れ替えるだけにした (`src/lib/find-dom.ts`)。delete-first ではなくこちらにしたのは、登録が一度だけなので delete と set の順序を誤る余地がないため。
+- 実際のコードでの確認: FindBar とプレビューの構成を組んだ一時的なハーネス (コミットしていない) を Safari で開き、スクリプトで `i` → `ic` → `ico` → `icon` と入力した。修正前は 3/3 で `luc|de` が残り (オーナーの macOS のスクリーンショットと同じ)、修正後は 0/3。Chromium でも修正後に 2 件が塗られ、いまの一致が 1 件であることを確認した。
+- 未確認: Linux (WebKitGTK) での修正後の見え方。オーナーの再確認待ち。
 <!-- SECTION:NOTES:END -->
