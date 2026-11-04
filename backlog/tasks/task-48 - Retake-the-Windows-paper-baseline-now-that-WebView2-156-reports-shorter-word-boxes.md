@@ -3,10 +3,10 @@ id: TASK-48
 title: >-
   Retake the Windows paper baseline now that WebView2 156 reports shorter word
   boxes
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-03 22:25'
-updated_date: '2026-11-04 02:39'
+updated_date: '2026-11-04 03:51'
 labels:
   - bug
 dependencies: []
@@ -33,7 +33,7 @@ Two ways out, and which one is the owner's decision. (a) Retake ci-windows from 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Whether to retake the baseline or change what the scale check measures is decided with the owner and recorded on this task, with the reason
-- [ ] #2 The Windows leg of the paper job passes on a run of the merged change, with the measurement it passed on recorded on this task
+- [x] #2 The Windows leg of the paper job passes on a run of the merged change, with the measurement it passed on recorded on this task
 - [x] #3 Any baseline retaken carries in its from the run id it came from and the WebView2 version that produced the paper, and was accepted by the owner after looking at the PDF
 - [x] #4 If the scale measure changes, every key in _required is retaken under the new measure and AGENTS.md's description of the paper job matches it
 <!-- AC:END -->
@@ -81,4 +81,13 @@ Two ways out, and which one is the owner's decision. (a) Retake ci-windows from 
 
 - Windows ランナーが 12.00 (= CSS の 16px ちょうど) なのに対して、macOS と Linux のランナーは 12.80 (16/15 倍) で書いている。その差がどこから来るか (縮小か、フォントの送り幅か) は調べていない。環境ごとの基準値なので判定には影響しない。
 - AC #2 (マージされる変更での Windows レグの合格) は PR の paper ジョブの結果を待つ。
+
+## AC #2 の測定 (マージ後)
+
+PR #85 は 2026-11-04 にマージ (merge commit 2a2f674)。merge commit のツリーはレビュー済み HEAD e67f450 と同一 (git diff が空) なので、e67f450 で走った PR の paper ジョブ run 41762270179 がマージされた変更の実行にあたる。
+
+- Windows light / dark とも PASS: median CJK advance 12.00 vs baseline 12.00 (0.0% off, tolerance 5%)、ほかの項目もすべて ok。PDF の書き手は WebView2 156 (Edg/156.0.0.0) / Skia/PDF m156、15 ページ。
+- macOS / Linux のレグも同じ run で PASS。
+
+Merged via #85
 <!-- SECTION:NOTES:END -->
