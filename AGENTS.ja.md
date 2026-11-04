@@ -77,6 +77,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   Segmented（セグメント。各ビューアの表示切替と設定の選択。語を持つ組を置く側は
   `container: segmented / inline-size` を宣言し、22rem の縦積みはこの名前で問い合わせる。図形だけの組を置く側は宣言しない）、Select（ネイティブの select にシェブロンを重ねて描く。data URL のシェブロンは配色に追従できないため）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
+  FindBar（開いている文書の中の検索。バー・件数・移動。下の gotcha を見る）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
@@ -108,6 +109,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   および click event から同じ解決をする `newWindowModifierHeld`）、
   `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲートと、
   それを 2 つのメニュー項目へ押し出す購読）、
+  `find`（畳み込み・照合・移動。純粋関数）、`find-dom`（検索が読むテキスト、塗る
+  ハイライト、一致を見える位置へ出す方法）、`find-target`（このウィンドウで検索する
+  対象と、chord とメニューが読むゲート）、`find-chord`（検索の 3 つの chord の
+  プラットフォームごとの割り当て）、
   `close-window`（`CmdOrCtrl+W`。Windows ではウィンドウを閉じる**唯一の**経路。
   下の gotcha を見る）、
   `print` / `pdf-export` / `new-window` / `close-window`（各入口のキー・ゲート・理由。
@@ -189,8 +194,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `focused_window` がすべてのメニューイベントが配送先を決める
   `webview_windows()` の走査、`MenuState` がメニュー構築後に変わるもの
   （Open Recent サブメニュー・`Clear Recent`・アクティブビューでゲートされる 2 項目・
-  訪問履歴でゲートされる Back / Forward）。**ゲートはどれもウィンドウごと**
-  （`report_markdown_preview`・`report_history_moves`）で、メニューはそうではない。
+  訪問履歴でゲートされる Back / Forward・ビューが検索を持つかでゲートされる Edit
+  メニューの検索 3 項目）。**ゲートはどれもウィンドウごと**
+  （`report_markdown_preview`・`report_history_moves`・`report_find_available`）で、
+  メニューはそうではない。
   3 環境で何がどう違い、なぜそうなのかは下の gotcha にある。
 - `session.rs` — restored session。settings.json の `windows` キーで、quit 時に
   開いていたウィンドウ 1 つにつき 1 エントリ（`{ label, folder, files, active }`）を
@@ -440,9 +447,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   どこかで再レンダーが起きるたびに全図がソースに戻り（コピーボタンも消え）、しかも
   effect は再実行されなかった。不変条件は「article の HTML を書くのは強化処理を再実行
   するときだけ」であり、メモのキーを HTML 文字列ではなく `result` にしているのはその
-  ため。`SourceView` は承知の上でリテラルのまま: 後から DOM を強化する処理がないので、
-  書き直しで失うのは内容ではなく再パースのコストと読者のテキスト選択であり、TASK-29 では
-  スコープ外とした。描画に失敗した図はソースを残したまま直前に `.mermaid-error` の注記を置く。
+  ため。`SourceView` も着色済みの HTML をキーに自分の分をメモ化している（TASK-47）。
+  後から DOM を強化する処理はないので、書き直しで失うのは内容ではなく再パースのコストと
+  読者のテキスト選択だったが、検索の一致が Range を張るテキストノードもすべて差し替わる。描画に失敗した図はソースを残したまま直前に `.mermaid-error` の注記を置く。
   `suppressErrorRendering` は、mermaid 自身のエラー図が `<body>` に残って紙まで届くのを
   防ぐためのもの。
 - **未信頼 Markdown の境界**（`dangerouslySetInnerHTML` を安全に保つための前提。README
@@ -837,6 +844,33 @@ Comments と Functions の規約は機械的に検査されない。コメント
   インラインスタイルで写すこと。バーの高さは markdown と同じく親のスクローラの padding が
   持つ。フレームの中からのジャンプは移す前と同じ位置に着いた（Blink。WKWebView は
   オーナーの確認）。
+- **検索は CSS Custom Highlight API で塗り、ビューには何も書き込まない**（TASK-47）。
+  一致を `<mark>` で包むのは TASK-29 の不変条件（article の HTML を書くのは強化処理を
+  再実行するときだけ）が許さないので、`lib/find-dom` は Range を `CSS.highlights` に
+  登録する（全一致は `mallow-find`、いまの一致は priority 1 の `mallow-find-current`）。
+  インライン要素をまたぐ Range も含めて、3 つの WebView すべてで塗られ、
+  `MutationObserver` に記録が出ないことは TASK-46 が測った。**検索対象はウィンドウに
+  1 つで、検索を持つビューが登録する**（`lib/find-target`）。Markdown のプレビューは
+  article を、`SourceView` は自分を登録するので、どのソース表示も自前のコードなしで
+  検索を持つ。何も登録しないビューには検索がなく、その不在がそのままゲートになる。
+  chord も Edit メニューの 3 項目も同じで、メニュー側は `report_markdown_preview` と
+  同じく `report_find_available` でウィンドウごとにゲートする。**chord はどのビューでも
+  消費する**（`lib/chord` の規則）。消費しない `Ctrl+F` で WebView2 が自分の検索バーを
+  開くことを TASK-46 が測っており、`F3` はそのバーの「次を検索」である。**照合は
+  畳み込んだ写しで行う**（`lib/find`。NFKC のあと小文字化）。NFKC は長さを変えるので、
+  畳み込んだ各コード単位は元のどの範囲から来たかを持つ。文字はその後ろの結合文字と一緒に
+  畳み込み、半角の濁点・半濁点 U+FF9E / U+FF9F もここでは結合文字として扱う。
+  `\p{M}` では文字（Lm）なので、そうしないと `ｶﾞ` と `ガ` が一致しない。テキストは
+  ブロックごとに連結する（最も近いブロック要素が変わるところで区切る）ので、
+  `foo**bar**` はまたげるが段落の境はまたがない。**バーはビューアの流れの中で
+  ビューの上に置く**ので何も隠さず、`.doc__bar` を避ける計算に別の項は要らない。
+  一致を見える位置へ出すときは、`Outline` と同じくスクロール枠の `scroll-padding-top`
+  を読み戻す。Range には `scrollIntoView` がないため。**バーはファイルが変わっても
+  `Viewer` の中にマウントしたまま**で、それが語を文書より長く残す仕組みである。
+  対象のルートを見る `MutationObserver` で探し直すが、observer は読むだけ。
+  `FIND_MATCH_LIMIT`（1,000）件を超えた一致は塗らず、移動でも届かない（README に書いた）。
+  文書の文字として扱わないもの: ボタン、SVG（描画した mermaid 図を含む。TASK-46 が
+  測っていない）、`aria-hidden` の部分木（ソース表示の行番号）、アプリ自身の `.notice`。
 - **描画した HTML のフレームの高さは、いま適用している高さで読む。それが収束値を
   「不動点」にしている。** フレームの高さは**そのまま文書のビューポート**なので、
   別の基準で測った高さは**その文書がレイアウトされていない高さ**である。適用すると
@@ -1540,6 +1574,11 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `handover`＝渡された答えそれぞれが何になるかと、ドロップされたどれを開くか・
   `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
   Rust への invoke が 1 回走る）・
+  `find`＝畳み込み（全角半角・大文字小文字・濁点・かなの区別）、元の位置への対応、
+  ノードはまたぎブロックはまたがないこと、上限と折り返し・
+  `find-target`＝差し替えられた対象の解放が新しい対象を消さないこと・
+  `find-chord`＝3 つの chord のプラットフォームごとの割り当てと、検索のないビューでも
+  消費すること・
   `print`・`pdf-export`・`new-window`・`close-window`・`explorer-toggle`＝各 chord のキー・ゲートと、
   イベントに対して handler が何をするか（`Print…` と `Export as PDF…` が一緒に開閉すること、
   New Window には閉じるゲートが無いことを含む）・

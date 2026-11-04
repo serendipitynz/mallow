@@ -83,8 +83,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   host declares none), Select (a native select with the chevron drawn over it,
   since a data-URL chevron cannot follow the palette), ViewPanel
   (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
-  (the turning figure beside its words), icons (inlined Lucide SVGs, no runtime
-  dependency).
+  (the turning figure beside its words), FindBar (find in the open document —
+  the bar, the count and the steps; see the gotcha below), icons (inlined Lucide
+  SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
@@ -115,7 +116,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   download accumulator), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share, and the subscription that pushes it to their menu
-  items), `close-window` (`CmdOrCtrl+W`, which on Windows is the *only* thing
+  items), `find` (the folding, the matching and the step — pure), `find-dom` (the
+  text find reads, the highlights it paints and how a match is brought into
+  view), `find-target` (what find searches in this window, and the gate the
+  chords and the menu read), `find-chord` (find's three chords per platform),
+  `close-window` (`CmdOrCtrl+W`, which on Windows is the *only* thing
   that closes a window — see the gotcha below), `print` / `pdf-export` / `new-window` / `close-window` (each entry's key,
   gate and reason — the last two have no gate), `window-init` (what a
   window opens at mount, given what it was told at creation), `handover` (what
@@ -201,9 +206,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `recent_label` the pure display text for a recent folder, `focused_window` the
   `webview_windows()` scan every menu event resolves its target with, and
   `MenuState` what has to change after the menu is built: the Open Recent
-  submenu, `Clear Recent`, the two entries gated on the active view, and Back /
-  Forward, gated on the visit history. Each gate is per window
-  (`report_markdown_preview`, `report_history_moves`) because the menu is not. See
+  submenu, `Clear Recent`, the two entries gated on the active view, Back /
+  Forward, gated on the visit history, and the Edit menu's three find entries,
+  gated on whether the view has find. Each gate is per window
+  (`report_markdown_preview`, `report_history_moves`, `report_find_available`)
+  because the menu is not. See
   the gotcha below for what differs between the three platforms and why.
 - `session.rs` — the restored session: the `windows` key in settings.json, one
   entry per window open at quit (`{ label, folder, files, active }`), ordered
@@ -479,9 +486,10 @@ hold rather than as an exhaustive style guide.
   diagram back (and took the copy buttons) without the effect running again. The
   invariant is that the article's HTML is written exactly when the enhancements
   re-run, which is why the memo is keyed on `result` and not on the HTML string.
-  `SourceView` still passes a literal, knowingly: nothing enhances its DOM
-  afterwards, so the rewrite costs a re-parse and the reader's text selection
-  rather than content, and TASK-29 left it out of scope.
+  `SourceView` memoises its own on the highlighted HTML (TASK-47): nothing
+  enhances its DOM, so a rewrite there cost a re-parse and the reader's text
+  selection rather than content, but it also replaces every text node a find
+  match is a range over.
   A diagram that fails to render keeps its source with a `.mermaid-error` note
   above it, and `suppressErrorRendering` keeps mermaid's own error diagram out of
   `<body>`, where it would otherwise stay and reach the paper.
@@ -945,6 +953,38 @@ hold rather than as an exhaustive style guide.
   each heading as an inline style at load, while the bar's height comes from the
   parent scroller's padding as it does for markdown. A jump from inside the frame
   landed where it did before the move (Blink; WKWebView is the owner's check).
+- **Find paints with the CSS Custom Highlight API and writes nothing into the
+  view** (TASK-47). Wrapping matches in `<mark>` is what TASK-29's invariant
+  rules out — the article's HTML is written only when its enhancements re-run —
+  so `lib/find-dom` registers ranges in `CSS.highlights` (`mallow-find`, and
+  `mallow-find-current` at priority 1 for the current match), which TASK-46
+  measured painting on all three WebViews with no `MutationObserver` record,
+  including a range across inline elements. **What is searched is one target per
+  window, registered by the view that has find** (`lib/find-target`): the markdown
+  preview registers its article, and `SourceView` registers itself, which is how
+  every source view has find with no code of its own. A view that registers
+  nothing has no find, and that absence is the whole gate — for the chord and
+  for the Edit menu's three entries, which `report_find_available` gates per
+  window as `report_markdown_preview` does. **The chords are consumed in every
+  view** on `lib/chord`'s rule: TASK-46 measured WebView2 opening its own find bar
+  on an unconsumed `Ctrl+F`, and `F3` is that bar's Find Next. **Matching runs on
+  a folded copy** (`lib/find`: NFKC, then lower case), and every folded code unit
+  carries the original stretch it came from, because NFKC changes lengths; a
+  character is folded with the marks after it, and the half-width voiced marks
+  U+FF9E / U+FF9F count as marks there, since they are letters to `\p{M}` and
+  `ｶﾞ` would otherwise never meet `ガ`. Text is joined per block — a new run
+  starts wherever the nearest block element changes — so a match crosses
+  `foo**bar**` but never a paragraph boundary. **The bar sits in the viewer's flow
+  above the view**, so it hides nothing and the `.doc__bar` clearance needs no
+  second term; a match is brought into view by reading the scroller's
+  `scroll-padding-top` back, the way `Outline` does, because a `Range` has no
+  `scrollIntoView`. **The bar is kept mounted in `Viewer` across file changes**,
+  which is what lets the query outlive the document, and it re-runs on a
+  `MutationObserver` over the target's root: the observer only reads. Past
+  `FIND_MATCH_LIMIT` (1,000) matches are neither painted nor reachable, which
+  README says. Excluded as not document text: buttons, SVG (so a rendered
+  mermaid diagram, which TASK-46 did not measure), `aria-hidden` subtrees (the
+  source view's line-number gutter) and the app's own `.notice` notes.
 - **The rendered HTML frame's height is read at the height currently applied,
   and that is what makes the converged value a fixed point.** The frame's height
   *is* its document's viewport, so a height measured anywhere else is a height
@@ -1744,7 +1784,12 @@ hold rather than as an exhaustive style guide.
   window opens in each of the three creation states), `handover` (what each
   handed answer becomes, and which dropped item is opened),
   `markdown-preview` (the gate, and that it notifies only on a change — one
-  invocation reaches Rust per notification), `print`,
+  invocation reaches Rust per notification), `find` (the folding — full and
+  half width, case, a voiced mark, kana kept apart — the offsets mapped back,
+  matching across nodes and not across blocks, the limit and the wrap),
+  `find-target` (that a replaced target's release does not clear the new one),
+  `find-chord` (the three chords per platform, consumed where there is no find),
+  `print`,
   `pdf-export`, `new-window`, `close-window` and `explorer-toggle` (each chord's key, gate and what the handler does
   with the event — including that `Print…` and `Export as PDF…` open and close
   together, and that New Window has no gate to close), `settings-sync` (the
