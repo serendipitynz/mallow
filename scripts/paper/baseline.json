@@ -1,26 +1,26 @@
 {
-  "_why": "The type size a person has looked at and called correct, as the median word height in points on page 2 of print-pagebreaks.md. **Keyed by environment, not by platform**: two machines running the same OS substitute different fonts for this document, so a number from one is not a measurement of the other. A key with no entry is recorded and never failed — the first paper is what a baseline is made from, and only after someone opens it and says the type is right. `ci-*` keys belong to the GitHub runners; a bare platform name is a local machine's.",
+  "_why": "The type size a person has looked at and called correct, as the median width per character, in points, of the words in print-pagebreaks.md made wholly of CJK characters (TASK-48: a CJK glyph advances by one em in every Japanese font, so this is the font size itself; the word-box height it replaced moved with the font metrics a PDF writer embeds). **Keyed by environment, not by platform**: two machines running the same OS can write the same CSS at different sizes, so a number from one is not a measurement of the other. A key with no entry is recorded and never failed — the first paper is what a baseline is made from, and only after someone opens it and says the type is right. `ci-*` keys belong to the GitHub runners; a bare platform name is a local machine's.",
   "_required_why": "Keys listed in _required must have an entry: a missing one fails the measurement instead of skipping it. That is what stops the bootstrap state — where a scaled paper passes because nothing is checking — from becoming permanent. A key goes in here at the same time as its number.",
   "_required": [
     "ci-macos",
     "ci-windows",
     "ci-linux"
   ],
-  "_how_to_add": "Run the paper job, download the artifact, open the PDF, and only if the type is the size the print stylesheet intends, copy that run's recorded median word height in here with a note saying which run it came from.",
+  "_how_to_add": "Run the paper job, download the artifact, open the PDF, and only if the type is the size the print stylesheet intends, copy that run's recorded median CJK advance in here with a note saying which run it came from and what wrote the PDF (pdfinfo's Producer, and on Windows the WebView2 version in its Creator).",
   "macos": {
-    "medianWordHeight": 18.56,
-    "from": "the print route's own paper (task-27 paper-mac-light-7a.pdf), which is the size the print stylesheet was designed against; matched by the unattended export's paper on the same machine, 2026-09-08"
+    "cjkAdvance": 12.81,
+    "from": "the print route's own paper (task-27 paper-mac-light-7a.pdf), which is the size the print stylesheet was designed against and was accepted as such 2026-09-08; remeasured from that same PDF 2026-11-04 when the scale check moved to the CJK advance (TASK-48)"
   },
   "ci-macos": {
-    "medianWordHeight": 21.0,
-    "from": "the macOS runner's own paper, accepted by the maintainer 2026-09-09 from run 34216957411 (paper-macos-light/dark, US Letter 612x792, 15 pages, text block 45.4-557.8 = the 16mm @page margin at scale 1). Letter rather than A4 because that is the runner's default paper: if that ever changes, this number changes with it."
+    "cjkAdvance": 12.81,
+    "from": "the macOS runner's own paper, accepted by the maintainer 2026-11-04 from run 41727437237 (paper-macos-light/dark, written by macOS 26.6.2 Quartz PDFContext, US Letter 612x792, 18 pages, text block 45.4-557.8 = the 16mm @page margin at scale 1). Letter rather than A4 because that is the runner's default paper: if that ever changes, this number changes with it."
   },
   "ci-windows": {
-    "medianWordHeight": 15.45,
-    "from": "the Windows runner's own paper, accepted by the maintainer 2026-09-09 from run 34216957411 (paper-windows-light/dark, US Letter 612x792, 14 pages, text block 45.0-561.5, and no WebView2 header or footer — the thing printing adds there and CSS cannot remove)."
+    "cjkAdvance": 12.0,
+    "from": "the Windows runner's own paper, accepted by the maintainer 2026-11-04 from run 41727437237 (paper-windows-light/dark, written by WebView2 156 / Skia/PDF m156, US Letter 612x792, 15 pages, text block 45.0-561.5, and no WebView2 header or footer — the thing printing adds there and CSS cannot remove). Run 41017907470's paper, written by WebView2 155, measures the same 12.00."
   },
   "ci-linux": {
-    "medianWordHeight": 33.28,
-    "from": "the Linux runner's own paper, accepted by the maintainer 2026-09-09 from run 34216957411 (paper-linux-light/dark, A4 595x842, 13 pages). **Carries a known defect** — its body starts at x=18pt where every other platform's starts at the 16mm @page margin (TASK-31) — so this number locks the type size of a paper whose layout is not yet what the stylesheet intends. Retake it if TASK-31 moves the layout."
+    "cjkAdvance": 12.8,
+    "from": "the Linux runner's own paper, accepted by the maintainer 2026-11-04 from run 41727437237 (paper-linux-light/dark, written by Skia/PDF m145, A4 595x842, 15 pages). **Carries a known defect** — its body starts at x=18pt where every other platform's starts at the 16mm @page margin (TASK-31) — so this number locks the type size of a paper whose layout is not yet what the stylesheet intends. Retake it if TASK-31 moves the layout."
   }
 }

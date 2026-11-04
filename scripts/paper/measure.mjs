@@ -78,20 +78,38 @@ function decodeEntities(text) {
     .replaceAll('&amp;', '&');
 }
 
-/** The type size, read off the paper rather than computed from the CSS.
+/** A word made wholly of CJK characters: ideographs (and the Kangxi radicals
+ *  pdftotext substitutes for some of them), kana, the prolonged sound mark,
+ *  CJK punctuation and the full-width forms. */
+const CJK_WORD =
+  /^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u2f00-\u2fdf\u3000-\u303f\u30fc\uff01-\uff60]+$/u;
+
+/** The type size, read off the paper rather than computed from the CSS: the
+ *  median width per character of the words made wholly of CJK characters.
  *
- *  A median over one page rather than a mean over the document: headings and code
- *  pull a mean around, and which page carries them depends on where the breaks
- *  fell. Page 2 is the sample because page 1 of this fixture is title matter. */
-export function medianWordHeight(words, page) {
-  const heights = words
-    .filter((word) => word.page === page)
-    .map((word) => word.y1 - word.y0)
+ *  **Horizontal, because the vertical box is not the type** (TASK-48). The height
+ *  pdftotext reports for a word comes from the font metrics the PDF writer
+ *  embeds, and WebView2 156 / Skia m156 shrank it from 15.45 to 13.22 on the
+ *  Windows runner while every one of 1,113 words kept its x position and width.
+ *  A real scale change moves both: task-27's scaled macOS paper measured 0.916
+ *  of the accepted one by either reading.
+ *
+ *  **CJK, because a CJK glyph advances by one em in every Japanese font**, so the
+ *  number is the font size itself whichever font an environment substitutes, and
+ *  it does not depend on which words a page happens to carry — Latin letters
+ *  differ in width, so their per-character width moves with the text. That is
+ *  also why this reads the whole document rather than page 2: the page sample
+ *  was there to keep headings and code from pulling the number, and a median
+ *  over some 500 CJK words is not moved by the few headings among them. */
+export function medianCjkAdvance(words) {
+  const advances = words
+    .filter((word) => CJK_WORD.test(word.text))
+    .map((word) => (word.x1 - word.x0) / [...word.text].length)
     .sort((a, b) => a - b);
-  if (heights.length === 0) {
+  if (advances.length === 0) {
     return null;
   }
-  return heights[Math.floor(heights.length / 2)];
+  return advances[Math.floor(advances.length / 2)];
 }
 
 /** Where the text block starts and ends across the page, which is what a margin
@@ -173,6 +191,11 @@ export function webView2ChromeFound(words) {
  *  fail good paper; it passes the exact defect the check exists for.** So the key
  *  names the environment, not the platform.
  *
+ *  **Those numbers are word heights, the reading TASK-48 replaced.** Under the
+ *  CJK advance the laptop and the runner agree (12.81 each), but the Windows
+ *  runner reads 12.00 for the same CSS and the macOS and Linux runners 12.80, so
+ *  environments still write different sizes and the key stays.
+ *
  *  5% is then wide enough that nothing but a real scale change moves it, and
  *  narrow enough that 0.847 cannot hide: against its own environment's baseline
  *  that shrink is 15% off. */
@@ -190,8 +213,8 @@ export const SCALE_TOLERANCE = 0.05;
 export function judgePaper({ os, key, bytes, maxBytes, pages, pageSize, words, baseline }) {
   const text = words.map((word) => word.text).join('');
   const spaced = words.map((word) => word.text).join(' ');
-  const height = medianWordHeight(words, 2);
-  const expected = baseline?.[key]?.medianWordHeight ?? null;
+  const advance = medianCjkAdvance(words);
+  const expected = baseline?.[key]?.cjkAdvance ?? null;
   const shell = markersPresent(spaced, SHELL_MARKERS);
 
   const checks = [
@@ -226,18 +249,18 @@ export function judgePaper({ os, key, bytes, maxBytes, pages, pageSize, words, b
       ok: !required,
       skipped: !required,
       detail: required
-        ? `${key} is listed as required in baseline.json but has no entry — measured ${fmt(height)}, and nothing is checking the type size`
-        : `NOT CHECKED: no baseline for ${key} yet, so a scaled paper would pass here. Measured ${fmt(height)}; a person opens this paper and, if the type is right, adds the number and the key to baseline.json`,
+        ? `${key} is listed as required in baseline.json but has no entry — measured ${fmt(advance)}, and nothing is checking the type size`
+        : `NOT CHECKED: no baseline for ${key} yet, so a scaled paper would pass here. Measured ${fmt(advance)}; a person opens this paper and, if the type is right, adds the number and the key to baseline.json`,
     });
   } else {
-    const drift = height === null ? null : Math.abs(height - expected) / expected;
+    const drift = advance === null ? null : Math.abs(advance - expected) / expected;
     checks.push({
       id: 'scale',
       ok: drift !== null && drift <= SCALE_TOLERANCE,
       detail:
-        height === null
-          ? 'no words on page 2 to measure'
-          : `median word height ${fmt(height)} vs baseline ${fmt(expected)} (${(drift * 100).toFixed(1)}% off, tolerance ${SCALE_TOLERANCE * 100}%)`,
+        advance === null
+          ? 'no CJK words to measure'
+          : `median CJK advance ${fmt(advance)} vs baseline ${fmt(expected)} (${(drift * 100).toFixed(1)}% off, tolerance ${SCALE_TOLERANCE * 100}%)`,
     });
   }
 
@@ -256,7 +279,7 @@ export function judgePaper({ os, key, bytes, maxBytes, pages, pageSize, words, b
     records: {
       pages,
       pageSize,
-      medianWordHeight: height,
+      cjkAdvance: advance,
       textExtentX: textExtentX(words, 2),
       wordsOnPage2: words.filter((word) => word.page === 2).length,
       bytes,

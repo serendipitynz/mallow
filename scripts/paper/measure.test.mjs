@@ -7,7 +7,7 @@ import {
   columnStrips,
   judgePaper,
   markersPresent,
-  medianWordHeight,
+  medianCjkAdvance,
   parseBboxWords,
   SHELL_MARKERS,
   textExtentX,
@@ -20,6 +20,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 function word(page, text, box = {}) {
   return { page, text, x0: 0, y0: 0, x1: 10, y1: 10, ...box };
+}
+
+/** A word of CJK characters set at `advance` points per character. */
+function cjk(page, text, advance, box = {}) {
+  return word(page, text, { x1: [...text].length * advance, ...box });
 }
 
 describe('parseBboxWords', () => {
@@ -56,21 +61,40 @@ describe('parseBboxWords', () => {
   });
 });
 
-describe('medianWordHeight', () => {
-  // The measurement that catches a scaled page, so it has to be per-page: a mean
-  // over the document moves with wherever the headings and code landed.
-  it('is the median height of the words on that page alone', () => {
+describe('medianCjkAdvance', () => {
+  it('is the median width per character of the CJK words, over the whole document', () => {
     const words = [
-      word(1, 'a', { y0: 0, y1: 100 }),
-      word(2, 'b', { y0: 0, y1: 10 }),
-      word(2, 'c', { y0: 0, y1: 20 }),
-      word(2, 'd', { y0: 0, y1: 30 }),
+      cjk(1, '表題', 20),
+      cjk(2, '本文', 12),
+      cjk(3, 'です。', 12.5),
+      cjk(4, '最後', 13),
+      cjk(4, '節', 11),
     ];
-    expect(medianWordHeight(words, 2)).toBe(20);
+    expect(medianCjkAdvance(words)).toBe(12.5);
   });
 
-  it('is null for a page with no words, rather than 0', () => {
-    expect(medianWordHeight([word(1, 'a')], 2)).toBeNull();
+  // Latin letters differ in width, so their per-character width moves with
+  // whichever words a page carries; a mixed word carries that too.
+  it('leaves out Latin and mixed words', () => {
+    const words = [cjk(2, '本文', 12), word(2, 'Il', { x1: 4 }), word(2, '13. 最後の節', { x1: 200 })];
+    expect(medianCjkAdvance(words)).toBe(12);
+  });
+
+  it('counts kana, CJK punctuation, full-width forms and the Kangxi radicals pdftotext returns', () => {
+    const words = [cjk(2, 'カタカナー', 12), cjk(2, 'ひらがな、', 12), cjk(2, '（全角）', 12), cjk(2, '本⽂', 12)];
+    expect(medianCjkAdvance(words)).toBe(12);
+  });
+
+  // TASK-48: WebView2 156 / Skia m156 wrote shorter word boxes into the Windows
+  // paper while every word kept its x position and width.
+  it('does not move when only the height of the word boxes changes', () => {
+    const before = [cjk(2, '本文', 12, { y0: 100, y1: 115.45 })];
+    const after = [cjk(2, '本文', 12, { y0: 101.1, y1: 114.33 })];
+    expect(medianCjkAdvance(after)).toBe(medianCjkAdvance(before));
+  });
+
+  it('is null for a paper with no CJK words, rather than 0', () => {
+    expect(medianCjkAdvance([word(2, 'body')])).toBeNull();
   });
 });
 
@@ -143,7 +167,7 @@ describe('wordsPastRightEdge', () => {
 
 describe('judgePaper', () => {
   const edge = WIDE_TABLE_EDGE_MARKERS.map((marker) => word(3, marker, { x0: 500, x1: 530, pageWidth: 595 }));
-  const words = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 18.5 }), ...edge, word(3, `13. 最後の節`)];
+  const words = [word(1, '§1'), cjk(2, '本文', 12.81), ...edge, word(3, `13. 最後の節`)];
   const base = {
     os: 'macos',
     bytes: 290_000,
@@ -152,7 +176,7 @@ describe('judgePaper', () => {
     pageSize: '595 x 842 pts (A4)',
     words,
     key: 'macos',
-    baseline: { macos: { medianWordHeight: 18.56 } },
+    baseline: { macos: { cjkAdvance: 12.81 } },
   };
 
   function check(result, id) {
@@ -225,12 +249,12 @@ describe('judgePaper', () => {
 
   // The 0.847 shrink this instrument was written for.
   it('fails a paper whose type is scaled', () => {
-    const scaled = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 15.7 }), ...edge, word(3, '13. 最後の節')];
+    const scaled = [word(1, '§1'), cjk(2, '本文', 12.81 * 0.847), ...edge, word(3, '13. 最後の節')];
     expect(check(judgePaper({ ...base, words: scaled }), 'scale').ok).toBe(false);
   });
 
   it('accepts drift inside the tolerance, since fonts differ between machines', () => {
-    const nudged = [word(1, '§1'), word(2, 'body', { y0: 0, y1: 18.0 }), ...edge, word(3, '13. 最後の節')];
+    const nudged = [word(1, '§1'), cjk(2, '本文', 12.5), ...edge, word(3, '13. 最後の節')];
     expect(check(judgePaper({ ...base, words: nudged }), 'scale').ok).toBe(true);
   });
 
@@ -266,16 +290,15 @@ describe('judgePaper', () => {
 });
 
 /* The finding this keying exists for: a baseline taken on a laptop was being
-   applied to a CI runner, whose fonts measure the same document at 21.00. Against
-   18.56 the 0.847 shrink measures 17.79 — 4.2% off, inside the tolerance — so the
-   wrong baseline would have passed the exact defect the check is for. */
+   applied to a CI runner, whose fonts measured the same document's word height at
+   21.00. Against 18.56 the 0.847 shrink measured 17.79 — 4.2% off, inside the
+   tolerance — so the wrong baseline would have passed the exact defect the check
+   is for. Those are word heights; the CJK advance that replaced them (TASK-48)
+   still differs between environments, 12.00 on the Windows runner and 12.80 on
+   the other two. */
 describe('a baseline belongs to the environment that produced it', () => {
-  const words = (height) => [
-    { page: 1, text: '§1', x0: 0, y0: 0, x1: 10, y1: 10 },
-    { page: 2, text: 'body', x0: 0, y0: 0, x1: 10, y1: height },
-    { page: 3, text: '13. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
-  ];
-  const paper = (height, key, baseline) =>
+  const words = (advance) => [word(1, '§1'), cjk(2, '本文', advance), word(3, '13. 最後の節')];
+  const paper = (advance, key, baseline) =>
     judgePaper({
       os: 'macos',
       key,
@@ -283,20 +306,20 @@ describe('a baseline belongs to the environment that produced it', () => {
       maxBytes: 10 * 1024 * 1024,
       pages: 14,
       pageSize: 'A4',
-      words: words(height),
+      words: words(advance),
       baseline,
     });
   const scaleOf = (result) => result.checks.find((check) => check.id === 'scale');
 
   it('passes the runner’s own good paper and fails its shrunk one', () => {
-    const runner = { 'ci-macos': { medianWordHeight: 21.0 } };
-    expect(scaleOf(paper(21.0, 'ci-macos', runner)).ok).toBe(true);
-    expect(scaleOf(paper(21.0 * 0.847, 'ci-macos', runner)).ok).toBe(false);
+    const runner = { 'ci-windows': { cjkAdvance: 12.0 } };
+    expect(scaleOf(paper(12.0, 'ci-windows', runner)).ok).toBe(true);
+    expect(scaleOf(paper(12.0 * 0.847, 'ci-windows', runner)).ok).toBe(false);
   });
 
   it('does not reach for another environment’s number', () => {
-    const laptopOnly = { macos: { medianWordHeight: 18.56 } };
-    expect(scaleOf(paper(21.0, 'ci-macos', laptopOnly))).toMatchObject({ skipped: true });
+    const laptopOnly = { macos: { cjkAdvance: 12.81 } };
+    expect(scaleOf(paper(12.81, 'ci-macos', laptopOnly))).toMatchObject({ skipped: true });
   });
 });
 
@@ -314,7 +337,7 @@ describe('a required baseline cannot be skipped', () => {
       pageSize: 'A4',
       words: [
         { page: 1, text: '§1', x0: 0, y0: 0, x1: 10, y1: 10 },
-        { page: 2, text: 'body', x0: 0, y0: 0, x1: 10, y1: 21 },
+        cjk(2, '本文', 12.81),
         ...WIDE_TABLE_EDGE_MARKERS.map((text) => ({ page: 3, text, x0: 0, y0: 0, x1: 10, y1: 10 })),
         { page: 3, text: '13. 最後の節', x0: 0, y0: 0, x1: 10, y1: 10 },
       ],
@@ -338,9 +361,9 @@ describe('a required baseline cannot be skipped', () => {
   });
 
   it('checks normally once the key has both an entry and a requirement', () => {
-    const result = paper({ _required: ['ci-macos'], 'ci-macos': { medianWordHeight: 21.0 } });
+    const result = paper({ _required: ['ci-macos'], 'ci-macos': { cjkAdvance: 12.81 } });
     expect(scaleOf(result).ok).toBe(true);
     expect(scaleOf(result).skipped).toBeFalsy();
-    expect(scaleOf(result).detail).toContain('baseline 21.00');
+    expect(scaleOf(result).detail).toContain('baseline 12.81');
   });
 });

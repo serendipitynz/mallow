@@ -1792,20 +1792,30 @@ hold rather than as an exhaustive style guide.
   and no word ends past the page's edge (TASK-36), no shell string reached the
   page, the type is within 5%
   of **its own environment's** baseline in `scripts/paper/baseline.json`, the file
-  is not a runaway, and on Windows WebView2 added no header or footer. **The
-  baseline is keyed by environment rather than by platform, and that is measured
-  rather than tidy**: this machine's macOS paper measures 18.56 where the CI
-  runner's measures 21.00, and against the wrong one of those the 0.847 shrink
-  this task chased comes out 4.2% off — inside the tolerance. A key with no entry
+  is not a runaway, and on Windows WebView2 added no header or footer. **The type
+  size is read horizontally, as the median width per character of the words made
+  wholly of CJK characters** (TASK-48): a CJK glyph advances by one em in every
+  Japanese font, so the number is the font size itself. **It used to be the median
+  word-box height on page 2, and that read the PDF writer rather than the type** —
+  WebView2 156 / Skia m156 shrank the Windows boxes from 15.45 to 13.22 while all
+  1,113 words kept their x positions and widths, and the check went red for a
+  paper that had not changed. A real scale change moves both readings alike:
+  task-27's scaled macOS paper measured 0.916 of the accepted one by either.
+  **The baseline is keyed by environment rather than by platform, and that is
+  measured rather than tidy**: under the word height this machine's macOS paper
+  measured 18.56 where the CI runner's measured 21.00, and against the wrong one
+  of those the 0.847 shrink this task chased came out 4.2% off — inside the
+  tolerance. The CJK advance narrows that gap (both macOS environments read 12.81)
+  without closing it — the Windows runner reads 12.00 and the macOS and Linux
+  runners 12.80 for the same CSS — so the key stays. A key with no entry
   is recorded and never failed, because the first paper is what a baseline is made
   from and a person has to call it right first — **and it says so loudly**, since a
   permanent skip is a check that never runs. `baseline.json`'s `_required` list is
   what ends that state: a key on it with no entry fails instead of skipping, and a
-  key goes on it at the same time as its number. **As of 2026-09-09 only
-  `ci-macos` is accepted** — the Linux runner's paper starts its text at 18pt
-  where every other paper starts at 16mm, so `@page` is not reaching that arm and
-  its type size is measured but not judged; the Windows runner's paper has no
-  defect recorded against it and is simply not accepted yet.
+  key goes on it at the same time as its number. **All three runners are on it**,
+  retaken under the CJK advance from run 41727437237. The Linux runner's number
+  locks the type size of a paper whose text starts at 18pt where every other
+  paper starts at 16mm (TASK-31), so it is retaken if that layout moves.
   **Windows builds the unattended tests without running them**: the test
   executable exits with `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) from
   `target/debug/deps`, where the WebView2 loader beside the app is not. The
