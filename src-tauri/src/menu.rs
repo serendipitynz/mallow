@@ -44,6 +44,9 @@ const EXIT: &str = "file:exit";
 const TOGGLE_EXPLORER: &str = "view:toggle-explorer";
 const BACK: &str = "view:back";
 const FORWARD: &str = "view:forward";
+const FIND: &str = "edit:find";
+const FIND_NEXT: &str = "edit:find-next";
+const FIND_PREVIOUS: &str = "edit:find-previous";
 /// Unprefixed because it predates this module and nothing is gained by churning
 /// it; the event it sends is still `menu:settings`.
 const SETTINGS: &str = "settings";
@@ -78,6 +81,20 @@ const BACK_ACCELERATOR: &str = "Alt+Left";
 #[cfg(not(target_os = "macos"))]
 const FORWARD_ACCELERATOR: &str = "Alt+Right";
 
+/// Find Next and Find Previous follow each platform's own keys rather than one
+/// `CmdOrCtrl` chord (TASK-47): `Cmd+G` / `Cmd+Shift+G` on macOS, `F3` / `Shift+F3`
+/// on Windows and Linux. `lib/find-chord` binds the same keys in the frontend,
+/// which is what acts on Windows, where a menu accelerator does not reach a
+/// WebView2-focused window (`lib/close-window`).
+#[cfg(target_os = "macos")]
+const FIND_NEXT_ACCELERATOR: &str = "Cmd+G";
+#[cfg(target_os = "macos")]
+const FIND_PREVIOUS_ACCELERATOR: &str = "Cmd+Shift+G";
+#[cfg(not(target_os = "macos"))]
+const FIND_NEXT_ACCELERATOR: &str = "F3";
+#[cfg(not(target_os = "macos"))]
+const FIND_PREVIOUS_ACCELERATOR: &str = "Shift+F3";
+
 /// What is shown in place of the recent folders when there are none. Disabled, so
 /// it reads as the list being empty rather than as an entry that does nothing.
 const NO_RECENT_TEXT: &str = "No Recent Folders";
@@ -85,10 +102,11 @@ const NO_RECENT_TEXT: &str = "No Recent Folders";
 /// The parts of the menu that change after it is built, plus what they change
 /// from.
 ///
-/// `previews` and `moves` are **per window** because the menu is not: one menu
-/// bar serves whichever window is focused on macOS, so `Print…`, `Export as PDF…`,
-/// Back and Forward have to show the focused window's answer and change as focus
-/// moves. A single value would show whichever window last reported.
+/// `previews`, `moves` and `finds` are **per window** because the menu is not: one
+/// menu bar serves whichever window is focused on macOS, so `Print…`, `Export as
+/// PDF…`, Back, Forward and the three find entries have to show the focused
+/// window's answer and change as focus moves. A single value would show whichever
+/// window last reported.
 pub struct MenuState {
     recent: Submenu<Wry>,
     clear_recent: MenuItem<Wry>,
@@ -96,10 +114,13 @@ pub struct MenuState {
     export_pdf: MenuItem<Wry>,
     back: MenuItem<Wry>,
     forward: MenuItem<Wry>,
+    find: [MenuItem<Wry>; 3],
     /// window label → whether that window's active view is a markdown preview.
     previews: Mutex<HashMap<String, bool>>,
     /// window label → where that window's visit history can move.
     moves: Mutex<HashMap<String, HistoryMoves>>,
+    /// window label → whether that window's active view has find.
+    finds: Mutex<HashMap<String, bool>>,
 }
 
 /// Whether a window's visit history has anywhere to go in each direction.
@@ -128,6 +149,9 @@ pub enum MenuAction {
     ToggleExplorer,
     Back,
     Forward,
+    Find,
+    FindNext,
+    FindPrevious,
 }
 
 pub fn menu_action(id: &str) -> MenuAction {
@@ -143,6 +167,9 @@ pub fn menu_action(id: &str) -> MenuAction {
         TOGGLE_EXPLORER => MenuAction::ToggleExplorer,
         BACK => MenuAction::Back,
         FORWARD => MenuAction::Forward,
+        FIND => MenuAction::Find,
+        FIND_NEXT => MenuAction::FindNext,
+        FIND_PREVIOUS => MenuAction::FindPrevious,
         path => MenuAction::OpenRecent(path.to_string()),
     }
 }
@@ -314,9 +341,29 @@ pub fn report_history_moves(back: bool, forward: bool, window: Window) -> Result
     Ok(())
 }
 
+/// Record whether this window's active view has find, and show the answer on the
+/// three find entries if this window is the focused one. Whether it does is
+/// decided in the frontend (`lib/find-target`: the view registers what it
+/// searches), so it is pushed as `report_markdown_preview`'s answer is; and like
+/// that one it answers `Ok` where there is no menu.
+#[tauri::command]
+pub fn report_find_available(available: bool, window: Window) -> Result<(), String> {
+    let app = window.app_handle();
+    let Some(state) = app.try_state::<MenuState>() else {
+        return Ok(());
+    };
+    state
+        .finds
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(window.label().to_string(), available);
+    apply_focused_gates(app);
+    Ok(())
+}
+
 /// Enable or disable every entry gated per window — `Print…` and `Export as PDF…`
-/// on the active view, Back and Forward on the visit history — from the focused
-/// window's reported state.
+/// on the active view, Back and Forward on the visit history, the find entries on
+/// whether the view has find — from the focused window's reported state.
 pub fn apply_focused_gates(app: &AppHandle) {
     let Some(state) = app.try_state::<MenuState>() else {
         return;
@@ -331,10 +378,17 @@ pub fn apply_focused_gates(app: &AppHandle) {
         (Some(label), Ok(moves)) => moves.get(label).copied().unwrap_or_default(),
         _ => HistoryMoves::default(),
     };
+    let find = match (label, state.finds.lock()) {
+        (Some(label), Ok(finds)) => finds.get(label).copied().unwrap_or(false),
+        _ => false,
+    };
     let _ = state.print.set_enabled(active && PRINTING_IS_REACHABLE);
     let _ = state.export_pdf.set_enabled(active);
     let _ = state.back.set_enabled(moves.back);
     let _ = state.forward.set_enabled(moves.forward);
+    for item in &state.find {
+        let _ = item.set_enabled(find);
+    }
 }
 
 /// Forget a destroyed window's reported state, and show whoever has focus now.
@@ -348,6 +402,9 @@ pub fn drop_window_gate(window: &Window) {
     }
     if let Ok(mut moves) = state.moves.lock() {
         moves.remove(window.label());
+    }
+    if let Ok(mut finds) = state.finds.lock() {
+        finds.remove(window.label());
     }
     apply_focused_gates(app);
 }
@@ -384,6 +441,9 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         MenuAction::ToggleExplorer => emit_focused(app, "menu:toggle-explorer", ()),
         MenuAction::Back => emit_focused(app, "menu:back", ()),
         MenuAction::Forward => emit_focused(app, "menu:forward", ()),
+        MenuAction::Find => emit_focused(app, "menu:find", ()),
+        MenuAction::FindNext => emit_focused(app, "menu:find-next", ()),
+        MenuAction::FindPrevious => emit_focused(app, "menu:find-previous", ()),
         MenuAction::ClearRecent => {
             if let Err(e) = crate::recent::clear_recent_list(app) {
                 eprintln!("mallow: the recent folders could not be cleared ({e})");
@@ -479,6 +539,21 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
         .accelerator(FORWARD_ACCELERATOR)
         .enabled(false)
         .build(app)?;
+    // Disabled until the focused window reports a view that has find.
+    let find = [
+        MenuItemBuilder::with_id(FIND, "Find…")
+            .accelerator("CmdOrCtrl+F")
+            .enabled(false)
+            .build(app)?,
+        MenuItemBuilder::with_id(FIND_NEXT, "Find Next")
+            .accelerator(FIND_NEXT_ACCELERATOR)
+            .enabled(false)
+            .build(app)?,
+        MenuItemBuilder::with_id(FIND_PREVIOUS, "Find Previous")
+            .accelerator(FIND_PREVIOUS_ACCELERATOR)
+            .enabled(false)
+            .build(app)?,
+    ];
 
     let about = tauri::menu::AboutMetadataBuilder::new()
         .name(Some("mallow"))
@@ -500,6 +575,7 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
         &toggle_explorer,
         &back,
         &forward,
+        &find,
         about,
     )?;
     app.set_menu(menu)?;
@@ -512,15 +588,18 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
         export_pdf,
         back,
         forward,
+        find,
         previews: Mutex::new(HashMap::new()),
         moves: Mutex::new(HashMap::new()),
+        finds: Mutex::new(HashMap::new()),
     });
     refresh_recent(app);
     Ok(())
 }
 
 /// Cut / Copy / Paste / Select All everywhere, with Undo and Redo ahead of them
-/// where the backend carries them.
+/// where the backend carries them, and the three find entries after them — as
+/// ordinary items, so no backend has a predefined kind to skip.
 ///
 /// **Linux is the one platform without those two, and that is GTK's doing rather
 /// than a choice**: muda's backend does not carry either predefined kind and skips
@@ -538,11 +617,21 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
 /// acting on an assumption about behaviour nobody has looked at, and a viewed
 /// document's own controls are reachable whatever one thinks of the workflow.
 #[cfg_attr(unattended, allow(dead_code))]
-fn edit_submenu(app: &AppHandle) -> tauri::Result<Submenu<Wry>> {
+fn edit_submenu(app: &AppHandle, find: &[MenuItem<Wry>; 3]) -> tauri::Result<Submenu<Wry>> {
     let builder = SubmenuBuilder::new(app, "Edit");
     #[cfg(not(target_os = "linux"))]
     let builder = builder.undo().redo().separator();
-    builder.cut().copy().paste().select_all().build()
+    let [find, find_next, find_previous] = find;
+    builder
+        .cut()
+        .copy()
+        .paste()
+        .select_all()
+        .separator()
+        .item(find)
+        .item(find_next)
+        .item(find_previous)
+        .build()
 }
 
 /// Register the macOS Window submenu with AppKit, **after the menu is the
@@ -589,6 +678,7 @@ fn compose(
     toggle_explorer: &MenuItem<Wry>,
     back: &MenuItem<Wry>,
     forward: &MenuItem<Wry>,
+    find: &[MenuItem<Wry>; 3],
     about: tauri::menu::AboutMetadata<'_>,
 ) -> tauri::Result<(Menu<Wry>, Option<Submenu<Wry>>)> {
     // The same View menu on all three, and made of ordinary items only, so no
@@ -637,7 +727,7 @@ fn compose(
             .close_window()
             .build()?;
 
-        let edit_menu = edit_submenu(app)?;
+        let edit_menu = edit_submenu(app, find)?;
 
         // Registering the submenu with AppKit is what makes it list the open
         // windows; Minimize and Zoom are this menu's own items.
@@ -688,7 +778,7 @@ fn compose(
             file_menu = file_menu.quit();
         }
 
-        let edit_menu = edit_submenu(app)?;
+        let edit_menu = edit_submenu(app, find)?;
 
         // About is in GTK's supported set, which is why Help needs no Linux arm.
         let help_menu = SubmenuBuilder::new(app, "Help").about(Some(about)).build()?;
@@ -720,6 +810,9 @@ mod tests {
         assert_eq!(menu_action(TOGGLE_EXPLORER), MenuAction::ToggleExplorer);
         assert_eq!(menu_action(BACK), MenuAction::Back);
         assert_eq!(menu_action(FORWARD), MenuAction::Forward);
+        assert_eq!(menu_action(FIND), MenuAction::Find);
+        assert_eq!(menu_action(FIND_NEXT), MenuAction::FindNext);
+        assert_eq!(menu_action(FIND_PREVIOUS), MenuAction::FindPrevious);
     }
 
     /// The id a recent entry carries is the path, which is what makes this the
@@ -746,6 +839,9 @@ mod tests {
             TOGGLE_EXPLORER,
             BACK,
             FORWARD,
+            FIND,
+            FIND_NEXT,
+            FIND_PREVIOUS,
         ] {
             assert!(!id.starts_with('/') && !id.starts_with('\\') && !id.contains('/') && !id.contains('\\'));
         }
