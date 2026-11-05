@@ -102,7 +102,7 @@ pub fn act_on_recent(app: &AppHandle, folder: &str, new_window: bool, spawner: O
         exists,
         new_window,
         crate::session::window_showing(app, folder),
-        crate::menu::focused_window(app).is_some(),
+        crate::menu::menu_window(app).is_some(),
     );
     match &choice {
         // The submenu is what carries the prune to the screen, and the caller is

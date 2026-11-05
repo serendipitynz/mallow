@@ -27,7 +27,7 @@
  *
  *  Two windows is what made it a test at all, and the reason survives the benign
  *  answer: **a duplicate here need not land on one window.** This handler closes
- *  *this* window, while the menu route resolves its target from `focused_window`
+ *  *this* window, while the menu route resolves its target from `menu_window`
  *  when the queued menu event is delivered (tauri-2.11.3 `src/app.rs:2350-2351`,
  *  delivered at `:2588`) — so a doubled press could resolve this window twice, or
  *  take this one and then whichever one focus moved to. **Neither ordering was
