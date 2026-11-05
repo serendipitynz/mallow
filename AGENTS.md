@@ -203,8 +203,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   that same lock.
 - `menu.rs` — the native menu, **composed per platform rather than gated**, and
   the routing of its events. `menu_action` is the pure id → action map,
-  `recent_label` the pure display text for a recent folder, `focused_window` the
-  `webview_windows()` scan every menu event resolves its target with, and
+  `recent_label` the pure display text for a recent folder, `menu_window` the
+  window every menu event resolves its target to (the `webview_windows()` scan
+  `focused_window`, with Linux's fallback — see the gotcha below), and
   `MenuState` what has to change after the menu is built: the Open Recent
   submenu, `Clear Recent`, the two entries gated on the active view, Back /
   Forward, gated on the visit history, and the Edit menu's three find entries,
@@ -1339,7 +1340,7 @@ hold rather than as an exhaustive style guide.
   **Which layer or layers act is unmeasured.** Two windows is what made it a test
   at all, and that reason survives the benign answer: **a duplicate need not land
   on one window**, because **the menu route resolves its target late** —
-  `focused_window` runs when the queued menu event is delivered
+  `menu_window` runs when the queued menu event is delivered
   (`src/app.rs:2350-2351`, delivered at `:2588`), so it could resolve this window
   twice, or take this one and then whichever one focus moved to. **Neither
   ordering was instrumented**, and a single-window round cannot show the second
@@ -1361,7 +1362,17 @@ hold rather than as an exhaustive style guide.
   have been acting on an assumption nobody has looked at. **Routing goes through `webview_windows()`**, never
   `Manager::get_focused_window`, which is behind the `unstable` cargo feature this
   project does not enable and which tauri documents as free to break in a minor
-  release (`src/lib.rs:541-560`); its implementation is that same scan. **The Rust
+  release (`src/lib.rs:541-560`); its implementation is that same scan. **On Linux
+  a menu chosen with the pointer reaches Rust while no window reports focus**
+  (TASK-49): tao answers `is_focused` with `gtk::Window::is_active`, and the open
+  menu holds the focus rather than the window it belongs to — measured on Ubuntu
+  24.04 under Wayland, where every such click arrived with no window focused and
+  the entries routed per window did nothing, while their accelerators, which open
+  no menu, worked. `menu_window` therefore falls back to the most recently
+  focused live window **on Linux alone**: on macOS and Windows no window focused
+  means every window is minimised or behind another app, and acting on one the
+  reader cannot see is the wrong answer there. The gated entries read the same
+  answer, so an entry is enabled for the window it would act on. **The Rust
   half of per-window delivery is only half**: a listener registered with the plain
   `listen()` carries `EventTarget::Any` and matches whatever the emitter filtered
   on, so `useWindowEvent` is what actually keeps a menu event out of the other
