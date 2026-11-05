@@ -463,6 +463,11 @@ pub fn drop_window_gate(window: &Window) {
 /// runtime; measured on Windows 2026-09-10, the inline form paints a white window
 /// that cannot even be closed, while macOS and Linux are unaffected.
 pub fn handle_event(app: &AppHandle, id: &str) {
+    // TASK-49's measurement on Linux, removed once that round is recorded: a line
+    // per menu event that arrives while no window reports focus.
+    if focused_window(app).is_none() {
+        eprintln!("mallow: menu event {id:?} arrived with no window reporting focus");
+    }
     match menu_action(id) {
         MenuAction::NewWindow => {
             let app = app.clone();
