@@ -214,7 +214,7 @@ fn home_dir() -> Option<String> {
     std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).ok()
 }
 
-/// The window a menu event acts on: the focused one.
+/// The window that reports itself focused, if any.
 ///
 /// **`webview_windows()` rather than `Manager::get_focused_window`**, which is
 /// behind the `unstable` cargo feature this project does not enable and which
@@ -226,7 +226,50 @@ pub fn focused_window(app: &AppHandle) -> Option<WebviewWindow> {
         .find(|window| window.is_focused().unwrap_or(false))
 }
 
-/// Send `event` to the focused window alone.
+/// Whether a menu chosen with the pointer can be delivered while no window
+/// reports focus.
+///
+/// **On Linux the open menu holds the focus, not the window it belongs to**
+/// (TASK-49): tao answers `is_focused` with `gtk::Window::is_active`
+/// (tao-0.35.3 `src/platform_impl/linux/window.rs:582-584`), and GDK treats a
+/// menu's grab as the focus moving to the grab window, so the toplevel stops
+/// being active while its menu is open. The item's `activate` runs as the menu
+/// closes and tauri delivers the event a loop turn later, ahead of the window
+/// getting its focus back — so a menu chosen with the pointer found no focused
+/// window and did nothing, while the same item reached through its accelerator,
+/// with no menu open, worked. A `cfg!` rather than a `#[cfg]` so the rule and its
+/// tests compile on every platform.
+const MENU_EVENT_MAY_FIND_NO_FOCUS: bool = cfg!(target_os = "linux");
+
+/// Which window a menu event acts on, given the focused one and the most recently
+/// focused live one.
+///
+/// **The fallback is Linux's alone.** On macOS and Windows a menu with no window
+/// focused is one chosen while every window is minimised or the app is behind
+/// another, and acting on a window the reader cannot see would be the wrong
+/// answer; there the focused window is the whole rule, as it was.
+fn menu_target(
+    focused: Option<String>,
+    most_recent: impl FnOnce() -> Option<String>,
+    may_find_no_focus: bool,
+) -> Option<String> {
+    match focused {
+        Some(label) => Some(label),
+        None if may_find_no_focus => most_recent(),
+        None => None,
+    }
+}
+
+/// The window a menu event acts on, and the one whose state the gated entries
+/// show — one answer for both, so an entry is enabled for the window it would
+/// act on.
+pub fn menu_window(app: &AppHandle) -> Option<WebviewWindow> {
+    let focused = focused_window(app).map(|window| window.label().to_string());
+    let label = menu_target(focused, || crate::session::most_recent_window(app), MENU_EVENT_MAY_FIND_NO_FOCUS)?;
+    app.get_webview_window(&label)
+}
+
+/// Send `event` to the window a menu event acts on, and to no other.
 ///
 /// **This is the correction TASK-12 filed against `app.emit`**: the menu handler
 /// used to broadcast `menu:settings`, which is harmless with one window and wrong
@@ -236,7 +279,8 @@ pub fn focused_window(app: &AppHandle) -> Option<WebviewWindow> {
 /// whatever the emitter filtered on, so `App` listens through
 /// `getCurrentWebviewWindow().listen` instead.
 fn emit_focused<P: serde::Serialize + Clone>(app: &AppHandle, event: &str, payload: P) {
-    let Some(window) = focused_window(app) else {
+    let Some(window) = menu_window(app) else {
+        eprintln!("mallow: a menu event found no window to act on ({event})");
         return;
     };
     if let Err(e) = app.emit_to(window.label(), event, payload) {
@@ -368,7 +412,7 @@ pub fn apply_focused_gates(app: &AppHandle) {
     let Some(state) = app.try_state::<MenuState>() else {
         return;
     };
-    let focused = focused_window(app);
+    let focused = menu_window(app);
     let label = focused.as_ref().map(|window| window.label());
     let active = match (label, state.previews.lock()) {
         (Some(label), Ok(previews)) => previews.get(label).copied().unwrap_or(false),
@@ -422,7 +466,7 @@ pub fn handle_event(app: &AppHandle, id: &str) {
     match menu_action(id) {
         MenuAction::NewWindow => {
             let app = app.clone();
-            let spawner = focused_window(&app).map(|focused| focused.as_ref().window());
+            let spawner = menu_window(&app).map(|focused| focused.as_ref().window());
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = crate::window::create_window(&app, None, None, spawner) {
                     eprintln!("mallow: New Window could not open a window ({e})");
@@ -466,7 +510,7 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         // nothing anywhere (TASK-12.5 AC #4).
         MenuAction::OpenRecent(path) => {
             let new_window = crate::modifier::new_window_modifier_held().unwrap_or(false);
-            let spawner = focused_window(app).map(|focused| focused.as_ref().window());
+            let spawner = menu_window(app).map(|focused| focused.as_ref().window());
             match crate::open_recent::act_on_recent(app, &path, new_window, spawner) {
                 crate::open_recent::RecentChoice::Replace => emit_focused(app, "menu:open-recent", path),
                 // The reason travels with the path: the same branch answers a
@@ -479,7 +523,7 @@ pub fn handle_event(app: &AppHandle, id: &str) {
             }
         }
         MenuAction::CloseWindow => {
-            if let Some(window) = focused_window(app) {
+            if let Some(window) = menu_window(app) {
                 let _ = window.close();
             }
         }
@@ -876,5 +920,22 @@ mod tests {
         assert_eq!(recent_label("/srv/R&D", None, true), "/srv/R&&D");
         assert_eq!(recent_label("/Users/reader/R&D", Some("/Users/reader"), true), "~/R&&D");
         assert_eq!(recent_label("/srv/R&D", None, false), "/srv/R&D");
+    }
+
+    #[test]
+    fn the_focused_window_is_the_target_wherever_one_reports_focus() {
+        for may_find_no_focus in [true, false] {
+            let target = menu_target(Some("w2".into()), || Some("w1".into()), may_find_no_focus);
+            assert_eq!(target.as_deref(), Some("w2"));
+        }
+    }
+
+    /// TASK-49: on Linux the open menu holds the focus, so an event chosen with
+    /// the pointer finds no focused window and has to reach the one focused last.
+    #[test]
+    fn with_no_focus_reported_only_linux_falls_back_to_the_window_focused_last() {
+        assert_eq!(menu_target(None, || Some("w1".into()), true).as_deref(), Some("w1"));
+        assert_eq!(menu_target(None, || Some("w1".into()), false), None);
+        assert_eq!(menu_target(None, || None, true), None);
     }
 }
