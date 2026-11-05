@@ -51,7 +51,7 @@ Linux ではメニューをポインタで選ぶと、イベントが `handle_ev
 - アクセラレータ（チョード）はメニューを開かないので届いていた。症状と一致する。
 - 「無効で始まる」は原因ではなかった。muda の GTK 実装は sensitive と無関係に `activate` を接続し、`set_enabled` は全ウィンドウの GTK 項目に反映する（muda-0.19.3 `src/platform_impl/gtk/mod.rs:683-690`, `:1099-1128`）。この原因は Toggle Explorer / Open… / Settings… / Close Window / Open Recent の置き換えもクリックでは失敗させていたはずで、報告がなかったのは試されていなかったため。
 
-計測（2026-11-05、所有者、Ubuntu 24.04 on VMware Workstation 17 Player、`XDG_SESSION_TYPE=wayland`、`pnpm tauri dev`）: フォーカスを報告するウィンドウが無いままメニューイベントが届いたら 1 行出す一時ログ（e2e8798、3d91ea6 で revert）を入れて各項目をクリックした。貼られたのは `menu event "view:toggle-explorer" arrived with no window reporting focus` の 2 行で、ほかに実行した項目の行も出ていた、と所有者は記憶から報告している（VM を落としたため全文は再取得していない）。X11 の GDK がグラブ中のフォーカスをグラブ先に移ったものとして扱うことはソースで読めるが、Wayland での仕組み（xdg_popup のグラブがキーボードフォーカスを取る）は実測していない。
+計測（2026-11-05、所有者、Ubuntu 24.04 on VMware Workstation 17 Player、`XDG_SESSION_TYPE=wayland`、`pnpm tauri dev`）: フォーカスを報告するウィンドウが無いままメニューイベントが届いたら 1 行出す一時ログ（e2e8798、4a9fedc で revert）を入れて各項目をクリックした。貼られたのは `menu event "view:toggle-explorer" arrived with no window reporting focus` の 2 行で、ほかに実行した項目の行も出ていた、と所有者は記憶から報告している（VM を落としたため全文は再取得していない）。X11 の GDK がグラブ中のフォーカスをグラブ先に移ったものとして扱うことはソースで読めるが、Wayland での仕組み（xdg_popup のグラブがキーボードフォーカスを取る）は実測していない。
 
 ## 修正
 
