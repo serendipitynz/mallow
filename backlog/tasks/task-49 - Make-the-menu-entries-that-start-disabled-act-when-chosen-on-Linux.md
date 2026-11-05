@@ -1,10 +1,10 @@
 ---
 id: TASK-49
 title: Make the menu entries that start disabled act when chosen on Linux
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-04 20:47'
-updated_date: '2026-11-05 03:57'
+updated_date: '2026-11-05 04:42'
 labels:
   - bug
 milestone: m-7
