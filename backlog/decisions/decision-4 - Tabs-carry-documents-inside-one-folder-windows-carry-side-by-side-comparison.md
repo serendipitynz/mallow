@@ -2,8 +2,27 @@
 id: decision-4
 title: Tabs carry documents inside one folder; windows carry side-by-side comparison
 date: '2026-08-05 21:40'
-status: accepted
+status: superseded
 ---
+## Superseded: tabs will not be built
+
+This decision designed a tab strip that is not going to exist. TASK-44 was framed
+as a trial before tabs — a back / forward history per window and a per-file memory
+of how each file was being read — and it answered the complaint tabs were meant to
+answer: returning to a document no longer costs enough to justify a second way of
+holding several. TASK-13 and its subtasks were archived on 2026-11-11 without being
+built.
+
+What this leaves in place, so nothing already built has to move:
+
+- **Comparison stays with windows** (Decision 2). That is how mallow works today;
+  it no longer needs tabs to be argued against.
+- **The restored session's `files` stays a list with an `active` entry.** The shape
+  was settled here to avoid a second migration; with one file per window it is a
+  one-element list, which costs nothing and is not reverted.
+- **`CmdOrCtrl+W` stays on Close Window.** The reassignment to Close Tab
+  (Consequences, and the comments that say "when TASK-13.3 lands") will not happen.
+
 ## Context
 
 TASK-12 turns mallow into a multi-window viewer, and states its motivation as
