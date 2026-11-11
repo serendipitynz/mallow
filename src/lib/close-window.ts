@@ -40,11 +40,7 @@
  *  **On macOS this handler does not fire**, and that is not a redundancy to
  *  remove: the menu's predefined `close_window` item takes the key equivalent
  *  before the WebView sees it. It is what the other two platforms need, where the
- *  item is an ordinary one.
- *
- *  **decision-4 moves `CmdOrCtrl+W` to Close Tab when TASK-13.3 lands**, with
- *  Close Window on `CmdOrCtrl+Shift+W`. This module is one of the two places that
- *  changes; `menu.rs` is the other. */
+ *  item is an ordinary one. */
 import { createChordHandler, type HandledChordEvent } from './chord';
 
 /** `CmdOrCtrl+W`, as the native menu layer resolves it. */

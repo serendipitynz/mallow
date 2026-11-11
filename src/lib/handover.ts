@@ -33,9 +33,9 @@ export function handedAction(item: Handed): HandedAction {
 
 /** The one dropped path a window opens, and how many were left unopened.
  *
- *  **One, not one window each**: a window carries one folder and one document
- *  until tabs exist (decision-4), and a drop names the window it lands on — so
- *  the other items would each have to open somewhere the reader did not point. */
+ *  **One, not one window each**: a window carries one folder and one document,
+ *  and a drop names the window it lands on — so the other items would each have
+ *  to open somewhere the reader did not point. */
 export function droppedToOpen(paths: readonly string[]): { path: string; skipped: number } | null {
   const [path] = paths;
   return path === undefined ? null : { path, skipped: paths.length - 1 };

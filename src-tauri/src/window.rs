@@ -16,10 +16,6 @@ const CASCADE_STEP_PX: f64 = 28.0;
 
 /// What a created window opens at mount: a folder, and the file to select inside
 /// it when the location carries one.
-///
-/// The file half becomes an ordered list plus which entry is active once one
-/// window can hold several documents (TASK-13.4). Only what this carries changes
-/// then; the deposit-and-take-once mechanism below does not.
 #[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub struct InitialLocation {
     pub folder: String,

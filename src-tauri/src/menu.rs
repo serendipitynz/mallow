@@ -753,11 +753,7 @@ fn compose(
         // `close_window` is the predefined item here and an ordinary one
         // everywhere else: muda derives a predefined item's accelerator from its
         // type and offers no setter (muda-0.19.3 `src/items/predefined.rs:331-337`),
-        // which is `CmdOrCtrl+W` on macOS and `Alt+F4` elsewhere. **decision-4
-        // moves this binding to Close Tab once TASK-13.3 lands**, with Close
-        // Window taking `CmdOrCtrl+Shift+W`; no predefined item can hold that, so
-        // that task replaces this arm with the ordinary item the other two
-        // platforms already use.
+        // which is `CmdOrCtrl+W` on macOS and `Alt+F4` elsewhere.
         let file_menu = SubmenuBuilder::new(app, "File")
             .item(new_window)
             .item(open)

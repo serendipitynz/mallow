@@ -59,8 +59,6 @@ describe('the close-window chord', () => {
     expect(calls).toEqual({ prevented: 1, closed: 1 });
   });
 
-  /* decision-4 gives `CmdOrCtrl+Shift+W` to Close Window once tabs land, so it
-     must not already answer to it. */
   it('leaves CmdOrCtrl+Shift+W alone', () => {
     const { calls, fire } = harness();
     fire({ metaKey: true, shiftKey: true });

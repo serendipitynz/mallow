@@ -1,8 +1,8 @@
 /**
  * Headings, and the seam that lets a viewer resolve them somewhere other than the
- * app document — inside an iframe (TASK-5.2) or scoped to one mounted tab
- * (TASK-13.2). `Outline` and `lib/scroll` take a `HeadingRoot` instead of calling
- * `document.getElementById`, which crosses neither boundary.
+ * app document — inside an iframe (TASK-5.2). `Outline` and `lib/scroll` take a
+ * `HeadingRoot` instead of calling `document.getElementById`, which does not reach
+ * into the frame.
  */
 
 export interface Heading {

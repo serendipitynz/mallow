@@ -178,7 +178,7 @@ export default function App() {
       void recordRecent(folder).catch((e) => console.error('Failed to record the recent folder', e));
       /* Only a folder that actually changes empties the history: a location the
          OS hands over can be a second file in the folder already open, and that
-         is a visit like any other (decision-4's rule 7 for tabs, TASK-44 here). */
+         is a visit like any other (TASK-44). */
       if (historyFolder.current !== folder) {
         historyFolder.current = folder;
         updateVisits(startFolder);
