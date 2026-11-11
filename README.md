@@ -1,3 +1,5 @@
+<img src="src-tauri/icons/128x128@2x.png" alt="" width="128">
+
 # mallow
 
 > 日本語: [README.ja.md](README.ja.md)
