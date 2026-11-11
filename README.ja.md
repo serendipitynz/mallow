@@ -1,3 +1,5 @@
+<img src="src-tauri/icons/128x128@2x.png" alt="" width="128">
+
 # mallow
 
 > English: [README.md](README.md)
