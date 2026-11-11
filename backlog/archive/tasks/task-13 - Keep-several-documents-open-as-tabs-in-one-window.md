@@ -4,7 +4,7 @@ title: Keep several documents open as tabs in one window
 status: To Do
 assignee: []
 created_date: '2026-08-05 21:44'
-updated_date: '2026-10-29 22:22'
+updated_date: '2026-11-11 01:04'
 labels:
   - feature
 dependencies: []
@@ -89,3 +89,9 @@ A split pane inside one window (that is the only thing that gives simultaneity, 
 - [ ] #7 pnpm build, pnpm test, cargo check and cargo test all pass
 - [ ] #8 No new production dependency was added
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Archived 2026-11-11 without being built. TASK-44's back / forward history and per-file view memory were the trial this umbrella was waiting on, and they answered the complaint tabs were meant to answer: returning to a document no longer hurts enough to justify a tab strip. The subtasks (TASK-13.1 to TASK-13.5) are archived with it. decision-4's window / tab split and the list shape of the restored session's `files` stay as they are; nothing built on them has to change.
+<!-- SECTION:NOTES:END -->
