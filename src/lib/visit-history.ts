@@ -6,9 +6,9 @@
  *  - **file view state** — the view mode and the scroll anchor a file was left
  *    in, restored when it is shown again, by history or by the tree alike.
  *
- *  Both belong to the window's folder and are emptied together when it changes
- *  (decision-4's rule 7 is the same rule for the tab set). Pure, so the rules are
- *  tested without a DOM; `App` holds the value and the views report into it. */
+ *  Both belong to the window's folder and are emptied together when it changes.
+ *  Pure, so the rules are tested without a DOM; `App` holds the value and the
+ *  views report into it. */
 import type { ScrollAnchor } from './scroll';
 
 /** How many entries the visit history keeps; the oldest goes first.

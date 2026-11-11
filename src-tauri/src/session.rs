@@ -6,11 +6,11 @@
 //! least-recently-focused first, so the last entry is the window that ends up
 //! focused once every window has been created in that order.
 //!
-//! **The file half is a list even though nothing here opens more than one file
-//! per window.** TASK-13's tabs do, and decision-4 settles the shape now because
-//! this module already carries a one-time migration of `lastFolder` / `lastFile`
-//! *and* a rewrite of another plugin's state file; a second round of that when
-//! tabs land costs more than one shape decision taken early.
+//! **The file half is a list even though a window opens one file.** The shape
+//! was settled while tabs were planned (decision-4, since superseded) and is kept
+//! rather than narrowed: settings.json already carries it, and narrowing it would
+//! be a second migration of a stored shape that gains the reader nothing. One
+//! file is a one-element list whose only entry is the active one.
 //!
 //! **Rust owns it for the reason Rust owns the recent list**: several windows
 //! read-modify-writing one array from JS lose entries, and from JS the read, the
@@ -56,11 +56,9 @@ const WINDOWS_KEY: &str = "windows";
 /// The pair this replaces. Read once, on the first launch after the upgrade, and
 /// then deleted so nothing can read them again.
 ///
-/// **`lastFiles` / `lastActive` are deliberately not read.** That pair only ever
-/// exists in an install that took TASK-13.4 before this task, and TASK-13.4 has
-/// not landed — so no install carries them, and a branch for them would be one
-/// nothing reaches. If tabs ever do ship ahead of a repeat of this migration,
-/// this is the place that has to grow the branch.
+/// **`lastFiles` / `lastActive` are deliberately not read.** That pair was
+/// planned for tabs, which were never built, so no install carries them and a
+/// branch for them would be one nothing reaches.
 const LEGACY_FOLDER_KEY: &str = "lastFolder";
 const LEGACY_FILE_KEY: &str = "lastFile";
 
@@ -510,9 +508,8 @@ fn update(app: &AppHandle, change: impl FnOnce(Vec<WindowEntry>) -> Vec<WindowEn
 /// frontend satisfies it with an effect on the displayed folder and selection
 /// rather than a call beside each of them.
 ///
-/// The signature stays single-file through TASK-12 — one window genuinely shows
-/// one file until tabs exist — and TASK-13 widens it to the tab set. That is a
-/// signature change against a stored shape that already accommodates it.
+/// The signature is single-file because a window shows one file; the row it
+/// writes stores that file as a one-element list (see the module doc).
 #[tauri::command]
 pub fn report_window_content(folder: Option<String>, file: Option<String>, window: Window) -> Result<(), String> {
     let label = window.label().to_string();
@@ -818,8 +815,8 @@ mod tests {
         assert_eq!(entries, vec![entry("w1", Some("/docs"), Some("/docs/a.md"))]);
     }
 
-    /// The list shape TASK-13.4 inherits: one file today is a one-element list
-    /// whose only entry is the active one.
+    /// The stored shape is a list: one file is a one-element list whose only
+    /// entry is the active one.
     #[test]
     fn the_file_half_is_a_list_naming_its_active_entry() {
         let entries = with_reported(Vec::new(), "w1", Some("/docs".into()), Some("/docs/a.md".into()));

@@ -63,8 +63,8 @@ pub enum Found {
 }
 
 /// What a handed path opens. **A file opens its own folder**: a window carries
-/// one folder (decision-4), and a document selected outside the tree it sits in
-/// would have no row to show it by.
+/// one folder, and a document selected outside the tree it sits in would have no
+/// row to show it by.
 pub fn classify(path: &Path, found: Found) -> Handed {
     let shown = path.to_string_lossy().to_string();
     match found {

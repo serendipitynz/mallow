@@ -1321,10 +1321,7 @@ hold rather than as an exhaustive style guide.
   **`CmdOrCtrl+W` is predefined on macOS and an ordinary item elsewhere**, because
   muda derives a predefined item's accelerator from its type and offers no setter
   (`src/items/predefined.rs:331-337`): that is `CmdOrCtrl+W` on macOS and
-  `Alt+F4` everywhere else. decision-4 moves the binding to Close Tab when
-  TASK-13.3 lands, with Close Window on `CmdOrCtrl+Shift+W`, which no predefined
-  item can hold — so that task replaces the macOS arm with the ordinary item the
-  other two already use. **But the ordinary item's accelerator does not arrive on
+  `Alt+F4` everywhere else. **But the ordinary item's accelerator does not arrive on
   Windows** (measured 2026-09-12): `Ctrl+W` closed nothing while the menu item
   itself worked, and the three chords that did work are exactly the ones `App`
   also registers a `keydown` handler for — so muda's accelerator does not reach a
@@ -1644,10 +1641,9 @@ hold rather than as an exhaustive style guide.
   `windows` in settings.json (`session.rs`), which **replaced `lastFolder` /
   `lastFile` rather than joining them** — two sources of truth for "where was I"
   is how they drift. Its file half is a **list** with an `active` naming one
-  entry, though nothing here opens more than one file per window: TASK-13's tabs
-  do, and decision-4 settles the shape now because this key already carries a
-  one-time migration and a rewrite of another plugin's file, and a second round
-  of both is what the list shape buys off. **A row whose label this app cannot
+  entry, though a window opens one file: the shape was settled while tabs were
+  planned (decision-4, since superseded) and is kept rather than narrowed, since
+  narrowing a stored shape is a second migration that gains the reader nothing. **A row whose label this app cannot
   open is dropped at launch** — settings.json is a file a reader can edit, and a
   duplicate `w1` fails the second build outright while a label outside the `w*`
   glob builds a window with no store, no dialogs and no title. A build that fails
@@ -1695,8 +1691,8 @@ hold rather than as an exhaustive style guide.
   cannot move it**, since nothing can claim that label again and the plugin would otherwise
   write it back forever. The settings half of the same migration seeds a
   single-entry session from `lastFolder` / `lastFile` and then deletes them;
-  `lastFiles` / `lastActive` are deliberately not read, because only an install
-  that took TASK-13.4 first could carry them and TASK-13.4 has not landed.
+  `lastFiles` / `lastActive` are deliberately not read, because that pair was
+  planned for tabs, which were never built, so no install carries them.
   **The restore is capped at 8 windows**, dropped from the least-recently-focused
   end, because a restored window is a WebView carrying its own Shiki WASM
   highlighter and its own mermaid instance. A window that was showing **no
@@ -1713,9 +1709,7 @@ hold rather than as an exhaustive style guide.
   keeping paths out of the URL: the rejected alternative
   (`index.html?folder=<encoded>`) survives a reload but puts arbitrary filesystem
   paths through URL encoding and leaves them in the address the WebView loaded.
-  The mechanism is settled — TASK-12's vocabulary is written in terms of it —
-  and TASK-13.4 widens only what it carries, the file half becoming a list plus
-  which entry is active.
+  The mechanism is settled — TASK-12's vocabulary is written in terms of it.
 - **A new window is offset off its spawner by comparing positions, not by asking
   whether the slot has remembered geometry — that question cannot be asked and
   stops being true almost immediately.** tauri-plugin-window-state keeps
