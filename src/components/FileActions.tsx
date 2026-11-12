@@ -1,3 +1,4 @@
+import { copyText } from '../lib/codeblock';
 import { useT } from '../lib/i18n';
 import { relativePath } from '../lib/path';
 import { openInDefaultApp, openInEditor, revealInOs } from '../lib/tauri';
@@ -14,11 +15,17 @@ function revealManagerKey(): string {
   return 'manager.fileManager';
 }
 
-function copyText(text: string): Promise<void> {
-  if (!navigator.clipboard?.writeText) {
-    return Promise.reject(new Error('clipboard unavailable'));
+// The legacy fallback inside `copyText` selects a textarea of its own, which
+// takes the focus the menu has just given back to its row or trigger.
+async function copyPath(text: string): Promise<void> {
+  const back = document.activeElement;
+  const ok = await copyText(text);
+  if (back instanceof HTMLElement && back.isConnected && document.activeElement !== back) {
+    back.focus();
   }
-  return navigator.clipboard.writeText(text);
+  if (!ok) {
+    throw new Error('clipboard unavailable');
+  }
 }
 
 function ActionItem({ label, onClick }: { label: string; onClick: () => void }) {
@@ -81,9 +88,9 @@ export function FileActionItems({
         </>
       )}
       <div className="menu__sep" />
-      <ActionItem label={t('copyPath')} onClick={() => choose(() => copyText(entry.path))} />
+      <ActionItem label={t('copyPath')} onClick={() => choose(() => copyPath(entry.path))} />
       {relative !== null && (
-        <ActionItem label={t('copyRelativePath')} onClick={() => choose(() => copyText(relative))} />
+        <ActionItem label={t('copyRelativePath')} onClick={() => choose(() => copyPath(relative))} />
       )}
     </>
   );
