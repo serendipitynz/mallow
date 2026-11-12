@@ -787,9 +787,15 @@ hold rather than as an exhaustive style guide.
   singleton on every print, and a stale page count is the kind of state it would
   hold — but **that is a hypothesis about the truncation and not a fix**: the cause
   was never isolated, so a complete export is not evidence for it and a truncated
-  one is not a regression against it. **The four `NSPrintInfo` margins are zeroed**
-  so `@page` is the only thing insetting the text block, which is also the geometry
-  the stylesheet was measured against. **The gate is printing's sentence with a
+  one is not a regression against it. **The four `NSPrintInfo` margins are set to
+  `@page`'s 16mm, and so are GTK's page setup margins on Linux, for two different
+  reasons**: WebKit on macOS reads `@page` only after it has computed the page box,
+  and WebKitGTK does not read it on this route at all. That second half is
+  measured (TASK-31, 2026-11-13, ubuntu 24.04 / Skia/PDF m145, one layer changed
+  per print): with no page setup given the body started at GTK's own default
+  margin of 18pt, it followed the setup's margins to 0 and to 45.4, and `@page`
+  at 0, 16mm and 30mm left the PDF byte-identical. `pdf.rs` therefore holds a copy
+  of the value, and a test reads it back out of `print.scss`. **The gate is printing's sentence with a
   different reason**: `Export as PDF…` is disabled unless the active view is
   markdown in preview because **the print stylesheet is markdown-only**, so a
   later request to export other views is a request to widen the stylesheet, not
