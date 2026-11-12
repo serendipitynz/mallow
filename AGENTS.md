@@ -1918,10 +1918,9 @@ hold rather than as an exhaustive style guide.
   permanent skip is a check that never runs. `baseline.json`'s `_required` list is
   what ends that state: a key on it with no entry fails instead of skipping, and a
   key goes on it at the same time as its number. **All three runners are on it**,
-  retaken under the CJK advance from run 41727437237. The Linux runner's number
-  is still that run's, taken while its text started at 18pt; TASK-31 moved the
-  text to the 16mm every other paper starts at, so the number is owed a retake
-  from a paper taken since.
+  retaken under the CJK advance from run 41727437237, and the Linux runner's
+  again from run 43305943952, once TASK-31 had moved its text from GTK's default
+  18pt to the 16mm every other paper starts at.
   **Windows builds the unattended tests without running them**: the test
   executable exits with `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) from
   `target/debug/deps`, where the WebView2 loader beside the app is not. The
