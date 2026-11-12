@@ -71,6 +71,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   離れたときの状態をマウント時に受け取った `leave` で報告し、内容が埋まりきるまでの間、
   覚えていたスクロールのアンカーへ戻し続ける。
 - `components/` — Explorer/FileTree、Viewer（種別でルーティング）、MarkdownView、
+  DeckView（Marp デッキのスライド表示と発表、TASK-51.2。**スライド表示中は検索・
+  アウトライン・`Print…`・`Export as PDF…` を使えない**: 検索対象を登録せず、
+  markdown プレビューの判定も立てないので、メニューの有効・無効も独自の判定なしに
+  それに従う）、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
   ソース切替）、ErrorBanner（構文エラー表示の共通部品）、MermaidView、
@@ -86,7 +90,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
   FindBar（開いている文書の中の検索。バー・件数・移動。下の gotcha を見る）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
-- `lib/` — `markdown`（markdown-it パイプライン）、`shiki`（ハイライタ singleton +
+- `lib/` — `markdown`（markdown-it パイプライン）、`is-deck`（文書が Marp デッキか。
+  描画側を必要時に読み込むため分けてある）、`deck`（2 つ目の markdown-it 上の Marpit、
+  スライドのテーマ、通知に載せる機能）、`deck-css`（デッキ自身の CSS の走査、
+  decision-18 §6）、`slide-nav`（キーでスライドがどこへ動くか）、`present`（発表の
+  コードとウィンドウの発表者）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
   `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、
   `delimited`（CSV/TSV パーサ + 表ビューの上限）、
@@ -133,7 +141,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `unattended/` — 無人書き出しのドライバ（TASK-30）。`App` の `if (UNATTENDED)` からしか
   到達せず、通常のバンドルには入らない。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin + 操作部品の状態の mixin）、
-  `global`、`app`、`markdown`、`config`、`source`、`html`、`table`、`xml`、`print`。
+  `global`、`app`、`markdown`、`config`、`source`、`html`、`table`、`xml`、`slides`、`print`。
   ほかに共通トークンの写し `snz-tokens.css` と `_snz-tokens.scss` を置く（下の
   「共通デザイン」を参照）。
 
@@ -473,6 +481,15 @@ Comments と Functions の規約は機械的に検査されない。コメント
   mermaid が inline `style` 属性を出力するため `'unsafe-inline'` を維持する。`eval` /
   `new Function` を要する、またはリモート資産を取得する依存を追加する場合は CSP の見直しが
   必要。
+  **Marp デッキの CSS は、Markdown 文書が CSS としてアプリの文書へ入れる唯一のもの**
+  （decision-18 §6、TASK-51.2）: デッキをスライドで表示している間、その `<style>` と
+  `style` ディレクティブがページに届く。Marpit が `div.marpit` 配下にスコープし、
+  at-rule は `@media`・`@supports`・`@container` だけを残し、`url()` はすべて decision-17
+  に従う（相対パスは解決し、デッキが自分で書いた `asset:` URL は宣言ごと除去）。置き場所は
+  `contain: paint` を持つスライドの器。`lib/deck-css` が postcss で走査し、テキストも
+  エンジンの CSSOM も使わない — `replaceSync` は WKWebView でも Chromium でも `@import` を
+  跡形なく捨てる（計測済み）ので、通知がそれを名指しできない。リモートの `url()` は
+  読み込まれ、これはリモート画像がすでに持つ露出と同じ。
 - **未信頼 HTML の境界**（描画表示。decision-3 を decision-9・decision-10 が改訂。README
   の "セキュリティ" 参照）: 文書は `sandbox="allow-same-origin"` かつ `allow-scripts`
   **無し**の iframe へ `srcdoc` で流し込む。文書中のスクリプトは一切実行されない一方、

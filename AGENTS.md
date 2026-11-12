@@ -75,6 +75,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   it is left at unmount, through the `leave` it was mounted with, and putting a
   remembered scroll anchor back while the content is still filling.
 - `components/` — Explorer/FileTree, Viewer (routes by file kind), MarkdownView,
+  DeckView (a Marp deck's Slides view and its presentation, TASK-51.2 — **find,
+  the outline, `Print…` and `Export as PDF…` are off while Slides is shown**: it
+  registers no find target and never sets the markdown-preview gate, so the menu
+  gates follow without a gate of their own),
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
   toggle), ErrorBanner (shared syntax-error banner), MermaidView,
@@ -96,7 +100,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (the turning figure beside its words), FindBar (find in the open document —
   the bar, the count and the steps; see the gotcha below), icons (inlined Lucide
   SVGs, no runtime dependency).
-- `lib/` — `markdown` (markdown-it pipeline), `shiki` (highlighter singleton +
+- `lib/` — `markdown` (markdown-it pipeline), `is-deck` (whether a document is a
+  Marp deck — kept apart so the renderer loads on demand), `deck` (Marpit on a
+  second markdown-it instance, the slide theme and the notice's features),
+  `deck-css` (the walk over a deck's own CSS, decision-18 §6), `slide-nav`
+  (where a key moves a slide), `present` (the present chords and the window's
+  presenter), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
   caps), `delimited` (CSV/TSV parser + table caps), `xml-tree` (XML DOM → bounded
@@ -143,7 +152,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `if (UNATTENDED)` in `App` and absent from an ordinary bundle.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin + the control-state
   mixins), `global`, `app`, `markdown`, `config`, `source`, `html`, `table`,
-  `xml`, `print`; plus the two vendored token copies `snz-tokens.css` and
+  `xml`, `slides`, `print`; plus the two vendored token copies `snz-tokens.css` and
   `_snz-tokens.scss` (see "Shared design" below).
 
 **Backend (`src-tauri/src/`)**
@@ -518,6 +527,16 @@ hold rather than as an exhaustive style guide.
   `'unsafe-inline'` because Shiki/mermaid emit inline `style` attributes. If you add
   a dep that needs `eval`/`new Function` or fetches remote assets, the CSP must be
   revisited.
+  **A Marp deck's CSS is the one thing a Markdown document puts into the app
+  document as CSS** (decision-18 §6, TASK-51.2): its `<style>` blocks and `style`
+  directive reach the page while the deck is shown as slides, scoped by Marpit to
+  `div.marpit`, with only `@media`, `@supports` and `@container` kept among its
+  at-rules, with every `url()` under decision-17 (relative paths resolved, an
+  `asset:` URL the deck wrote removed with its declaration), inside a slide host
+  that establishes `contain: paint`. `lib/deck-css` walks it with postcss, never
+  the text and never the engine's CSSOM — `replaceSync` drops an `@import` without
+  a trace in WKWebView and Chromium alike (measured), so the notice could not name
+  one. Remote `url()`s load, the exposure a remote image already has.
 - **Untrusted-HTML boundary** (the rendered view — decision-3, amended by
   decision-9 and decision-10; see README "Security"): the document is fed to an
   iframe through `srcdoc` with `sandbox="allow-same-origin"` and deliberately

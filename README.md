@@ -47,6 +47,15 @@ Installing an update may need the system's permission.
     `../x.png`); a path starting with `/` or a drive letter is not resolved
   - Table of contents (outline with scroll-spy)
   - Preview / source toggle (source view has line numbers)
+- **Marp slide decks**: a Markdown document whose front matter carries
+  `marp: true` gains a Slides view beside preview and source — one slide at a
+  time, scaled to the window, moved with the arrow keys, Page Up / Page Down,
+  Space and Home / End. Present it full-screen (`Cmd/Ctrl+Enter`) or in the
+  window with the app's chrome hidden (`Shift+Cmd/Ctrl+Enter`); `F` switches
+  between the two while presenting, a click advances, and `Esc` leaves. Slides
+  are drawn with mallow's own theme in your colour family; a deck that relies on
+  Marp's other themes, raw HTML, math or CSS at-rules mallow drops says so in a
+  line above the slides.
 - **Custom emoji**: point Settings at a folder of images and each file name
   becomes a `:shortcode:` — Slack-style `:my-team:` renders as the picture
   instead of staying literal text. See [Custom emoji](#custom-emoji).
@@ -317,6 +326,14 @@ Markdown document never becomes live DOM and an HTML one does:
   markdown-it deems dangerous (`javascript:`, `vbscript:`, `file:`, non-image
   `data:`) are dropped from links. Only `http(s)` links open (in the OS browser);
   in-page `#anchors` scroll, and any other scheme is inert.
+- **A Marp deck's own CSS** (`<style>` in the deck, or its `style` directive) is
+  applied while the deck is shown as slides — the one case where a Markdown
+  document's CSS reaches the page. It is scoped to the slides, keeps only its
+  `@media`, `@supports` and `@container` at-rules (fonts, keyframes, `@import`
+  and the rest are removed and named above the slides), resolves `url()`s like
+  images — relative paths against the document, an `asset:` URL the deck writes
+  itself removed — and is held inside the slide area, so nothing in it can draw
+  over the rest of the app. Remote `url()`s load, as remote images do.
 - **mermaid** runs with `securityLevel: 'strict'` — sanitized SVG, no click
   bindings or embedded script in diagrams.
 - **Content Security Policy** (in `tauri.conf.json`) is the second layer: scripts
