@@ -1,10 +1,10 @@
 ---
 id: TASK-51.3
 title: Give the presentation a laser pointer
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-11 01:30'
-updated_date: '2026-11-12 19:28'
+updated_date: '2026-11-12 20:18'
 labels:
   - feature
 dependencies:
@@ -75,4 +75,12 @@ It is a mouse feature: on a touch screen or with no pointer movement there is no
 
 ## 検証
 - pnpm lint / pnpm build / pnpm test（50 ファイル 634 件）すべて通過。Rust の変更なし。
+
+## レビュー（PR #94、Claude Code CLI レビュアー、2 回）
+- Codex の残量が 12%（下限 15%）だったため Claude Code CLI がレビュー。
+- 1 回目: [P2] 1 件・[P3] 2 件。すべて b8f7296 で修正。
+  - [P2] 2 本の Shift の線の間にある短い軌跡が消えると、生き残った点同士が直線でつながっていた → 点に連番 `seq` を持たせ、`lib/laser` の `trailSegments` が連続した点の間だけ線分を返す。指摘の手順を単体テストで再現。
+  - [P3] 発表開始後にマウスを動かさず L を押すと、カーソルは消えるのに点が出なかった → 位置が未知ならウィンドウ中央に点を出す。
+  - [P3] 開始時のヒントが `animationend` でしか消えなかった → タイマー（5.5 秒）でも消す。
+- 2 回目: 全件解消として b8f7296 に APPROVE（ボット）。pnpm test は 50 ファイル 636 件で通過。
 <!-- SECTION:NOTES:END -->
