@@ -4,7 +4,7 @@ title: Settle how slides are rendered and how much of Marp mallow supports
 status: In Review
 assignee: []
 created_date: '2026-11-11 01:30'
-updated_date: '2026-11-12 06:12'
+updated_date: '2026-11-12 06:25'
 labels:
   - feature
 dependencies: []
@@ -79,4 +79,9 @@ GitHub コード検索 `"marp: true" extension:md` の上位 300 件から 1 リ
 - alerts・タスクリスト・lone images・local images の各プラグインが Marpit 経由で動くか。
 
 補足: worktree で `pnpm add` したとき、pnpm のメタデータキャッシュが古く `argparse@^3.0.3` が見つからないと失敗した。`--config.cache-dir` を別にしたら解決したので、TASK-51.2 で同じエラーが出たらキャッシュを疑う。
+
+## レビュー 1 回目で追加した計測（2026-11-12、Node、Marpit 3.2.3 + markdown-it 14.2.0、html: false）
+- HTML コメントのディレクティブは html: false でも効く（`_class: lead` で class が付き、`header:` が次のスライドに引き継がれる）。Marpit がコメントを自前で解釈するため。
+- `_backgroundColor: #123456` のような引用符なしの色は、Marpit 既定の `looseYAML: false` では `#` が YAML のコメントとして読まれ、無視される。`looseYAML: true`（marp-core の既定）なら適用される。決定 §1 に `looseYAML: true` を加えた。
+- Marpit 3.2.3 のパッケージ内に `inlineStyle` オプションは無い（パッケージ全体を grep して該当なし）。
 <!-- SECTION:NOTES:END -->
