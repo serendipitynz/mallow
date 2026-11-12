@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ancestorDirs, basename, dirname, isInside, join, resolvePath } from './path';
+import { ancestorDirs, basename, dirname, isInside, join, relativePath, resolvePath } from './path';
 
 describe('join', () => {
   it('appends components with the input separator', () => {
@@ -152,5 +152,41 @@ describe('resolvePath', () => {
   it('keeps the Windows separator style at the drive root', () => {
     expect(resolvePath('C:\\docs', '../img/logo.png')).toBe('C:\\img\\logo.png');
     expect(resolvePath('C:\\', 'img/logo.png')).toBe('C:\\img\\logo.png');
+  });
+});
+
+describe('relativePath', () => {
+  it('drops the root from a POSIX path', () => {
+    expect(relativePath('/Users/me/docs', '/Users/me/docs/guide/intro.md')).toBe('guide/intro.md');
+  });
+
+  it('keeps the backslash of a Windows path', () => {
+    expect(relativePath('C:\\Users\\me\\docs', 'C:\\Users\\me\\docs\\guide\\intro.md')).toBe('guide\\intro.md');
+  });
+
+  it('handles a UNC root', () => {
+    expect(relativePath('\\\\server\\share\\docs', '\\\\server\\share\\docs\\a.md')).toBe('a.md');
+  });
+
+  it('ignores a trailing separator on the root', () => {
+    expect(relativePath('/Users/me/docs/', '/Users/me/docs/a.md')).toBe('a.md');
+  });
+
+  it('gives a folder below the root', () => {
+    expect(relativePath('/Users/me/docs', '/Users/me/docs/guide')).toBe('guide');
+  });
+
+  it('works under a filesystem root', () => {
+    expect(relativePath('/', '/etc/hosts')).toBe('etc/hosts');
+    expect(relativePath('C:\\', 'C:\\a\\b.md')).toBe('a\\b.md');
+  });
+
+  it('answers null for the root itself', () => {
+    expect(relativePath('/Users/me/docs', '/Users/me/docs')).toBeNull();
+  });
+
+  it('answers null outside the root, matching whole segments', () => {
+    expect(relativePath('/Users/me/docs', '/Users/me/other/a.md')).toBeNull();
+    expect(relativePath('C:\\foo', 'C:\\foobar\\a.md')).toBeNull();
   });
 });

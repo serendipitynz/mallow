@@ -52,9 +52,17 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
 - `hooks/useWindowEvent.ts` — listening for an event **on this window alone**,
   which is the frontend half of every per-window emit (the menu's, and the
   pairing `lib/watch` already establishes for `fs:change`).
-- `hooks/useMenu.ts` — the open / close and keyboard behaviour both toolbar
-  menus share: focus onto an item on open, arrows that wrap, Escape back to the
-  trigger, Tab closing without pulling the focus back (snz-design doc-9 §6.11).
+- `hooks/useMenu.ts` — the open / close and keyboard behaviour every menu
+  shares: focus onto an item on open, arrows that wrap, Escape back to where it
+  was opened from, Tab closing without pulling the focus back (snz-design
+  doc-9 §6.11). `useMenuBody` is that shared half; `useMenu` adds the toolbar
+  menus' trigger button.
+- `hooks/useContextMenu.ts` — the explorer's row menu (TASK-50) on
+  `useMenuBody`: opened at the pointer or under the row, placed by
+  `lib/context-menu`, closed by a scroll or a resize behind it, and the row it
+  was opened on is where the focus goes back.
+- `hooks/useEditors.ts` — `detect_editors` asked once per window and shared, so
+  the toolbar's Open menu and the context menu list one answer.
 - `hooks/useOutlineFocusReturn.ts` — where the focus goes when the outline
   disappears while holding it: the toggle, or the chosen view option when the
   toggle went too (snz-design doc-9 §6.3.1).
@@ -72,6 +80,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   toggle), ErrorBanner (shared syntax-error banner), MermaidView,
   MediaView (image/pdf/video via the asset protocol), RecentFolders (the in-app
   Open Recent list, shown in the explorer's empty state), Outline, Toolbar, OpenWith,
+  FileActions (the open / reveal / copy-path items both OpenWith and the
+  explorer's context menu render — a folder gets Reveal and the copies only),
   ModeMenu (the light / dark value menu), `color` (choosing a colour axis and
   telling every window), Modal (the surface both dialogs share: focus in, held
   and returned, a fixed heading and action area around a body that alone scrolls),
@@ -104,7 +114,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   being `markdown.scss`'s), `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
-  a menu's focus), `segmented-nav` (where a key moves a segmented control's focus),
+  a menu's focus), `context-menu` (where a context menu is placed, and which keys
+  open one — pure), `segmented-nav` (where a key moves a segmented control's focus),
   `explorer-toggle` (the `CmdOrCtrl+B` chord that shows and
   hides the explorer — no gate), `visit-history` (a window's visit history and
   file view state, their bounds, and the skip over a deleted file — pure),
@@ -1815,7 +1826,7 @@ hold rather than as an exhaustive style guide.
   `outline-pref` and `prose-measure`
   (each one's cache and notification, and the stored measure read back),
   `color-choice` (each pre-split value read
-  onto the two axes, and the side a one-sided family draws), `menu-nav`, `segmented-nav`, `tree-nav`,
+  onto the two axes, and the side a one-sided family draws), `menu-nav`, `context-menu`, `segmented-nav`, `tree-nav`,
   `explorer-width`, `visit-history`, `history-nav`, and `custom-emoji`
   with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the

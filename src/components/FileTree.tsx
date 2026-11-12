@@ -1,4 +1,4 @@
-import { type CSSProperties, type KeyboardEvent, useId } from 'react';
+import { type CSSProperties, type KeyboardEvent, type MouseEvent, useId } from 'react';
 import type { FileTreeState } from '../hooks/useFileTree';
 import { useT } from '../lib/i18n';
 import type { FileEntry, FileKind } from '../lib/types';
@@ -36,9 +36,10 @@ function FileKindIcon({ kind }: { kind: FileKind }) {
 export interface TreeRowHandlers {
   tabStop: string | null;
   selectedPath: string | null;
-  onRowClick: (entry: FileEntry) => void;
+  onRowClick: (e: MouseEvent<HTMLDivElement>, entry: FileEntry) => void;
+  onRowContextMenu: (e: MouseEvent<HTMLDivElement>, entry: FileEntry) => void;
   onRowFocus: (path: string) => void;
-  onRowKeyDown: (e: KeyboardEvent<HTMLDivElement>, path: string) => void;
+  onRowKeyDown: (e: KeyboardEvent<HTMLDivElement>, entry: FileEntry) => void;
 }
 
 interface TreeProps {
@@ -88,9 +89,10 @@ function TreeItem({ entry, depth, tree, rows }: ItemProps) {
         aria-expanded={entry.isDir ? expanded : undefined}
         aria-selected={isSelected || undefined}
         aria-owns={expanded ? groupId : undefined}
-        onClick={() => rows.onRowClick(entry)}
+        onClick={(e) => rows.onRowClick(e, entry)}
+        onContextMenu={(e) => rows.onRowContextMenu(e, entry)}
         onFocus={() => rows.onRowFocus(entry.path)}
-        onKeyDown={(e) => rows.onRowKeyDown(e, entry.path)}
+        onKeyDown={(e) => rows.onRowKeyDown(e, entry)}
         title={entry.name}
       >
         <span className={`tree__chevron${entry.isDir ? '' : ' is-leaf'}${expanded ? ' is-open' : ''}`}>
