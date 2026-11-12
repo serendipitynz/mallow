@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-08 20:52'
-updated_date: '2026-11-12 21:20'
+updated_date: '2026-11-12 21:24'
 labels:
   - bug
   - 差し込み
@@ -62,7 +62,7 @@ CI ランナーと同じ ubuntu 24.04 の Docker コンテナ（arm64、libwebki
 ## 修正
 Linux 分岐で `GtkPageSetup` を作り、4 辺の余白を `page_margin_points()`（16mm）にして `set_page_setup` で渡す。用紙は `gtk_page_setup_new()` がロケールから選ぶ既定のまま（今回の環境では iso_a4）なので、余白だけが変わる。`page_margin_points` と、`print.scss` の `@page` から値を読み戻すテストは、macOS 専用から macOS + Linux に広げた。テストは macOS と Docker の Linux の両方で通った。修正後の Docker の紙は x 45.4–544.9・16 ページ・CJK 送り幅 12.81 で、macOS / Windows の 16mm と同じ位置から始まる。
 
-## AC #3 — 未チェック
+## AC #3 — 未チェック（当時。2026-11-13 に取り直し済み、末尾の「AC #3 — ベースラインの取り直し」を参照）
 ci-linux のベースライン取り直しは、この PR の paper ジョブの紙を人が見て文字サイズを認めてからにする（baseline.json の手順どおり）。Docker の 12.81 は手元の環境の値であり、CI ランナーの数としては使わない。
 
 ## AC #4 — 該当なし
@@ -74,7 +74,7 @@ CI run 41727437237 の paper-linux-light.pdf（4,335,763 bytes）をストリー
 ## 修正後の紙の判定（レビュー対応で追記）
 - この PR の CI run 43305943952（paper ジョブ、ubuntu-latest）：light / dark とも measure-paper.mjs の判定は PASS。本文 x 45.35–545.9、16 ページ、A4、CJK 送り幅 12.81（基準 12.80 との差 0.1%）。TASK-36 の検査（9 列の表の右端の値がすべてあり、ページの右端をはみ出す語がない）も通った。サイズは light 4,337,039 / dark 3,491,591 bytes。
 - 手元の Docker の紙も同じく PASS（本文 x 45.4–544.9、16 ページ、CJK 送り幅 12.81）。
-- baseline.json の ci-linux はまだ修正前の紙の数（12.8）で、注記を「レイアウトは 16mm に移った・取り直し待ち」に書き換えた。取り直しは、修正後の紙を人が見て文字サイズを認めてから行う（AC #3 はそれまで未チェック）。
+- baseline.json の ci-linux はまだ修正前の紙の数（12.8）で、注記を「レイアウトは 16mm に移った・取り直し待ち」に書き換えた。取り直しは、修正後の紙を人が見て文字サイズを認めてから行う（AC #3 はそれまで未チェック。後に取り直し済み、次節を参照）。
 
 ## AC #3 — ベースラインの取り直し
 メンテナが run 43305943952 の Linux の紙（light）を見て文字サイズを認めた（2026-11-13）ので、ci-linux を 12.80 → 12.81（同 run の CJK 送り幅の中央値）に取り直し、注記も書き直した。新しい基準で同 run の light / dark を測り直し、どちらも PASS（差 0.0%）。AGENTS.md / AGENTS.ja.md の paper の節も取り直し済みの記述に更新した。
