@@ -10,6 +10,7 @@ import './styles/source.scss';
 import './styles/html.scss';
 import './styles/table.scss';
 import './styles/xml.scss';
+import './styles/slides.scss';
 import './styles/print.scss';
 
 // No StrictMode: the viewer runs imperative DOM work (mermaid / outline / code

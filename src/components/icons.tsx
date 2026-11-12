@@ -383,3 +383,55 @@ export function LoaderCircleIcon({ size = 16 }: IconProps) {
     </Icon>
   );
 }
+
+// ---- Slides -----------------------------------------------------------------
+
+/** lucide: presentation (the Slides view) */
+export function PresentationIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M2 3h20" />
+      <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" />
+      <path d="m7 21 5-5 5 5" />
+    </Icon>
+  );
+}
+
+/** lucide: play (present full-screen) */
+export function PlayIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" />
+    </Icon>
+  );
+}
+
+/** lucide: app-window (present in the window) */
+export function AppWindowIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="M10 4v4" />
+      <path d="M2 8h20" />
+      <path d="M6 4v4" />
+    </Icon>
+  );
+}
+
+/** lucide: chevron-left (previous slide) */
+export function ChevronLeftIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m15 18-6-6 6-6" />
+    </Icon>
+  );
+}
+
+/** lucide: chevron-right (next slide) */
+export function ChevronRightIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m9 18 6-6-6-6" />
+    </Icon>
+  );
+}
