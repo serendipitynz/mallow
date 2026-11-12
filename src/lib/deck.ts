@@ -4,13 +4,12 @@
  *  directives and the notice are tested under Node. */
 import { Marpit } from '@marp-team/marpit';
 import type MarkdownIt from 'markdown-it';
-import { HTML_TAG_RE } from 'markdown-it/lib/common/html_re.mjs';
 import type StateCore from 'markdown-it/lib/rules_core/state_core.mjs';
 import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs';
 import type Token from 'markdown-it/lib/token.mjs';
 import { walkDeckCss } from './deck-css';
 import type { RefResolver } from './html-doc';
-import { createMarkdownIt, getMarkdownConfigVersion, localImageSrc } from './markdown';
+import { createMarkdownIt, getMarkdownConfigVersion, localImageSrc, resetHeadingState } from './markdown';
 
 /** Marp's own two sizes, in CSS pixels (decision-18 §4). */
 export const DECK_SIZES = {
@@ -24,12 +23,16 @@ export type DeckSize = keyof typeof DECK_SIZES;
  *  the notice above the slides (decision-18 §3). */
 export type DeckFeature =
   | { kind: 'rawHtml' }
+  /** The `math` directive only: a `$…$` in the text is not told apart from a
+   *  price, so a deck relying on Marp Core's default math goes unnamed. */
   | { kind: 'math' }
   | { kind: 'theme'; name: string }
   | { kind: 'size'; value: string }
   | { kind: 'fit' }
   | { kind: 'cssAtRule'; name: string }
-  | { kind: 'cssAssetUrl' };
+  | { kind: 'cssAssetUrl' }
+  /** CSS postcss could not parse, dropped whole. */
+  | { kind: 'cssUnparsed' };
 
 export interface DeckResult {
   /** One HTML string per slide, each Marpit's inline SVG; wrap them in
@@ -57,6 +60,7 @@ interface RenderRecord {
   fit: boolean;
   atRules: Set<string>;
   assetUrls: number;
+  unparsedCss: boolean;
 }
 
 function emptyRecord(images: RefResolver | undefined): RenderRecord {
@@ -69,6 +73,7 @@ function emptyRecord(images: RefResolver | undefined): RenderRecord {
     fit: false,
     atRules: new Set(),
     assetUrls: 0,
+    unparsedCss: false,
   };
 }
 
@@ -212,8 +217,18 @@ function walk(css: string, record: RenderRecord): string {
     record.atRules.add(name);
   }
   record.assetUrls += result.refusedAssetUrls;
+  record.unparsedCss ||= result.unparsed;
   return result.css;
 }
+
+/** An open or a closing tag as CommonMark defines one (§6.6), the shape
+ *  markdown-it's own HTML rules recognise. Written here rather than imported
+ *  from markdown-it's `lib/common/html_re.mjs`, which is not its public API: a
+ *  patch release moving that file would break every deck render. Comments and
+ *  declarations are left out, since Marpit takes comments as directives and
+ *  notes. */
+const ATTRIBUTE = `\\s+[A-Za-z_:][A-Za-z0-9_.:-]*(?:\\s*=\\s*(?:[^"'=<>\`\\x00-\\x20]+|'[^']*'|"[^"]*"))?`;
+const HTML_TAG = new RegExp(`^(?:<[A-Za-z][A-Za-z0-9-]*(?:${ATTRIBUTE})*\\s*\\/?>|<\\/[A-Za-z][A-Za-z0-9-]*\\s*>)`);
 
 /** Raw HTML is noted where markdown-it's own HTML rules would have recognised a
  *  tag, so a `<` in prose (`a < b`) is not mistaken for one; an escaped `\<` is a
@@ -223,7 +238,7 @@ function noteFeatures(token: Token, record: RenderRecord): void {
   if (token.type === 'text' && !record.rawHtml) {
     const text = token.content;
     for (let at = text.indexOf('<'); at !== -1; at = text.indexOf('<', at + 1)) {
-      if (HTML_TAG_RE.test(text.slice(at))) {
+      if (HTML_TAG.test(text.slice(at))) {
         record.rawHtml = true;
         break;
       }
@@ -254,6 +269,7 @@ function getRenderer(size: DeckSize): Promise<DeckRenderer> {
 
 function renderWith(renderer: DeckRenderer, source: string, options: DeckOptions) {
   Object.assign(renderer.record, emptyRecord(options.images));
+  resetHeadingState();
   const { html, css } = renderer.marpit.render(source, { htmlAsArray: true });
   return { slides: html, css, record: renderer.record };
 }
@@ -295,6 +311,9 @@ function unsupportedFeatures(record: RenderRecord): DeckFeature[] {
   }
   if (record.assetUrls > 0) {
     out.push({ kind: 'cssAssetUrl' });
+  }
+  if (record.unparsedCss) {
+    out.push({ kind: 'cssUnparsed' });
   }
   return out;
 }

@@ -419,6 +419,14 @@ function getMd(): Promise<MarkdownIt> {
   return mdPromise;
 }
 
+/** Start a render's heading slugs and outline afresh. The deck renderer shares
+ *  the anchor plugin's state through `createMarkdownIt`, so it calls this too —
+ *  otherwise a slug's counter would carry over from whatever rendered last. */
+export function resetHeadingState(): void {
+  slugger.reset();
+  headingSink = [];
+}
+
 export interface RenderOptions {
   /** How an image path relative to the document becomes a loadable URL. Without
    *  it such a path is left as written; a document-written `asset:` URL is
@@ -431,8 +439,7 @@ export interface RenderOptions {
 export async function renderMarkdown(src: string, options: RenderOptions = {}): Promise<RenderResult> {
   const md = await getMd();
   const { data, body } = extractFrontMatter(src);
-  slugger.reset();
-  headingSink = [];
+  resetHeadingState();
   const env: RenderEnv = { images: options.images };
   const bodyHtml = md.render(body, env);
   const html = data && Object.keys(data).length > 0 ? renderFrontMatterTable(data) + bodyHtml : bodyHtml;

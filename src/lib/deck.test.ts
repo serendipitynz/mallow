@@ -163,4 +163,24 @@ describe('renderDeck — the notice (decision-18 §3)', () => {
     expect((await renderDeck(deck('# One\n', 'size: A4\n'))).unsupported).toEqual([{ kind: 'size', value: 'A4' }]);
     expect((await renderDeck(deck('# <!-- fit --> Big\n'))).unsupported).toEqual([{ kind: 'fit' }]);
   });
+
+  it('names CSS that cannot be parsed and drops it', async () => {
+    const result = await renderDeck(deck('<style>\nh1 { color: red\n</style>\n\n# One\n'));
+    expect(result.unsupported).toEqual([{ kind: 'cssUnparsed' }]);
+  });
+
+  it('names a closing tag and a tag with attributes, but not an autolink', async () => {
+    expect((await renderDeck(deck('a </span> b\n'))).unsupported).toEqual([{ kind: 'rawHtml' }]);
+    expect((await renderDeck(deck('<img src="x.png" alt=a>\n'))).unsupported).toEqual([{ kind: 'rawHtml' }]);
+    expect((await renderDeck(deck('see <https://example.com>\n'))).unsupported).toEqual([]);
+  });
+});
+
+describe('renderDeck — heading ids', () => {
+  it('gives the same ids however many times the deck is rendered', async () => {
+    const source = deck('# Intro\n\n---\n\n# Intro\n');
+    const first = await renderDeck(source);
+    const second = await renderDeck(source);
+    expect(second.slides).toEqual(first.slides);
+  });
 });

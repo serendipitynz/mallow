@@ -120,6 +120,7 @@ const ja: Dict = {
   'deckFeature.fit': '<!-- fit --> の見出し',
   'deckFeature.cssAtRule': 'CSS の {name}（除去）',
   'deckFeature.cssAssetUrl': 'CSS 内の asset: URL（除去）',
+  'deckFeature.cssUnparsed': '解釈できない CSS（全体を除去）',
   // source view
   highlightSkipped: 'ファイルが大きいため、強調表示を省いて表示しています。',
   // html view
@@ -301,6 +302,7 @@ const en: Dict = {
   'deckFeature.fit': '<!-- fit --> headings',
   'deckFeature.cssAtRule': '{name} in CSS (removed)',
   'deckFeature.cssAssetUrl': 'asset: URLs in CSS (removed)',
+  'deckFeature.cssUnparsed': 'CSS that cannot be parsed (removed whole)',
   // source view
   highlightSkipped: 'This file is large, so it is shown without syntax highlighting.',
   // html view

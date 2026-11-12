@@ -23,7 +23,10 @@ describe('walkDeckCss', () => {
   });
 
   it('returns nothing for CSS that cannot be parsed', () => {
-    expect(walkDeckCss('h1 { color: red', undefined).css).toBe('');
+    const result = walkDeckCss('h1 { color: red', undefined);
+    expect(result.css).toBe('');
+    expect(result.unparsed).toBe(true);
+    expect(walkDeckCss('h1 { color: red }', undefined).unparsed).toBe(false);
   });
 
   it('resolves relative URLs and refuses asset: ones', () => {

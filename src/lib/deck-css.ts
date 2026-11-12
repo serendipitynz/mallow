@@ -25,6 +25,8 @@ export interface DeckCssResult {
   removedAtRules: string[];
   /** Declarations removed for naming an `asset:` URL the deck wrote itself. */
   refusedAssetUrls: number;
+  /** Whether the CSS could not be parsed and was dropped whole. */
+  unparsed: boolean;
 }
 
 /** Walk one piece of a deck's CSS. CSS postcss cannot parse comes back empty:
@@ -34,7 +36,7 @@ export function walkDeckCss(css: string, images: RefResolver | undefined): DeckC
   try {
     root = postcss.parse(css);
   } catch {
-    return { css: '', removedAtRules: [], refusedAssetUrls: 0 };
+    return { css: '', removedAtRules: [], refusedAssetUrls: 0, unparsed: true };
   }
   const removed = new Set<string>();
   root.walkAtRules((rule) => {
@@ -54,7 +56,7 @@ export function walkDeckCss(css: string, images: RefResolver | undefined): DeckC
       setValue(decl, value);
     }
   });
-  return { css: root.toString(), removedAtRules: [...removed], refusedAssetUrls };
+  return { css: root.toString(), removedAtRules: [...removed], refusedAssetUrls, unparsed: false };
 }
 
 function setValue(decl: Declaration, value: string): void {
