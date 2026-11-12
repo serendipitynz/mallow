@@ -791,12 +791,14 @@ hold rather than as an exhaustive style guide.
   `@page`'s 16mm, and so are GTK's page setup margins on Linux, for two different
   reasons**: WebKit on macOS reads `@page` only after it has computed the page box,
   and WebKitGTK does not read it on this route at all. That second half is
-  measured (TASK-31, 2026-11-13, ubuntu 24.04 / Skia/PDF m145, one layer changed
-  per print): with no page setup given the body started at GTK's own default
-  margin of 18pt, it followed the setup's margins to 0 and to 45.4, and `@page`
-  at 0, 16mm and 30mm left the PDF byte-identical. `pdf.rs` therefore holds a copy
-  of the value, and a test reads it back out of `print.scss`. **The gate is printing's sentence with a
-  different reason**: `Export as PDF…` is disabled unless the active view is
+  measured (TASK-31, 2026-11-13, in an arm64 ubuntu 24.04 container built like
+  the paper job — Skia/PDF m145, reproducing run 41727437237's paper exactly —
+  with one layer changed per print): with no page setup given the body started at
+  GTK's own default margin of 18pt, it followed the setup's margins to 0 and to
+  45.4, and `@page` at 0, 16mm and 30mm left the PDF byte-identical. `pdf.rs`
+  therefore holds a copy of the value, and a test reads it back out of
+  `print.scss`. **The gate is printing's sentence with a different reason**:
+  `Export as PDF…` is disabled unless the active view is
   markdown in preview because **the print stylesheet is markdown-only**, so a
   later request to export other views is a request to widen the stylesheet, not
   the entry (decision-6 makes the source view where that starts). **The chord is
@@ -1917,8 +1919,9 @@ hold rather than as an exhaustive style guide.
   what ends that state: a key on it with no entry fails instead of skipping, and a
   key goes on it at the same time as its number. **All three runners are on it**,
   retaken under the CJK advance from run 41727437237. The Linux runner's number
-  locks the type size of a paper whose text starts at 18pt where every other
-  paper starts at 16mm (TASK-31), so it is retaken if that layout moves.
+  is still that run's, taken while its text started at 18pt; TASK-31 moved the
+  text to the 16mm every other paper starts at, so the number is owed a retake
+  from a paper taken since.
   **Windows builds the unattended tests without running them**: the test
   executable exits with `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) from
   `target/debug/deps`, where the WebView2 loader beside the app is not. The

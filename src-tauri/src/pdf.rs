@@ -416,8 +416,9 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
     settings.set("output-file-format", Some("pdf"));
 
     // **The page setup is what places the body on this route, and `@page` is not
-    // read at all.** Measured 2026-11-13 under the CI runner's ubuntu 24.04
-    // (WebKitGTK writing through Skia/PDF m145), changing one layer per print: the
+    // read at all.** Measured 2026-11-13 in an arm64 ubuntu 24.04 container built
+    // like the paper job (WebKitGTK writing through Skia/PDF m145), whose unchanged
+    // paper reproduced run 41727437237's exactly, changing one layer per print: the
     // body started at x=18 with no page setup given, at 0 with the setup's margins
     // at 0 and at 45.4 with them at 16mm, while `@page { margin }` at 0, 16mm and
     // 30mm left the PDF byte-identical. The 18pt was GTK's own default

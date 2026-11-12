@@ -21,6 +21,6 @@
   },
   "ci-linux": {
     "cjkAdvance": 12.8,
-    "from": "the Linux runner's own paper, accepted by the maintainer 2026-11-04 from run 41727437237 (paper-linux-light/dark, written by Skia/PDF m145, A4 595x842, 15 pages). **Carries a known defect** — its body starts at x=18pt where every other platform's starts at the 16mm @page margin (TASK-31) — so this number locks the type size of a paper whose layout is not yet what the stylesheet intends. Retake it if TASK-31 moves the layout."
+    "from": "the Linux runner's own paper, accepted by the maintainer 2026-11-04 from run 41727437237 (paper-linux-light/dark, written by Skia/PDF m145, A4 595x842, 15 pages). Its body started at x=18pt, GTK's default page-setup margin, where every other platform's starts at the 16mm @page margin. TASK-31 moved the Linux body to 16mm by handing the export a page setup (run 43305943952: text x 45.35-545.9, 16 pages, CJK advance 12.81, PASS), so this number is still the pre-fix paper's and is owed a retake once a post-fix paper has been accepted."
   }
 }
