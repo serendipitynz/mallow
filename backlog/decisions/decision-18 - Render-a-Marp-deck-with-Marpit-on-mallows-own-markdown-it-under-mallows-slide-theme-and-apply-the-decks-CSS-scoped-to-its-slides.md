@@ -232,6 +232,17 @@ it is decided here rather than left to fall out:
   would load any file inside any granted folder, which decision-17 §1 refuses
   for a Markdown image and AGENTS.md records as "mallow is the only author of an
   `asset:` URL" in Markdown; this keeps that sentence true for deck CSS too.
+- **The walk runs once, over the deck's own CSS alone.** Never over the sheet
+  `marpit.render()` returns: there the deck's CSS is already merged with
+  mallow's theme and Marpit's structural CSS (which carries `@page` under its
+  `printable` option), so a walk over it would remove rules the deck never
+  wrote and name them in the notice, which §3 promises against. And never
+  twice: the `url()` half writes `asset:` URLs while another half removes them,
+  so a second pass over its own output would strip what the first wrote — the
+  shape §2 rules out for images. So each piece of deck CSS is walked as Marpit
+  collects it — the content of every `<style>` token `marpit_style_parse`
+  produces, and the value of the `style` directive — before
+  `marpit_style_assign` merges it. Where exactly that hooks in is TASK-51.2's.
 - **The removals and the rewriting walk parsed CSS, never the text.** The
   engine's own CSSOM is the intended parser — a constructed `CSSStyleSheet`
   whose rules are walked and serialised back — because it needs no dependency.
