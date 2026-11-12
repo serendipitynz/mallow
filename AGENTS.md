@@ -79,6 +79,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   the outline, `Print…` and `Export as PDF…` are off while Slides is shown**: it
   registers no find target and never sets the markdown-preview gate, so the menu
   gates follow without a gate of their own),
+  LaserPointer (the presentation's laser pointer, TASK-51.3 — drawn from
+  `<body>` as a dot moved by `transform` and a canvas trail, so **moving it
+  re-renders nothing and never touches the slide's DOM**; its trail logic is
+  `lib/laser`),
   ConfigView/ConfigTree, SourceView (shared, line-numbered), TableView (csv/tsv),
   XmlView/XmlTree (xml/plist/xsd/xsl), HtmlView (sandboxed srcdoc frame + source
   toggle), ErrorBanner (shared syntax-error banner), MermaidView,
@@ -104,7 +108,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   Marp deck — kept apart so the renderer loads on demand), `deck` (Marpit on a
   second markdown-it instance, the slide theme and the notice's features),
   `deck-css` (the walk over a deck's own CSS, decision-18 §6), `slide-nav`
-  (where a key moves a slide), `present` (the present chords and the window's
+  (where a key moves a slide), `laser` (the laser pointer's key and the life of
+  its trail — pure), `present` (the present chords and the window's
   presenter), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
