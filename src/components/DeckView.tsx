@@ -6,12 +6,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, use
 import { createPortal } from 'react-dom';
 import type { DeckFeature, DeckResult } from '../lib/deck';
 import { type TFn, useT } from '../lib/i18n';
+import { isLaserToggleKey } from '../lib/laser';
 import { getMarkdownConfigVersion, subscribeMarkdownConfig } from '../lib/markdown';
 import { renderMermaid } from '../lib/mermaid';
 import { dirname } from '../lib/path';
 import type { PresentPlace } from '../lib/present';
 import { clampSlide, slideStepForKey, stepSlide } from '../lib/slide-nav';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { LaserPointer, type PointerSpot } from './LaserPointer';
 import { isModalOpen, onModalOpening } from './Modal';
 import { Notice } from './Notice';
 
@@ -98,6 +100,7 @@ export function DeckView({
   const go = (next: number) => onIndex(clampSlide(next, countRef.current));
 
   usePresentationWindow(presenting, onPresentEnd);
+  const { laser, toggleLaser, lastPointer } = useLaser(presenting !== null);
 
   /* One listener for both layouts. Outside a presentation a key typed into a
      field, or Space on a button (which presses it), is left where it was going;
@@ -119,6 +122,13 @@ export function DeckView({
           onPresentPlace(presenting === 'fullscreen' ? 'window' : 'fullscreen');
           return;
         }
+        if (isLaserToggleKey(event)) {
+          event.preventDefault();
+          if (!event.repeat) {
+            toggleLaser();
+          }
+          return;
+        }
       } else if (keyBelongsToTarget(event)) {
         return;
       }
@@ -130,7 +140,7 @@ export function DeckView({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [presenting, onPresentEnd, onPresentPlace, onIndex]);
+  }, [presenting, onPresentEnd, onPresentPlace, onIndex, toggleLaser]);
 
   // Stable per language, since the stage re-runs its enhancements when it changes.
   const mermaidFailed = useCallback((message: string) => t('mermaidFailed', { message }), [t]);
@@ -159,7 +169,12 @@ export function DeckView({
           {t('deckUnsupported', { features: deck.unsupported.map((f) => featureLabel(f, t)).join(t('listSeparator')) })}
         </Notice>
       )}
-      {presenting === null ? stage : createPortal(<div className="deck-presentation">{stage}</div>, document.body)}
+      {presenting === null
+        ? stage
+        : createPortal(
+            <div className={laser ? 'deck-presentation deck-presentation--laser' : 'deck-presentation'}>{stage}</div>,
+            document.body,
+          )}
       <div className="deck__nav">
         <button
           type="button"
@@ -187,11 +202,15 @@ export function DeckView({
       </div>
       {presenting !== null &&
         createPortal(
-          <div className="deck-presentation__position" aria-live="polite">
-            {position}
-          </div>,
+          <>
+            <div className="deck-presentation__position" aria-live="polite">
+              {position}
+            </div>
+            <PresentHint />
+          </>,
           document.body,
         )}
+      {laser && <LaserPointer lastPointer={lastPointer} />}
     </div>
   );
 }
@@ -329,6 +348,69 @@ function usePresentationWindow(presenting: PresentPlace | null, onPresentEnd: ()
       .setFullscreen(presenting === 'fullscreen')
       .catch((e) => console.error('Failed to change full screen', e));
   }, [presenting]);
+}
+
+/** The laser pointer's switch (TASK-51.3). Off whenever a presentation is not
+ *  running, so each one starts with it off whatever the last one ended with; it
+ *  stays as it is across `F`, which moves a presentation rather than ending it.
+ *  Where the pointer is goes to a ref, never to state, so that tracking it
+ *  re-renders nothing. */
+function useLaser(presenting: boolean): {
+  laser: boolean;
+  toggleLaser: () => void;
+  lastPointer: React.RefObject<PointerSpot | null>;
+} {
+  const [on, setOn] = useState(false);
+  const lastPointer = useRef<PointerSpot | null>(null);
+  useEffect(() => {
+    if (!presenting) {
+      setOn(false);
+      return;
+    }
+    lastPointer.current = null;
+    const onMove = (event: PointerEvent) => {
+      lastPointer.current = { x: event.clientX, y: event.clientY };
+    };
+    window.addEventListener('pointermove', onMove);
+    return () => window.removeEventListener('pointermove', onMove);
+  }, [presenting]);
+  const toggleLaser = useCallback(() => setOn((was) => !was), []);
+  return { laser: on && presenting, toggleLaser, lastPointer };
+}
+
+/** How long the hint stays, its fade included — `deck-hint` in slides.scss. */
+const PRESENT_HINT_MS = 5000;
+
+/** The presentation's keys, shown as it starts and faded out a few seconds
+ *  later; mounted once per presentation, so `F` does not bring it back. A timer
+ *  takes it away as well as the fade's end, because an animation that never
+ *  runs — switched off by a stylesheet, or by a reduced-motion rule written
+ *  later — fires no `animationend`, and the hint would then stay over the
+ *  slides for the whole presentation. */
+function PresentHint() {
+  const t = useT();
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShown(false), PRESENT_HINT_MS + 500);
+    return () => window.clearTimeout(timer);
+  }, []);
+  if (!shown) {
+    return null;
+  }
+  const keys: [string, string][] = [
+    ['Esc', t('presentHintEnd')],
+    ['F', t('presentHintPlace')],
+    ['L', t('presentHintLaser')],
+  ];
+  return (
+    <div className="deck-presentation__hint" onAnimationEnd={() => setShown(false)}>
+      {keys.map(([key, label]) => (
+        <span key={key}>
+          <kbd>{key}</kbd> {label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 function keyBelongsToTarget(event: KeyboardEvent): boolean {

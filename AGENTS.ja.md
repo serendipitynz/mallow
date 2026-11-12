@@ -75,6 +75,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   アウトライン・`Print…`・`Export as PDF…` を使えない**: 検索対象を登録せず、
   markdown プレビューの判定も立てないので、メニューの有効・無効も独自の判定なしに
   それに従う）、
+  LaserPointer（発表中のレーザーポインター、TASK-51.3。`<body>` から、`transform` で
+  動かす点と canvas の軌跡として描くので、**動かしても何も再レンダリングせず、
+  スライドの DOM にも触れない**。軌跡の計算は `lib/laser`）、
   ConfigView/ConfigTree、SourceView（共通・行番号付き）、TableView（csv/tsv）、
   XmlView/XmlTree（xml/plist/xsd/xsl）、HtmlView（sandbox 付き srcdoc フレーム +
   ソース切替）、ErrorBanner（構文エラー表示の共通部品）、MermaidView、
@@ -93,7 +96,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `lib/` — `markdown`（markdown-it パイプライン）、`is-deck`（文書が Marp デッキか。
   描画側を必要時に読み込むため分けてある）、`deck`（2 つ目の markdown-it 上の Marpit、
   スライドのテーマ、通知に載せる機能）、`deck-css`（デッキ自身の CSS の走査、
-  decision-18 §6）、`slide-nav`（キーでスライドがどこへ動くか）、`present`（発表の
+  decision-18 §6）、`slide-nav`（キーでスライドがどこへ動くか）、`laser`（レーザーポインターの
+  キーと軌跡の寿命。純粋関数）、`present`（発表の
   コードとウィンドウの発表者）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
   `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、

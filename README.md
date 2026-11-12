@@ -52,7 +52,9 @@ Installing an update may need the system's permission.
   time, scaled to the window, moved with the arrow keys, Page Up / Page Down,
   Space and Home / End. Present it full-screen (`Cmd/Ctrl+Enter`) or in the
   window with the app's chrome hidden (`Shift+Cmd/Ctrl+Enter`); `F` switches
-  between the two while presenting, a click advances, and `Esc` leaves. Slides
+  between the two while presenting, a click advances, and `Esc` leaves. `L`
+  turns a laser pointer on and off while presenting — a red dot that follows the
+  mouse with a short fading trail, longer while Shift is held. Slides
   are drawn with mallow's own theme in your colour family; a deck that relies on
   Marp's other themes, raw HTML, math or CSS at-rules mallow drops says so in a
   line above the slides.

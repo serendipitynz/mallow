@@ -112,6 +112,11 @@ const ja: Dict = {
   nextSlide: '次のスライド',
   slidePosition: '{current} / {total}',
   listSeparator: '、',
+  // laser pointer (TASK-51.3)
+  laserTooltip: '発表中は L でレーザーポインター',
+  presentHintEnd: '終了',
+  presentHintPlace: '全画面／ウィンドウ',
+  presentHintLaser: 'レーザーポインター（Shift を押しながら動かすと軌跡が長く残る）',
   deckUnsupported: 'このデッキには mallow が Marp と同じようには表示しない機能が含まれています: {features}',
   'deckFeature.rawHtml': 'HTML タグ（文字として表示）',
   'deckFeature.math': '数式',
@@ -294,6 +299,11 @@ const en: Dict = {
   nextSlide: 'Next slide',
   slidePosition: '{current} / {total}',
   listSeparator: ', ',
+  // laser pointer (TASK-51.3)
+  laserTooltip: 'While presenting, L toggles the laser pointer',
+  presentHintEnd: 'End',
+  presentHintPlace: 'Full screen / window',
+  presentHintLaser: 'Laser pointer (hold Shift while moving for a longer trail)',
   deckUnsupported: 'This deck uses features mallow does not show the way Marp does: {features}',
   'deckFeature.rawHtml': 'HTML tags (shown as text)',
   'deckFeature.math': 'math',
