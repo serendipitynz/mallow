@@ -112,3 +112,89 @@
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
+
+// While the laser pointer is on the system cursor is hidden over everything the
+// presentation shows. `!important` because a deck's own CSS reaches the slide and
+// may set a cursor of its own, as may the links inside it.
+.deck-presentation--laser,
+.deck-presentation--laser * {
+  cursor: none !important;
+}
+
+// The keys a presentation answers to, shown as it starts and faded out. Over the
+// slide and on the black letterbox alike, so it carries its own dark ground.
+.deck-presentation__hint {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  z-index: 1001;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  max-width: calc(100vw - 32px);
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.72);
+  color: #fff;
+  font-size: 13px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: deck-hint 5s ease-in forwards;
+
+  kbd {
+    display: inline-block;
+    min-width: 1.6em;
+    padding: 0 5px;
+    border: 1px solid rgb(255 255 255 / 0.5);
+    border-radius: 4px;
+    font-family: $font-mono;
+    font-size: 12px;
+    text-align: center;
+  }
+}
+
+@keyframes deck-hint {
+  0%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+// The laser pointer (TASK-51.3): above the presentation and its position, and
+// never in the way of a click, which still advances the slide.
+.laser {
+  position: fixed;
+  inset: 0;
+  z-index: 1002;
+  pointer-events: none;
+}
+
+.laser__trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+// Red reads on a light slide, the white ring on a dark one or on red, and the
+// faint dark hairline outside the ring keeps the ring itself visible on white.
+.laser__dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: rgb(255 48 48);
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 0.35),
+    0 0 10px 3px rgb(255 48 48 / 0.7);
+  visibility: hidden;
+}

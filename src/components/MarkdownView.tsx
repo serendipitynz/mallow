@@ -286,7 +286,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
               <button
                 type="button"
                 className="icon-btn"
-                title={`${t('present')} (${presentChordLabel('fullscreen', onMacPlatform())})`}
+                title={`${t('present')} (${presentChordLabel('fullscreen', onMacPlatform())})\n${t('laserTooltip')}`}
                 aria-label={t('present')}
                 onClick={() => setPresenting('fullscreen')}
               >
@@ -295,7 +295,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
               <button
                 type="button"
                 className="icon-btn"
-                title={`${t('presentInWindow')} (${presentChordLabel('window', onMacPlatform())})`}
+                title={`${t('presentInWindow')} (${presentChordLabel('window', onMacPlatform())})\n${t('laserTooltip')}`}
                 aria-label={t('presentInWindow')}
                 onClick={() => setPresenting('window')}
               >
