@@ -31,7 +31,7 @@ export const MAX_REMEMBERED_VIEWS = 2 * MAX_VISITS;
 
 /** Every value a view switch offers, across the views that have one. Each view
  *  reads back only its own values through {@link rememberedMode}. */
-export type ViewMode = 'preview' | 'rendered' | 'tree' | 'table' | 'source';
+export type ViewMode = 'preview' | 'rendered' | 'tree' | 'table' | 'source' | 'slides';
 
 export interface FileViewState {
   /** `null` for a view with no switch. The default stays with the view: one
@@ -39,6 +39,10 @@ export interface FileViewState {
    *  here. */
   mode: ViewMode | null;
   anchor: ScrollAnchor;
+  /** The slide a deck was left on (TASK-51.2), whichever mode it was left in, so
+   *  coming back to Slides lands where the reader was. Absent for every other
+   *  file. */
+  slide?: number;
 }
 
 export interface Visits {

@@ -1,0 +1,114 @@
+@use './vars' as *;
+
+// ---- Slides view and presentation (TASK-51.2, decision-18) -----------------
+// The view takes the scroller's whole height, so a slide is scaled to the largest
+// box the window gives it rather than to its width alone; the inline SVG's
+// `preserveAspectRatio` keeps the ratio and letterboxes the rest (§4).
+.doc-scroll:has(.deck) {
+  display: flex;
+  flex-direction: column;
+
+  > .doc {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 12px;
+  }
+
+  .view-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.deck {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+// The slide host. `contain: paint` makes it the containing block and the clip of
+// anything a deck positions `fixed`, so a slide cannot draw over the toolbar, the
+// explorer or the document bar (decision-18 §6).
+.deck__stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  contain: paint;
+  background: $surface;
+  border-radius: 8px;
+}
+
+.marpit {
+  height: 100%;
+  // Read by the slide theme in lib/deck, which is a CSS string and has no access
+  // to the Sass values.
+  --slide-font-mono: #{$font-mono};
+
+  > svg[data-marpit-svg] {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  // Copying a diagram belongs to the preview; on a slide the buttons are part of
+  // the picture being presented.
+  .mermaid-copy {
+    display: none;
+  }
+
+  // Shiki's dark tokens, as the preview swaps them (markdown.scss).
+  @include on-dark {
+    pre.shiki,
+    pre.shiki span {
+      color: var(--shiki-dark) !important;
+    }
+  }
+}
+
+.deck__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: $muted;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.deck__position {
+  min-width: 5em;
+  text-align: center;
+}
+
+// A presentation covers the whole window from `<body>`, outside every element
+// that could hold a `fixed` box in place.
+.deck-presentation {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  background: #000;
+
+  .deck__stage {
+    background: #000;
+    border-radius: 0;
+    cursor: default;
+  }
+}
+
+.deck-presentation__position {
+  position: fixed;
+  right: 16px;
+  bottom: 12px;
+  z-index: 1001;
+  color: rgb(255 255 255 / 0.55);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}

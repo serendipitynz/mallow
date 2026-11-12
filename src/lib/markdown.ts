@@ -6,6 +6,7 @@
 import { fromHighlighter } from '@shikijs/markdown-it/core';
 import GithubSlugger from 'github-slugger';
 import MarkdownIt from 'markdown-it';
+import type Token from 'markdown-it/lib/token.mjs';
 import anchor from 'markdown-it-anchor';
 import { full as emoji } from 'markdown-it-emoji';
 import builtinEmojiDefs from 'markdown-it-emoji/lib/data/full.mjs';
@@ -271,7 +272,7 @@ function emojiRenderer(md: MarkdownIt): void {
 }
 
 /** What one render is given beyond the source, through markdown-it's `env`. */
-interface RenderEnv {
+export interface RenderEnv {
   images?: RefResolver;
 }
 
@@ -296,101 +297,134 @@ function isAssetUrl(src: string): boolean {
 }
 
 /**
- * Local images (decision-17).
+ * What decision-17 makes of an image source: the URL to load, or `null` where it
+ * is refused.
  *
  * A path relative to the document is resolved against the document's own
  * directory by the rendered HTML view's rule — `rewriteRef` itself, so the two
  * views cannot drift apart on which references count as local. An `asset:` URL
- * the document wrote itself is refused by dropping the `src`, so every asset URL
- * in the article is one mallow built: that is what keeps the boundary statable
- * as "only what the app wrote", and the URL's spelling differs per platform
- * anyway. Refusing it reaches nothing a relative path could not, since `..` is
- * allowed to climb into any granted folder; what decides readability is the
- * asset-protocol scope.
+ * the document wrote itself is refused, so every asset URL in the article is one
+ * mallow built: that is what keeps the boundary statable as "only what the app
+ * wrote", and the URL's spelling differs per platform anyway. Refusing it
+ * reaches nothing a relative path could not, since `..` is allowed to climb into
+ * any granted folder; what decides readability is the asset-protocol scope.
  *
- * Done in the render rule rather than a core rule because the resolver arrives
- * per render through `env`, while the MarkdownIt instance is cached across
- * documents.
+ * **Applied exactly once per source**: its output is an `asset:` URL wherever it
+ * resolved one, which a second pass would refuse.
+ */
+export function localImageSrc(src: string, images: RefResolver | undefined): string | null {
+  if (isAssetUrl(src)) {
+    return null;
+  }
+  return (images && rewriteRef(src, images)) ?? src;
+}
+
+/**
+ * Local images in the preview, applied in the render rule rather than a core
+ * rule because the resolver arrives per render through `env`, while the
+ * MarkdownIt instance is cached across documents. A refused source is dropped.
  */
 function localImages(md: MarkdownIt): void {
   /* biome-ignore lint/style/noNonNullAssertion: markdown-it always installs an image rule; see
      the same assertion on the fence rule for why a fabricated fallback would be worse. */
   const defaultImage = md.renderer.rules.image!;
   md.renderer.rules.image = (tokens, idx, options, env: RenderEnv, self) => {
-    const token = tokens[idx];
-    const src = token.attrGet('src') ?? '';
-    if (isAssetUrl(src)) {
-      token.attrs = token.attrs?.filter(([name]) => name !== 'src') ?? null;
-    } else if (env.images) {
-      const rewritten = rewriteRef(src, env.images);
-      if (rewritten !== null) {
-        token.attrSet('src', rewritten);
-      }
-    }
+    applyLocalImage(tokens[idx], env.images);
     return defaultImage(tokens, idx, options, env, self);
   };
 }
 
+/** Rewrite or drop an image token's `src` per {@link localImageSrc}. */
+function applyLocalImage(token: Token, images: RefResolver | undefined): void {
+  const src = token.attrGet('src') ?? '';
+  const resolved = localImageSrc(src, images);
+  if (resolved === null) {
+    token.attrs = token.attrs?.filter(([name]) => name !== 'src') ?? null;
+  } else if (resolved !== src) {
+    token.attrSet('src', resolved);
+  }
+}
+
+/**
+ * Build the pipeline every markdown view renders through.
+ *
+ * `localImageRule` is off for a deck (`lib/deck`): Marpit turns a background
+ * image's token into an inline style in its own inline rule, which no render rule
+ * ever sees, so the deck applies decision-17 on the token instead — and a second
+ * pass here would refuse the `asset:` URL the first one wrote.
+ */
+export async function createMarkdownIt(options: { localImageRule: boolean }): Promise<MarkdownIt> {
+  const highlighter = await getHighlighter();
+  // Security boundary: mallow opens untrusted Markdown, so raw HTML embedded
+  // in a document is NOT rendered. `html: false` makes markdown-it escape any
+  // literal `<script>`, `<img onerror=...>`, etc. into visible text instead of
+  // live DOM. markdown-it's default `validateLink` additionally drops dangerous
+  // link hrefs (javascript:, vbscript:, file:, and data: other than images), so
+  // `[x](javascript:alert(1))` is not turned into a link at all. HTML that mallow itself
+  // generates (Shiki code blocks, GitHub alerts, the mermaid fence rewrite below,
+  // and the front-matter table) is emitted by the renderer regardless of this
+  // flag — `html` only governs raw HTML *in the source* — so none of it breaks.
+  const md = new MarkdownIt({ html: false, linkify: true });
+
+  md.use(
+    fromHighlighter(highlighter, {
+      themes: SHIKI_THEMES,
+      transformers: [stripPreBackground],
+      // `text` is a Shiki special language (no grammar needed); it isn't in
+      // the BundledLanguage union, so assert it for the type checker.
+      fallbackLanguage: 'text' as unknown as BundledLanguage,
+    }),
+  );
+  // Custom shortcodes are merged on top of the preset table (the plugin's
+  // `defs` option replaces it, so the preset defs are re-supplied). An image
+  // shortcode's substitution text is the shortcode itself, which is what the
+  // plain-text fallbacks (task-list `aria-label`, outline titles) then show.
+  md.use(emoji, {
+    defs: {
+      ...builtinEmojiDefs,
+      ...customEmoji.unicode,
+      ...Object.fromEntries(Object.keys(customEmoji.images).map((name) => [name, `:${name}:`])),
+    },
+  });
+  // After the plugin, which installs its own default emoji rule.
+  emojiRenderer(md);
+  md.use(githubAlerts);
+  md.use(anchor, {
+    slugify: (s: string) => slugger.slug(s),
+    callback: (token, info) => {
+      headingSink.push({
+        depth: Number(token.tag.slice(1)) || 1,
+        slug: info.slug,
+        text: info.title,
+      });
+    },
+  });
+  md.use(taskLists);
+  md.use(loneImages);
+  if (options.localImageRule) {
+    md.use(localImages);
+  }
+  // Must run after the Shiki plugin so it wraps Shiki's fence rule.
+  mermaidFence(md);
+
+  return md;
+}
+
 let mdPromise: Promise<MarkdownIt> | null = null;
 
-async function getMd(): Promise<MarkdownIt> {
+function getMd(): Promise<MarkdownIt> {
   if (!mdPromise) {
-    mdPromise = (async () => {
-      const highlighter = await getHighlighter();
-      // Security boundary: mallow opens untrusted Markdown, so raw HTML embedded
-      // in a document is NOT rendered. `html: false` makes markdown-it escape any
-      // literal `<script>`, `<img onerror=...>`, etc. into visible text instead of
-      // live DOM. markdown-it's default `validateLink` additionally drops dangerous
-      // link hrefs (javascript:, vbscript:, file:, and data: other than images), so
-      // `[x](javascript:alert(1))` is not turned into a link at all. HTML that mallow itself
-      // generates (Shiki code blocks, GitHub alerts, the mermaid fence rewrite below,
-      // and the front-matter table) is emitted by the renderer regardless of this
-      // flag — `html` only governs raw HTML *in the source* — so none of it breaks.
-      const md = new MarkdownIt({ html: false, linkify: true });
-
-      md.use(
-        fromHighlighter(highlighter, {
-          themes: SHIKI_THEMES,
-          transformers: [stripPreBackground],
-          // `text` is a Shiki special language (no grammar needed); it isn't in
-          // the BundledLanguage union, so assert it for the type checker.
-          fallbackLanguage: 'text' as unknown as BundledLanguage,
-        }),
-      );
-      // Custom shortcodes are merged on top of the preset table (the plugin's
-      // `defs` option replaces it, so the preset defs are re-supplied). An image
-      // shortcode's substitution text is the shortcode itself, which is what the
-      // plain-text fallbacks (task-list `aria-label`, outline titles) then show.
-      md.use(emoji, {
-        defs: {
-          ...builtinEmojiDefs,
-          ...customEmoji.unicode,
-          ...Object.fromEntries(Object.keys(customEmoji.images).map((name) => [name, `:${name}:`])),
-        },
-      });
-      // After the plugin, which installs its own default emoji rule.
-      emojiRenderer(md);
-      md.use(githubAlerts);
-      md.use(anchor, {
-        slugify: (s: string) => slugger.slug(s),
-        callback: (token, info) => {
-          headingSink.push({
-            depth: Number(token.tag.slice(1)) || 1,
-            slug: info.slug,
-            text: info.title,
-          });
-        },
-      });
-      md.use(taskLists);
-      md.use(loneImages);
-      md.use(localImages);
-      // Must run after the Shiki plugin so it wraps Shiki's fence rule.
-      mermaidFence(md);
-
-      return md;
-    })();
+    mdPromise = createMarkdownIt({ localImageRule: true });
   }
   return mdPromise;
+}
+
+/** Start a render's heading slugs and outline afresh. The deck renderer shares
+ *  the anchor plugin's state through `createMarkdownIt`, so it calls this too —
+ *  otherwise a slug's counter would carry over from whatever rendered last. */
+export function resetHeadingState(): void {
+  slugger.reset();
+  headingSink = [];
 }
 
 export interface RenderOptions {
@@ -405,8 +439,7 @@ export interface RenderOptions {
 export async function renderMarkdown(src: string, options: RenderOptions = {}): Promise<RenderResult> {
   const md = await getMd();
   const { data, body } = extractFrontMatter(src);
-  slugger.reset();
-  headingSink = [];
+  resetHeadingState();
   const env: RenderEnv = { images: options.images };
   const bodyHtml = md.render(body, env);
   const html = data && Object.keys(data).length > 0 ? renderFrontMatterTable(data) + bodyHtml : bodyHtml;

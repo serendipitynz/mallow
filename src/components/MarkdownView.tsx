@@ -1,23 +1,28 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useOutlineFocusReturn } from '../hooks/useOutlineFocusReturn';
 import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { UNATTENDED } from '../lib/build-flags';
+import { onMacPlatform } from '../lib/chord';
 import { enhanceCodeBlocks } from '../lib/codeblock';
 import { setFindTarget } from '../lib/find-target';
 import { useT } from '../lib/i18n';
+import { isDeck } from '../lib/is-deck';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { setMarkdownPreviewActive } from '../lib/markdown-preview';
 import { renderMermaid } from '../lib/mermaid';
 import { onOutlineOpenChange, readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { dirname } from '../lib/path';
+import { type PresentPlace, presentChordLabel, setPresenter } from '../lib/present';
 import { onProseMeasureChange, readProseMeasure } from '../lib/prose-measure';
 import { notifyRenderSettled } from '../lib/render-signal';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
 import { broadcastSetting } from '../lib/settings-sync';
+import { clampSlide } from '../lib/slide-nav';
 import { rememberedMode } from '../lib/visit-history';
-import { CodeIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
+import { DeckView } from './DeckView';
+import { AppWindowIcon, CodeIcon, PlayIcon, PresentationIcon, ScanSearchIcon, TableOfContentsIcon } from './icons';
 import { Notice } from './Notice';
 import { Outline } from './Outline';
 import { Segmented } from './Segmented';
@@ -25,6 +30,10 @@ import { SourceView } from './SourceView';
 import { ViewPanel } from './ViewPanel';
 
 const MODES = ['preview', 'source'] as const;
+/** A deck adds Slides (TASK-51.2); every other document keeps the two. */
+const DECK_MODES = ['preview', 'source', 'slides'] as const;
+
+type Mode = (typeof DECK_MODES)[number];
 
 export function MarkdownView({ source, path, memory }: { source: string; path: string; memory: ViewMemory }) {
   const t = useT();
@@ -32,7 +41,15 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
   const [renderError, setRenderError] = useState<string | null>(null);
   const outlineOpen = useSyncExternalStore(onOutlineOpenChange, readOutlineOpen);
   const proseMeasure = useSyncExternalStore(onProseMeasureChange, readProseMeasure);
-  const [mode, setMode] = useState<'preview' | 'source'>(() => rememberedMode(memory.remembered, MODES) ?? 'preview');
+  const deck = useMemo(() => isDeck(source), [source]);
+  const [mode, setMode] = useState<Mode>(
+    () => rememberedMode(memory.remembered, isDeck(source) ? DECK_MODES : MODES) ?? 'preview',
+  );
+  const [slide, setSlide] = useState(() => memory.remembered?.slide ?? 0);
+  const [slideCount, setSlideCount] = useState<number | null>(null);
+  const [presenting, setPresenting] = useState<PresentPlace | null>(null);
+  // A live reload that removes `marp: true` takes Slides away with it.
+  const shownMode: Mode = mode === 'slides' && !deck ? 'preview' : mode;
   const scrollRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const articleRef = useRef<HTMLDivElement>(null);
@@ -46,8 +63,9 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
   useRememberedScroll(scrollRef, memory.remembered?.anchor ?? null);
   // In source mode the headings are not in the DOM, so the ratio is all there is.
   useLeaveReport(memory, scrollRef, (scroller) => ({
-    mode,
-    anchor: captureScrollAnchor(scroller, mode === 'preview' ? (result?.headings ?? []) : []),
+    mode: shownMode,
+    anchor: captureScrollAnchor(scroller, shownMode === 'preview' ? (result?.headings ?? []) : []),
+    ...(deck ? { slide: slideCount === null ? slide : clampSlide(slide, slideCount) } : {}),
   }));
   // Re-render the open document when the pipeline is reconfigured (custom emoji
   // changed in Settings) instead of making the user reopen the file.
@@ -85,7 +103,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
   // bind external-link handling, and restore the scroll position. Keyed on `mode`
   // too so toggling source → preview re-applies them to the freshly mounted DOM.
   useEffect(() => {
-    if (mode !== 'preview' || !result) {
+    if (shownMode !== 'preview' || !result) {
       return;
     }
     const article = articleRef.current;
@@ -153,7 +171,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
       article.removeEventListener('click', onClick);
       cancelAnimationFrame(raf);
     };
-  }, [result, mode, t]);
+  }, [result, shownMode, t]);
 
   // The bar is pinned over the top of the scroll container, so a heading must clear
   // it to be visible. Two things need that height and they are in different
@@ -185,23 +203,42 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
      live in `App` for the life of the app and consume their chord
      unconditionally — see `lib/chord`. */
   useEffect(() => {
-    if (mode !== 'preview') {
+    if (shownMode !== 'preview') {
       return;
     }
     setMarkdownPreviewActive(true);
     return () => setMarkdownPreviewActive(false);
-  }, [mode]);
+  }, [shownMode]);
 
   // Find searches the article in preview; in source the `SourceView` below
   // registers itself.
   useEffect(() => {
     const article = articleRef.current;
     const scroller = scrollRef.current;
-    if (mode !== 'preview' || !article || !scroller) {
+    if (shownMode !== 'preview' || !article || !scroller) {
       return;
     }
     return setFindTarget({ root: article, scroller });
-  }, [mode]);
+  }, [shownMode]);
+
+  /* A deck registers the window's presenter, which the chords reach from any of
+     the three modes: presenting is always of the Slides view, from the slide it
+     was left on. */
+  useEffect(() => {
+    if (!deck) {
+      return;
+    }
+    return setPresenter((place) => {
+      setMode('slides');
+      setPresenting(place);
+    });
+  }, [deck]);
+  useEffect(() => {
+    if (shownMode !== 'slides') {
+      setPresenting(null);
+    }
+  }, [shownMode]);
+  const endPresentation = useCallback(() => setPresenting(null), []);
 
   /* **Memoised on `result`, and that is the fix for TASK-29 rather than a
      render optimisation.** React 19 compares this prop by identity and writes
@@ -217,7 +254,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
 
   const headings = result?.headings ?? [];
   const hasOutline = headings.length > 1;
-  const showOutline = mode === 'preview' && hasOutline && outlineOpen;
+  const showOutline = shownMode === 'preview' && hasOutline && outlineOpen;
 
   function toggleOutline() {
     const next = !outlineOpen;
@@ -231,7 +268,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
     <div className="doc-scroll" ref={scrollRef}>
       <div className={`doc${showOutline ? '' : ' is-outline-closed'}`}>
         <div className="doc__bar" ref={barRef}>
-          {mode === 'preview' && hasOutline && (
+          {shownMode === 'preview' && hasOutline && (
             <button
               type="button"
               className="icon-btn doc-outline-toggle"
@@ -244,20 +281,44 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
               <TableOfContentsIcon />
             </button>
           )}
-          <Segmented
+          {shownMode === 'slides' && (
+            <>
+              <button
+                type="button"
+                className="icon-btn"
+                title={`${t('present')} (${presentChordLabel('fullscreen', onMacPlatform())})`}
+                aria-label={t('present')}
+                onClick={() => setPresenting('fullscreen')}
+              >
+                <PlayIcon />
+              </button>
+              <button
+                type="button"
+                className="icon-btn"
+                title={`${t('presentInWindow')} (${presentChordLabel('window', onMacPlatform())})`}
+                aria-label={t('presentInWindow')}
+                onClick={() => setPresenting('window')}
+              >
+                <AppWindowIcon />
+              </button>
+            </>
+          )}
+          <Segmented<Mode>
             idBase={idBase}
             label={t('viewMode')}
             options={[
               { value: 'preview', label: t('preview'), icon: <ScanSearchIcon /> },
               { value: 'source', label: t('source'), icon: <CodeIcon /> },
+              // After the two every document has, so neither moves when a deck is opened.
+              ...(deck ? [{ value: 'slides' as const, label: t('slides'), icon: <PresentationIcon /> }] : []),
             ]}
-            value={mode}
+            value={shownMode}
             onSelect={setMode}
           />
         </div>
 
-        <ViewPanel idBase={idBase} selected={mode}>
-          {mode === 'preview' ? (
+        <ViewPanel idBase={idBase} selected={shownMode}>
+          {shownMode === 'preview' ? (
             <>
               {renderError && (
                 <Notice level="failure" className="notice--doc">
@@ -288,6 +349,17 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
                 />
               </div>
             </>
+          ) : shownMode === 'slides' ? (
+            <DeckView
+              source={source}
+              path={path}
+              index={slide}
+              onIndex={setSlide}
+              presenting={presenting}
+              onPresentEnd={endPresentation}
+              onPresentPlace={setPresenting}
+              onSlideCount={setSlideCount}
+            />
           ) : (
             <SourceView source={source} lang="markdown" />
           )}
