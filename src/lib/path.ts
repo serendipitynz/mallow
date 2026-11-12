@@ -114,6 +114,19 @@ export function isInside(root: string, path: string): boolean {
   return hasPrefix(segments(root), segments(path));
 }
 
+/** `path` relative to `root`, joined with `path`'s own separator — which is the
+ *  one the OS uses, since both come from Rust. `null` when `path` is `root`
+ *  itself or not below it: there is no relative path to give, and `''` or a
+ *  `..` climb would be a value the reader did not ask to copy. */
+export function relativePath(root: string, path: string): string | null {
+  const rootSegs = segments(root);
+  const pathSegs = segments(path);
+  if (pathSegs.length <= rootSegs.length || !hasPrefix(rootSegs, pathSegs)) {
+    return null;
+  }
+  return pathSegs.slice(rootSegs.length).join(separatorOf(path));
+}
+
 /** Directory paths between `root` (exclusive) and `file`'s parent (inclusive),
  *  so the tree can be expanded to reveal a restored file.
  *
