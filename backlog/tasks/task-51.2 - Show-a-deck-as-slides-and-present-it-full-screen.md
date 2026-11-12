@@ -1,10 +1,10 @@
 ---
 id: TASK-51.2
 title: Show a deck as slides and present it full-screen
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-11 01:30'
-updated_date: '2026-11-12 10:58'
+updated_date: '2026-11-12 19:08'
 labels:
   - feature
 dependencies:
@@ -39,12 +39,12 @@ What find, the outline, Print… and Export as PDF… do while Slides is shown h
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 A marp: true document offers Slides in the markdown view switch; other documents do not
-- [ ] #2 Slides shows one slide at a time scaled to the view, with its number, and moves by the listed keys and the on-screen buttons
-- [ ] #3 Present shows the current slide full-screen with the app's chrome hidden, moves by the same keys and a click, and Escape restores the window as it was
+- [x] #2 Slides shows one slide at a time scaled to the view, with its number, and moves by the listed keys and the on-screen buttons
+- [x] #3 Present shows the current slide full-screen with the app's chrome hidden, moves by the same keys and a click, and Escape restores the window as it was
 - [x] #4 What find, the outline, Print and Export as PDF do while Slides is shown is decided and written down, and the menu's gates agree with it
 - [x] #5 Every new label reaches the reader in both ja and en
 - [x] #6 pnpm lint, pnpm build and pnpm test pass; the slide split and navigation logic are unit-tested
-- [ ] #7 The four measurements decision-18 left to this task are done against a built app and recorded in the task: the deck CSS walk on the engine's CSSOM in all three WebViews, whether WKWebView and WebKitGTK need marpit-svg-polyfill, that contain: paint keeps a deck's position: fixed inside the slide host, and the deck's behaviour under the CSP on Windows and Linux
+- [x] #7 The four measurements decision-18 left to this task are done against a built app and recorded in the task: the deck CSS walk on the engine's CSSOM in all three WebViews, whether WKWebView and WebKitGTK need marpit-svg-polyfill, that contain: paint keeps a deck's position: fixed inside the slide host, and the deck's behaviour under the CSP on Windows and Linux
 - [x] #8 @marp-team/marpit is added with mallow's markdown-it range raised to ^14.3.1 and THIRD-PARTY-NOTICES.md regenerated; any further dependency (the polyfill, a direct postcss) has the owner's approval before it is added
 - [x] #9 AGENTS.md's untrusted-Markdown boundary and README Security state what a deck's CSS can reach, as decision-18's Consequences set out
 <!-- AC:END -->
@@ -104,4 +104,20 @@ What find, the outline, Print… and Export as PDF… do while Slides is shown h
 ## 検証
 - pnpm lint / pnpm build / pnpm test（49 ファイル 625 件）すべて通過。Rust の変更は capability の 1 行だけで、`pnpm tauri build --debug --no-bundle --no-sign` が通ったことで確認。
 - 追加した単体テスト: deck（分割・ディレクティブ・4:3・ノート・画像の解決と拒否・デッキ CSS・通知の各機能）、deck-css、slide-nav、present。
+
+## レビュー（PR #93、Claude Code CLI レビュアー、2 回）
+- 1 回目: [P2] 1 件・[P3] 5 件。すべて修正（e07e728・4c2e9ea）。
+  - [P2] 発表中に設定（Cmd/Ctrl+, やメニュー）や更新ダイアログが開くと、inert な #root の中、発表の下に隠れて開き、isModalOpen() が true になって Esc を含む全キーが止まっていた。Modal がフォーカスを取る前に onModalOpening のリスナーを呼び、発表中ならそこで inert を同期的に外して発表を終えるようにした。開く側を止めるより、起動時の更新チェックも同じ形で扱えるため。
+  - [P3] 発表中の発表コードが場所を変えなかった → 発表中の場所の変化にウィンドウが追従し、F も同じ状態を通すようにした。
+  - [P3] markdown-it の lib/common/html_re.mjs（公開 API ではない）を実行時に import していた → CommonMark §6.6 から開始・終了タグのパターンを lib/deck に書いた。
+  - [P3] デッキ描画が見出しスラッグの状態を引き継いでいた → resetHeadingState() をデッキ描画ごとに呼ぶ。
+  - [P3] 数式はディレクティブだけで判定 → DeckFeature のコメントに明記（`$…$` の検出は対象外）。
+  - [P3] 解釈できない CSS が通知なしで消えていた → cssUnparsed を通知に追加（ja/en）。
+- 2 回目: 全件解消として 4c2e9ea に APPROVE（ボット）。CI は frontend・rust・paper（3 OS）すべて通過。
+
+## オーナーによる確認（2026-11-13、AC #2・#3・#7）
+- macOS・Windows・Linux の dev で確認: スライドの検出とスライド表示への切り替え、キー操作（矢印・Page・Space・Home/End）・前後ボタン・クリックで次へ・Esc・F、全画面の発表と Esc での終了、発表をやめた後も同じスライドが表示されたままになること。すべて問題なし。
+- Windows（WebView2）・Linux（WebKitGTK）のビルド済みアプリで計測用デッキを開き、CSP 下で `![bg right]` の相対パス画像、デッキ CSS の `url(img/stripe.png)`、`@import` / `@font-face` を名指す通知を確認。Windows は UNC パス上のフォルダでも相対画像が解決された（`http://asset.localhost` が CSP を通過）。
+- WebKitGTK にも WebKit 向けの SVG 補正（ポリフィルの webkit()）が当たるが、スライドは枠に収まり正しい大きさで描かれ、二重縮小は起きていない。
+- これで AC #7 の 4 項目は次のとおり: CSSOM の走査は WKWebView と Chromium で成り立たないと計測して postcss に置き換え（Windows / Linux での CSSOM 計測は不要になった）、ポリフィルは WKWebView で必要・WebKitGTK でも問題なし、contain: paint は macOS のビルド済みアプリで確認（Windows / Linux は dev で確認）、CSP 下の挙動は 3 環境のビルド済みアプリで確認。
 <!-- SECTION:NOTES:END -->
