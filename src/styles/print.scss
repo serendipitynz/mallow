@@ -256,6 +256,10 @@
   // Header and footer margin boxes stay absent — engine support for them is
   // uneven and three different sheets of paper is a worse outcome than none
   // carrying a page number.
+  //
+  // **WebKitGTK does not read this margin on the PDF export's route** (TASK-31):
+  // GTK's page setup alone places the body there, so `pdf.rs` copies the value,
+  // and a test reads it back out of this rule to keep the two equal.
   @page {
     margin: 16mm;
   }

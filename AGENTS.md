@@ -787,10 +787,18 @@ hold rather than as an exhaustive style guide.
   singleton on every print, and a stale page count is the kind of state it would
   hold — but **that is a hypothesis about the truncation and not a fix**: the cause
   was never isolated, so a complete export is not evidence for it and a truncated
-  one is not a regression against it. **The four `NSPrintInfo` margins are zeroed**
-  so `@page` is the only thing insetting the text block, which is also the geometry
-  the stylesheet was measured against. **The gate is printing's sentence with a
-  different reason**: `Export as PDF…` is disabled unless the active view is
+  one is not a regression against it. **The four `NSPrintInfo` margins are set to
+  `@page`'s 16mm, and so are GTK's page setup margins on Linux, for two different
+  reasons**: WebKit on macOS reads `@page` only after it has computed the page box,
+  and WebKitGTK does not read it on this route at all. That second half is
+  measured (TASK-31, 2026-11-13, in an arm64 ubuntu 24.04 container built like
+  the paper job — Skia/PDF m145, reproducing run 41727437237's paper exactly —
+  with one layer changed per print): with no page setup given the body started at
+  GTK's own default margin of 18pt, it followed the setup's margins to 0 and to
+  45.4, and `@page` at 0, 16mm and 30mm left the PDF byte-identical. `pdf.rs`
+  therefore holds a copy of the value, and a test reads it back out of
+  `print.scss`. **The gate is printing's sentence with a different reason**:
+  `Export as PDF…` is disabled unless the active view is
   markdown in preview because **the print stylesheet is markdown-only**, so a
   later request to export other views is a request to widen the stylesheet, not
   the entry (decision-6 makes the source view where that starts). **The chord is
@@ -1902,17 +1910,17 @@ hold rather than as an exhaustive style guide.
   measured rather than tidy**: under the word height this machine's macOS paper
   measured 18.56 where the CI runner's measured 21.00, and against the wrong one
   of those the 0.847 shrink this task chased came out 4.2% off — inside the
-  tolerance. The CJK advance narrows that gap (both macOS environments read 12.81)
-  without closing it — the Windows runner reads 12.00 and the macOS and Linux
-  runners 12.80 for the same CSS — so the key stays. A key with no entry
+  tolerance. The CJK advance narrows that gap (this machine and the macOS and
+  Linux runners all read 12.81) without closing it — the Windows runner reads
+  12.00 for the same CSS — so the key stays. A key with no entry
   is recorded and never failed, because the first paper is what a baseline is made
   from and a person has to call it right first — **and it says so loudly**, since a
   permanent skip is a check that never runs. `baseline.json`'s `_required` list is
   what ends that state: a key on it with no entry fails instead of skipping, and a
   key goes on it at the same time as its number. **All three runners are on it**,
-  retaken under the CJK advance from run 41727437237. The Linux runner's number
-  locks the type size of a paper whose text starts at 18pt where every other
-  paper starts at 16mm (TASK-31), so it is retaken if that layout moves.
+  retaken under the CJK advance from run 41727437237, and the Linux runner's
+  again from run 43305943952, once TASK-31 had moved its text from GTK's default
+  18pt to the 16mm every other paper starts at.
   **Windows builds the unattended tests without running them**: the test
   executable exits with `0xc0000139` (STATUS_ENTRYPOINT_NOT_FOUND) from
   `target/debug/deps`, where the WebView2 loader beside the app is not. The

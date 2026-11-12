@@ -20,7 +20,7 @@
     "from": "the Windows runner's own paper, accepted by the maintainer 2026-11-04 from run 41727437237 (paper-windows-light/dark, written by WebView2 156 / Skia/PDF m156, US Letter 612x792, 15 pages, text block 45.0-561.5, and no WebView2 header or footer — the thing printing adds there and CSS cannot remove). Run 41017907470's paper, written by WebView2 155, measures the same 12.00."
   },
   "ci-linux": {
-    "cjkAdvance": 12.8,
-    "from": "the Linux runner's own paper, accepted by the maintainer 2026-11-04 from run 41727437237 (paper-linux-light/dark, written by Skia/PDF m145, A4 595x842, 15 pages). **Carries a known defect** — its body starts at x=18pt where every other platform's starts at the 16mm @page margin (TASK-31) — so this number locks the type size of a paper whose layout is not yet what the stylesheet intends. Retake it if TASK-31 moves the layout."
+    "cjkAdvance": 12.81,
+    "from": "the Linux runner's own paper, accepted by the maintainer 2026-11-13 from run 43305943952 (paper-linux-light/dark, written by Skia/PDF m145, A4 595x842, 16 pages, text block 45.35-545.9 = the 16mm @page margin, held by the GTK page setup the export now passes — TASK-31). The previous number, 12.80 from run 41727437237, came from a paper whose body started at GTK's default 18pt margin."
   }
 }

@@ -238,9 +238,10 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
 /// The paper margin `styles/print.scss` asks for in `@page`, in points.
 ///
 /// It lives here as well as in the stylesheet because macOS needs it before the
-/// engine has read the CSS (see `write_pdf`), and the two are held together by a
-/// test rather than by this comment.
-#[cfg(target_os = "macos")]
+/// engine has read the CSS and WebKitGTK never reads it at all (see each
+/// `write_pdf`), and the two are held together by a test rather than by this
+/// comment.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn page_margin_points() -> f64 {
     const PAGE_MARGIN_MM: f64 = 16.0;
     const POINTS_PER_MM: f64 = 72.0 / 25.4;
@@ -414,8 +415,27 @@ fn write_pdf(webview: tauri::webview::PlatformWebview, path: String, report: Rep
     settings.set("output-uri", Some(uri.as_str()));
     settings.set("output-file-format", Some("pdf"));
 
+    // **The page setup is what places the body on this route, and `@page` is not
+    // read at all.** Measured 2026-11-13 in an arm64 ubuntu 24.04 container built
+    // like the paper job (WebKitGTK writing through Skia/PDF m145), whose unchanged
+    // paper reproduced run 41727437237's exactly, changing one layer per print: the
+    // body started at x=18 with no page setup given, at 0 with the setup's margins
+    // at 0 and at 45.4 with them at 16mm, while `@page { margin }` at 0, 16mm and
+    // 30mm left the PDF byte-identical. The 18pt was GTK's own default
+    // (`gtk_page_setup_new` gives A4 18 / 18 / 40.32 / 18), never an imageable-area
+    // inset: the file backend clips nothing at 0. So the stylesheet's margin is
+    // copied here, as macOS copies it for a different reason, and the paper size is
+    // left at the default the setup chose, which is the locale's.
+    let margin = page_margin_points();
+    let page_setup = gtk::PageSetup::new();
+    page_setup.set_top_margin(margin, gtk::Unit::Points);
+    page_setup.set_right_margin(margin, gtk::Unit::Points);
+    page_setup.set_bottom_margin(margin, gtk::Unit::Points);
+    page_setup.set_left_margin(margin, gtk::Unit::Points);
+
     let operation = PrintOperation::new(&webview.inner());
     operation.set_print_settings(&settings);
+    operation.set_page_setup(&page_setup);
 
     // `print()` does not keep the operation alive, so it holds itself through its
     // own `finished` handler and lets go there. Both signals are needed to report
@@ -529,12 +549,13 @@ mod destination_tests {
     }
 }
 
-#[cfg(all(test, target_os = "macos"))]
+#[cfg(all(test, any(target_os = "macos", target_os = "linux")))]
 mod tests {
-    /// The margin the macOS export sets on `NSPrintInfo` is the one
-    /// `styles/print.scss` asks for in `@page`, and this reads the stylesheet
-    /// rather than restating it — changing one alone puts the export back on the
-    /// mixed geometry that produced a 0.847-scale page.
+    /// The margin the export sets on `NSPrintInfo` and on GTK's page setup is the
+    /// one `styles/print.scss` asks for in `@page`, and this reads the stylesheet
+    /// rather than restating it — changing one alone puts macOS back on the mixed
+    /// geometry that produced a 0.847-scale page, and moves Linux's body off the
+    /// margin the other two platforms print at.
     #[test]
     fn page_margin_matches_the_print_stylesheet() {
         let stylesheet = std::fs::read_to_string("../src/styles/print.scss").expect("print.scss is readable");
