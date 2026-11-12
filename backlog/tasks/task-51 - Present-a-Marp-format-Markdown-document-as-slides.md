@@ -1,9 +1,10 @@
 ---
 id: TASK-51
 title: Present a Marp-format Markdown document as slides
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-11 01:30'
+updated_date: '2026-11-12 20:19'
 labels:
   - feature
 dependencies: []
@@ -38,7 +39,16 @@ Out of scope until asked for: a presenter view with notes and a timer in a secon
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A Markdown document whose front matter carries marp: true can be shown as slides, and presented full-screen with a laser pointer, per the subtasks
-- [ ] #2 The rendering route and the supported Marp subset are recorded as a decision before the view is built
-- [ ] #3 No boundary AGENTS.md records (untrusted Markdown, CSP, no math) is widened without that decision saying so
+- [x] #1 A Markdown document whose front matter carries marp: true can be shown as slides, and presented full-screen with a laser pointer, per the subtasks
+- [x] #2 The rendering route and the supported Marp subset are recorded as a decision before the view is built
+- [x] #3 No boundary AGENTS.md records (untrusted Markdown, CSP, no math) is widened without that decision saying so
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+## 完了の根拠（2026-11-13、子タスク 3 件の完了による）
+- AC #1: TASK-51.2（スライド表示と全画面・ウィンドウ内の発表、PR #93）と TASK-51.3（レーザーポインター、PR #94）が Done。
+- AC #2: TASK-51.1 で decision-18（accepted）を記録。decision-18 のコミット（2026-11-12 19:12）はスライド表示の実装コミット d7e3ffc（同日 23:59）より前。
+- AC #3: 広がった境界はデッキの CSS をスライドへスコープして適用する 1 点で、decision-18 §6 がそれを明記し、AGENTS（en/ja）と README の Security に記載済み（TASK-51.2 AC #9）。CSP は変更なし、markdown-it の `html: false` は維持、数式は組版しない（通知で知らせる）。
+<!-- SECTION:NOTES:END -->
