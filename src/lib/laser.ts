@@ -7,12 +7,22 @@ import type { SlideKeyEvent } from './slide-nav';
 export const TRAIL_LIFETIME_MS = 300;
 export const LONG_TRAIL_LIFETIME_MS = 1100;
 
-/** A point the pointer passed, in CSS pixels of the window. */
+/** A point the pointer passed, in CSS pixels of the window. `seq` counts the
+ *  points as they are laid, which is what tells two neighbours apart from two
+ *  points left side by side once everything between them has expired. */
 export interface TrailPoint {
   x: number;
   y: number;
   at: number;
   lifetime: number;
+  seq: number;
+}
+
+/** A stretch of the trail to draw, at the strength of its newer end. */
+export interface TrailSegment {
+  from: TrailPoint;
+  to: TrailPoint;
+  strength: number;
 }
 
 /** `L`, with or without Shift (Caps Lock or a held Shift reports `L`), and
@@ -21,8 +31,8 @@ export function isLaserToggleKey(event: SlideKeyEvent): boolean {
   return event.key.toLowerCase() === 'l' && !event.metaKey && !event.ctrlKey && !event.altKey;
 }
 
-export function trailPoint(x: number, y: number, at: number, longTrail: boolean): TrailPoint {
-  return { x, y, at, lifetime: longTrail ? LONG_TRAIL_LIFETIME_MS : TRAIL_LIFETIME_MS };
+export function trailPoint(x: number, y: number, at: number, longTrail: boolean, seq: number): TrailPoint {
+  return { x, y, at, lifetime: longTrail ? LONG_TRAIL_LIFETIME_MS : TRAIL_LIFETIME_MS, seq };
 }
 
 /** How much of a point's life is left at `now`: 1 as it is laid, 0 once spent. */
@@ -36,4 +46,20 @@ export function trailStrength(point: TrailPoint, now: number): number {
  *  can expire first; filtering rather than trimming the front keeps both right. */
 export function liveTrail(points: readonly TrailPoint[], now: number): TrailPoint[] {
   return points.filter((point) => trailStrength(point, now) > 0);
+}
+
+/** The segments of a living trail: only between points laid one after the
+ *  other. A long-trail stroke outlives the short points that follow it, and
+ *  joining what survives on either side of them would draw a straight line the
+ *  pointer never travelled. */
+export function trailSegments(points: readonly TrailPoint[], now: number): TrailSegment[] {
+  const segments: TrailSegment[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const from = points[i - 1];
+    const to = points[i];
+    if (to.seq === from.seq + 1) {
+      segments.push({ from, to, strength: trailStrength(to, now) });
+    }
+  }
+  return segments;
 }

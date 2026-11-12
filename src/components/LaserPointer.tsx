@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { liveTrail, type TrailPoint, trailPoint, trailStrength } from '../lib/laser';
+import { liveTrail, type TrailPoint, trailPoint, trailSegments } from '../lib/laser';
 
 export interface PointerSpot {
   x: number;
@@ -16,7 +16,9 @@ const TRAIL_WIDTH_PX = 7;
  *  and onto a canvas of its own, so the slide's DOM is neither re-rendered nor
  *  mutated however the pointer moves. `lastPointer` is where the pointer was
  *  before the laser came on, so the dot appears there rather than waiting for
- *  the next move. */
+ *  the next move; with no move seen since the presentation started it appears
+ *  mid-window, since the system cursor is hidden from the moment the laser is
+ *  on and the reader would otherwise have nothing to point with. */
 export function LaserPointer({ lastPointer }: { lastPointer: RefObject<PointerSpot | null> }) {
   const dotRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,10 +35,8 @@ export function LaserPointer({ lastPointer }: { lastPointer: RefObject<PointerSp
       dot.style.transform = `translate(${x}px, ${y}px)`;
       dot.style.visibility = 'visible';
     };
-    const spot = lastPointer.current;
-    if (spot) {
-      place(spot.x, spot.y);
-    }
+    const spot = lastPointer.current ?? { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    place(spot.x, spot.y);
 
     const sizeCanvas = () => {
       const ratio = window.devicePixelRatio || 1;
@@ -50,16 +50,14 @@ export function LaserPointer({ lastPointer }: { lastPointer: RefObject<PointerSp
     sizeCanvas();
 
     let points: TrailPoint[] = [];
+    let seq = 0;
     let frame = 0;
     const draw = () => {
       frame = 0;
       const now = performance.now();
       points = liveTrail(points, now);
       context.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      for (let i = 1; i < points.length; i++) {
-        const from = points[i - 1];
-        const to = points[i];
-        const strength = trailStrength(to, now);
+      for (const { from, to, strength } of trailSegments(points, now)) {
         context.globalAlpha = 0.85 * strength;
         context.lineWidth = 1 + (TRAIL_WIDTH_PX - 1) * strength;
         context.shadowBlur = 8 * strength;
@@ -76,7 +74,7 @@ export function LaserPointer({ lastPointer }: { lastPointer: RefObject<PointerSp
 
     const onMove = (event: PointerEvent) => {
       place(event.clientX, event.clientY);
-      points.push(trailPoint(event.clientX, event.clientY, performance.now(), event.shiftKey));
+      points.push(trailPoint(event.clientX, event.clientY, performance.now(), event.shiftKey, seq++));
       if (frame === 0) {
         frame = requestAnimationFrame(draw);
       }

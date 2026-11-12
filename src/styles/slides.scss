@@ -140,6 +140,7 @@
   font-size: 13px;
   transform: translateX(-50%);
   pointer-events: none;
+  // 5s is PRESENT_HINT_MS in DeckView, whose timer backs the fade's end.
   animation: deck-hint 5s ease-in forwards;
 
   kbd {

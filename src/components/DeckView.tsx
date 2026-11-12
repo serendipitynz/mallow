@@ -378,11 +378,22 @@ function useLaser(presenting: boolean): {
   return { laser: on && presenting, toggleLaser, lastPointer };
 }
 
+/** How long the hint stays, its fade included — `deck-hint` in slides.scss. */
+const PRESENT_HINT_MS = 5000;
+
 /** The presentation's keys, shown as it starts and faded out a few seconds
- *  later; mounted once per presentation, so `F` does not bring it back. */
+ *  later; mounted once per presentation, so `F` does not bring it back. A timer
+ *  takes it away as well as the fade's end, because an animation that never
+ *  runs — switched off by a stylesheet, or by a reduced-motion rule written
+ *  later — fires no `animationend`, and the hint would then stay over the
+ *  slides for the whole presentation. */
 function PresentHint() {
   const t = useT();
   const [shown, setShown] = useState(true);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShown(false), PRESENT_HINT_MS + 500);
+    return () => window.clearTimeout(timer);
+  }, []);
   if (!shown) {
     return null;
   }
