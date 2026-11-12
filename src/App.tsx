@@ -31,6 +31,7 @@ import { createNewWindowChordHandler } from './lib/new-window';
 import { applyOutlineOpen } from './lib/outline-pref';
 import { ancestorDirs, isInside } from './lib/path';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
+import { createPresentChordHandler, isPresentAvailable } from './lib/present';
 import { createPrintChordHandler } from './lib/print';
 import { applyProseMeasure } from './lib/prose-measure';
 import { loadSettings, saveSetting } from './lib/settings';
@@ -991,6 +992,19 @@ export default function App() {
       void reportFindAvailable(available).catch((e) => console.error('Failed to report find availability', e));
     report(isFindAvailable());
     return onFindTargetChange((target) => report(target !== null));
+  }, []);
+
+  /* ---- Presenting a deck (TASK-51.2) ----------------------------------------
+     Registered and consumed for the life of the app on `lib/chord`'s rule. They
+     act only where a deck is on screen and no modal is open; there is no menu
+     item, so nothing in Rust is gated on it. */
+  useEffect(() => {
+    const onKey = createPresentChordHandler({
+      onMac: onMacPlatform(),
+      isAllowed: () => isPresentAvailable() && !isModalOpen(),
+    });
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   /* ---- Back / forward (TASK-44) ---------------------------------------------
