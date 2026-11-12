@@ -3,10 +3,10 @@ id: TASK-31
 title: >-
   Find why the Linux paper does not start where @page puts every other
   platform's
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-09-08 20:52'
-updated_date: '2026-11-12 21:24'
+updated_date: '2026-11-12 21:28'
 labels:
   - bug
   - 差し込み
@@ -78,4 +78,9 @@ CI run 41727437237 の paper-linux-light.pdf（4,335,763 bytes）をストリー
 
 ## AC #3 — ベースラインの取り直し
 メンテナが run 43305943952 の Linux の紙（light）を見て文字サイズを認めた（2026-11-13）ので、ci-linux を 12.80 → 12.81（同 run の CJK 送り幅の中央値）に取り直し、注記も書き直した。新しい基準で同 run の light / dark を測り直し、どちらも PASS（差 0.0%）。AGENTS.md / AGENTS.ja.md の paper の節も取り直し済みの記述に更新した。
+
+## 実デスクトップでの確認（マージ前、2026-11-13）
+UTM の Ubuntu 24.04.5（aarch64、WebKitGTK 2.52.6、GNOME の Wayland セッション、ロケール en_US）で、修正版の無人書き出しを実行した。GTK の既定の用紙がロケールに従って Letter（612×792）になり、本文 x 45.4–561.0・17 ページ・CJK 送り幅 12.81。measure-paper.mjs の判定は light / dark とも PASS（このキーのベースラインは無いので、文字サイズの検査は記録のみ）。A4（CI）でも Letter（UTM）でも本文は 16mm から始まり、page setup が余白だけを変えて用紙はロケールに任せていることを確かめた。
+
+PR: https://github.com/serendipitynz/mallow/pull/95
 <!-- SECTION:NOTES:END -->
