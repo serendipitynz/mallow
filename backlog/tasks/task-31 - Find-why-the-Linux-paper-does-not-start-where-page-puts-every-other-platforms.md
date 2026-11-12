@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-08 20:52'
-updated_date: '2026-11-12 20:59'
+updated_date: '2026-11-12 21:10'
 labels:
   - bug
   - 差し込み
@@ -70,4 +70,9 @@ ci-linux のベースライン取り直しは、この PR の paper ジョブの
 
 ## AC #5 — Linux の紙のサイズ
 CI run 41727437237 の paper-linux-light.pdf（4,335,763 bytes）をストリームの種類ごとに集計した。フォントファイルが 3,258,453 bytes（75.2%）で最大で、DejaVuSans-Bold が 4 回（計 1.41 MB）、LiberationMono が 6 回（計 1.08 MB）と、同じ TrueType フォントがほぼ丸ごと何度も埋め込まれている（サブセット表記はあるが、1 回あたりのサイズが元フォントの圧縮後とほぼ同じ）。次に大きいのは Noto Sans CJK JP の Type 3 グリフ 636 個で 539,917 bytes（12.5%）。画像は 2.3%、ページ本文は 0.9%。macOS の紙（339 KB）は CJK を CID Type 0C で 1 回ずつ埋め込んでいる。サイズの原因は Skia/PDF のフォント埋め込みであり、余白とは別の原因である。修正後もサイズはほぼ同じ（4,283,190 → 4,283,978 bytes）。
+
+## 修正後の紙の判定（レビュー対応で追記）
+- この PR の CI run 43305943952（paper ジョブ、ubuntu-latest）：light / dark とも measure-paper.mjs の判定は PASS。本文 x 45.35–545.9、16 ページ、A4、CJK 送り幅 12.81（基準 12.80 との差 0.1%）。TASK-36 の検査（9 列の表の右端の値がすべてあり、ページの右端をはみ出す語がない）も通った。サイズは light 4,337,039 / dark 3,491,591 bytes。
+- 手元の Docker の紙も同じく PASS（本文 x 45.4–544.9、16 ページ、CJK 送り幅 12.81）。
+- baseline.json の ci-linux はまだ修正前の紙の数（12.8）で、注記を「レイアウトは 16mm に移った・取り直し待ち」に書き換えた。取り直しは、修正後の紙を人が見て文字サイズを認めてから行う（AC #3 はそれまで未チェック）。
 <!-- SECTION:NOTES:END -->
