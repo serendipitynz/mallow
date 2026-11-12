@@ -113,6 +113,11 @@ Installing an update may need the system's permission.
   (scroll position preserved); the tree follows changes too.
 - **Open in editor**: detects and launches VS Code / Zed / CotEditor / mi (macOS),
   Notepad++ / Sakura (Windows), etc. Can also reveal the file in the OS file manager.
+- **Explorer context menu**: right-click a row in the explorer (or press the
+  ContextMenu key or `Shift+F10` on a focused row) to open that file in an
+  editor or the default app, reveal it, or copy its path — absolute, or relative
+  to the open folder. A folder's row offers Reveal and the two copies. The
+  toolbar's Open menu carries the same entries for the selected file.
 - **Colours**: a palette (Standard · Solarized · Dracula · Nord), chosen in
   Settings, and light / dark / auto (OS), chosen from the toolbar or in Settings.
   Dracula's light side is Alucard; Nord is dark only.

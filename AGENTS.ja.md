@@ -51,9 +51,15 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - `hooks/useWindowEvent.ts` — **このウィンドウだけ**でイベントを購読する。
   ウィンドウごとに配るすべての emit のフロント側の半分（メニューのものと、
   `fs:change` で `lib/watch` が確立した対）。
-- `hooks/useMenu.ts` — ツールバーの 2 つのメニューが共有する開閉とキーボードの
-  振る舞い。開いたら項目へ焦点を移す、矢印は端で回る、Escape でトリガーへ戻す、
-  Tab は焦点を引き戻さずに閉じる（snz-design doc-9 §6.11）。
+- `hooks/useMenu.ts` — すべてのメニューが共有する開閉とキーボードの
+  振る舞い。開いたら項目へ焦点を移す、矢印は端で回る、Escape で開いた元へ戻す、
+  Tab は焦点を引き戻さずに閉じる（snz-design doc-9 §6.11）。共有する半分が
+  `useMenuBody` で、`useMenu` はそこへツールバーのメニューのトリガーボタンを足す。
+- `hooks/useContextMenu.ts` — エクスプローラの行のメニュー（TASK-50）。
+  `useMenuBody` の上に作り、ポインタの位置か行の下に開き、位置は `lib/context-menu`
+  が決め、背後のスクロールかリサイズで閉じ、焦点は開いた行へ戻す。
+- `hooks/useEditors.ts` — `detect_editors` をウィンドウにつき 1 回だけ問い合わせて
+  共有する。ツールバーの Open メニューとコンテキストメニューが同じ答えを並べるため。
 - `hooks/useOutlineFocusReturn.ts` — 焦点を持ったままアウトラインが消えるときの
   焦点の行き先。トリガーへ、トリガーも一緒に消えたなら表示切替の選ばれた選択肢へ
   （snz-design doc-9 §6.3.1）。
@@ -70,7 +76,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   ソース切替）、ErrorBanner（構文エラー表示の共通部品）、MermaidView、
   MediaView（画像/PDF/動画を asset protocol 経由で表示）、
   RecentFolders（アプリ内の Open Recent 一覧。エクスプローラの空状態に出る）、Outline、Toolbar、
-  OpenWith、ModeMenu（明暗の値のメニュー）、`color`（配色の軸を選んで全ウィンドウへ
+  OpenWith、FileActions（OpenWith とエクスプローラのコンテキストメニューが描く、開く・
+  表示・パスのコピーの項目。フォルダには表示とコピー 2 つだけを出す）、ModeMenu（明暗の値のメニュー）、`color`（配色の軸を選んで全ウィンドウへ
   伝える）、Modal（2 つのダイアログが共有する面。焦点を入れ・閉じ込め・返し、見出しと操作域を固定して
   本体だけをスクロールさせる）、SettingsModal、UpdateDialog（入る版・同意・進行状況）、
   ExplorerResizer（分割つまみ。ドラッグ・押して掴み押して置く・キー操作）、
@@ -97,7 +104,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `markdown.scss` が持つ）、
   `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
-  メニューの焦点をどこへ移すか）、`segmented-nav`（キーがセグメントの焦点をどこへ移すか）、
+  メニューの焦点をどこへ移すか）、`context-menu`（コンテキストメニューをどこに置くか、
+  どのキーで開くか。純関数）、`segmented-nav`（キーがセグメントの焦点をどこへ移すか）、
   `explorer-toggle`（エクスプローラを出し入れする
   `CmdOrCtrl+B` の chord。ゲートなし）、`visit-history`（ウィンドウの訪問履歴と
   ファイル表示状態、その上限、削除されたファイルの読み飛ばし。純粋関数）、`history-nav`
@@ -1603,6 +1611,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `outline-pref` と `prose-measure`＝それぞれのキャッシュと通知、保存された行長の読み戻し・
   `color-choice`＝分割前の各保存値の 2 軸への読み替えと、片側だけの系統が描く側・
   `menu-nav`・
+  `context-menu`・
   `segmented-nav`・
   `tree-nav`・
   `explorer-width`・
