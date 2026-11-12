@@ -3,10 +3,10 @@ id: TASK-50
 title: >-
   Give the explorer's rows a context menu with Open in and the two copy-path
   entries
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-11 01:29'
-updated_date: '2026-11-12 04:27'
+updated_date: '2026-11-12 05:30'
 labels:
   - feature
 dependencies: []
@@ -49,7 +49,7 @@ Out of scope: a context menu inside the viewers, and file operations (rename, de
 - [x] #3 Copy path puts the absolute path on the clipboard; Copy relative path puts the path relative to the window's open folder, using the platform's separator
 - [x] #4 The menu opens from the keyboard on a focused row (ContextMenu key, Shift+F10), and Escape returns the focus to the row
 - [x] #5 Every label reaches the reader in both ja and en
-- [ ] #6 What a directory row offers is settled and written down in the task, and each entry it shows works
+- [x] #6 What a directory row offers is settled and written down in the task, and each entry it shows works
 - [x] #7 pnpm lint, pnpm build and pnpm test pass, and any new pure logic (the relative path) is unit-tested
 <!-- AC:END -->
 
@@ -94,4 +94,11 @@ Out of scope: a context menu inside the viewers, and file operations (rename, de
 - WKWebView でクリップボードへ書き込めるか。コードブロックのコピーと同じ API を同じくクリックの中で使っている。
 - WebView 自身のコンテキストメニューが行の上に出ないこと、Shift+F10 で WebView のメニューが重ならないこと。
 - Windows で相対パスの区切りが \ になること (単体テストでは確かめた)。
+
+オーナーの実機確認 (2026-11-12、macOS / Windows / Linux のビルド):
+- クリップボードへの書き込み: 3 OS とも書き込めた。
+- 行の上に WebView 自身のコンテキストメニューが出ないこと: 3 OS とも出なかった。
+- メニューを開いたまま別の行を右クリックしたとき (レビューで P3 として持ち越した件): 3 OS とも、前の行のメニューが消え、右クリックした行でメニューが開いた。useMenu の onDown に対策は不要。
+- Windows での相対パスの区切り: \ になった。
+- フォルダ行の「表示」(AC#6): macOS は Finder でフォルダを表示した。Windows も表示した。Linux は想定どおり親フォルダを開いた。
 <!-- SECTION:NOTES:END -->
