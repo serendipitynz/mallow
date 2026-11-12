@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-09-08 20:52'
-updated_date: '2026-11-12 21:10'
+updated_date: '2026-11-12 21:20'
 labels:
   - bug
   - 差し込み
@@ -33,7 +33,7 @@ Measured 2026-09-08 in CI (run 34216957411, `paper-linux-light.pdf` / `-dark.pdf
 <!-- AC:BEGIN -->
 - [x] #1 The layer that places the body at 18pt is identified by measurement rather than by reading: which of the @page margin, the print operation's page setup, or the imageable area decides it, shown by changing one at a time and reprinting
 - [x] #2 Whether WebKitGTK honours @page margins at all on this path is answered, because the two candidates differ in what a fix would be - an unset page setup is ours to set, an ignored @page is not
-- [ ] #3 If the fix is ours, the Linux paper's body starts at the same 16mm as macOS and Windows, measured by scripts/paper/measure-paper.mjs rather than by eye, and ci-linux's baseline is retaken because the type may move with it
+- [x] #3 If the fix is ours, the Linux paper's body starts at the same 16mm as macOS and Windows, measured by scripts/paper/measure-paper.mjs rather than by eye, and ci-linux's baseline is retaken because the type may move with it
 - [x] #4 If the fix is not ours, that is recorded in AGENTS.md as a platform difference with the evidence, the way the print path's three-way asymmetry is, and the ci-linux baseline note is rewritten to say so rather than to describe a defect that is being carried
 - [x] #5 The Linux paper's size is looked at while this is open: 4.3 MB against 314 KB on macOS and 543 KB on Windows for the same document. It may be font embedding and it may be the same cause, and it costs nothing to record which
 <!-- AC:END -->
@@ -75,4 +75,7 @@ CI run 41727437237 の paper-linux-light.pdf（4,335,763 bytes）をストリー
 - この PR の CI run 43305943952（paper ジョブ、ubuntu-latest）：light / dark とも measure-paper.mjs の判定は PASS。本文 x 45.35–545.9、16 ページ、A4、CJK 送り幅 12.81（基準 12.80 との差 0.1%）。TASK-36 の検査（9 列の表の右端の値がすべてあり、ページの右端をはみ出す語がない）も通った。サイズは light 4,337,039 / dark 3,491,591 bytes。
 - 手元の Docker の紙も同じく PASS（本文 x 45.4–544.9、16 ページ、CJK 送り幅 12.81）。
 - baseline.json の ci-linux はまだ修正前の紙の数（12.8）で、注記を「レイアウトは 16mm に移った・取り直し待ち」に書き換えた。取り直しは、修正後の紙を人が見て文字サイズを認めてから行う（AC #3 はそれまで未チェック）。
+
+## AC #3 — ベースラインの取り直し
+メンテナが run 43305943952 の Linux の紙（light）を見て文字サイズを認めた（2026-11-13）ので、ci-linux を 12.80 → 12.81（同 run の CJK 送り幅の中央値）に取り直し、注記も書き直した。新しい基準で同 run の light / dark を測り直し、どちらも PASS（差 0.0%）。AGENTS.md / AGENTS.ja.md の paper の節も取り直し済みの記述に更新した。
 <!-- SECTION:NOTES:END -->
