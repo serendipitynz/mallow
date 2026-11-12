@@ -9,6 +9,19 @@ import { CloseIcon } from './icons';
 // `covered`, not mount order — see `keyboardOwner`.
 const openModals: ModalEntry[] = [];
 
+const openingListeners = new Set<() => void>();
+
+/** Run `listener` as a modal is about to open, before it takes the focus.
+ *  A presentation uses it to end itself (TASK-51.2): it covers the window and
+ *  makes the app behind it inert, so a modal opening under it could be neither
+ *  seen nor focused, and would hold every key. */
+export function onModalOpening(listener: () => void): () => void {
+  openingListeners.add(listener);
+  return () => {
+    openingListeners.delete(listener);
+  };
+}
+
 /** Whether a modal is open in this window. Find reads it because opening its bar
  *  would take the focus out of a modal that holds it (snz-design doc-9 §5.3). */
 export function isModalOpen(): boolean {
@@ -75,6 +88,9 @@ export function Modal({
       return;
     }
     const token = entry.current;
+    for (const listener of [...openingListeners]) {
+      listener();
+    }
     openModals.push(token);
     // A modal that mounts underneath another leaves the focus where it is.
     if (!token.covered && !card.contains(document.activeElement)) {

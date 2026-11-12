@@ -12,7 +12,7 @@ import { dirname } from '../lib/path';
 import type { PresentPlace } from '../lib/present';
 import { clampSlide, slideStepForKey, stepSlide } from '../lib/slide-nav';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
-import { isModalOpen } from './Modal';
+import { isModalOpen, onModalOpening } from './Modal';
 import { Notice } from './Notice';
 
 /** WebKit paints the HTML inside Marpit's `foreignObject` at the slide's own
@@ -38,10 +38,21 @@ interface DeckViewProps {
   /** Where the deck is being presented, or `null` while it is not. */
   presenting: PresentPlace | null;
   onPresentEnd: () => void;
+  /** Move a running presentation to the other place (`F`). */
+  onPresentPlace: (place: PresentPlace) => void;
   onSlideCount: (count: number) => void;
 }
 
-export function DeckView({ source, path, index, onIndex, presenting, onPresentEnd, onSlideCount }: DeckViewProps) {
+export function DeckView({
+  source,
+  path,
+  index,
+  onIndex,
+  presenting,
+  onPresentEnd,
+  onPresentPlace,
+  onSlideCount,
+}: DeckViewProps) {
   const t = useT();
   const [deck, setDeck] = useState<DeckResult | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -86,7 +97,7 @@ export function DeckView({ source, path, index, onIndex, presenting, onPresentEn
   countRef.current = count;
   const go = (next: number) => onIndex(clampSlide(next, countRef.current));
 
-  usePresentationWindow(presenting);
+  usePresentationWindow(presenting, onPresentEnd);
 
   /* One listener for both layouts. Outside a presentation a key typed into a
      field, or Space on a button (which presses it), is left where it was going;
@@ -105,7 +116,7 @@ export function DeckView({ source, path, index, onIndex, presenting, onPresentEn
         }
         if (event.key.toLowerCase() === 'f' && !event.metaKey && !event.ctrlKey && !event.altKey) {
           event.preventDefault();
-          void toggleFullscreen();
+          onPresentPlace(presenting === 'fullscreen' ? 'window' : 'fullscreen');
           return;
         }
       } else if (keyBelongsToTarget(event)) {
@@ -119,7 +130,7 @@ export function DeckView({ source, path, index, onIndex, presenting, onPresentEn
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [presenting, onPresentEnd, onIndex]);
+  }, [presenting, onPresentEnd, onPresentPlace, onIndex]);
 
   // Stable per language, since the stage re-runs its enhancements when it changes.
   const mermaidFailed = useCallback((message: string) => t('mermaidFailed', { message }), [t]);
@@ -255,11 +266,13 @@ function SlideStage({
   );
 }
 
-/** Puts the window in the place a presentation asks for, and back as it was
- *  when the presentation ends — by Escape, by the view going away, or by the
- *  file changing under it. The rest of the app is made inert meanwhile, so the
- *  focus cannot wander behind the presentation. */
-function usePresentationWindow(presenting: PresentPlace | null): void {
+/** Puts the window in the place a presentation asks for, follows it when the
+ *  place changes mid-presentation (`F`, or the other present chord), and puts
+ *  the window back as it was when the presentation ends — by Escape, by a modal
+ *  opening, by the view going away, or by the file changing under it. The rest
+ *  of the app is made inert meanwhile, so the focus cannot wander behind the
+ *  presentation. */
+function usePresentationWindow(presenting: PresentPlace | null, onPresentEnd: () => void): void {
   const placeRef = useRef(presenting);
   placeRef.current = presenting;
   const active = presenting !== null;
@@ -269,6 +282,14 @@ function usePresentationWindow(presenting: PresentPlace | null): void {
     }
     const root = document.getElementById('root');
     root?.setAttribute('inert', '');
+    /* A modal mounts inside the inert root, under the presentation: it could be
+       neither seen nor focused, and it would hold every key. So it ends the
+       presentation first — synchronously, so the root is no longer inert by
+       the time the modal takes the focus. */
+    const stopListening = onModalOpening(() => {
+      root?.removeAttribute('inert');
+      onPresentEnd();
+    });
     const win = getCurrentWindow();
     let ended = false;
     let restoreTo: boolean | null = null;
@@ -286,21 +307,28 @@ function usePresentationWindow(presenting: PresentPlace | null): void {
       .catch((e) => console.error('Failed to enter full screen', e));
     return () => {
       ended = true;
+      stopListening();
       root?.removeAttribute('inert');
       if (restoreTo !== null) {
         void win.setFullscreen(restoreTo).catch((e) => console.error('Failed to restore the window', e));
       }
     };
-  }, [active]);
-}
+  }, [active, onPresentEnd]);
 
-async function toggleFullscreen(): Promise<void> {
-  const win = getCurrentWindow();
-  try {
-    await win.setFullscreen(!(await win.isFullscreen()));
-  } catch (e) {
-    console.error('Failed to toggle full screen', e);
-  }
+  /* Only a change of place while presenting: the start is the effect above's,
+     which leaves a window the reader had already made full-screen as it is
+     when the presentation asks for the window. */
+  const shownPlace = useRef<PresentPlace | null>(null);
+  useEffect(() => {
+    const previous = shownPlace.current;
+    shownPlace.current = presenting;
+    if (presenting === null || previous === null || previous === presenting) {
+      return;
+    }
+    void getCurrentWindow()
+      .setFullscreen(presenting === 'fullscreen')
+      .catch((e) => console.error('Failed to change full screen', e));
+  }, [presenting]);
 }
 
 function keyBelongsToTarget(event: KeyboardEvent): boolean {
@@ -330,5 +358,7 @@ function featureLabel(feature: DeckFeature, t: TFn): string {
       return t('deckFeature.cssAtRule', { name: feature.name });
     case 'cssAssetUrl':
       return t('deckFeature.cssAssetUrl');
+    case 'cssUnparsed':
+      return t('deckFeature.cssUnparsed');
   }
 }

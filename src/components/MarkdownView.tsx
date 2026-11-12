@@ -357,6 +357,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
               onIndex={setSlide}
               presenting={presenting}
               onPresentEnd={endPresentation}
+              onPresentPlace={setPresenting}
               onSlideCount={setSlideCount}
             />
           ) : (
