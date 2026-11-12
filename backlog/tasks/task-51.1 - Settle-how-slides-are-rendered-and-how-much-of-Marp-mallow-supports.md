@@ -1,10 +1,10 @@
 ---
 id: TASK-51.1
 title: Settle how slides are rendered and how much of Marp mallow supports
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-11 01:30'
-updated_date: '2026-11-12 06:25'
+updated_date: '2026-11-12 08:41'
 labels:
   - feature
 dependencies: []
