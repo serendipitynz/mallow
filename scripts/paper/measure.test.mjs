@@ -294,8 +294,8 @@ describe('judgePaper', () => {
    21.00. Against 18.56 the 0.847 shrink measured 17.79 — 4.2% off, inside the
    tolerance — so the wrong baseline would have passed the exact defect the check
    is for. Those are word heights; the CJK advance that replaced them (TASK-48)
-   still differs between environments, 12.00 on the Windows runner and 12.80 on
-   the other two. */
+   still differs between environments, 12.00 on the Windows runner and 12.81 on
+   the macOS and Linux runners. */
 describe('a baseline belongs to the environment that produced it', () => {
   const words = (advance) => [word(1, '§1'), cjk(2, '本文', advance), word(3, '13. 最後の節')];
   const paper = (advance, key, baseline) =>

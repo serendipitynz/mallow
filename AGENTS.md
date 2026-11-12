@@ -1910,9 +1910,9 @@ hold rather than as an exhaustive style guide.
   measured rather than tidy**: under the word height this machine's macOS paper
   measured 18.56 where the CI runner's measured 21.00, and against the wrong one
   of those the 0.847 shrink this task chased came out 4.2% off — inside the
-  tolerance. The CJK advance narrows that gap (both macOS environments read 12.81)
-  without closing it — the Windows runner reads 12.00 and the macOS and Linux
-  runners 12.80 for the same CSS — so the key stays. A key with no entry
+  tolerance. The CJK advance narrows that gap (this machine and the macOS and
+  Linux runners all read 12.81) without closing it — the Windows runner reads
+  12.00 for the same CSS — so the key stays. A key with no entry
   is recorded and never failed, because the first paper is what a baseline is made
   from and a person has to call it right first — **and it says so loudly**, since a
   permanent skip is a check that never runs. `baseline.json`'s `_required` list is

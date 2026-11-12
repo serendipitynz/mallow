@@ -192,9 +192,9 @@ export function webView2ChromeFound(words) {
  *  names the environment, not the platform.
  *
  *  **Those numbers are word heights, the reading TASK-48 replaced.** Under the
- *  CJK advance the laptop and the runner agree (12.81 each), but the Windows
- *  runner reads 12.00 for the same CSS and the macOS and Linux runners 12.80, so
- *  environments still write different sizes and the key stays.
+ *  CJK advance the laptop and the macOS and Linux runners all read 12.81, but the
+ *  Windows runner reads 12.00 for the same CSS, so environments still write
+ *  different sizes and the key stays.
  *
  *  5% is then wide enough that nothing but a real scale change moves it, and
  *  narrow enough that 0.847 cannot hide: against its own environment's baseline
