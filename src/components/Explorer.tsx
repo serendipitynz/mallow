@@ -1,10 +1,16 @@
-import { type KeyboardEvent, useCallback, useMemo, useRef, useState } from 'react';
+import { type KeyboardEvent, type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useContextMenu } from '../hooks/useContextMenu';
+import { useEditors } from '../hooks/useEditors';
 import type { FileTreeController } from '../hooks/useFileTree';
+import { onMacPlatform } from '../lib/chord';
+import { isContextMenuKey } from '../lib/context-menu';
 import { useT } from '../lib/i18n';
 import { basename } from '../lib/path';
 import { isShownUnder, tabStopPath, treeKeyAction, visibleRows } from '../lib/tree-nav';
 import type { FileEntry } from '../lib/types';
 import { Busy } from './Busy';
+import { FileActionItems } from './FileActions';
 import { FileTree, type TreeRowHandlers } from './FileTree';
 import { Notice } from './Notice';
 import { RecentFolders } from './RecentFolders';
@@ -33,6 +39,8 @@ export function Explorer({
   const rootName = rootDir ? basename(rootDir) : null;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  const editors = useEditors();
+  const contextMenu = useContextMenu<FileEntry>();
 
   const rows = useMemo(
     () => visibleRows(rootEntries, expanded, childrenByPath),
@@ -69,14 +77,47 @@ export function Explorer({
     [toggleRow, onSelect],
   );
 
+  const { openAt: openContextMenu, close: closeContextMenu } = contextMenu;
+
+  // On macOS a Ctrl+click is the secondary click, which opens the context menu;
+  // taken as a click as well, it would select the row the menu is about.
+  const onRowClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>, entry: FileEntry) => {
+      if (e.ctrlKey && onMacPlatform()) {
+        return;
+      }
+      activate(entry);
+    },
+    [activate],
+  );
+
+  const onRowContextMenu = useCallback(
+    (e: MouseEvent<HTMLDivElement>, entry: FileEntry) => {
+      e.preventDefault();
+      openContextMenu(entry, e.currentTarget, { x: e.clientX, y: e.clientY });
+    },
+    [openContextMenu],
+  );
+
   const onRowKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>, path: string) => {
-      if (e.nativeEvent.isComposing || e.altKey || e.ctrlKey || e.metaKey) {
+    (e: KeyboardEvent<HTMLDivElement>, entry: FileEntry) => {
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
+      // Consumed here, so the WebView's own menu does not open over the row.
+      if (isContextMenuKey(e)) {
+        e.preventDefault();
+        const row = e.currentTarget;
+        const at = (row.querySelector('.tree__label') ?? row).getBoundingClientRect();
+        openContextMenu(entry, row, { x: at.left, y: at.bottom });
+        return;
+      }
+      if (e.altKey || e.ctrlKey || e.metaKey) {
         return;
       }
       const action = treeKeyAction(
         rows,
-        rows.findIndex((row) => row.entry.path === path),
+        rows.findIndex((row) => row.entry.path === entry.path),
         e.key,
       );
       if (!action) {
@@ -95,13 +136,24 @@ export function Explorer({
           break;
       }
     },
-    [rows, focusRow, toggleRow, onSelect],
+    [rows, focusRow, toggleRow, onSelect, openContextMenu],
+  );
+
+  // Closed before the action runs, so the focus is back on the row by the time
+  // anything the action opens takes it (snz-design doc-9 §6.11).
+  const chooseFromContextMenu = useCallback(
+    (action: () => Promise<void>) => {
+      closeContextMenu(true);
+      void action().catch((e) => console.error(e));
+    },
+    [closeContextMenu],
   );
 
   const handlers: TreeRowHandlers = {
     tabStop,
     selectedPath,
-    onRowClick: activate,
+    onRowClick,
+    onRowContextMenu,
     onRowFocus: setFocusedPath,
     onRowKeyDown,
   };
@@ -140,6 +192,24 @@ export function Explorer({
           <FileTree entries={rootEntries} tree={tree} rows={handlers} label={rootName ?? t('explorer')} />
         )}
       </div>
+      {contextMenu.target &&
+        createPortal(
+          <div
+            className="menu__popup menu__popup--context"
+            role="menu"
+            aria-label={t('fileActions', { name: contextMenu.target.name })}
+            {...contextMenu.popupProps}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <FileActionItems
+              entry={contextMenu.target}
+              rootDir={rootDir}
+              editors={editors}
+              choose={chooseFromContextMenu}
+            />
+          </div>,
+          document.body,
+        )}
     </aside>
   );
 }

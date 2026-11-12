@@ -111,6 +111,20 @@
   }
 }
 
+// The explorer's context menu: placed at the pointer or under the row by
+// `useContextMenu`, and portalled to `<body>` so the explorer's scroller does
+// not clip it. Below the modal (100), which a press outside closes it for anyway.
+.menu__popup--context {
+  position: fixed;
+  top: 0;
+  right: auto;
+  left: 0;
+  z-index: 60;
+  // Its own layer, for the reason `.toolbar` carries one: what keeps an open
+  // popup above `.doc__bar`'s backdrop-filter layer is not the z-index alone.
+  will-change: transform;
+}
+
 .menu__item {
   display: flex;
   align-items: center;
