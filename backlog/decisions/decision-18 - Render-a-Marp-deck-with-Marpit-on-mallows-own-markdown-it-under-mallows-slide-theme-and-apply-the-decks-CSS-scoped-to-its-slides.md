@@ -11,14 +11,20 @@ status: accepted
 TASK-51 adds a Slides view for a Markdown document written as a Marp deck.
 TASK-51.1 measured the two routes the task named, and a third the measurement
 turned up, far enough to choose. **A deck** below is a markdown document whose
-leading front matter, as `extractFrontMatter` parses it, has `marp` equal to the
-boolean `true`.
+leading **YAML** front matter (`---`), as `extractFrontMatter` parses it, has
+`marp` equal to the boolean `true`. TOML front matter (`+++`) does not make a
+deck: Marpit reads YAML only, so such a document would render its front matter
+as text on the first slide with no directives, and Marp's own tools would not
+open it as a deck either.
 
 ### What real decks use
 
 222 public decks (one per repository, from a GitHub code search for
 `"marp: true"`, fetched 2026-11-12; the median deck has 11 slides). Shares are of
-decks, not of slides:
+decks, not of slides. The search returns its top 300 results by relevance, kept
+here at one per repository, and the tally is by regular expression over the
+source: the raw HTML and `$…$` rows can over-count, and none of the rows is a
+measurement of Marp users at large.
 
 | feature | decks |
 |---|---|
@@ -85,6 +91,13 @@ none either. With marp-core's defaults the twemoji images loaded from the CDN.
 Marpit's output is built from the same parts, so (c) needs no CSP change.
 **Windows and Linux were not measured.**
 
+Measured in Node with Marpit and mallow's markdown-it under `html: false`:
+directives in HTML comments still apply (`_class: lead` sets the class,
+`header:` carries to the next slide), because Marpit parses comments itself. An
+unquoted colour such as `_backgroundColor: #123456` is dropped under Marpit's
+default `looseYAML: false`, since YAML reads `#` as a comment, and applied with
+`looseYAML: true`, which marp-core sets by default.
+
 ## Decision
 
 ### 1. Route (c): Marpit on a second instance of mallow's markdown-it
@@ -96,6 +109,8 @@ decision-17's local images. **A second instance, never the preview's cached
 one**, because Marpit installs its plugins into the instance it is handed, and
 sharing it would change how every other document renders. The whole source,
 front matter included, goes to Marpit, which reads its directives from it.
+Marpit runs with `looseYAML: true`, as marp-core does, so a directive written
+the way Marp's own documentation writes it — an unquoted `#123456` — applies.
 
 The owner approved `@marp-team/marpit` as a production dependency on
 2026-11-12. TASK-51.2 adds it and regenerates `THIRD-PARTY-NOTICES.md`.
@@ -124,10 +139,19 @@ What Marpit implements is supported as Marpit implements it:
 mallow adds the one marp-core directive real decks use beyond those: **`size`,
 with the values `16:9` and `4:3`**, as a custom global directive.
 
-Every image a slide loads — `![bg]` included, which Marpit turns into an inline
-`background-image` rather than an `<img>` — goes through decision-17: a path
+Every image a slide loads — `![bg]` included — goes through decision-17: a path
 relative to the document is resolved to an `asset:` URL, and a
-document-written `asset:` URL is refused.
+document-written `asset:` URL is refused. **In the deck instance that rule
+cannot stay where the preview has it.** The preview applies it in the `image`
+render rule, but Marpit reads a background image's URL in its own inline rule
+(`marpit_parse_image`) and turns the token into an inline `background-image`,
+so no render rule ever sees it: `![bg](img/cover.png)` would resolve against the
+app's URL and show nothing, and `![bg](asset://…)` would not be refused. So in
+the deck instance the resolution and the refusal both happen once, on the image
+token, in a rule that runs before `marpit_parse_image`, and the render rule does
+not apply them a second time — a second pass would refuse the `asset:` URL the
+first pass wrote. Where that rule hooks in is TASK-51.2's to build and verify;
+what it must do is settled here.
 
 HTML comments that are not directives are speaker notes. Marpit collects them
 per slide and they are never drawn on a slide; nothing shows them until a
@@ -140,8 +164,9 @@ presenter view exists (out of scope in TASK-51).
 - **math** is not typeset (AGENTS.md: KaTeX is intentionally not implemented);
 - **a theme other than `default`** — `gaia`, `uncover` or a custom name — is
   drawn with mallow's slide theme (§5);
+- **at-rules in deck CSS other than `@media`, `@supports` and `@container`**,
+  and **`asset:` URLs written in deck CSS**, which are removed (§6);
 - **a `size` other than `16:9` and `4:3`**;
-- **`@font-face` and `@import` in deck CSS**, which are removed (§6);
 - **`<!-- fit -->`**, whose heading is drawn at its ordinary size.
 
 A deck that uses any of them shows one notice above the slides, as
@@ -162,12 +187,20 @@ window changes. The scaling is Marpit's inline SVG (`inlineSVG: true`), because
 split and multiple backgrounds exist only in that mode. Whether WebKit needs
 `@marp-team/marpit-svg-polyfill` to paint it correctly is TASK-51.2's to
 measure on WKWebView and WebKitGTK; that package would be a second dependency
-and needs its own approval.
+and needs its own approval. **If it is needed and not approved**, slides are
+laid out without the inline SVG and scaled by a CSS transform on the slide
+instead, at the same size and fit; split and multiple backgrounds then fall
+back to Marpit's single CSS background, and the notice (§3) lists them as
+unsupported.
 
 ### 5. Theme rule
 
-mallow registers **one slide theme of its own, under the name `default`**, so a
-deck with no `theme:` and one naming `default` both get it. Its colours come
+mallow registers **one slide theme of its own and no other**, installed both as
+Marpit's `themeSet.default` and under the name `default`. Marpit draws a slide
+with `themeSet.default` whenever the deck names no theme or a theme the set
+does not hold, so a deck with no `theme:`, one naming `default`, and one naming
+`gaia`, `uncover` or a custom theme all get mallow's theme — the last three
+reported (§3). Its colours come
 from the active colour family and mode through the same custom properties the
 preview uses, so a deck follows Light / Dark and the family exactly as a
 document does. It implements the two classes Marp's built-in themes give real
@@ -182,25 +215,46 @@ This is the first time a Markdown document puts CSS into the app document, and
 it is decided here rather than left to fall out:
 
 - **Selectors are scoped by Marpit** to the slide container, as measured.
-- **`@font-face` and `@import` are removed** before the CSS is applied, and
-  reported (§3): a font face would otherwise be registered for the whole app
-  document, under a family name the app's own chrome may use, and `@import` is
-  hoisted out of the scope.
+- **Of the at-rules, only `@media`, `@supports` and `@container` are kept**, with
+  the rules inside them; every other at-rule is removed before the CSS is
+  applied, and reported (§3). Selector scoping leaves the at-rules' own names
+  global: a deck's `@font-face` registers a family name for the whole app
+  document, as measured, and `@keyframes`, `@property`, `@counter-style`,
+  `@font-palette-values` and `@layer` do the same for their own names — a deck's
+  `@keyframes busy-spin` would replace the app's spinner, and a registered
+  `@property` cannot be undone for the life of the window. `@import` is hoisted
+  out of the scope. A list of what is kept, rather than of what is removed,
+  keeps an at-rule CSS adds later out until it is looked at.
+- **Every `url()` in deck CSS follows decision-17**: a path relative to the
+  document is resolved to an `asset:` URL, and a URL the deck writes with the
+  `asset:` scheme or the `asset.localhost` host is removed, with the declaration
+  holding it. Without this a deck's `background-image:url("asset://localhost/…")`
+  would load any file inside any granted folder, which decision-17 §1 refuses
+  for a Markdown image and AGENTS.md records as "mallow is the only author of an
+  `asset:` URL" in Markdown; this keeps that sentence true for deck CSS too.
+- **The removals and the rewriting walk parsed CSS, never the text.** The
+  engine's own CSSOM is the intended parser — a constructed `CSSStyleSheet`
+  whose rules are walked and serialised back — because it needs no dependency.
+  It is unmeasured on the three WebViews; TASK-51.2 measures it, and if it does
+  not hold, `postcss` as a direct dependency (it is in the tree through Marpit,
+  but pnpm does not let mallow import it without declaring it) needs the
+  owner's approval first.
 - **The element that holds the slides establishes `contain: paint`**, so a
   `position: fixed` inside a slide is positioned and clipped by the slide host
   rather than by the window, and a deck cannot draw over the toolbar, the
   explorer or the document bar.
-- **Remote URLs in deck CSS load**, because `img-src` carries `https:`. This is
-  the exposure a Markdown document already has through a remote image, so it
-  adds no new class of outbound request.
+- **Remote URLs in deck CSS load**, because `img-src` carries `https:` and
+  `http:`, cleartext included. This is the exposure a Markdown document already
+  has through a remote image, so it adds no new class of outbound request.
 
 The CSP is unchanged.
 
 ## Consequences
 
 - AGENTS.md's untrusted-Markdown boundary gains one sentence when TASK-51.2
-  lands: a deck's CSS reaches the app document, scoped, without `@font-face`
-  or `@import`, inside a paint-contained host. README "Security" says the same.
+  lands: a deck's CSS reaches the app document, scoped, with only `@media`,
+  `@supports` and `@container` among its at-rules, with its `url()`s under
+  decision-17, inside a paint-contained host. README "Security" says the same.
 - Marpit requires `markdown-it ^14.3.1` while mallow pins `^14.2.0`; the
   measurement ran with 14.2.0. Raising mallow's range when Marpit is added keeps
   one markdown-it in the bundle instead of two.
