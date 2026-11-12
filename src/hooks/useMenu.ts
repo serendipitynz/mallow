@@ -1,40 +1,40 @@
-import { type KeyboardEvent, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type KeyboardEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { menuKeyTarget } from '../lib/menu-nav';
 
-type OpenFocus = 'first' | 'last' | 'current';
+export type OpenFocus = 'first' | 'last' | 'current';
 
 const ITEM_SELECTOR = '[role^="menuitem"]';
 
-/** The open / close and keyboard behaviour both toolbar menus share
- *  (snz-design doc-9 §6.11). Items are found by role inside the popup, so they
- *  take `tabIndex={-1}`: the popup is one stop, moved through with the arrows.
- *
- *  `valueMenu` opens on the item marked `aria-checked`, which is where the
- *  reader's current value is. */
-export function useMenu({ valueMenu = false, disabled = false } = {}) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+/** What an open menu's body does, whatever opened it (snz-design doc-9 §6.11):
+ *  the focus onto an item on open, arrows that wrap, Escape, Tab, and a press
+ *  outside `insideRef` closing it. Items are found by role inside the body, so
+ *  they take `tabIndex={-1}`: the body is one stop, moved through with the
+ *  arrows. `close(true)` is where the focus goes back to what the menu was
+ *  opened from; that is the caller's to know. */
+export function useMenuBody({
+  open,
+  close,
+  focusOnOpen,
+  insideRef,
+}: {
+  open: boolean;
+  close: (returnFocus: boolean) => void;
+  focusOnOpen: RefObject<OpenFocus>;
+  insideRef?: RefObject<HTMLElement | null>;
+}) {
   const popupRef = useRef<HTMLDivElement>(null);
-  const focusOnOpen = useRef<OpenFocus>('first');
   const popupId = useId();
 
   const items = useCallback(() => Array.from(popupRef.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []), []);
-
-  const openMenu = useCallback((focus: OpenFocus) => {
-    focusOnOpen.current = focus;
-    setOpen(true);
-  }, []);
-
-  /** The focus goes back to the trigger itself rather than to whatever held it
-   *  before opening: WebKit does not focus a button on a pointer press, so that
-   *  would be some other control (snz-design doc-9 §6.11). */
-  const close = useCallback((returnFocus: boolean) => {
-    setOpen(false);
-    if (returnFocus) {
-      triggerRef.current?.focus();
-    }
-  }, []);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -52,13 +52,7 @@ export function useMenu({ valueMenu = false, disabled = false } = {}) {
       target = list.find((el) => el.getAttribute('aria-checked') === 'true') ?? list[0];
     }
     target.focus();
-  }, [open, items]);
-
-  useEffect(() => {
-    if (open && disabled) {
-      close(false);
-    }
-  }, [open, disabled, close]);
+  }, [open, items, focusOnOpen]);
 
   // A press outside does not pull the focus back: the pointer has already chosen
   // where it goes next.
@@ -67,37 +61,14 @@ export function useMenu({ valueMenu = false, disabled = false } = {}) {
       return;
     }
     const onDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) {
+      const inside = insideRef?.current ?? popupRef.current;
+      if (!inside?.contains(e.target as Node)) {
         close(false);
       }
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [open, close]);
-
-  const onTriggerClick = () => {
-    if (disabled) {
-      return;
-    }
-    if (open) {
-      close(true);
-    } else {
-      openMenu(valueMenu ? 'current' : 'first');
-    }
-  };
-
-  const onTriggerKeyDown = (e: KeyboardEvent) => {
-    if (disabled || open) {
-      return;
-    }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      openMenu(valueMenu ? 'current' : 'first');
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      openMenu('last');
-    }
-  };
+  }, [open, close, insideRef]);
 
   const onPopupKeyDown = (e: KeyboardEvent) => {
     if (e.nativeEvent.isComposing) {
@@ -126,6 +97,74 @@ export function useMenu({ valueMenu = false, disabled = false } = {}) {
   };
 
   return {
+    popupId,
+    popupProps: {
+      ref: popupRef,
+      id: popupId,
+      tabIndex: -1,
+      onKeyDown: onPopupKeyDown,
+    },
+  };
+}
+
+/** A menu opened from a trigger button — both toolbar menus.
+ *
+ *  `valueMenu` opens on the item marked `aria-checked`, which is where the
+ *  reader's current value is. */
+export function useMenu({ valueMenu = false, disabled = false } = {}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const focusOnOpen = useRef<OpenFocus>('first');
+
+  const openMenu = useCallback((focus: OpenFocus) => {
+    focusOnOpen.current = focus;
+    setOpen(true);
+  }, []);
+
+  /** The focus goes back to the trigger itself rather than to whatever held it
+   *  before opening: WebKit does not focus a button on a pointer press, so that
+   *  would be some other control (snz-design doc-9 §6.11). */
+  const close = useCallback((returnFocus: boolean) => {
+    setOpen(false);
+    if (returnFocus) {
+      triggerRef.current?.focus();
+    }
+  }, []);
+
+  const { popupId, popupProps } = useMenuBody({ open, close, focusOnOpen, insideRef: rootRef });
+
+  useEffect(() => {
+    if (open && disabled) {
+      close(false);
+    }
+  }, [open, disabled, close]);
+
+  const onTriggerClick = () => {
+    if (disabled) {
+      return;
+    }
+    if (open) {
+      close(true);
+    } else {
+      openMenu(valueMenu ? 'current' : 'first');
+    }
+  };
+
+  const onTriggerKeyDown = (e: KeyboardEvent) => {
+    if (disabled || open) {
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      openMenu(valueMenu ? 'current' : 'first');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      openMenu('last');
+    }
+  };
+
+  return {
     open,
     close,
     rootRef,
@@ -137,11 +176,6 @@ export function useMenu({ valueMenu = false, disabled = false } = {}) {
       onClick: onTriggerClick,
       onKeyDown: onTriggerKeyDown,
     },
-    popupProps: {
-      ref: popupRef,
-      id: popupId,
-      tabIndex: -1,
-      onKeyDown: onPopupKeyDown,
-    },
+    popupProps,
   };
 }
