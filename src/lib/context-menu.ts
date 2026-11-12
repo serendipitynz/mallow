@@ -34,7 +34,8 @@ function placeOnAxis(at: number, length: number, room: number): number {
 }
 
 /** Whether a key press asks for the focused element's context menu: the
- *  ContextMenu key, or Shift+F10 with no other modifier. */
+ *  ContextMenu key, or Shift+F10, with no Alt, Ctrl or Meta held — a row passes
+ *  every other modified key through, and these are no different. */
 export function isContextMenuKey(e: {
   key: string;
   shiftKey: boolean;
@@ -42,8 +43,8 @@ export function isContextMenuKey(e: {
   ctrlKey: boolean;
   metaKey: boolean;
 }): boolean {
-  if (e.key === 'ContextMenu') {
-    return true;
+  if (e.altKey || e.ctrlKey || e.metaKey) {
+    return false;
   }
-  return e.key === 'F10' && e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey;
+  return e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey);
 }

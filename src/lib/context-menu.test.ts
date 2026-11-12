@@ -38,8 +38,11 @@ describe('contextMenuPlacement', () => {
 describe('isContextMenuKey', () => {
   const none = { shiftKey: false, altKey: false, ctrlKey: false, metaKey: false };
 
-  it('takes the ContextMenu key', () => {
+  it('takes the ContextMenu key without Alt, Ctrl or Meta', () => {
     expect(isContextMenuKey({ ...none, key: 'ContextMenu' })).toBe(true);
+    expect(isContextMenuKey({ ...none, key: 'ContextMenu', shiftKey: true })).toBe(true);
+    expect(isContextMenuKey({ ...none, key: 'ContextMenu', ctrlKey: true })).toBe(false);
+    expect(isContextMenuKey({ ...none, key: 'ContextMenu', metaKey: true })).toBe(false);
   });
 
   it('takes Shift+F10 alone', () => {

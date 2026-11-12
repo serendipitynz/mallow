@@ -1,4 +1,4 @@
-import { type KeyboardEvent, type MouseEvent, useCallback, useMemo, useRef, useState } from 'react';
+import { type KeyboardEvent, type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { useEditors } from '../hooks/useEditors';
@@ -77,7 +77,15 @@ export function Explorer({
     [toggleRow, onSelect],
   );
 
-  const { openAt: openContextMenu, close: closeContextMenu } = contextMenu;
+  const { target: menuTarget, openAt: openContextMenu, close: closeContextMenu } = contextMenu;
+
+  // A watcher reload can take the row away under an open menu, which would then
+  // act on a missing path and return the focus to a detached node.
+  useEffect(() => {
+    if (menuTarget && !rows.some((row) => row.entry.path === menuTarget.path)) {
+      closeContextMenu(false);
+    }
+  }, [menuTarget, rows, closeContextMenu]);
 
   // On macOS a Ctrl+click is the secondary click, which opens the context menu;
   // taken as a click as well, it would select the row the menu is about.

@@ -28,19 +28,26 @@ export function useContextMenu<T>() {
   const { popupProps } = useMenuBody({ open, close, focusOnOpen });
   const popupRef = popupProps.ref;
 
-  // Placed before the first paint, once the body has a size to place.
+  // Placed before the first paint, once the body has a size to place, and again
+  // whenever that size changes: the editor list can arrive while it is open.
   useLayoutEffect(() => {
     const popup = popupRef.current;
     if (!target || !popup) {
       return;
     }
-    const { x, y } = contextMenuPlacement(
-      target.at,
-      { width: popup.offsetWidth, height: popup.offsetHeight },
-      { width: window.innerWidth, height: window.innerHeight },
-    );
-    popup.style.left = `${x}px`;
-    popup.style.top = `${y}px`;
+    const place = () => {
+      const { x, y } = contextMenuPlacement(
+        target.at,
+        { width: popup.offsetWidth, height: popup.offsetHeight },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      popup.style.left = `${x}px`;
+      popup.style.top = `${y}px`;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(popup);
+    return () => observer.disconnect();
   }, [target, popupRef]);
 
   // The body is fixed to the viewport while the row it was opened on is not, so
