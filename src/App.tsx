@@ -1072,6 +1072,7 @@ export default function App() {
     <div className="app">
       <Toolbar
         selected={selected}
+        rootDir={tree.rootDir}
         onOpenFolder={openFolder}
         explorerShown={explorerShown}
         explorerSide={explorerSide}

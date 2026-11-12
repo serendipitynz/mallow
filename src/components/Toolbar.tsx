@@ -11,6 +11,7 @@ import { OpenWith } from './OpenWith';
 
 interface ToolbarProps {
   selected: FileEntry | null;
+  rootDir: string | null;
   onOpenFolder: () => void;
   explorerShown: boolean;
   explorerSide: ExplorerSide;
@@ -71,6 +72,7 @@ function HistoryButton({
 
 export function Toolbar({
   selected,
+  rootDir,
   onOpenFolder,
   explorerShown,
   explorerSide,
@@ -120,7 +122,7 @@ export function Toolbar({
         {selected?.path ?? ''}
       </span>
       <div className="toolbar__actions">
-        <OpenWith file={selected} />
+        <OpenWith file={selected} rootDir={rootDir} />
         <ModeMenu />
         {explorerSide === 'right' && toggle}
       </div>

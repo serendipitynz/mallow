@@ -48,6 +48,9 @@ const ja: Dict = {
   'manager.finder': 'Finder',
   'manager.explorer': 'エクスプローラ',
   'manager.fileManager': 'ファイルマネージャ',
+  copyPath: 'パスをコピー',
+  copyRelativePath: '相対パスをコピー',
+  fileActions: '{name} の操作',
   // visit history
   historyBack: '戻る',
   historyForward: '進む',
@@ -212,6 +215,9 @@ const en: Dict = {
   'manager.finder': 'Finder',
   'manager.explorer': 'File Explorer',
   'manager.fileManager': 'File Manager',
+  copyPath: 'Copy path',
+  copyRelativePath: 'Copy relative path',
+  fileActions: 'Actions for {name}',
   // visit history
   historyBack: 'Back',
   historyForward: 'Forward',
