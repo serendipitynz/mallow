@@ -669,7 +669,7 @@ hold rather than as an exhaustive style guide.
   `assetProtocol.scope` is an object rather than `[]`.** `allow_media_dir` calls
   `Scope::allow_directory`, which pushes a `<dir>/**` glob, and the scope matches
   with `glob::MatchOptions`, whose `require_literal_leading_dot` defaults to `true`
-  on unix and `false` on Windows (tauri 2.11.3, `src/scope/fs.rs`). Under that
+  on unix and `false` on Windows (tauri 2.12.5, `src/scope/fs.rs`). Under that
   default `*` and `**` refuse every path component starting with a dot, so an image
   in `.assets/` — and a `.hidden.png` beside the document — is refused with a 403 the
   WebView shows as a broken image, in `MediaView` and in the rendered view's
@@ -684,10 +684,12 @@ hold rather than as an exhaustive style guide.
   dot directories, so the tree has always listed those files. Measured on macOS
   against tauri 2.11.3's own `Scope` (TASK-21), and `commands.rs`'s
   `asset_scope_reaches_media_behind_a_leading_dot` reads the key back out of
-  `tauri.conf.json` rather than restating it, so removing it fails the suite.
+  `tauri.conf.json` rather than restating it, so removing it fails the suite —
+  and since it runs the pinned tauri's own `Scope`, it re-checks the default on
+  every upgrade (it passed against 2.12.5 in TASK-55).
 - **Printing is one call that takes three structurally different routes, and
   `window.print()` is only the Windows one.** `print_window` hands the webview
-  window to `WebviewWindow::print()`; wry 0.55.1 builds an `NSPrintOperation` on
+  window to `WebviewWindow::print()`; wry 0.57.2 builds an `NSPrintOperation` on
   macOS, evaluates `window.print()` on Windows and runs GTK's
   `PrintOperation::run_dialog(None)` on Linux. **So a JS print event cannot be
   assumed to fire** — the shape decision-9 established for parent-registered
@@ -1373,7 +1375,7 @@ hold rather than as an exhaustive style guide.
   `getCurrentWebviewWindow().listen`. A listener registered with
   `EventTarget::Any` matches whatever the emitter filtered on —
   `match_any_or_filter` short-circuits on `Any` before consulting the filter
-  (tauri 2.11.3 `src/event/listener.rs:305-311`) — and the plain `listen()` in
+  (tauri 2.12.5 `src/event/listener.rs:345-351`) — and the plain `listen()` in
   `@tauri-apps/api` registers exactly that target, so a window would keep
   receiving every other window's changes however narrowly Rust emits. **It is not
   a blanket rule**: an event meant to reach every window relies on that same
@@ -1385,36 +1387,38 @@ hold rather than as an exhaustive style guide.
 - **The menu is one object, three compositions and one routing rule, and each of
   the three has a way of looking right while being wrong.** `AppHandle::set_menu`
   is app-wide and assigns the menu to any window not given one explicitly
-  (tauri-2.11.3 `src/app.rs:956-961`), so **dropping the old macOS `cfg` would
+  (tauri-2.12.5 `src/app.rs:976-981`), so **dropping the old macOS `cfg` would
   have produced a Windows and Linux menu bar carrying About / Services / Hide /
   Show All** — macOS concepts that compile everywhere and mean nothing there. The
   compositions are: macOS keeps its app submenu and gains File, Edit, View and a Window
   submenu registered with `set_as_windows_menu_for_nsapp`, **which is what makes
   AppKit append the open windows to it and which is a silent no-op until the menu
   is the application's main menu** — muda resolves the NSMenu through
-  `NSApplication.mainMenu()` and its delegate (muda-0.19.3
-  `src/platform_impl/macos/mod.rs:741-746`) and returns having done nothing when
+  `NSApplication.mainMenu()` and its delegate (muda-0.20.0
+  `src/platform_impl/macos/mod.rs:600-605`) and returns having done nothing when
   there is none, so it is registered after `set_menu` rather than while the menu
   is being composed; Windows
   and Linux have no app submenu, carry Settings… and Exit inside File and About
   under Help. **View is the one submenu with the same items on all three** —
   Toggle Explorer (`CmdOrCtrl+B`), Back and Forward, ordinary items, so no
-  backend has a predefined kind to skip. Back and Forward differ only in their
+  backend has a predefined kind it does not carry. Back and Forward differ only in their
   accelerators, `Cmd+[` / `Cmd+]` on macOS and `Alt+Left` / `Alt+Right`
   elsewhere, each platform's browser chord (TASK-44). Toggle Explorer is a
   plain item rather than a check item, since a check would
   have to follow a preference `settings.rs` relays without reading. **On Linux the difference is a rule rather than a list**: muda's GTK
   backend supports only Separator, Copy, Cut, Paste, SelectAll and About as
-  predefined kinds (muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`) and
-  **silently skips every other one on append rather than failing**, so Quit is an
-  ordinary item calling `AppHandle::exit` there, and **Undo and Redo are simply
-  absent rather than broken** — listing them would build a menu whose entries are
-  not shown, and replacing them with ordinary items would mean driving the
-  WebView's undo stack from Rust for an app with one editable field. The failure
-  mode throughout is a missing entry, which only a look at a Linux build reveals.
+  predefined kinds (muda-0.20.0 `src/platform_impl/gtk/mod.rs:1180-1190`) and
+  **draws every other one as a disabled entry rather than failing** (`:912-918`;
+  muda 0.19 skipped them on append instead, which is what the 2026-09-12 look
+  below saw), so Quit is an ordinary item calling `AppHandle::exit` there, and
+  **Undo and Redo are simply absent rather than broken** — listing them would open
+  the Edit menu on two entries that cannot be chosen, and replacing them with
+  ordinary items would mean driving the WebView's undo stack from Rust for an app
+  with one editable field. The failure mode throughout is an entry that does
+  nothing, which only a look at a Linux build reveals.
   **`CmdOrCtrl+W` is predefined on macOS and an ordinary item elsewhere**, because
   muda derives a predefined item's accelerator from its type and offers no setter
-  (`src/items/predefined.rs:331-337`): that is `CmdOrCtrl+W` on macOS and
+  (`src/items/predefined.rs:661-667`): that is `CmdOrCtrl+W` on macOS and
   `Alt+F4` everywhere else. **But the ordinary item's accelerator does not arrive on
   Windows** (measured 2026-09-12): `Ctrl+W` closed nothing while the menu item
   itself worked, and the three chords that did work are exactly the ones `App`
@@ -1432,7 +1436,7 @@ hold rather than as an exhaustive style guide.
   at all, and that reason survives the benign answer: **a duplicate need not land
   on one window**, because **the menu route resolves its target late** —
   `menu_window` runs when the queued menu event is delivered
-  (`src/app.rs:2350-2351`, delivered at `:2588`), so it could resolve this window
+  (`src/app.rs:2520-2521`, delivered at `:2755`), so it could resolve this window
   twice, or take this one and then whichever one focus moved to. **Neither
   ordering was instrumented**, and a single-window round cannot show the second
   outcome at all. Whether WebView2 eats `Ctrl+W` itself or the accelerator table is never
@@ -1442,8 +1446,8 @@ hold rather than as an exhaustive style guide.
   `core:window:allow-close` in the capability, since the core window default set
   carries the readers and none of the mutators. **Undo and Redo are absent on Linux
   alone**, and that is GTK's doing rather than a choice: muda's backend carries
-  neither kind and skips both on append, so listing them would draw a submenu
-  missing its first two entries. They were nearly removed everywhere on the
+  neither kind and draws both disabled, so listing them would put two entries
+  that cannot be chosen at the top of the submenu. They were nearly removed everywhere on the
   reasoning that mallow has nothing to undo — **and that reasoning was wrong in a
   way worth recording**: mallow's *own* UI has no editable field, but a document
   the rendered HTML view is showing can carry an `<input>` or a `contenteditable`,
@@ -1453,7 +1457,7 @@ hold rather than as an exhaustive style guide.
   have been acting on an assumption nobody has looked at. **Routing goes through `webview_windows()`**, never
   `Manager::get_focused_window`, which is behind the `unstable` cargo feature this
   project does not enable and which tauri documents as free to break in a minor
-  release (`src/lib.rs:541-560`); its implementation is that same scan. **On Linux
+  release (`src/lib.rs:568-587`); its implementation is that same scan. **On Linux
   a menu chosen with the pointer reaches Rust while no window reports focus**
   (TASK-49): tao answers `is_focused` with `gtk::Window::is_active`, and the open
   menu holds the focus rather than the window it belongs to — measured on Ubuntu
@@ -1472,7 +1476,7 @@ hold rather than as an exhaustive style guide.
   a synchronous command *or from an event handler* (`src/webview/webview_window.rs:114-116`,
   wry#583), and this handler is the other half of what that doc names, so New
   Window hands off to `tauri::async_runtime::spawn`. **A menu mutation waits on
-  the main thread** (`src/menu/mod.rs:25-39` marshals and blocks on the reply,
+  the main thread** (`src/menu/mod.rs:26-40` marshals and blocks on the reply,
   running inline when the caller is already there), which is why `record_recent`
   releases `RecentLock` before refreshing the submenu — held across it, that
   thread and a `Clear Recent` on the main thread would each wait for the other.
@@ -1507,11 +1511,11 @@ hold rather than as an exhaustive style guide.
   focused window's folder. The modifier cannot come from the event —
   `muda::MenuEvent` carries only the id — and **the click-time state is
   unreachable rather than unmeasured**: muda's handler slot is a `OnceCell`
-  (muda-0.19.3 `src/lib.rs:490-491`) that tauri fills during `build()`
-  (tauri-2.11.3 `src/app.rs:2349-2352`), so nothing in this process can wrap it or
+  (muda-0.20.0 `src/menu_event.rs:22-23`) that tauri fills during `build()`
+  (tauri-2.12.5 `src/app.rs:2519-2522`), so nothing in this process can wrap it or
   replace it to take a snapshot beside the id. What `modifier.rs` reads is the
   state **one event-loop turn later**, when the handler runs
-  (`src/app.rs:2350-2351` posts, `:2586-2600` delivers).
+  (`src/app.rs:2520-2521` posts, `:2753-2767` delivers).
   **Whether that still agrees with the reader is a property of the delay, and it
   was measured** (2026-09-14, `pnpm tauri dev`, releasing the key at the instant
   of the click, five trials each): **macOS 0/5, Windows 5/5, Linux 5/5.** Holding
@@ -1683,7 +1687,7 @@ hold rather than as an exhaustive style guide.
 - **A created window's label is a slot, and the geometry that comes with it is
   the price.** `open_window` takes the lowest `w<n>` no live window holds and no
   creation in flight has claimed — the builder rejects only a label currently in
-  use (tauri-2.11.3 `src/manager/window.rs:70-72`), so reusing a closed window's
+  use (tauri-2.12.5 `src/manager/window.rs:70-72`), so reusing a closed window's
   slot is legal. A monotonic counter would be simpler and is wrong here for two
   reasons that both come from TASK-12.7: the window-state file and the restored
   session are keyed by label, so a counter climbing forever leaves both growing
@@ -1706,7 +1710,7 @@ hold rather than as an exhaustive style guide.
   inserts into the manager's map before any frontend can call `take_window_init`)
   **or once it can never be** (the failed-build path).
 - **Creating a window from a synchronous command deadlocks on Windows, and the
-  symptom is a white window that cannot even be closed.** tauri-2.11.3 says it on
+  symptom is a white window that cannot even be closed.** tauri-2.12.5 says it on
   the function itself (`src/webview/webview_window.rs:114-116`, wry#583): WebView2
   creation pumps the message loop, so reached from inside a WebView2 handler —
   which is where a synchronous command body runs, since tauri v2's desktop IPC is
@@ -1756,10 +1760,10 @@ hold rather than as an exhaustive style guide.
   contradicted by **all four quit paths, and a destroy handler cannot tell why it
   is being destroyed**: closing the last window emits `ExitRequested` *inside*
   the handling of `TaoWindowEvent::Destroyed`, once the window map has gone empty
-  (tauri-runtime-wry-2.11.3 `src/lib.rs:4310-4316`), while the per-window
-  listeners run *before* that match (`:4270-4289`), so the last window's handler
+  (tauri-runtime-wry-2.12.3 `src/lib.rs:4256-4262`), while the per-window
+  listeners run *before* that match (`:4216-4235`), so the last window's handler
   always reads the flag false; macOS ⌘Q reaches `applicationWillTerminate` →
-  `Event::LoopDestroyed` and becomes `RunEvent::Exit` alone (`:4185-4186`), with
+  `Event::LoopDestroyed` and becomes `RunEvent::Exit` alone (`:4131-4132`), with
   no `ExitRequested` and no per-window destroy; Windows File > Exit calls
   `PostQuitMessage(0)` and ends in tao's `loop_destroyed()`, again
   `RunEvent::Exit` alone; and `AppHandle::exit()`, which Linux's Exit item needs,
@@ -1807,21 +1811,21 @@ hold rather than as an exhaustive style guide.
 - **A new window is offset off its spawner by comparing positions, not by asking
   whether the slot has remembered geometry — that question cannot be asked and
   stops being true almost immediately.** tauri-plugin-window-state keeps
-  `WindowState` and `WindowStateCache` private (`src/lib.rs:76`, `:109`), inserts a
-  default state for every label it sees at window-ready (`:437-445`) and writes the
-  whole cache at `RunEvent::Exit` (`:501-504`) — so a slot used once has an entry
+  `WindowState` and `WindowStateCache` private (`src/lib.rs:91`, `:124`), inserts a
+  default state for every label it sees at window-ready (`:463-471`) and writes the
+  whole cache at `RunEvent::Exit` (`:527-530`) — so a slot used once has an entry
   forever after, and a check on it would offset only on a slot's first ever use.
   `offset_when_stacked_on` therefore compares the created window's outer position
   with the spawner's and moves it only when the two are equal. **What makes that
   read a restored position is ordering, not thread affinity**: the plugin restores
   from `on_window_ready`, which tauri dispatches through `Window::run_on_main_thread`
-  (tauri-2.11.3 `src/manager/window.rs:113-118`), the same queue the comparison is
+  (tauri-2.12.5 `src/manager/window.rs:120-125`), the same queue the comparison is
   posted to and posted to first — inline for both when the caller is already on the
   main thread, FIFO through the event proxy when it is not
-  (tauri-runtime-wry-2.11.3 `src/lib.rs:239-248`). **It applies only where no label
+  (tauri-runtime-wry-2.12.3 `src/lib.rs:264-273`). **It applies only where no label
   was supplied**, that is to the interactive paths: the restore path has no spawner,
   and windows the user deliberately stacked must come back stacked. **Do not
-  collapse labels with the plugin's `map_label`** (`src/lib.rs:377`) — it gives
+  collapse labels with the plugin's `map_label`** (`src/lib.rs:397`) — it gives
   every window one shared geometry, which is exactly what a restored set must not
   have.
 - **A location the OS hands over arrives by three routes, and none of them is
@@ -1871,8 +1875,9 @@ hold rather than as an exhaustive style guide.
   2026-10-02), and `.desktop` has no candidate-only rank to ask for — decision-16's
   addendum keeps the registration and README warns the reader. The macOS
   equivalent, a Mac where nothing else claims the type, is unmeasured.
-  **`tauri-plugin-single-instance` is pinned `~2.4`**:
-  2.5 requires `tauri ^2.12`. None of the routes is reachable under `pnpm tauri
+  **`tauri-plugin-single-instance` moves with tauri's minor**, pinned `~2.5`
+  beside tauri `~2.12` like every other tauri crate (see the Dependabot paragraph
+  under "Verifying changes"). None of the routes is reachable under `pnpm tauri
   dev` except a drop and the forwarded argv; `Opened` and the registrations need
   a bundled app.
 - **Closing the last window exits the app, on every platform including macOS.**
@@ -2016,12 +2021,28 @@ hold rather than as an exhaustive style guide.
   ignored, and an entry goes when its reason does. **Dependabot** is the other
   half: alerts and security updates are on in the repository settings, and
   `.github/dependabot.yml` asks for weekly version updates of npm, cargo and the
-  Actions, minor and patch grouped per ecosystem. **Its ignore list is where the
-  tauri 2.11.3 hold is written down for it** — each entry is the first release
-  of a tauri crate declaring tauri `^2.12` — so lifting the hold edits three
-  places together: the `~2.4` pin on `tauri-plugin-single-instance`, that list,
-  and the zip entries in `audit.toml`, which exist only because the fixed zip
-  arrives with an updater that needs tauri 2.12. `tauri-apps/tauri-action` is
+  Actions, minor and patch grouped per ecosystem. **A tauri minor is moved by a
+  task, never by Dependabot** (TASK-55). tauri-cli refuses to build when `tauri`
+  and `@tauri-apps/api`, or a `tauri-plugin-*` crate and its
+  `@tauri-apps/plugin-*` package, differ in major or minor (`info/plugins.rs` in
+  tauri-cli 2.12.4), and Dependabot cannot change npm and cargo in one pull
+  request, so every tauri minor arrives as two halves that each fail the paper
+  build on all three platforms — PR#104 and PR#107 did exactly that at 2.12. The
+  hold therefore has two halves of its own. **The manifests pin with `~`**:
+  `tauri`, `tauri-build` and every `tauri-plugin-*` in `Cargo.toml`, and
+  `@tauri-apps/api`, `@tauri-apps/cli` and every `@tauri-apps/plugin-*` in
+  `package.json`, each to the minor it is on, so neither lockfile can resolve a
+  different minor on its own — a transitive `tauri-plugin-fs` declaring tauri
+  `^2.12` is what moved tauri past the per-crate ignore list this replaced.
+  **`dependabot.yml` ignores minor and major updates of `tauri*` and
+  `@tauri-apps/*`**, because left alone Dependabot rewrites a `~` requirement to
+  take the new minor. Patch releases still arrive. A plugin's npm package may sit
+  a patch behind its crate — a release-age gate such as pnpm's
+  `minimumReleaseAge` can hold the npm half back where cargo has none — which
+  costs nothing, since tauri-cli compares the minor only.
+  Moving to the next minor is a task that edits both manifests, both lockfiles,
+  these two rules and the tauri source citations in this file, which name the
+  releases they were read against. `tauri-apps/tauri-action` is
   ignored for the reason it is pinned (see "Signed self-update"). **cargo audit
   sees only RustSec, so the two halves do not overlap exactly**: a Rust advisory
   that exists only in GitHub's database reaches the owner as a Dependabot alert

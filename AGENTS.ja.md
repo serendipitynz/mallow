@@ -603,7 +603,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   オブジェクトなのはこのため。** `allow_media_dir` が呼ぶ `Scope::allow_directory` は
   `<dir>/**` の glob を積み、スコープの照合は `glob::MatchOptions` で行われる。その
   `require_literal_leading_dot` は unix で `true`、Windows で `false` が既定
-  （tauri 2.11.3 の `src/scope/fs.rs`）。この既定のもとで `*` と `**` はドットで始まる
+  （tauri 2.12.5 の `src/scope/fs.rs`）。この既定のもとで `*` と `**` はドットで始まる
   パス要素をすべて拒むので、`.assets/` の中の画像も、文書の隣の `.hidden.png` も 403 で
   拒否され、WebView には壊れた画像として出る — `MediaView` でも、描画ビューの書き換え済み
   参照でも同じ。`tauri.conf.json` の `requireLiteralLeadingDot: false` が asset protocol の
@@ -617,9 +617,11 @@ Comments と Functions の規約は機械的に検査されない。コメント
   tauri 2.11.3 の `Scope` そのものに対して実測（TASK-21）。`commands.rs` の
   `asset_scope_reaches_media_behind_a_leading_dot` は値を書き写さず
   `tauri.conf.json` から読み出すので、このキーを外すとテストが落ちる。
+  しかも固定中の tauri の `Scope` そのものを動かすので、アップグレードのたびに
+  この既定値を確かめ直す（TASK-55 で 2.12.5 に対して通った）。
 - **印刷は 1 つの呼び出しが 3 経路に分かれ、`window.print()` を通るのは Windows だけ。**
   `print_window` が webview ウィンドウを `WebviewWindow::print()` へ渡す。pin されている
-  wry 0.55.1 は macOS で `NSPrintOperation` を組み立て、Windows で `window.print()` を
+  wry 0.57.2 は macOS で `NSPrintOperation` を組み立て、Windows で `window.print()` を
   eval し、Linux で GTK の `PrintOperation::run_dialog(None)` を呼ぶ。
   **したがって JS の印刷イベントが発火すると仮定できない** — decision-9 が
   パーサ登録のリスナについて確定させたのと同じ形 — 印刷前に DOM を組み替える必要があるなら、
@@ -1191,7 +1193,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `getCurrentWebviewWindow().listen` で受ける。`EventTarget::Any` で登録された
   リスナは emit 側が何で絞ったかにかかわらずマッチする —
   `match_any_or_filter` が filter を見る前に `Any` で短絡する
-  （tauri 2.11.3 `src/event/listener.rs:305-311`） — そして
+  （tauri 2.12.5 `src/event/listener.rs:345-351`） — そして
   `@tauri-apps/api` の素の `listen()` はまさにその target で登録するので、
   Rust がどれだけ狭く emit しても他のウィンドウの変更を受け続ける。
   **これは一律の規則ではない**: 全ウィンドウへ届けたいイベントは同じ `Any` の
@@ -1203,7 +1205,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
 - **メニューは 1 つのオブジェクト・3 つの構成・1 つの配送規則であり、
   その 3 つにはそれぞれ「正しく見えて間違っている」形がある。**
   `AppHandle::set_menu` はアプリ全体に効き、明示的にメニューを与えられていない
-  ウィンドウに割り当てる（tauri-2.11.3 `src/app.rs:956-961`）。だから
+  ウィンドウに割り当てる（tauri-2.12.5 `src/app.rs:976-981`）。だから
   **旧 macOS の `cfg` を外すだけなら、About / Services / Hide / Show All を載せた
   メニューバーが Windows と Linux に出ていた** — どれも macOS の概念で、
   コンパイルは通るが意味を持たない。構成は 3 つ: macOS は今までのアプリサブメニューを
@@ -1211,26 +1213,27 @@ Comments と Functions の規約は機械的に検査されない。コメント
   得る。**AppKit が開いているウィンドウの一覧を足すのはこの登録のためであり、
   かつこの登録はメニューがアプリの main menu になるまで黙って何もしない** —
   muda は `NSApplication.mainMenu()` とその delegate 経由で NSMenu を解決し
-  （muda-0.19.3 `src/platform_impl/macos/mod.rs:741-746`）、main menu が無ければ
+  （muda-0.20.0 `src/platform_impl/macos/mod.rs:600-605`）、main menu が無ければ
   何もせずに返る。だから登録は `set_menu` の後で、メニューを組んでいる最中ではない。Windows と Linux はアプリサブメニューを持たず、
   Settings… と Exit を File の中に、About を Help の下に置く。**View だけは 3 つとも項目が同じ**
   — 普通の項目の Toggle Explorer（`CmdOrCtrl+B`）・Back・Forward だけなので、どのバックエンドにも
-  飛ばされる定義済みの種類が無い。Back と Forward で違うのはアクセラレータだけで、macOS は
+  対応していない定義済みの種類が無い。Back と Forward で違うのはアクセラレータだけで、macOS は
   `Cmd+[` / `Cmd+]`、それ以外は `Alt+Left` / `Alt+Right`。それぞれのプラットフォームの
   ブラウザの chord に合わせている（TASK-44）。Toggle Explorer をチェック付きの項目にしないのは、チェックが
   `settings.rs` が中身を読まずに中継する設定を追わなければならなくなるため。
   **Linux だけは違いが一覧ではなく規則である**: muda の GTK バックエンドは
   predefined の種別のうち Separator・Copy・Cut・Paste・SelectAll・About しか
-  対応せず（muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`）、
-  **それ以外は append 時に失敗ではなく黙って飛ばす**。だから Quit は
+  対応せず（muda-0.20.0 `src/platform_impl/gtk/mod.rs:1180-1190`）、
+  **それ以外は失敗ではなく無効化された項目として描く**（`:912-918`。muda 0.19 は
+  append 時に黙って飛ばしていて、下の 2026-09-12 の確認が見たのはそちら）。だから Quit は
   `AppHandle::exit` を呼ぶ普通の item であり、**Undo と Redo は壊れているのではなく
-  端から無い** — 並べれば表示されない項目を持つメニューができ、普通の item に
+  端から無い** — 並べれば Edit メニューの先頭に選べない項目が 2 つ並び、普通の item に
   置き換えれば、編集可能なフィールドが 1 つしかないアプリのために WebView の
   undo スタックを Rust から駆動することになる。失敗の形は一貫して
-  「項目が無い」であり、Linux のビルドを見なければ分からない。
+  「何も起きない項目」であり、Linux のビルドを見なければ分からない。
   **`CmdOrCtrl+W` は macOS だけ predefined で、他は普通の item** —
   muda は predefined item のアクセラレータを型から導出し setter を持たない
-  （`src/items/predefined.rs:331-337`）ので、macOS で `CmdOrCtrl+W`、
+  （`src/items/predefined.rs:661-667`）ので、macOS で `CmdOrCtrl+W`、
   他では `Alt+F4` になる。
   **ただし普通の item のアクセラレータは Windows に届かない**（2026-09-12 実測）:
   メニュー項目自体は効くのに `Ctrl+W` では何も閉じず、効いた 3 つの chord は
@@ -1249,7 +1252,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   **検査たらしめたのはウィンドウ 2 つであり**、結果が無害だったいまもその理由は
   残る: **重複が 1 つのウィンドウに収まるとは限らない。** メニュー経路は配送先を
   **遅れて**解決するからで、`menu_window` が走るのはキューに積まれた
-  メニューイベントが配送される時点（`src/app.rs:2350-2351`、配送は `:2588`）。
+  メニューイベントが配送される時点（`src/app.rs:2520-2521`、配送は `:2755`）。
   つまりこのウィンドウに 2 回解決することも、このウィンドウを閉じてから
   フォーカスが移った方を閉じることもありえた。**どちらの順序も計測していない。**
   ウィンドウ 1 つでは後者をそもそも見せられない。WebView2 が `Ctrl+W` を自分で
@@ -1259,7 +1262,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `core:window:allow-close` を要する（core window の default セットは読み取り系だけで、
   変更系を 1 つも含まない）。**Undo と Redo は Linux にだけ無い。**
   これは選択ではなく GTK の都合である — muda のバックエンドはどちらの種別も持たず
-  append 時に飛ばすので、並べれば先頭 2 項目が描かれないサブメニューになる。
+  無効化して描くので、並べればサブメニューの先頭に選べない項目が 2 つ並ぶ。
   「mallow には undo するものが無い」という理由で全環境から消しかけた
   **が、その理由は誤っていた。記録する価値のある誤り方である**:
   mallow **自身の** UI に編集可能な欄が無いのは正しいが、レンダリング済み HTML
@@ -1270,7 +1273,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   誰も見ていない挙動についての仮定に基づいて動くことだった。
   **配送先の解決は `webview_windows()` を通す。** `Manager::get_focused_window` は
   このプロジェクトが有効にしていない `unstable` cargo feature の裏にあり、
-  tauri は minor で壊してよいと明記している（`src/lib.rs:541-560`）。
+  tauri は minor で壊してよいと明記している（`src/lib.rs:568-587`）。
   実装はこの走査そのものである。**Linux ではポインタで選んだメニューが、どの
   ウィンドウもフォーカスを報告していない状態で Rust に届く**（TASK-49）。tao は
   `is_focused` を `gtk::Window::is_active` で答え、開いているメニューがフォーカスを
@@ -1289,7 +1292,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   中でデッドロックし（`src/webview/webview_window.rs:114-116`、wry#583）、
   このハンドラはその doc が名指ししているもう一方なので、New Window は
   `tauri::async_runtime::spawn` へ投げる。**メニューの変更はメインスレッドを待つ**
-  （`src/menu/mod.rs:25-39` が marshal して返答を待つ。呼び出し側が既に
+  （`src/menu/mod.rs:26-40` が marshal して返答を待つ。呼び出し側が既に
   メインスレッドなら inline で走る）。だから `record_recent` はサブメニューを
   更新する前に `RecentLock` を解放する — 握ったままだと、そのスレッドと
   メインスレッドの `Clear Recent` が互いの持ち物を待ち合う。
@@ -1323,11 +1326,11 @@ Comments と Functions の規約は機械的に検査されない。コメント
   フォルダを入れ替える代わりに、そのフォルダを別のウィンドウで開く。修飾キーは
   イベントからは来ない（`muda::MenuEvent` は id しか運ばない）。しかも
   **クリック時点の状態は「未測定」ではなく「到達できない」**: muda のハンドラ枠は
-  `OnceCell`（muda-0.19.3 `src/lib.rs:490-491`）で、tauri が `build()` の中で埋める
-  （tauri-2.11.3 `src/app.rs:2349-2352`）ので、このプロセスの何もそれを包むことも
+  `OnceCell`（muda-0.20.0 `src/menu_event.rs:22-23`）で、tauri が `build()` の中で埋める
+  （tauri-2.12.5 `src/app.rs:2519-2522`）ので、このプロセスの何もそれを包むことも
   差し替えることもできず、id の隣にスナップショットを取る場所が存在しない。
   `modifier.rs` が読むのは**イベントループを 1 周した後**、ハンドラが走る時点の状態である
-  （`src/app.rs:2350-2351` が post し、`:2586-2600` が配る）。
+  （`src/app.rs:2520-2521` が post し、`:2753-2767` が配る）。
   **それが利用者の意図と一致するかは遅れの性質であり、実測した**
   （2026-09-14、`pnpm tauri dev`、クリックと同時にキーを離す操作を各 5 回）:
   **macOS 0/5、Windows 5/5、Linux 5/5。** ウィンドウが出るまで押したままなら 3 環境とも通る。
@@ -1481,7 +1484,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   ツリーで利用者が選んだファイルしか描かないビューアにとって、どちらも欠陥ではない。
 - **作られたウィンドウのラベルはスロットであり、付いてくる geometry がその代償である。**
   `open_window` は生きているウィンドウが持たず、作成中の予約も無い最小の `w<n>` を取る —
-  builder が拒否するのは現に使用中のラベルだけなので（tauri-2.11.3
+  builder が拒否するのは現に使用中のラベルだけなので（tauri-2.12.5
   `src/manager/window.rs:70-72`）、閉じたウィンドウのスロットの再利用は正当である。
   単調増加のカウンタの方が単純だが、ここでは誤りで、理由は 2 つとも TASK-12.7 から来る:
   window-state のファイルと restored session はどちらもラベルをキーにするので、
@@ -1502,7 +1505,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   呼べるより先に manager のマップへ入れる）**か、二度と観測されえなくなった後**
   （build 失敗の経路）だけだからである。
 - **同期コマンドからウィンドウを作ると Windows でデッドロックし、症状は
-  「真っ白で閉じることもできないウィンドウ」である。** tauri-2.11.3 は関数自身の doc に
+  「真っ白で閉じることもできないウィンドウ」である。** tauri-2.12.5 は関数自身の doc に
   そう書いている（`src/webview/webview_window.rs:114-116`、wry#583）。WebView2 の生成は
   メッセージループを回すので、WebView2 のハンドラの中 — tauri v2 のデスクトップ IPC は
   `ipc:` への `fetch` なので、同期コマンドの本体はそこで走る — から呼ぶと、その
@@ -1548,11 +1551,11 @@ Comments と Functions の規約は機械的に検査されない。コメント
   立て、立っていない間だけエントリを落とす」案は **4 つの quit 経路すべてに否定され、
   しかも destroy ハンドラは自分がなぜ壊されているのかを知れない**: 最後のウィンドウを
   閉じる経路では `ExitRequested` が `TaoWindowEvent::Destroyed` の処理の**中で**、
-  ウィンドウマップが空になった後に発火し（tauri-runtime-wry-2.11.3
-  `src/lib.rs:4310-4316`）、ウィンドウごとのリスナはその match より**前**に走る
-  （`:4270-4289`）ので、最後のウィンドウのハンドラは必ずフラグを false で読む。
+  ウィンドウマップが空になった後に発火し（tauri-runtime-wry-2.12.3
+  `src/lib.rs:4256-4262`）、ウィンドウごとのリスナはその match より**前**に走る
+  （`:4216-4235`）ので、最後のウィンドウのハンドラは必ずフラグを false で読む。
   macOS の ⌘Q は `applicationWillTerminate` → `Event::LoopDestroyed` を通って
-  `RunEvent::Exit` だけになり（`:4185-4186`）、`ExitRequested` もウィンドウごとの
+  `RunEvent::Exit` だけになり（`:4131-4132`）、`ExitRequested` もウィンドウごとの
   destroy も無い。Windows の File > Exit は `PostQuitMessage(0)` を呼んで tao の
   `loop_destroyed()` に至り、これも `RunEvent::Exit` だけ。Linux の Exit 項目が必要と
   する `AppHandle::exit()` は `ExitRequested` を出すが、ウィンドウは destroy ハンドラを
@@ -1593,20 +1596,20 @@ Comments と Functions の規約は機械的に検査されない。コメント
 - **新しいウィンドウを spawner からずらすかは位置の比較で決める。「このスロットに
   記憶された geometry があるか」は訊けないし、ほぼ即座に真でなくなる。**
   tauri-plugin-window-state は `WindowState` と `WindowStateCache` を private に持ち
-  （`src/lib.rs:76`・`:109`）、window-ready で見たラベルすべてに既定の state を入れ
-  （`:437-445`）、`RunEvent::Exit` でキャッシュ全体を書く（`:501-504`）ので、
+  （`src/lib.rs:91`・`:124`）、window-ready で見たラベルすべてに既定の state を入れ
+  （`:463-471`）、`RunEvent::Exit` でキャッシュ全体を書く（`:527-530`）ので、
   一度使われたスロットは以後ずっとエントリを持つ。それを見る判定は、そのスロットの
   「史上初の使用」でしかずらさない。だから `offset_when_stacked_on` は作られた
   ウィンドウの outer position を spawner のそれと比べ、一致したときだけ動かす。
   **それが復元後の位置を読むことを保証するのは thread affinity ではなく順序である**:
   プラグインの復元は `on_window_ready` から走り、tauri はそれを
-  `Window::run_on_main_thread` 経由で配送する（tauri-2.11.3
-  `src/manager/window.rs:113-118`）。比較を投げる先は同じキューで、復元の方が先に
+  `Window::run_on_main_thread` 経由で配送する（tauri-2.12.5
+  `src/manager/window.rs:120-125`）。比較を投げる先は同じキューで、復元の方が先に
   入っている — 呼び出しが既にメインスレッドなら両方ともインライン、そうでなければ
-  event proxy を通って FIFO（tauri-runtime-wry-2.11.3 `src/lib.rs:239-248`）。
+  event proxy を通って FIFO（tauri-runtime-wry-2.12.3 `src/lib.rs:264-273`）。
   **ラベルが渡されなかった場合、つまり対話的な経路にだけ効く**: 復元経路には spawner が
   無く、利用者が意図して重ねたウィンドウは重なったまま戻らなければならない。
-  **プラグインの `map_label` でラベルを畳まないこと**（`src/lib.rs:377`） —
+  **プラグインの `map_label` でラベルを畳まないこと**（`src/lib.rs:397`） —
   全ウィンドウが 1 つの geometry を共有することになり、復元された集合が最もそうであっては
   ならない状態になる。
 - **OS から渡される場所は 3 つの経路で届き、どれもピッカーではない**（TASK-38、decision-16）:
@@ -1647,8 +1650,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   mallow が既定になった（2026-10-02 実測）。`.desktop` には候補だけを求める rank が無い —
   decision-16 の追補で登録は残し、README で読み手に知らせている。macOS で同じ条件
   （ほかに型を主張するアプリが無い Mac）は未実測。
-  **`tauri-plugin-single-instance` は `~2.4` に固定する**: 2.5 は
-  `tauri ^2.12` を要求する。`pnpm tauri dev` で届くのはドロップと転送された argv だけで、
+  **`tauri-plugin-single-instance` は tauri のマイナーと一緒に動く** — ほかの tauri の
+  クレートと同じく、tauri `~2.12` と並べて `~2.5` に固定する（「変更の検証」の
+  Dependabot の段落を参照）。`pnpm tauri dev` で届くのはドロップと転送された argv だけで、
   `Opened` と登録はバンドルしたアプリでないと試せない。
 - **最後のウィンドウを閉じるとアプリは終了する。macOS を含め全環境で同じ。**
   macOS の作法はメニューバーだけ残して生き続けることだが、見落としではなく選ばなかった:
@@ -1784,12 +1788,26 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `src-tauri/.cargo/audit.toml`。それ以外は無視せず、理由がなくなった項目は消す。
   **もう半分は Dependabot**: alerts とセキュリティ更新をリポジトリ設定で有効にし、
   `.github/dependabot.yml` で npm・cargo・Actions の版更新を週次で求める（minor と
-  patch はエコシステムごとにまとめる）。**tauri 2.11.3 の据え置きを Dependabot に
-  伝えているのはその ignore リスト** — 各項目は tauri の各クレートが tauri `^2.12` を
-  要求し始める版 — なので、据え置きをやめるときは 3 か所を一緒に直す:
-  `tauri-plugin-single-instance` の `~2.4` 固定、そのリスト、`audit.toml` の zip の
-  項目（修正版の zip は tauri 2.12 を要求する updater で入るので、それまでの許容）。
-  `tauri-apps/tauri-action` は固定しているのと同じ理由で ignore する（「署名付きの
+  patch はエコシステムごとにまとめる）。**tauri のマイナーを上げるのはタスクであって、
+  Dependabot ではない**（TASK-55）。tauri-cli は `tauri` と `@tauri-apps/api`、あるいは
+  `tauri-plugin-*` クレートとその `@tauri-apps/plugin-*` パッケージのメジャーかマイナーが
+  食い違うとビルドを拒否する（tauri-cli 2.12.4 の `info/plugins.rs`）。一方 Dependabot は
+  npm と cargo を 1 つの pull request で変えられないので、tauri のマイナーは毎回
+  2 つに割れて届き、どちらも 3 プラットフォームすべてで paper ビルドを落とす —
+  2.12 で PR#104 と PR#107 がまさにそうなった。だから据え置きも 2 段構えにする。
+  **マニフェストは `~` で固定する**: `Cargo.toml` の `tauri`・`tauri-build`・すべての
+  `tauri-plugin-*` と、`package.json` の `@tauri-apps/api`・`@tauri-apps/cli`・すべての
+  `@tauri-apps/plugin-*` を、それぞれ今のマイナーに固定する。これでどちらの lockfile も
+  単独で別のマイナーへ解決できない — 置き換えた per-crate の ignore リストを tauri が
+  越えたのは、tauri `^2.12` を宣言する推移的な `tauri-plugin-fs` のせいだった。
+  **`dependabot.yml` は `tauri*` と `@tauri-apps/*` のマイナー・メジャー更新を ignore する**
+  — 放っておくと Dependabot は新しいマイナーを取るように `~` の要求を書き換えるため。
+  patch はこれまでどおり届く。プラグインの npm パッケージがクレートより patch 1 つ
+  遅れていることはありうる — pnpm の `minimumReleaseAge` のような公開後の待機期間は
+  npm 側だけを止め、cargo には無い — が、tauri-cli が比べるのはマイナーだけなので
+  問題にならない。次のマイナーへ移るのは、両方のマニフェスト・両方の lockfile・
+  この 2 つの規則・このファイルの tauri ソース引用（読んだ版を横に書いてある）を
+  まとめて直すタスクである。`tauri-apps/tauri-action` は固定しているのと同じ理由で ignore する（「署名付きの
   自己更新」を参照）。**cargo audit が見るのは RustSec だけなので、2 つは
   ぴったり重ならない**: GitHub のデータベースにしかない Rust のアドバイザリは
   Dependabot alerts としてオーナーに届き、このワークフローは落ちない — alerts を
