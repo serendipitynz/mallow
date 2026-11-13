@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-11-13 05:08'
-updated_date: '2026-11-13 08:50'
+updated_date: '2026-11-13 08:54'
 labels:
   - chore
 dependencies: []
@@ -82,7 +82,7 @@ GHSA-238p-pmpm-9mq7 (low) は「別経路のプロトタイプ汚染が既にあ
 | advisory | 経路 | 残す理由 | 解消する上流リリース |
 |---|---|---|---|
 | GHSA-238p-pmpm-9mq7 (katex, low) | mermaid → katex 0.16.x | AC #4 のとおり | katex ≥ 0.18.2 を許す mermaid |
-| RUSTSEC-2026-0367 / 0368 / 0369 / 0429 (zip 4.6.1) | tauri-plugin-updater → zip (Windows のみ) | updater が展開するのは minisign 署名を検証したアーカイブだけなので、悪用には署名鍵が要る。zip ^9 を使う updater は 2.14 からで、2.13 以降は tauri ^2.12 を要求する。mallow は tauri 2.11.3 に据え置いている (tauri-plugin-single-instance を ~2.4 に固定している理由と同じ) ため、この範囲では上げられない | tauri 2.12 以上へ上げたうえで tauri-plugin-updater ≥ 2.14 |
+| RUSTSEC-2026-0367 / 0368 / 0369 / 0429 (zip 4.6.1) | tauri-plugin-updater → zip (Windows のみ) | updater が展開するのは minisign 署名を検証したアーカイブだけなので、悪用には署名鍵が要る。zip ^9 を使う updater は 2.14.1 からで (2.14.0 までは zip ^4)、2.13 以降は tauri ^2.12 を要求する。mallow は tauri 2.11.3 に据え置いている (tauri-plugin-single-instance を ~2.4 に固定している理由と同じ) ため、この範囲では上げられない | tauri 2.12 以上へ上げたうえで tauri-plugin-updater ≥ 2.14.1 (Cargo.lock の zip が 9.0.5 以上であることを確かめる) |
 | RUSTSEC-2024-0429 (glib 0.18.5, unsound) | GTK3 系 (tauri / wry / muda) | GTK3 バインディングは 0.18 で止まっており、0.20 は GTK4 系。Tauri が GTK3 を使う間は動かせない | Tauri の GTK4 移行 |
 | RUSTSEC-2024-0370 (proc-macro-error, unmaintained) | glib-macros 0.18 (GTK3 系) | 同上 | 同上 |
 | RUSTSEC-2025-0075 / 0080 / 0081 / 0098 / 0100 (unic-*, unmaintained) | tauri-utils → urlpattern 0.3 | 推移的依存で mallow から差し替えられない | urlpattern / tauri-utils の置き換え |
