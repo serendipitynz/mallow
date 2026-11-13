@@ -92,7 +92,7 @@ fn effective_at(requested: i64, mark: i64) -> i64 {
 /// **The originating window is kept out by the stamp rather than by narrowing
 /// the emit.** The frontend listens on the default `EventTarget::Any`, which
 /// matches an emit that *was* filtered as readily as one that was not
-/// (tauri-2.11.3 `src/event/listener.rs:305-311`), so `emit_to` per window would
+/// (tauri-2.12.5 `src/event/listener.rs:345-351`), so `emit_to` per window would
 /// isolate nothing.
 ///
 /// **`origin` is stamped here and `at` arrives already minted**, which is the one

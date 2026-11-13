@@ -3,12 +3,12 @@
 //! **What can be read here is not what the reader did.** A menu item's
 //! activation and this code are one event-loop turn apart: muda hands the id to
 //! the handler tauri installed, which only forwards it to the event loop
-//! (tauri-2.11.3 `src/app.rs:2350-2351`, delivered at `:2586-2600`), so every
+//! (tauri-2.12.5 `src/app.rs:2520-2521`, delivered at `:2753-2767`), so every
 //! arm below asks the OS what is held *now* rather than what was held then.
 //!
 //! **The click-time state is unreachable rather than unmeasured**, and the
 //! reason is one line of muda: its handler slot is a `OnceCell`
-//! (muda-0.19.3 `src/lib.rs:490-491`) that tauri fills during `build()`. It
+//! (muda-0.20.0 `src/menu_event.rs:22-23`) that tauri fills during `build()`. It
 //! cannot be wrapped and it cannot be replaced, so there is no point in this
 //! process where a modifier snapshot could be taken beside the id. That is what
 //! makes a measured answer necessary: whether the read agrees with the reader is

@@ -141,7 +141,7 @@ pub fn run() {
             _ => {}
         })
         // **Every menu event resolves its own target.** `MenuEvent` carries only
-        // the item id (muda-0.19.3 `src/lib.rs:481-484`), and this used to
+        // the item id (muda-0.20.0 `src/menu_event.rs:13-16`), and this used to
         // broadcast `menu:settings` with `app.emit` — harmless with one window and
         // wrong with several, since every window opened its settings modal at
         // once.
@@ -158,14 +158,14 @@ pub fn run() {
 
             // **Every window is created here, restored or not.** The configured
             // window carries `"create": false`, so tauri creates none of its own
-            // (`src/app.rs:2524` filters on that field) while the config stays the
+            // (`src/app.rs:2691` filters on that field) while the config stays the
             // one place the default size lives — and the label then comes from
             // here rather than being fixed at `main`, which is what lets a
             // restored window come back under the label its geometry and its
             // session row are filed under.
             //
             // After `set_menu` rather than before it: a window built afterwards
-            // takes the app-wide menu at creation (tauri-2.11.3
+            // takes the app-wide menu at creation (tauri-2.12.5
             // `src/window/mod.rs:394-398`), and on macOS the menu is the
             // application's rather than any window's anyway.
             #[cfg(unattended)]

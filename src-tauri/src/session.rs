@@ -664,7 +664,7 @@ fn prepare(app: &AppHandle) -> Result<(), String> {
 /// tauri-plugin-window-state and after tauri-plugin-store**.
 ///
 /// Plugin setup hooks run in registration order and all of them run before the
-/// app's own `setup` closure (tauri-2.11.3 `src/app.rs:2440` against `:1424`),
+/// app's own `setup` closure (tauri-2.12.5 `src/app.rs:2607` against `:1443`),
 /// which is the only place the geometry migration can happen: the window-state
 /// plugin loads its whole cache in its setup and writes that cache back at exit,
 /// so a rewrite made later is simply overwritten.

@@ -3,21 +3,20 @@
 //!
 //! **The menu ships on all three desktop platforms but is not one menu with the
 //! macOS `cfg` removed** (TASK-12 decision 1). `AppHandle::set_menu` is app-wide
-//! and assigns the menu to any window not given one explicitly (tauri-2.11.3
-//! `src/app.rs:956-961`), so dropping the gate would give Windows and Linux a
+//! and assigns the menu to any window not given one explicitly (tauri-2.12.5
+//! `src/app.rs:976-981`), so dropping the gate would give Windows and Linux a
 //! menu bar carrying About / Services / Hide / Show All — items that compile
 //! everywhere and mean nothing there. Each platform gets its own composition
 //! instead, and the differences are written beside the items that carry them.
 //!
 //! **muda's GTK backend supports only Separator, Copy, Cut, Paste, SelectAll and
-//! About as predefined kinds** (muda-0.19.3 `src/platform_impl/gtk/mod.rs:30-49`)
-//! and *silently skips* every other one on append rather than failing. So on Linux
-//! anything else — Quit, Close Window, Minimize — has to be an ordinary
-//! `MenuItem` with a handler of its own, or it is simply not there. The failure
-//! mode is a missing entry, which only a look at a Linux build reveals; that look
-//! happened on 2026-09-12 and found Exit present — the ordinary item doing its
-//! job — and Undo / Redo absent, which is this backend meeting a predefined kind
-//! it does not carry.
+//! About as predefined kinds** (muda-0.20.0 `src/platform_impl/gtk/mod.rs:1180-1190`)
+//! and draws every other one as a *disabled* entry (`:912-918`) rather than
+//! failing — muda 0.19 skipped them on append instead. So on Linux anything else —
+//! Quit, Close Window, Minimize — has to be an ordinary `MenuItem` with a handler of
+//! its own, or it is an entry that cannot be chosen. Only a look at a Linux build
+//! reveals either failure; that look happened on 2026-09-12, under muda 0.19, and
+//! found Exit present — the ordinary item doing its job — and Undo / Redo absent.
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -218,8 +217,8 @@ fn home_dir() -> Option<String> {
 ///
 /// **`webview_windows()` rather than `Manager::get_focused_window`**, which is
 /// behind the `unstable` cargo feature this project does not enable and which
-/// tauri documents as free to break in a minor release (tauri-2.11.3
-/// `src/lib.rs:541-560`). Its implementation is this same scan.
+/// tauri documents as free to break in a minor release (tauri-2.12.5
+/// `src/lib.rs:568-587`). Its implementation is this same scan.
 pub fn focused_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.webview_windows()
         .into_values()
@@ -231,7 +230,7 @@ pub fn focused_window(app: &AppHandle) -> Option<WebviewWindow> {
 ///
 /// **On Linux the open menu holds the focus, not the window it belongs to**
 /// (TASK-49): tao answers `is_focused` with `gtk::Window::is_active`
-/// (tao-0.35.3 `src/platform_impl/linux/window.rs:582-584`), and GDK treats a
+/// (tao-0.37.2 `src/platform_impl/linux/window.rs:597-599`), and GDK treats a
 /// menu's grab as the focus moving to the grab window, so the toplevel stops
 /// being active while its menu is open. The item's `activate` runs as the menu
 /// closes and tauri delivers the event a loop turn later, ahead of the window
@@ -318,8 +317,8 @@ pub fn refresh_recent(app: &AppHandle) {
 /// only Open Recent is touched and not the whole menu bar.
 fn fill_recent(app: &AppHandle, state: &MenuState, folders: &[String]) -> tauri::Result<()> {
     // The count is read once rather than per iteration: every one of these calls
-    // marshals to the main thread and waits for it (tauri-2.11.3
-    // `src/menu/mod.rs:25-39`).
+    // marshals to the main thread and waits for it (tauri-2.12.5
+    // `src/menu/mod.rs:26-40`).
     let existing = state.recent.items()?.len();
     for _ in 0..existing {
         state.recent.remove_at(0)?;
@@ -455,7 +454,7 @@ pub fn drop_window_gate(window: &Window) {
 
 /// Route one menu event to the focused window.
 ///
-/// **Nothing here builds a window inline.** tauri-2.11.3's
+/// **Nothing here builds a window inline.** tauri-2.12.5's
 /// `WebviewWindowBuilder::from_config` deadlocks when reached from a synchronous
 /// command *or from an event handler* (`src/webview/webview_window.rs:114-116`,
 /// wry#583), and this is the handler the doc names alongside the commands
@@ -534,7 +533,7 @@ pub fn handle_event(app: &AppHandle, id: &str) {
 /// Build the menu, set it app-wide, and keep what has to change afterwards.
 ///
 /// Called from `setup` **before any window is created**, because a window takes
-/// the app-wide menu at creation (tauri-2.11.3 `src/window/mod.rs:394-398`) and on
+/// the app-wide menu at creation (tauri-2.12.5 `src/window/mod.rs:394-398`) and on
 /// Windows and Linux the menu bar belongs to the window rather than to the
 /// application.
 ///
@@ -643,13 +642,13 @@ pub fn init(app: &AppHandle) -> tauri::Result<()> {
 
 /// Cut / Copy / Paste / Select All everywhere, with Undo and Redo ahead of them
 /// where the backend carries them, and the three find entries after them — as
-/// ordinary items, so no backend has a predefined kind to skip.
+/// ordinary items, so no backend has a predefined kind it does not carry.
 ///
 /// **Linux is the one platform without those two, and that is GTK's doing rather
-/// than a choice**: muda's backend does not carry either predefined kind and skips
-/// them on append, so listing them there would build a submenu whose first two
-/// entries are simply not drawn, and an ordinary item in their place would mean
-/// driving a WebView's undo stack from Rust.
+/// than a choice**: muda's backend does not carry either predefined kind and draws
+/// them disabled, so listing them there would open the submenu on two entries that
+/// cannot be chosen, and an ordinary item in their place would mean driving a
+/// WebView's undo stack from Rust.
 ///
 /// **Nothing in mallow's own UI can be edited** — every control in the settings
 /// modal is a button — so the only editable text any of these six can reach is a
@@ -682,8 +681,8 @@ fn edit_submenu(app: &AppHandle, find: &[MenuItem<Wry>; 3]) -> tauri::Result<Sub
 /// application's main menu and never before**.
 ///
 /// muda resolves the NSMenu to register by going through
-/// `NSApplication.mainMenu()` and its delegate (muda-0.19.3
-/// `src/platform_impl/macos/mod.rs:741-746`), and **returns having done nothing**
+/// `NSApplication.mainMenu()` and its delegate (muda-0.20.0
+/// `src/platform_impl/macos/mod.rs:600-605`), and **returns having done nothing**
 /// when there is no main menu yet — so called while the menu was being composed
 /// this would fail silently, and the Window menu would simply never list the open
 /// windows.
@@ -726,7 +725,7 @@ fn compose(
     about: tauri::menu::AboutMetadata<'_>,
 ) -> tauri::Result<(Menu<Wry>, Option<Submenu<Wry>>)> {
     // The same View menu on all three, and made of ordinary items only, so no
-    // backend has a predefined kind to skip.
+    // backend has a predefined kind it does not carry.
     let view_menu = SubmenuBuilder::new(app, "View")
         .item(toggle_explorer)
         .separator()
@@ -752,7 +751,7 @@ fn compose(
 
         // `close_window` is the predefined item here and an ordinary one
         // everywhere else: muda derives a predefined item's accelerator from its
-        // type and offers no setter (muda-0.19.3 `src/items/predefined.rs:331-337`),
+        // type and offers no setter (muda-0.20.0 `src/items/predefined.rs:661-667`),
         // which is `CmdOrCtrl+W` on macOS and `Alt+F4` elsewhere.
         let file_menu = SubmenuBuilder::new(app, "File")
             .item(new_window)
@@ -803,9 +802,9 @@ fn compose(
             .separator()
             .item(&close_window);
 
-        // Quit is one of the predefined kinds GTK skips, so on Linux it is an
-        // ordinary item calling `AppHandle::exit`. On Windows the predefined one
-        // renders as "E&xit" (muda-0.19.3 `src/items/predefined.rs:291`) and
+        // Quit is one of the predefined kinds GTK draws disabled, so on Linux it
+        // is an ordinary item calling `AppHandle::exit`. On Windows the predefined one
+        // renders as "E&xit" (muda-0.20.0 `src/items/predefined.rs:443`) and
         // carries the platform's own quit behaviour.
         #[cfg(target_os = "linux")]
         let exit = MenuItemBuilder::with_id(EXIT, "Exit").build(app)?;

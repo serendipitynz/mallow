@@ -56,11 +56,11 @@ register alike:
 it was handed; the second process exits without opening a window.** The mechanism
 is `tauri-plugin-single-instance` (the user approved the dependency): a Unix socket
 on macOS, the DBus session bus on Linux, a hidden window's `WM_COPYDATA` on
-Windows. It is pinned to `~2.4.5`, because 2.5 requires `tauri ^2.12` and mallow is
-on 2.11.3 — taking 2.5 would move tauri, which every pinned citation in AGENTS
-rests on. It is registered **first**, so the relaunched process ends inside its
-setup before the session plugin's setup writes settings.json and the window-state
-file; and it exits through `cleanup_before_exit` and `process::exit`, which run no
+Windows. It moves with tauri's minor and never on its own: pinned `~2.4.5` while
+mallow held tauri at 2.11.3 (2.5 requires `tauri ^2.12`), and `~2.5` beside tauri
+`~2.12` since TASK-55 moved both. It is registered **first**, so the relaunched
+process ends inside its setup before the session plugin's setup writes
+settings.json and the window-state file; and it exits through `cleanup_before_exit` and `process::exit`, which run no
 plugin's exit hook. A relaunch carrying no path brings the most recently focused
 window forward. **An unattended build registers none of this**, since forwarding a
 measurement run's document to a reader's running mallow would export nothing.
@@ -120,8 +120,9 @@ no objection):
   **except where the forwarding channel is missing**: on Linux without a DBus
   session bus the plugin finds no running instance to talk to and the second
   process launches as before. That is the old behaviour, not a new failure.
-- `tauri-plugin-single-instance` cannot move to 2.5 without tauri moving to 2.12;
-  the pin in `Cargo.toml` says so. A tauri upgrade lifts it.
+- `tauri-plugin-single-instance` is pinned with `~` like every other tauri crate,
+  so it reaches its next minor only through a tauri upgrade (AGENTS.md, "Verifying
+  changes", says why the whole set is held that way).
 - On Windows the drop and "Choose another app" are the only ways in from the OS;
   README says so, so the absence of a registration does not read as a defect.
 - What reaches the frontend as an argument is every non-flag argv entry, resolved

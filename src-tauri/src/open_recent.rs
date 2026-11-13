@@ -84,7 +84,7 @@ pub fn recent_choice(
 /// Resolve the choice and carry out the half that belongs to Rust.
 ///
 /// **Nothing here builds a window inline.** This is reached from the menu event
-/// handler, which tauri-2.11.3 names alongside a synchronous command as a place
+/// handler, which tauri-2.12.5 names alongside a synchronous command as a place
 /// `WebviewWindowBuilder::from_config` deadlocks (`src/webview/webview_window.rs:114-116`,
 /// wry#583), so the creation is handed to the async runtime — the same shape New
 /// Window already takes.
