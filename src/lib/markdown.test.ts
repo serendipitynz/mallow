@@ -86,6 +86,22 @@ describe('renderMarkdown — normal rendering still works', () => {
     expect(html).toMatch(/<a[^>]+href="https:\/\/example\.com"/);
   });
 
+  it('still autolinks a schemeless domain, which linkify-it 6 stopped doing by default', async () => {
+    const { html } = await renderMarkdown('see example.com and www.example.com\n');
+    expect(html).toContain('<a href="http://example.com">example.com</a>');
+    expect(html).toContain('<a href="http://www.example.com">www.example.com</a>');
+  });
+
+  it('ends an autolinked URL at CJK punctuation', async () => {
+    const { html } = await renderMarkdown('（https://example.com/a）。\n');
+    expect(html).toContain('<a href="https://example.com/a">https://example.com/a</a>）。');
+  });
+
+  it('does not autolink the host behind a user-info part', async () => {
+    const { html } = await renderMarkdown('https://trusted.example@evil.example/x\n');
+    expect(html).not.toMatch(/href="[^"]*evil\.example/);
+  });
+
   it('renders GFM task lists as disabled checkboxes', async () => {
     const { html } = await renderMarkdown('- [ ] ToDo\n- [x] Done\n');
     expect(html).toContain('<ul class="contains-task-list">');

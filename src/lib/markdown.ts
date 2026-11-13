@@ -368,6 +368,11 @@ export async function createMarkdownIt(options: { localImageRule: boolean }): Pr
   // and the front-matter table) is emitted by the renderer regardless of this
   // flag — `html` only governs raw HTML *in the source* — so none of it breaks.
   const md = markdownIt({ html: false, linkify: true });
+  // linkify-it 6 (markdown-it 15) stopped linking a schemeless `example.com` or
+  // `www.example.com` by default; every earlier mallow linked them, so the
+  // documents readers already have keep their links. `urlAuth` stays at its new
+  // `false`: a `https://trusted.com@evil.com` is no longer linked whole.
+  md.linkify.set({ fuzzyLink: true });
 
   md.use(
     fromHighlighter(highlighter, {
