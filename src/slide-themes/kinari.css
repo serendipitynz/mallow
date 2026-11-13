@@ -1,0 +1,498 @@
+/* kinari 0.1.0 — https://github.com/serendipitynz/marp-theme-kinari — MIT License */
+/* @theme kinari */
+/* @size 16:9 1280px 720px */
+/* @size 4:3 960px 720px */
+/* @auto-scaling true */
+
+/*
+ * kinari — unbleached paper in light, sumi-dyed paper in dark.
+ *
+ * Light and dark are one theme: every colour is a light-dark() pair, so a slide
+ * follows whatever `color-scheme` it inherits. A page that sets none (Marp CLI's
+ * HTML and PDF, the VS Code preview) draws the light side.
+ *
+ * Each colour is written once per side, as --kinari-light-* and --kinari-dark-*,
+ * and paired three times: the slide, `invert`, and the fallback for an engine
+ * without light-dark(). Tuning a colour is one edit; scripts/check.mjs fails when
+ * the three pairings stop naming the same set.
+ *
+ * The paper is one image of mid-grey grain and mottling at low opacity: grey
+ * darkens a cream ground and lightens a charcoal one, so the same image reads as
+ * paper on either side. light-dark() takes colours only, which is why the
+ * texture is not a pair.
+ */
+
+section {
+  --kinari-light-paper: #f4f2ec;
+  --kinari-light-ink: #6f4a42;
+  --kinari-light-heading: #ad6355;
+  --kinari-light-accent: #e08a1e;
+  --kinari-light-muted: #b39189;
+  --kinari-light-rule: #dccbc2;
+  --kinari-light-callout-ground: rgb(236 170 180 / 0.28);
+  --kinari-light-callout-edge: #c9707a;
+  --kinari-light-shadow: rgb(60 40 30 / 0.22);
+  --kinari-light-code-ground: #fbfaf6;
+  --kinari-light-code-edge: #e2dbd0;
+  --kinari-light-code-inline: rgb(173 99 85 / 0.1);
+  --kinari-light-code-text: #4f3631;
+  --kinari-light-code-comment: #8c7b73;
+  --kinari-light-code-keyword: #b04a3a;
+  --kinari-light-code-string: #4f7a3a;
+  --kinari-light-code-number: #a85a08;
+  --kinari-light-code-title: #8a3f6e;
+  --kinari-light-code-type: #2c6b78;
+  --kinari-light-code-attr: #96552b;
+
+  --kinari-dark-paper: #22201e;
+  --kinari-dark-ink: #ddd2c8;
+  --kinari-dark-heading: #e59a86;
+  --kinari-dark-accent: #f0b45c;
+  --kinari-dark-muted: #9b8b80;
+  --kinari-dark-rule: #4a403b;
+  --kinari-dark-callout-ground: rgb(214 110 125 / 0.16);
+  --kinari-dark-callout-edge: #c97c84;
+  --kinari-dark-shadow: rgb(0 0 0 / 0.5);
+  --kinari-dark-code-ground: #2b2724;
+  --kinari-dark-code-edge: #433a35;
+  --kinari-dark-code-inline: rgb(229 154 134 / 0.14);
+  --kinari-dark-code-text: #e4d9cf;
+  --kinari-dark-code-comment: #968780;
+  --kinari-dark-code-keyword: #f0937e;
+  --kinari-dark-code-string: #b5cf8c;
+  --kinari-dark-code-number: #f2b462;
+  --kinari-dark-code-title: #e3a3c6;
+  --kinari-dark-code-type: #86c3cc;
+  --kinari-dark-code-attr: #e0b08a;
+
+  --kinari-paper: light-dark(var(--kinari-light-paper), var(--kinari-dark-paper));
+  --kinari-ink: light-dark(var(--kinari-light-ink), var(--kinari-dark-ink));
+  --kinari-heading: light-dark(var(--kinari-light-heading), var(--kinari-dark-heading));
+  --kinari-accent: light-dark(var(--kinari-light-accent), var(--kinari-dark-accent));
+  --kinari-muted: light-dark(var(--kinari-light-muted), var(--kinari-dark-muted));
+  --kinari-rule: light-dark(var(--kinari-light-rule), var(--kinari-dark-rule));
+  --kinari-callout-ground: light-dark(var(--kinari-light-callout-ground), var(--kinari-dark-callout-ground));
+  --kinari-callout-edge: light-dark(var(--kinari-light-callout-edge), var(--kinari-dark-callout-edge));
+  --kinari-shadow: light-dark(var(--kinari-light-shadow), var(--kinari-dark-shadow));
+  --kinari-code-ground: light-dark(var(--kinari-light-code-ground), var(--kinari-dark-code-ground));
+  --kinari-code-edge: light-dark(var(--kinari-light-code-edge), var(--kinari-dark-code-edge));
+  --kinari-code-inline: light-dark(var(--kinari-light-code-inline), var(--kinari-dark-code-inline));
+  --kinari-code-text: light-dark(var(--kinari-light-code-text), var(--kinari-dark-code-text));
+  --kinari-code-comment: light-dark(var(--kinari-light-code-comment), var(--kinari-dark-code-comment));
+  --kinari-code-keyword: light-dark(var(--kinari-light-code-keyword), var(--kinari-dark-code-keyword));
+  --kinari-code-string: light-dark(var(--kinari-light-code-string), var(--kinari-dark-code-string));
+  --kinari-code-number: light-dark(var(--kinari-light-code-number), var(--kinari-dark-code-number));
+  --kinari-code-title: light-dark(var(--kinari-light-code-title), var(--kinari-dark-code-title));
+  --kinari-code-type: light-dark(var(--kinari-light-code-type), var(--kinari-dark-code-type));
+  --kinari-code-attr: light-dark(var(--kinari-light-code-attr), var(--kinari-dark-code-attr));
+
+  width: 1280px;
+  height: 720px;
+  box-sizing: border-box;
+  padding: 120px 96px 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+
+  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI',
+    'Meiryo', sans-serif;
+  font-size: 30px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--kinari-ink);
+
+  background-color: var(--kinari-paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Cfilter id='m' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0125' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0.22 0 0 0 -0.08'/%3E%3C/filter%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 0.55 0 0 0 -0.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 480px 480px;
+}
+
+/* `invert`: the other side of the paper, whichever side the reader is on. */
+section.invert {
+  --kinari-paper: light-dark(var(--kinari-dark-paper), var(--kinari-light-paper));
+  --kinari-ink: light-dark(var(--kinari-dark-ink), var(--kinari-light-ink));
+  --kinari-heading: light-dark(var(--kinari-dark-heading), var(--kinari-light-heading));
+  --kinari-accent: light-dark(var(--kinari-dark-accent), var(--kinari-light-accent));
+  --kinari-muted: light-dark(var(--kinari-dark-muted), var(--kinari-light-muted));
+  --kinari-rule: light-dark(var(--kinari-dark-rule), var(--kinari-light-rule));
+  --kinari-callout-ground: light-dark(var(--kinari-dark-callout-ground), var(--kinari-light-callout-ground));
+  --kinari-callout-edge: light-dark(var(--kinari-dark-callout-edge), var(--kinari-light-callout-edge));
+  --kinari-shadow: light-dark(var(--kinari-dark-shadow), var(--kinari-light-shadow));
+  --kinari-code-ground: light-dark(var(--kinari-dark-code-ground), var(--kinari-light-code-ground));
+  --kinari-code-edge: light-dark(var(--kinari-dark-code-edge), var(--kinari-light-code-edge));
+  --kinari-code-inline: light-dark(var(--kinari-dark-code-inline), var(--kinari-light-code-inline));
+  --kinari-code-text: light-dark(var(--kinari-dark-code-text), var(--kinari-light-code-text));
+  --kinari-code-comment: light-dark(var(--kinari-dark-code-comment), var(--kinari-light-code-comment));
+  --kinari-code-keyword: light-dark(var(--kinari-dark-code-keyword), var(--kinari-light-code-keyword));
+  --kinari-code-string: light-dark(var(--kinari-dark-code-string), var(--kinari-light-code-string));
+  --kinari-code-number: light-dark(var(--kinari-dark-code-number), var(--kinari-light-code-number));
+  --kinari-code-title: light-dark(var(--kinari-dark-code-title), var(--kinari-light-code-title));
+  --kinari-code-type: light-dark(var(--kinari-dark-code-type), var(--kinari-light-code-type));
+  --kinari-code-attr: light-dark(var(--kinari-dark-code-attr), var(--kinari-light-code-attr));
+}
+
+/* A custom property holding a light-dark() the engine cannot parse makes every
+   var() reading it invalid at computed-value time, so the slide would lose its
+   ground and its ink rather than fall back to one side. This gives it the light
+   side, and `invert` the dark one. */
+@supports not (color: light-dark(#000, #fff)) {
+  section {
+    --kinari-paper: var(--kinari-light-paper);
+    --kinari-ink: var(--kinari-light-ink);
+    --kinari-heading: var(--kinari-light-heading);
+    --kinari-accent: var(--kinari-light-accent);
+    --kinari-muted: var(--kinari-light-muted);
+    --kinari-rule: var(--kinari-light-rule);
+    --kinari-callout-ground: var(--kinari-light-callout-ground);
+    --kinari-callout-edge: var(--kinari-light-callout-edge);
+    --kinari-shadow: var(--kinari-light-shadow);
+    --kinari-code-ground: var(--kinari-light-code-ground);
+    --kinari-code-edge: var(--kinari-light-code-edge);
+    --kinari-code-inline: var(--kinari-light-code-inline);
+    --kinari-code-text: var(--kinari-light-code-text);
+    --kinari-code-comment: var(--kinari-light-code-comment);
+    --kinari-code-keyword: var(--kinari-light-code-keyword);
+    --kinari-code-string: var(--kinari-light-code-string);
+    --kinari-code-number: var(--kinari-light-code-number);
+    --kinari-code-title: var(--kinari-light-code-title);
+    --kinari-code-type: var(--kinari-light-code-type);
+    --kinari-code-attr: var(--kinari-light-code-attr);
+  }
+
+  section.invert {
+    --kinari-paper: var(--kinari-dark-paper);
+    --kinari-ink: var(--kinari-dark-ink);
+    --kinari-heading: var(--kinari-dark-heading);
+    --kinari-accent: var(--kinari-dark-accent);
+    --kinari-muted: var(--kinari-dark-muted);
+    --kinari-rule: var(--kinari-dark-rule);
+    --kinari-callout-ground: var(--kinari-dark-callout-ground);
+    --kinari-callout-edge: var(--kinari-dark-callout-edge);
+    --kinari-shadow: var(--kinari-dark-shadow);
+    --kinari-code-ground: var(--kinari-dark-code-ground);
+    --kinari-code-edge: var(--kinari-dark-code-edge);
+    --kinari-code-inline: var(--kinari-dark-code-inline);
+    --kinari-code-text: var(--kinari-dark-code-text);
+    --kinari-code-comment: var(--kinari-dark-code-comment);
+    --kinari-code-keyword: var(--kinari-dark-code-keyword);
+    --kinari-code-string: var(--kinari-dark-code-string);
+    --kinari-code-number: var(--kinari-dark-code-number);
+    --kinari-code-title: var(--kinari-dark-code-title);
+    --kinari-code-type: var(--kinari-dark-code-type);
+    --kinari-code-attr: var(--kinari-dark-code-attr);
+  }
+}
+
+section > :first-child {
+  margin-top: 0;
+}
+
+section > :last-child {
+  margin-bottom: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0.4em 0 0.3em;
+  color: var(--kinari-heading);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.08em;
+}
+
+h1 {
+  font-size: 1.7em;
+}
+
+h2 {
+  font-size: 1.25em;
+}
+
+h3 {
+  font-size: 1.1em;
+}
+
+h4,
+h5,
+h6 {
+  font-size: 1em;
+}
+
+/* The slide's own title sits at the top and out of the flow, so what follows it
+   is centred in the space below, as the Keynote decks this theme comes from lay
+   a slide out. */
+section > h2:first-child {
+  position: absolute;
+  top: 40px;
+  left: 96px;
+  right: 96px;
+  margin: 0;
+  text-align: center;
+}
+
+p,
+ul,
+ol,
+blockquote,
+pre,
+table {
+  margin: 0.45em 0;
+}
+
+strong {
+  color: var(--kinari-accent);
+  font-weight: 700;
+}
+
+/* Japanese has no italic, so emphasis is a colour rather than a slant. */
+em {
+  font-style: normal;
+  color: var(--kinari-heading);
+}
+
+a {
+  color: var(--kinari-heading);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+/* A list is a left-aligned block centred on the slide. */
+ul,
+ol,
+table {
+  text-align: left;
+}
+
+section > ul,
+section > ol {
+  min-width: 50%;
+}
+
+ul {
+  list-style: none;
+  padding-left: 1.2em;
+}
+
+ul > li {
+  position: relative;
+}
+
+ul > li::before {
+  content: '・';
+  position: absolute;
+  left: -1.1em;
+  color: var(--kinari-muted);
+}
+
+ul ul,
+ol ol,
+ul ol,
+ol ul {
+  margin: 0.1em 0;
+  font-size: 0.8em;
+}
+
+ul ul > li,
+ol ul > li {
+  color: var(--kinari-heading);
+}
+
+ol {
+  padding-left: 1.4em;
+}
+
+ol > li::marker {
+  color: var(--kinari-muted);
+}
+
+li + li {
+  margin-top: 0.35em;
+}
+
+/* A note: the pink panel with a rounded edge. */
+blockquote {
+  padding: 0.7em 1em;
+  border: 2px solid var(--kinari-callout-edge);
+  border-radius: 12px;
+  background: var(--kinari-callout-ground);
+  font-size: 0.82em;
+  color: var(--kinari-ink);
+  text-align: left;
+}
+
+blockquote > :first-child {
+  margin-top: 0;
+}
+
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+img {
+  max-width: 100%;
+  border-radius: 4px;
+  box-shadow: 0 6px 18px var(--kinari-shadow);
+}
+
+code {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.85em;
+  letter-spacing: 0;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: var(--kinari-code-inline);
+}
+
+pre {
+  font-size: 0.62em;
+  line-height: 1.5;
+  padding: 0.9em 1.2em;
+  border: 1px solid var(--kinari-code-edge);
+  border-radius: 10px;
+  background: var(--kinari-code-ground);
+  color: var(--kinari-code-text);
+  overflow: hidden;
+  text-align: left;
+  align-self: stretch;
+}
+
+pre code {
+  padding: 0;
+  font-size: 1em;
+  background: none;
+}
+
+/* highlight.js classes, which Marp CLI and Marp for VS Code put on code. An app
+   highlighting with something else colours its own tokens and ignores these. */
+.hljs-comment,
+.hljs-quote,
+.hljs-meta {
+  color: var(--kinari-code-comment);
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-doctag,
+.hljs-template-tag,
+.hljs-deletion {
+  color: var(--kinari-code-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-char.escape_,
+.hljs-addition,
+.hljs-meta .hljs-string {
+  color: var(--kinari-code-string);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: var(--kinari-code-number);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id {
+  color: var(--kinari-code-title);
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-class .hljs-title {
+  color: var(--kinari-code-type);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-variable,
+.hljs-variable.language_,
+.hljs-template-variable,
+.hljs-params,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--kinari-code-attr);
+}
+
+.hljs-section,
+.hljs-strong {
+  font-weight: 700;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 0.75em;
+}
+
+th,
+td {
+  padding: 0.35em 0.8em;
+  border-bottom: 1px solid var(--kinari-rule);
+}
+
+th {
+  color: var(--kinari-heading);
+  text-align: left;
+}
+
+header,
+footer {
+  position: absolute;
+  left: 96px;
+  right: 96px;
+  font-size: 16px;
+  color: var(--kinari-muted);
+}
+
+header {
+  top: 20px;
+}
+
+footer {
+  bottom: 22px;
+}
+
+section::after {
+  font-size: 16px;
+  color: var(--kinari-muted);
+  padding: 22px 36px;
+}
+
+/* `lead`: a title slide, everything centred. */
+section.lead {
+  align-items: center;
+  text-align: center;
+  padding-top: 72px;
+}
+
+section.lead h1 {
+  font-size: 1.5em;
+}
+
+section.lead > h2:first-child {
+  position: static;
+}
+
+section.lead p {
+  color: var(--kinari-muted);
+  font-size: 0.75em;
+}

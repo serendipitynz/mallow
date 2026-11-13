@@ -10,5 +10,9 @@ export default defineConfig({
     // `.mjs` because the script that calls it is: a `.ts` module would need a
     // build step to be reachable from a Node script run straight out of the repo.
     include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
+    // Vitest hands every `.css` import an empty string unless it is included
+    // here, `?raw` imports too, so the bundled slide themes would be tested as
+    // empty files.
+    css: { include: [/\/src\/slide-themes\/[^/]+\.css/] },
   },
 });

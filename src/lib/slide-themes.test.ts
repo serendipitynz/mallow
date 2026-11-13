@@ -12,6 +12,10 @@ describe('resolveDefaultTheme', () => {
     expect(resolveDefaultTheme('paper', ['paper'])).toEqual({ name: 'paper', missing: null });
   });
 
+  it('holds the bundled kinari whatever the folder gave', () => {
+    expect(resolveDefaultTheme('kinari', [])).toEqual({ name: 'kinari', missing: null });
+  });
+
   it("draws mallow's slide theme for a name no longer held, and keeps the name as missing", () => {
     expect(resolveDefaultTheme('paper', [])).toEqual({ name: 'default', missing: 'paper' });
   });

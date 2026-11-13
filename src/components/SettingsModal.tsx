@@ -24,7 +24,7 @@ import {
   getSlideThemes,
   subscribeSlideThemes,
 } from '../lib/slide-theme-folder';
-import { type FolderTheme, MALLOW_THEME, type SkippedFile } from '../lib/slide-themes';
+import { BUNDLED_THEME_NAMES, type FolderTheme, MALLOW_THEME, type SkippedFile } from '../lib/slide-themes';
 import { getColorChoice, onColorChoiceChange } from '../lib/theme';
 import type { CheckState } from '../lib/update-flow';
 import { Busy } from './Busy';
@@ -297,7 +297,7 @@ function SlideThemeSettings({ onPickDir, onClearDir }: { onPickDir: () => void; 
   const defaultHintId = useId();
   const missingId = useId();
   const dirId = useId();
-  const names = load?.themes.map((theme) => theme.name) ?? [];
+  const names = [...BUNDLED_THEME_NAMES, ...(load?.themes.map((theme) => theme.name) ?? [])];
   /* A stored name not held stays selected, marked and disabled, with the reason
      beside it, as a colour mode the family cannot draw does (decision-19 §2);
      one only not read yet is listed plainly. */

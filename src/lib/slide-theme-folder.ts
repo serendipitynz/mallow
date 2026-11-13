@@ -70,8 +70,8 @@ function themeSignature(set: DeckThemes): string {
 }
 
 function commit(next: Pick<SlideThemeState, 'dir' | 'load' | 'preference'>): void {
-  const held = next.load?.themes.map((t) => t.name) ?? [];
-  const resolved = resolveDefaultTheme(next.preference, held);
+  const folderNames = next.load?.themes.map((t) => t.name) ?? [];
+  const resolved = resolveDefaultTheme(next.preference, folderNames);
   /* While the folder has not been read yet, a stored folder theme is not known
      to be missing, only not yet known; it draws with mallow's theme meanwhile. */
   const defaultTheme = next.dir !== null && next.load === null ? { name: resolved.name, missing: null } : resolved;

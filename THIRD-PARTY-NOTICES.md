@@ -60,6 +60,8 @@ copyleft (no GPL / LGPL / AGPL).
   - Apache-2.0 WITH LLVM-exception: 1
   - (MIT OR Apache-2.0) AND Unicode-3.0: 1
   - CDLA-Permissive-2.0: 1
+- Files copied into the tree: 1
+  - MIT: 1
 
 ---
 
@@ -4936,6 +4938,19 @@ copyleft (no GPL / LGPL / AGPL).
 - Authors: Zeeshan Ali Khan <zeeshanak@gnome.org>, turbocooler <turbocooler@cocaine.ninja>
 - Repository: https://github.com/z-galaxy/zbus/
 - License text: [T106](#t106)
+
+---
+
+## Files copied into the tree
+
+Released files mallow carries as copies rather than as packages.
+
+### kinari 0.1.0
+
+- License: MIT
+- Repository: https://github.com/serendipitynz/marp-theme-kinari
+- Copy: `src/slide-themes/kinari.css`
+- License text: [T346](#t346)
 
 ---
 
@@ -23327,4 +23342,30 @@ SOFTWARE.
 
 Some files in the "tests/data" subdirectory of this repository are under other
 licences; see files named LICENSE.*.txt for details.
+```
+
+### T346
+
+```text
+MIT License
+
+Copyright (c) 2026 Takuya Otani
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```

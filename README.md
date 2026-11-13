@@ -56,8 +56,8 @@ Installing an update may need the system's permission.
   turns a laser pointer on and off while presenting — a red dot that follows the
   mouse with a short fading trail, longer while Shift is held. Slides
   are drawn with the theme the deck names — mallow's own theme (`default`), in
-  your colour family, or a theme from your
-  [slide theme folder](#slide-themes) — and a deck that names none is drawn with
+  your colour family, [kinari](#slide-themes) (`theme: kinari`), or a theme from
+  your [slide theme folder](#slide-themes) — and a deck that names none is drawn with
   the default theme chosen in Settings. A deck that relies on a theme mallow does
   not have, raw HTML, math or CSS at-rules mallow drops says so in a line above
   the slides.
@@ -323,6 +323,14 @@ digits, `_`, `+` and `-` are accepted.
 
 ## Slide themes
 
+mallow carries two themes a deck can name without any setup: its own, `default`,
+drawn in your colour family, and **kinari** (`theme: kinari`) — unbleached paper
+in Light, paper dyed in sumi ink in Dark. kinari is a Marp theme in its own right,
+kept and released at
+[serendipitynz/marp-theme-kinari](https://github.com/serendipitynz/marp-theme-kinari),
+where you can also get it for Marp CLI and the VS Code extension; mallow carries a
+copy of one of its releases, and either one can be the default theme.
+
 Settings → **Slide themes** → *Choose folder…* points mallow at a folder of Marp
 themes. Each `.css` file directly inside it (not in its subfolders) that carries
 an `@theme <name>` comment becomes a theme a deck can ask for with
@@ -349,7 +357,7 @@ the theme.
 A deck's `size` takes the theme's `@size` entry of that name
 (`/* @size 4:3 960px 720px */`), as Marp's own tools do; a theme with no entry for
 it is drawn at its own size, and the line above the slides says so. mallow's own
-theme has `16:9` and `4:3`.
+theme and kinari both have `16:9` and `4:3`.
 
 A theme follows Light / Dark only if it is written to: mallow gives a slide the
 page's `color-scheme`, so a theme whose colours are `light-dark()` pairs follows

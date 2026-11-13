@@ -1,8 +1,8 @@
 /** A Marp deck rendered as slides (decision-18): Marpit on a second instance of
  *  mallow's own markdown-it, under the theme the deck names among mallow's slide
- *  theme and the folder themes (decision-19), with the deck's CSS walked by
- *  `lib/deck-css` before Marpit merges it. Pure, so the split, the directives and
- *  the notice are tested under Node. */
+ *  theme, mallow's copy of kinari and the folder themes (decision-19), with the
+ *  deck's CSS walked by `lib/deck-css` before Marpit merges it. Pure, so the
+ *  split, the directives and the notice are tested under Node. */
 import { Marpit } from '@marp-team/marpit';
 import type MarkdownIt from 'markdown-it';
 import type StateCore from 'markdown-it/lib/rules_core/state_core.mjs';
@@ -10,6 +10,7 @@ import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs';
 import type Token from 'markdown-it/lib/token.mjs';
 import { walkDeckCss } from './deck-css';
 import type { RefResolver } from './html-doc';
+import { KINARI } from './kinari';
 import { createMarkdownIt, getMarkdownConfigVersion, localImageSrc, resetHeadingState } from './markdown';
 import { type DeckTheme, type DeckThemes, MALLOW_THEME, NO_DECK_THEMES } from './slide-themes';
 
@@ -56,8 +57,8 @@ export interface DeckOptions {
    *  `![](…)`, `![bg](…)` and every URL in the deck's CSS alike. */
   images?: RefResolver;
   /** The folder themes and the default-theme preference; mallow's slide theme
-   *  alone when absent. Renderers are cached per value, so pass the same object
-   *  while the set is unchanged. */
+   *  and kinari alone when absent. Renderers are cached per value, so pass the
+   *  same object while the set is unchanged. */
   themes?: DeckThemes;
 }
 
@@ -162,6 +163,12 @@ function themeCss(theme: DeckTheme, size: string | null): string {
   return entry ? `${theme.css}\n:root { width: ${entry.width}; height: ${entry.height}; }\n` : theme.css;
 }
 
+/** Every theme beside mallow's: kinari, then the folder's. No folder theme can
+ *  be named `kinari` (`RESERVED_THEME_NAMES`), so a name finds one theme. */
+function heldThemes(set: DeckThemes): readonly DeckTheme[] {
+  return [KINARI, ...set.themes];
+}
+
 function hasSizeEntry(theme: DeckTheme | undefined, size: string): boolean {
   return theme ? size in theme.sizes : size in DECK_SIZES;
 }
@@ -180,7 +187,7 @@ function createRenderer(md: MarkdownIt, set: DeckThemes, size: string | null): D
     slideTheme(size !== null && size in DECK_SIZES ? (size as DeckSize) : '16:9'),
   );
   marpit.themeSet.default = mallowTheme;
-  for (const theme of set.themes) {
+  for (const theme of heldThemes(set)) {
     const added = marpit.themeSet.add(themeCss(theme, size));
     if (theme.name === set.defaultName) {
       marpit.themeSet.default = added;
@@ -324,7 +331,7 @@ function usableSet(set: DeckThemes | undefined): DeckThemes {
   if (!set) {
     return NO_DECK_THEMES;
   }
-  if (set.defaultName === MALLOW_THEME || set.themes.some((theme) => theme.name === set.defaultName)) {
+  if (set.defaultName === MALLOW_THEME || heldThemes(set).some((theme) => theme.name === set.defaultName)) {
     return set;
   }
   let fixed = corrected.get(set);
@@ -343,7 +350,7 @@ export async function renderDeck(source: string, options: DeckOptions = {}): Pro
   const themes = usableSet(options.themes);
   let rendered = renderWith(await getRenderer(themes, null), source, options);
   const asked = rendered.record.size;
-  const drawn = themes.themes.find((theme) => theme.name === rendered.theme);
+  const drawn = heldThemes(themes).find((theme) => theme.name === rendered.theme);
   let size: string | null = drawn ? null : '16:9';
   if (asked !== null && hasSizeEntry(drawn, asked)) {
     size = asked;

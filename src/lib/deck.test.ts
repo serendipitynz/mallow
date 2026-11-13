@@ -232,9 +232,27 @@ describe('renderDeck — the theme set (decision-19)', () => {
     expect(result.css).toContain('var(--color-bg)');
   });
 
-  it('lists kinari as unknown while no copy is bundled', async () => {
-    const result = await renderDeck(deck('# One\n', 'theme: kinari\n'), { themes: paper });
-    expect(result.unsupported).toEqual([{ kind: 'theme', name: 'kinari', drawn: 'default' }]);
+  it("draws a deck naming kinari with mallow's copy, with or without a folder", async () => {
+    for (const themes of [paper, undefined]) {
+      const result = await renderDeck(deck('# One\n', 'theme: kinari\n'), { themes });
+      expect(result.theme).toBe('kinari');
+      expect(result.css).toContain('--kinari-paper: light-dark(');
+      expect(result.css).not.toContain('var(--color-bg)');
+      expect(result.unsupported).toEqual([]);
+    }
+  });
+
+  it("takes a kinari deck's size from kinari's own @size entries", async () => {
+    const result = await renderDeck(deck('# One\n', 'theme: kinari\nsize: 4:3\n'), { themes: paper });
+    expect(result.size).toBe('4:3');
+    expect(result.slides[0]).toContain('viewBox="0 0 960 720"');
+    expect(result.unsupported).toEqual([]);
+  });
+
+  it('draws a deck naming no theme with kinari when the preference names it', async () => {
+    const result = await renderDeck(deck('# One\n'), { themes: { themes: [], defaultName: 'kinari' } });
+    expect(result.theme).toBe('kinari');
+    expect(result.css).toContain('--kinari-paper: light-dark(');
   });
 
   it("takes a deck's size from the theme's @size entry", async () => {

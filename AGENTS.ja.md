@@ -21,6 +21,7 @@ pnpm tauri build    # リリースビルド + バンドル
 ./scripts/macos-sign-build.sh   # 署名 + 公証済みの macOS ビルド（.env.signing が必要）
 pnpm tauri icon src-tauri/icons/app-icon.png   # 全アプリアイコンの再生成
 pnpm notices        # THIRD-PARTY-NOTICES.md を再生成（同梱する依存ライセンス）
+node scripts/kinari.mjs verify   # mallow が持つ kinari の写しをリリースと照合（../marp-theme-kinari が必要）
 pnpm release 0.4.0  # 全箇所のバージョン更新 + コミット + タグ（--push で push まで）
 cargo check         # src-tauri/ 内で実行し Rust を検証
 cargo test          # src-tauri/ 内で実行し Rust のユニットテストを走らせる
@@ -95,8 +96,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`is-deck`（文書が Marp デッキか。
   描画側を必要時に読み込むため分けてある）、`deck`（2 つ目の markdown-it 上の Marpit、
-  mallow のスライドテーマとフォルダのテーマ、`@size` ごとの版、通知に載せる機能）、
-  `deck-css`（デッキ自身の CSS の走査、decision-18 §6）、`slide-themes`（テーマ名・予約名・
+  mallow のスライドテーマと kinari とフォルダのテーマ、`@size` ごとの版、通知に載せる
+  機能）、`kinari`（`deck` が登録する形の、kinari のリリースの写し。ファイルを文字列と
+  して読み、サイズはそのファイル自身の `@size` コメントから取る。下の「kinari の写し」を
+  見る）、`deck-css`（デッキ自身の CSS の走査、decision-18 §6）、`slide-themes`（テーマ名・予約名・
   既定のテーマのフォールバック。純粋関数で軽い）、`slide-theme-css`（フォルダのどの
   ファイルがテーマかを postcss で読み、デッキの CSS として走査する。純粋関数で、必要時に
   読み込む）、`slide-theme-folder`（スライドテーマのフォルダと既定のテーマの設定を、
@@ -306,9 +309,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
 - SCSS のみ。Tailwind は決して導入しない。
 - `src-tauri/target` はコミットしない（ビルド成果物・git 無視済み）。
 - mallow は独立プロジェクトとして扱う。コード/コメント/ドキュメントに外部プロジェクトを
-  「由来」として記述しない。共通デザインの仕様 snz-design（`serendipitynz/snz-design`、
-  同じ GitHub organization）はこの外部プロジェクトに当たらない。コード・コメント・
-  ドキュメントで snz-design を名指しし、その文書を引いてよい。
+  「由来」として記述しない。共通デザインの仕様 snz-design（`serendipitynz/snz-design`）と
+  Marp テーマ kinari（`serendipitynz/marp-theme-kinari`）は、どちらも同じ GitHub
+  organization にあり、この外部プロジェクトに当たらない。コード・コメント・ドキュメントで
+  両者を名指しし、snz-design の文書を引き、mallow の kinari の写しがどのリリースから
+  来たかを書いてよい。
 - production 依存の追加前に確認する。
 - 第三者ライセンス通知（`THIRD-PARTY-NOTICES.md`）は `pnpm notices`
   （`scripts/gen-third-party-notices.mjs`）で生成し、`bundle.resources` でアプリに
@@ -334,6 +339,7 @@ mallow の配色・操作部品の状態・部品の振る舞いは、serendipit
   `node ../snz-design/tokens/vendor.mjs verify src/styles/snz-tokens.css
   src/styles/_snz-tokens.scss`。先に `../snz-design/tokens/CHANGELOG.md` で、2 つの
   版の間の利用側の作業を読む。どちらも Biome の対象外なので、整形で書き換わらない。
+  **mallow が持つ kinari の写しも、この規則に従う 3 つ目の写しである**（下を見る）。
 - **mallow が持つ値は mallow のファイルに置く**: Dracula（Alucard を含む）と Nord のパレット、各
   `--color-*` 変数をどの共通の役割に当てるかの対応（`_vars.scss` の `$shared-roles`）。
 - **コメントで仕様を引くときは `snz-design doc-N §X` の形にし**、仕様を言い換えず
@@ -341,6 +347,31 @@ mallow の配色・操作部品の状態・部品の振る舞いは、serendipit
 - 共通デザインの作業は mallow の台帳（TASK-40 とその子タスク）で追い、snz-design の
   側は適用記録で追う。mallow のタスクが Done になっても、適用記録は自動では
   更新されない。
+
+### kinari の写し
+
+`src/slide-themes/kinari.css` は、kinari リポジトリ（`serendipitynz/marp-theme-kinari`）
+が持つ Marp テーマ **kinari** の 1 つのリリースの写しで、予約したテーマ名 `kinari` で
+登録する（decision-19 §7）。kinari リポジトリはこのリポジトリと並べて
+`../marp-theme-kinari` に置く。
+
+- **写しは手で直さない**。snz-design の写しと同じ扱い。kinari は kinari リポジトリで
+  直し、次のリリースで届く。更新はリリースのタグから、写しだけの commit で行う:
+  `node scripts/kinari.mjs copy <版>` のあと `node scripts/kinari.mjs verify`。verify は
+  1 行目が名指す版のタグと写しを照合する。先に kinari リポジトリの `CHANGELOG.md` で、
+  間の版を読む。Biome の対象外なので、整形で書き換わらない。
+- **同じ commit で通知も動かす**: `scripts/gen-third-party-notices.mjs` にある写しの
+  項目は版を手で書いている（kinari は MIT で、写しに許諾表示を添える必要がある）ので、
+  そこを直してから `pnpm notices`。両者が食い違う間は `src/lib/kinari.test.ts` が落ちる。
+- **リリースが持つべきものはユニットテストで確かめ、ここで直さない**: 版の表示、
+  `@theme kinari`、`16:9` と `4:3` の `@size`、`walkDeckCss` が除去するものが無いこと、
+  すべての色が `light-dark()` の組で、`@supports not (color: light-dark(#000, #fff))` の
+  ブロックがライト側を与えること。どれかを欠くリリースは kinari リポジトリへ差し戻す。
+- **文字列として読む**（`?raw`）。読むのは `lib/kinari` だけで、それを import するのは
+  `lib/deck` だけなので、デッキのチャンクに入り、ページへスタイルシートとして届くことは
+  ない。中の規則は Marpit がスライドへスコープする前提で書かれている。Vitest は
+  `.css` の import を、`?raw` も含めて、`vitest.config.ts` の `css.include` に名指しされ
+  ない限り空文字列にする。`src/slide-themes/` をそこに挙げているのはそのため。
 
 ### lint とフォーマット
 
@@ -506,7 +537,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `lib/slide-theme-css` が Marpit に登録する前に同じ `walkDeckCss` で走査し、`url()` は
   テーマのファイルがあるディレクトリから解決し、Marpit が同じ `contain: paint` の器へ
   スコープする。走査で除去したものはデッキの通知ではなく、設定のそのテーマの横に出す。
-  mallow 自身のスライドテーマはアプリの CSS なので走査しない。
+  mallow 自身のスライドテーマと kinari の写しはアプリの CSS なので走査しない。
 - **未信頼 HTML の境界**（描画表示。decision-3 を decision-9・decision-10 が改訂。README
   の "セキュリティ" 参照）: 文書は `sandbox="allow-same-origin"` かつ `allow-scripts`
   **無し**の iframe へ `srcdoc` で流し込む。文書中のスクリプトは一切実行されない一方、
@@ -1663,6 +1694,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `slide-themes`（既定のテーマのフォールバック）・
   `slide-theme-css`（`@theme` と `@size`、予約名と重複した名前、`url()` をテーマの
   ディレクトリから解決する走査）・
+  `kinari`（decision-19 §7 がリリースから取るもの、通知が名指す版）・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
