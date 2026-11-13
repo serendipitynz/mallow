@@ -1771,6 +1771,28 @@ Comments と Functions の規約は機械的に検査されない。コメント
   ジョブは ubuntu なので）。ここに書いてあるものと
   強制されるものが乖離しないようにするためなので、**検査を足すときは
   この一覧とそのワークフローを同時に直す。**
+- **公開済みの脆弱性は、この一覧ではなく別のワークフローが検査する**（TASK-54）。
+  `.github/workflows/audit.yml` が `pnpm audit --prod` と（`src-tauri/` で）
+  `cargo audit` を、週次・`workflow_dispatch`・ロックファイルかマニフェストか 2 つの
+  許容リストのどれかを変える pull request と `main` への push で走らせる。
+  **`check.yml` に入れないのは意図的** — 脆弱性はコードの変更と無関係に公開されるので、
+  そこに置くと公開された日から無関係な pull request まで赤くなる。npm は本番依存の
+  脆弱性なら重大度を問わず落とす。devDependencies はアプリに含まれないので対象外。
+  Rust は脆弱性だけで落とし、unmaintained と unsound は警告として表示する。
+  **許容する脆弱性は理由付きの項目として置く** — `pnpm-workspace.yaml` の
+  `auditConfig.ignoreGhsas`（pnpm 11 は `package.json` の `pnpm` 欄を読まない）と
+  `src-tauri/.cargo/audit.toml`。それ以外は無視せず、理由がなくなった項目は消す。
+  **もう半分は Dependabot**: alerts とセキュリティ更新をリポジトリ設定で有効にし、
+  `.github/dependabot.yml` で npm・cargo・Actions の版更新を週次で求める（minor と
+  patch はエコシステムごとにまとめる）。**tauri 2.11.3 の据え置きを Dependabot に
+  伝えているのはその ignore リスト** — 各項目は tauri の各クレートが tauri `^2.12` を
+  要求し始める版 — なので、据え置きをやめるときは 3 か所を一緒に直す:
+  `tauri-plugin-single-instance` の `~2.4` 固定、そのリスト、`audit.toml` の zip の
+  項目（修正版の zip は tauri 2.12 を要求する updater で入るので、それまでの許容）。
+  `tauri-apps/tauri-action` は固定しているのと同じ理由で ignore する（「署名付きの
+  自己更新」を参照）。**週次の実行が黙る経路が 2 つある**: 定期実行の失敗メールは
+  その `cron` を最後に編集した人にしか届かず、公開リポジトリで 60 日間活動がないと
+  GitHub が定期実行のワークフローを無効にする。
 
 ## リリース（macOS 署名）
 
