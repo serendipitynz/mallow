@@ -51,8 +51,8 @@ importers:
         specifier: ^14.3.3
         version: 14.3.3
       markdown-it-anchor:
-        specifier: ^9.2.0
-        version: 9.2.0(@types/markdown-it@14.1.2)(markdown-it@14.3.3)
+        specifier: ^10.1.0
+        version: 10.1.0(@types/markdown-it@14.1.2)(markdown-it@14.3.3)
       markdown-it-emoji:
         specifier: ^3.0.0
         version: 3.0.0
@@ -1428,11 +1428,14 @@ packages:
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
-  markdown-it-anchor@9.2.0:
-    resolution: {integrity: sha512-sa2ErMQ6kKOA4l31gLGYliFQrMKkqSO0ZJgGhDHKijPf0pNFM9vghjAh3gn26pS4JDRs7Iwa9S36gxm3vgZTzg==}
+  markdown-it-anchor@10.1.0:
+    resolution: {integrity: sha512-htMTOUnoGqoWguddWO+NBrOEdh3dt9k1RIhTlr2CQTJOPiLZglDDGADu+Ch+47roTO6nxl2aJfSYykmOhdJCew==}
     peerDependencies:
       '@types/markdown-it': '*'
       markdown-it: '*'
+    peerDependenciesMeta:
+      '@types/markdown-it':
+        optional: true
 
   markdown-it-emoji@3.0.0:
     resolution: {integrity: sha512-+rUD93bXHubA4arpEZO3q80so0qgoFJEKRkRbjKX8RTdca89v2kfyF+xR3i2sQTwql9tpPZPOQN5B+PunspXRg==}
@@ -2992,10 +2995,11 @@ snapshots:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  markdown-it-anchor@9.2.0(@types/markdown-it@14.1.2)(markdown-it@14.3.3):
+  markdown-it-anchor@10.1.0(@types/markdown-it@14.1.2)(markdown-it@14.3.3):
     dependencies:
-      '@types/markdown-it': 14.1.2
       markdown-it: 14.3.3
+    optionalDependencies:
+      '@types/markdown-it': 14.1.2
 
   markdown-it-emoji@3.0.0: {}
 
