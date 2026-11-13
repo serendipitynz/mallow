@@ -2001,6 +2001,31 @@ hold rather than as an exhaustive style guide.
   paper's own inputs changed, or on `workflow_dispatch`. It is also **the only
   place `pdf.rs`'s Windows and macOS arms are compiled by CI at all**, the other
   Rust job being ubuntu.
+- **Published advisories are checked by a second workflow, not by this list**
+  (TASK-54). `.github/workflows/audit.yml` runs `pnpm audit --prod` and
+  `cargo audit` (in `src-tauri/`) weekly, on `workflow_dispatch`, and on pull
+  requests and pushes to `main` that change a lockfile, a manifest or one of the
+  two accept lists. **It is kept out of `check.yml` on purpose**: an advisory is
+  published independently of the code, so a gate there would turn every
+  unrelated pull request red the day one appears. npm fails on any production
+  advisory, whatever its severity; devDependencies are left out because none
+  ship. Rust fails on vulnerabilities only — unmaintained and unsound advisories
+  print as warnings. **An accepted advisory is an entry with its reason**, in
+  `pnpm-workspace.yaml`'s `auditConfig.ignoreGhsas` (pnpm 11 reads no `pnpm`
+  field in `package.json`) and in `src-tauri/.cargo/audit.toml`; nothing else is
+  ignored, and an entry goes when its reason does. **Dependabot** is the other
+  half: alerts and security updates are on in the repository settings, and
+  `.github/dependabot.yml` asks for weekly version updates of npm, cargo and the
+  Actions, minor and patch grouped per ecosystem. **Its ignore list is where the
+  tauri 2.11.3 hold is written down for it** — each entry is the first release
+  of a tauri crate declaring tauri `^2.12` — so lifting the hold edits three
+  places together: the `~2.4` pin on `tauri-plugin-single-instance`, that list,
+  and the zip entries in `audit.toml`, which exist only because the fixed zip
+  arrives with an updater that needs tauri 2.12. `tauri-apps/tauri-action` is
+  ignored for the reason it is pinned (see "Signed self-update"). **Two ways the
+  weekly run can go quiet**: GitHub mails a scheduled run's failure only to whoever
+  last edited its `cron`, and disables scheduled workflows in a public repository
+  after 60 days without activity.
 
 ## Releasing (macOS signing)
 

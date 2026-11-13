@@ -16,3 +16,13 @@ onlyBuiltDependencies:
 allowBuilds:
   esbuild: true
   '@parcel/watcher': true
+
+# Advisories accepted by `pnpm audit` (.github/workflows/audit.yml). Each entry
+# names why it stays; remove it once the reason no longer holds.
+auditConfig:
+  ignoreGhsas:
+    # katex through mermaid: fixed in 0.18.2, while mermaid 11 declares
+    # ^0.16.45. The flaw needs a separate prototype pollution to exist first,
+    # and forcing katex past mermaid's range risks the diagrams' math labels
+    # (TASK-53). Clears when mermaid allows katex 0.18.
+    - GHSA-238p-pmpm-9mq7
