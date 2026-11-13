@@ -1802,7 +1802,12 @@ Comments と Functions の規約は機械的に検査されない。コメント
   越えたのは、tauri `^2.12` を宣言する推移的な `tauri-plugin-fs` のせいだった。
   **`dependabot.yml` は `tauri*` と `@tauri-apps/*` のマイナー・メジャー更新を ignore する**
   — 放っておくと Dependabot は新しいマイナーを取るように `~` の要求を書き換えるため。
-  patch はこれまでどおり届く。プラグインの npm パッケージがクレートより patch 1 つ
+  patch はこれまでどおり届く。**mallow 自身のプラットフォーム別コードが呼ぶクレートも、
+  major で同じように据え置く**: `webview2-com`・`windows-core`・`windows-sys`・`objc2*`
+  のクレート・`block2`・`gtk`・`webkit2gtk` は wry 自身のオブジェクトや型を mallow に
+  渡すので、1 つだけ動かすと別の型になり、そのコードはコンパイルできなくなる —
+  PR#115 は wry の 0.62 に対して windows-core 0.100 を出してきた。これらは tauri の
+  アップグレードのときに、新しい wry が使う系列へ一緒に動かす。プラグインの npm パッケージがクレートより patch 1 つ
   遅れていることはありうる — pnpm の `minimumReleaseAge` のような公開後の待機期間は
   npm 側だけを止め、cargo には無い — が、tauri-cli が比べるのはマイナーだけなので
   問題にならない。次のマイナーへ移るのは、両方のマニフェスト・両方の lockfile・

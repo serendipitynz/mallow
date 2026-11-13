@@ -2036,7 +2036,13 @@ hold rather than as an exhaustive style guide.
   `^2.12` is what moved tauri past the per-crate ignore list this replaced.
   **`dependabot.yml` ignores minor and major updates of `tauri*` and
   `@tauri-apps/*`**, because left alone Dependabot rewrites a `~` requirement to
-  take the new minor. Patch releases still arrive. A plugin's npm package may sit
+  take the new minor. Patch releases still arrive. **The platform crates
+  mallow's own arms call into are held the same way, at their major**:
+  `webview2-com`, `windows-core`, `windows-sys`, the `objc2*` crates, `block2`,
+  `gtk` and `webkit2gtk` hand mallow wry's own objects or types, so one moved
+  alone makes them a different type and that arm stops compiling — PR#115 offered
+  windows-core 0.100 against wry's 0.62. They move with a tauri upgrade, to the
+  line the new wry uses. A plugin's npm package may sit
   a patch behind its crate — a release-age gate such as pnpm's
   `minimumReleaseAge` can hold the npm half back where cargo has none — which
   costs nothing, since tauri-cli compares the minor only.
