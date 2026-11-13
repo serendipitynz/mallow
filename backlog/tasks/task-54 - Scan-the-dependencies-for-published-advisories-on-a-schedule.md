@@ -1,10 +1,10 @@
 ---
 id: TASK-54
 title: Scan the dependencies for published advisories on a schedule
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 05:08'
-updated_date: '2026-11-13 08:01'
+updated_date: '2026-11-13 08:46'
 labels:
   - chore
 dependencies:
@@ -42,7 +42,7 @@ AGENTS.md's "Verifying changes" section and the workflow are updated together, a
 - [x] #3 An audit workflow separate from check.yml runs the npm and Rust scans weekly, on workflow_dispatch, and on pull requests that change a lockfile
 - [x] #4 The tool for the Rust scan and the threshold that fails each scan are settled and written in the task
 - [x] #5 Each advisory TASK-53 left unfixed is accepted by an ignore entry naming the advisory and its reason, and no other advisory is ignored
-- [ ] #6 A run of the workflow on workflow_dispatch passes on main, and fails when an ignore entry is removed
+- [x] #6 A run of the workflow on workflow_dispatch passes on main, and fails when an ignore entry is removed
 - [x] #7 AGENTS.md's Verifying changes section describes the workflow, and biome ci passes
 <!-- AC:END -->
 
@@ -85,4 +85,6 @@ AGENTS.md's "Verifying changes" section and the workflow are updated together, a
 - AC #6 のうち「main で workflow_dispatch の実行が通る」はマージ後にしか試せない (dispatch はデフォルトブランチにあるワークフローに対してだけ打てる)。「ignore を外すと落ちる」は上の手元の確認まで
 - Dependabot が pnpm 11 の lockfile (lockfileVersion 9.0) で版更新を作れるかは、マージ後の最初の実行で分かる
 - `on:` の paths に YAML アンカー (`&audited` / `*audited`) を使っている。Actions は 2025 年からアンカーを受け付けるが、この PR の audit.yml の実行が通ることで確かめる
+
+AC #6: マージ後の 2026-11-13、main (ec3d8e3) で workflow_dispatch を実行し npm・rust とも success (run 43395797215)。ignore を外すと落ちることは上の手元の確認 (pnpm audit --prod と cargo-audit 0.23.0 でともに exit 1) による。
 <!-- SECTION:NOTES:END -->
