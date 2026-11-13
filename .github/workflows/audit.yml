@@ -1,0 +1,69 @@
+name: Audit
+
+# Fails when a dependency carries a published advisory that has not been
+# accepted: `pnpm audit --prod` for what the frontend bundles, `cargo audit` for
+# src-tauri/Cargo.lock. The accepted ones live beside each lockfile's config
+# (pnpm-workspace.yaml's auditConfig, src-tauri/.cargo/audit.toml), each with its
+# reason.
+#
+# Kept out of check.yml on purpose: an advisory is published independently of
+# the code, so a gate there would turn every unrelated pull request red the day
+# one appears. Here the weekly run catches what lands between changes, and the
+# path-filtered pull request and push runs catch a change that brings one in.
+
+on:
+  pull_request:
+    paths: &audited
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - src-tauri/Cargo.toml
+      - src-tauri/Cargo.lock
+      - src-tauri/.cargo/audit.toml
+      - .github/workflows/audit.yml
+  push:
+    branches:
+      - main
+    paths: *audited
+  # Monday 09:00 in New Zealand daylight time (08:00 standard time).
+  schedule:
+    - cron: '0 20 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Reads pnpm-lock.yaml only, so nothing is installed. devDependencies are
+      # left out because none of them ship in the app; a dev-only advisory still
+      # shows in a local `pnpm audit` and reaches the owner as a Dependabot alert.
+      - run: pnpm audit --prod
+
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      # A prebuilt binary: compiling cargo-audit would take longer than the
+      # audit itself, and the runner image already carries cargo.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      # Fails on vulnerabilities only; unmaintained and unsound advisories print
+      # as warnings. Run from src-tauri so .cargo/audit.toml there is read.
+      - run: cargo audit
