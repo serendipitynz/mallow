@@ -174,6 +174,46 @@ function licenseSummary(pkgs) {
 const npm = collectNpm();
 const cargo = collectCargo();
 
+// ---- Files copied into the tree ----------------------------------------------
+// A file copied from a release rather than installed is in no lockfile, so it is
+// entered here by hand (decision-19 Consequences) instead of this script learning
+// to find files. The version has to be the one the copy's first line names, which
+// src/lib/kinari.test.ts checks against the generated file.
+const KINARI_LICENSE = `MIT License
+
+Copyright (c) 2026 Takuya Otani
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.`;
+
+const copied = [
+  {
+    name: 'kinari',
+    version: '0.1.0',
+    license: 'MIT',
+    extra: {
+      Repository: 'https://github.com/serendipitynz/marp-theme-kinari',
+      Copy: '`src/slide-themes/kinari.css`',
+    },
+    textIds: [internText(KINARI_LICENSE)],
+  },
+];
+
 const out = [];
 out.push('# Third-Party Notices');
 out.push('');
@@ -196,6 +236,8 @@ out.push(`- npm (production) dependencies: ${npm.length}`);
 out.push(licenseSummary(npm));
 out.push(`- Rust (Cargo) dependencies: ${cargo.length}`);
 out.push(licenseSummary(cargo));
+out.push(`- Files copied into the tree: ${copied.length}`);
+out.push(licenseSummary(copied));
 out.push('');
 out.push('---');
 out.push('');
@@ -209,6 +251,15 @@ out.push('');
 out.push('## Rust (Cargo) dependencies');
 out.push('');
 for (const p of cargo) {
+  out.push(renderEntry(p));
+}
+out.push('---');
+out.push('');
+out.push('## Files copied into the tree');
+out.push('');
+out.push('Released files mallow carries as copies rather than as packages.');
+out.push('');
+for (const p of copied) {
   out.push(renderEntry(p));
 }
 out.push('---');
@@ -230,5 +281,5 @@ writeFileSync(
     .trimEnd()}\n`,
 );
 console.log(
-  `Wrote ${target}\n  npm deps:   ${npm.length}\n  cargo deps: ${cargo.length}\n  unique license texts: ${textRegistry.size}`,
+  `Wrote ${target}\n  npm deps:   ${npm.length}\n  cargo deps: ${cargo.length}\n  copied files: ${copied.length}\n  unique license texts: ${textRegistry.size}`,
 );
