@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-11-13 05:08'
-updated_date: '2026-11-13 08:45'
+updated_date: '2026-11-13 08:50'
 labels:
   - chore
 dependencies: []
@@ -96,4 +96,15 @@ GHSA-238p-pmpm-9mq7 (low) は「別経路のプロトタイプ汚染が既にあ
 - AC #6 のうち TOML の正常なパースと不正な TOML の行・列の報告は config-parse の単体テストで確認できている。mermaid の図の描画は WebView でしか見られないため、pnpm tauri dev での目視はオーナーの確認待ちとして未チェック
 
 AC #6: 2026-11-13、オーナーが pnpm tauri dev で _sandbox/task-53 のサンプル (mermaid の 5 種の図、正しい TOML、4 行目で壊れた TOML) を確認した。
+
+## 追記 (2026-11-13、Done の後): GitHub にしかない zip のアドバイザリ
+
+Dependabot alerts を有効にした後、上の表の zip 行には載っていない GHSA が 2 件、アラートとして出た。RustSec に対応する項目がないので、TASK-53 のスキャン (OSV.dev の RUSTSEC) にも cargo audit にも出てこない。
+
+| advisory | 内容 | 修正版 | 残す理由 |
+|---|---|---|---|
+| GHSA-m665-v7pm-7grj (critical) | ZipArchive と ZipStreamReader でヘッダの解釈が食い違い、展開時にファイルを上書きされる | zip 9.0.5 | 上の zip 行と同じ。加えて updater 2.10.1 のソースで経路を確かめた: zip を展開するのは Windows でダウンロードした更新が zip だった場合だけ (updater.rs:883-905) で、その前に minisign の署名を検証する (updater.rs:712)。mallow の latest.json が Windows に配るのは .msi と -setup.exe なので、この分岐自体を通らない |
+| GHSA-8hxf-qr8p-62x4 (medium) | AES エントリの HMAC 認証が EOF で迂回される | zip 9.0.0 | 同上 |
+
+GHSA-q7v9-x93c-xqv3 (high) は RUSTSEC-2026-0429 の別名で、表の zip 行に含まれている。Dependabot alerts の katex・glib・zip の 5 件は、2026-11-13 にオーナーの判断で tolerable risk として dismiss した。
 <!-- SECTION:NOTES:END -->
