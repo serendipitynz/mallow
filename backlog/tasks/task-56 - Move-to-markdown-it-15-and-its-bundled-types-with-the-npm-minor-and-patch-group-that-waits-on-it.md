@@ -3,10 +3,10 @@ id: TASK-56
 title: >-
   Move to markdown-it 15 and its bundled types, with the npm minor-and-patch
   group that waits on it
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 10:04'
-updated_date: '2026-11-13 10:37'
+updated_date: '2026-11-13 11:04'
 labels:
   - chore
 dependencies: []
@@ -34,10 +34,10 @@ The rest of PR #119 may be split off and merged first if it is green without the
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 markdown-it is on 15.x, @types/markdown-it is removed, and pnpm build type-checks with no casts added to paper over the new types
-- [ ] #2 @shikijs/markdown-it and shiki are on 4.6 (or the release the npm group then offers), and PR #110 and PR #119 are closed or superseded by this work
+- [x] #2 @shikijs/markdown-it and shiki are on 4.6 (or the release the npm group then offers), and PR #110 and PR #119 are closed or superseded by this work
 - [x] #3 markdown-it 15's changelog is read for changes to rendering, link validation and the token stream, and anything that touches the untrusted-Markdown boundary or the deck's Marpit instance is recorded with what was checked
-- [ ] #4 pnpm lint, pnpm build, pnpm test (the markdown suite's security-boundary tests included) and the paper job pass
-- [ ] #5 On one platform by hand: a markdown document with code, mermaid, task lists, emoji and custom emoji, alerts, a local image and a Marp deck render as before
+- [x] #4 pnpm lint, pnpm build, pnpm test (the markdown suite's security-boundary tests included) and the paper job pass
+- [x] #5 On one platform by hand: a markdown document with code, mermaid, task lists, emoji and custom emoji, alerts, a local image and a Marp deck render as before
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -76,4 +76,10 @@ The rest of PR #119 may be split off and merged first if it is green without the
 - 手元のインストールは、グローバル pnpm 設定 `minimumReleaseAge: 10080` が main の lockfile にある electron-to-chromium@1.5.479（2026-11-10 公開、#108 で入った browserslist のデータ）を拒否するため、オーナーの承認を得て、その 1 パッケージだけを `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` に一時的に足して実行し、直後に git で元に戻した（コミットしていない）。pnpm 11.9 は CLI 引数・環境変数で渡した除外をロックファイル検証で無視するため（3 通り試した）。pnpm の各スクリプトは同じ検証に掛かるので、tsc / biome / vitest / vite は `node_modules/.bin` から直接実行した。
 - `@types/markdown-it` 14.1.2 は markdown-it-anchor 10.1 の任意 peer として lockfile に残る。mallow のコードは markdown-it 15 同梱の型を使っていて影響はない。`pnpm dedupe` でも消えず、範囲外の重複解消が混ざったので取り消した。
 - 未実施: paper ジョブ（CI）、AC#5 の手動描画確認（オーナー）。AC#2 の #110・#119 の片付けはマージ後。
+
+## マージ後（2026-11-14、PR #120）
+
+- PR #120 の CI がすべて通過: paper（macOS・Linux・Windows）、rust、frontend、npm、Audit（AC#4）。外部レビューは Codex（gpt-6-astra、effort=low）が 1 ラウンドで指摘なし、bot が HEAD d64d0e2 を APPROVE。
+- PR #110 は「#120 で置き換え」とコメントしてクローズ。PR #119 は `@dependabot recreate` を頼んだところ Dependabot 自身がクローズした。残りの react 19.3 と tauri プラグインの npm 側は、Dependabot の次の実行で別の PR として届く想定（AC#2）。
+- AC#5: オーナーが手元で、Markdown 文書（コード・mermaid・タスクリスト・絵文字とカスタム絵文字・アラート・ローカル画像）と Marp デッキの描画が従来どおりであることを確認（2026-11-14）。
 <!-- SECTION:NOTES:END -->
