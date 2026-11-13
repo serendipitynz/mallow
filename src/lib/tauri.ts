@@ -37,6 +37,11 @@ export function pathExists(path: string): Promise<boolean> {
 
 /** Grant the WebView asset protocol recursive read access to an opened folder,
  *  so media files under it can be rendered via `convertFileSrc`. */
+/** The `.css` files directly inside `path`, sorted by name. */
+export function listSlideThemeFiles(path: string): Promise<string[]> {
+  return invoke<string[]>('list_slide_theme_files', { path });
+}
+
 export function allowMediaDir(path: string): Promise<void> {
   return invoke('allow_media_dir', { path });
 }
