@@ -12,6 +12,8 @@ import { renderMermaid } from '../lib/mermaid';
 import { dirname } from '../lib/path';
 import type { PresentPlace } from '../lib/present';
 import { clampSlide, slideStepForKey, stepSlide } from '../lib/slide-nav';
+import { getSlideThemes, reloadSlideThemes, subscribeSlideThemes } from '../lib/slide-theme-folder';
+import { MALLOW_THEME } from '../lib/slide-themes';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 import { LaserPointer, type PointerSpot } from './LaserPointer';
 import { isModalOpen, onModalOpening } from './Modal';
@@ -59,16 +61,40 @@ export function DeckView({
   const [deck, setDeck] = useState<DeckResult | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const configVersion = useSyncExternalStore(subscribeMarkdownConfig, getMarkdownConfigVersion);
+  const { deckThemes } = useSyncExternalStore(subscribeSlideThemes, getSlideThemes);
+  const [themesRead, setThemesRead] = useState(false);
+
+  /* The slide theme folder is read again each time a deck's Slides view is
+     entered, so an edited theme shows on the next visit (decision-19 §3). The
+     first render waits for it, so a deck is not drawn once with the theme as it
+     was and again with the theme as it is. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a different deck is a new visit.
+  useEffect(() => {
+    let cancelled = false;
+    void reloadSlideThemes().finally(() => {
+      if (!cancelled) {
+        setThemesRead(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
 
   /* biome-ignore lint/correctness/useExhaustiveDependencies: configVersion is the re-render trigger
      for a changed custom emoji set, as in MarkdownView; it is not read in the body. */
   useEffect(() => {
+    if (!themesRead) {
+      return;
+    }
     let cancelled = false;
     setRenderError(null);
     /* Loaded on demand: Marpit and postcss are a large share of the bundle, and
        only a deck shown as slides needs them. */
     import('../lib/deck')
-      .then(({ renderDeck }) => renderDeck(source, { images: { dir: dirname(path), toAssetUrl: convertFileSrc } }))
+      .then(({ renderDeck }) =>
+        renderDeck(source, { images: { dir: dirname(path), toAssetUrl: convertFileSrc }, themes: deckThemes }),
+      )
       .then((result) => {
         if (!cancelled) {
           setDeck(result);
@@ -82,7 +108,7 @@ export function DeckView({
     return () => {
       cancelled = true;
     };
-  }, [source, path, configVersion]);
+  }, [source, path, configVersion, themesRead, deckThemes]);
 
   const count = deck?.slides.length ?? 0;
   const current = clampSlide(index, count);
@@ -431,7 +457,9 @@ function featureLabel(feature: DeckFeature, t: TFn): string {
     case 'math':
       return t('deckFeature.math');
     case 'theme':
-      return t('deckFeature.theme', { name: feature.name });
+      return feature.drawn === MALLOW_THEME
+        ? t('deckFeature.theme', { name: feature.name })
+        : t('deckFeature.themeDrawn', { name: feature.name, drawn: feature.drawn });
     case 'size':
       return t('deckFeature.size', { value: feature.value });
     case 'fit':
