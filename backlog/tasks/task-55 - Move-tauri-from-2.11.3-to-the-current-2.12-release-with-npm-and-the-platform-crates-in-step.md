@@ -3,10 +3,10 @@ id: TASK-55
 title: >-
   Move tauri from 2.11.3 to the current 2.12 release, with npm and the platform
   crates in step
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 09:07'
-updated_date: '2026-11-13 09:42'
+updated_date: '2026-11-13 22:38'
 labels:
   - chore
 dependencies: []
@@ -55,8 +55,8 @@ Out of scope: adopting 2.12's new APIs (`convert_file_src` in Rust, `limit_navig
 - [x] #4 Every AGENTS.md / AGENTS.ja.md citation into tauri, tauri-runtime-wry, muda and wry source is re-read against the new versions, and each one is updated, corrected or removed; decision-16's pin paragraph says what holds now
 - [x] #5 The resolved zip is 9.0.5 or later and the zip entries are gone from src-tauri/.cargo/audit.toml, with cargo audit still passing
 - [x] #6 pnpm lint, pnpm build, pnpm test, cargo fmt --check, cargo check, cargo test, the Audit workflow and the paper job on all three platforms pass
-- [ ] #7 On macOS, Windows and Linux by hand: printing (Linux still refused), the menu (CmdOrCtrl+W on Windows, a pointer-chosen menu entry on Linux), restoring several windows, a second launch handing a file over, and opening an image / PDF from a folder behave as before
-- [ ] #8 An update from the released v0.13.0 to a build of this branch is installed through the in-app updater on at least one platform, or the task records why it could not be
+- [x] #7 On macOS, Windows and Linux by hand: printing (Linux still refused), the menu (CmdOrCtrl+W on Windows, a pointer-chosen menu entry on Linux), restoring several windows, a second launch handing a file over, and opening an image / PDF from a folder behave as before
+- [x] #8 An update from the released v0.13.0 to a build of this branch is installed through the in-app updater on at least one platform, or the task records why it could not be
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -99,4 +99,9 @@ Out of scope: adopting 2.12's new APIs (`convert_file_src` in Rust, `limit_navig
 - PR #113 の CI がすべて通過: paper（macOS 7m11s・Linux 4m17s・Windows 5m22s）、rust、frontend、Audit の npm / rust。paper ジョブの Windows ビルドで pdf.rs / modifier.rs の Windows アームが webview2-com 0.39 / windows-core 0.62 に対してコンパイルされた（AC#2）。Audit の cargo audit は zip の許容項目なしで通過（AC#5）。
 - 外部レビュー: Codex（gpt-6-astra、effort=low）が 1 ラウンドで指摘なし、bot が HEAD 4d62453 を APPROVE。
 - AC#7・#8 は次のリリースで確かめる（オーナー判断）。#8 はアップデータの endpoint が公開済みリリースの latest.json しか解決しないため、リリース前には確かめられない。#7 も同じタイミングで手で確認する。それまでタスクは In Review に置く。
+
+## リリース後（2026-11-14、v0.14.0）
+
+- v0.14.0 を公開（2026-11-13T20:13Z、下書き・プレリリースではない）。
+- AC#7・#8: オーナーが v0.14.0 で確認。AC#7 は macOS・Windows・Linux での手動確認（印刷（Linux は引き続き拒否）、メニュー（Windows の CmdOrCtrl+W、Linux でポインタから選んだメニュー項目）、複数ウィンドウの復元、二重起動時のファイル受け渡し、フォルダからの画像 / PDF の表示）。AC#8 は v0.13.0 からアプリ内アップデータでの更新。
 <!-- SECTION:NOTES:END -->
