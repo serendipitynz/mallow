@@ -25,6 +25,7 @@ macro_rules! app_handler {
     ($($extra:path),*) => {
         tauri::generate_handler![
             commands::read_dir_tree,
+            commands::list_slide_theme_files,
             commands::read_file,
             commands::path_exists,
             commands::allow_media_dir,
