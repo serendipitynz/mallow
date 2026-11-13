@@ -56,7 +56,7 @@ jobs:
       # Tauri names the bundles after tauri.conf.json's version, not after the
       # tag, so a tag pushed without bumping it produces a release whose assets
       # carry the previous version's name. Fail before anything is built.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
@@ -154,7 +154,7 @@ jobs:
       # Build from the release tag itself, so a manual run can never bundle a
       # different commit than the tag names. On a tag push github.ref is already
       # refs/tags/<tag>, so this is equivalent to the default there.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 

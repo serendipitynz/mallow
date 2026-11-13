@@ -46,7 +46,7 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
 
@@ -69,7 +69,7 @@ jobs:
   rust:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # release.yml's package list minus xdg-utils, which only its AppImage
       # bundler needs — the Tauri crate does not compile without the WebKitGTK
@@ -118,7 +118,7 @@ jobs:
     outputs:
       paper: ${{ steps.filter.outputs.paper }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -177,7 +177,7 @@ jobs:
     # ceiling can hold a runner until the workflow's own limit.
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # release.yml's list plus what a paper needs: a display to open a window on,
       # Japanese fonts for a fixture written in Japanese, and poppler to measure
