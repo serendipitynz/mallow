@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-11-13 09:07'
-updated_date: '2026-11-13 09:27'
+updated_date: '2026-11-13 09:42'
 labels:
   - chore
 dependencies: []
@@ -50,11 +50,11 @@ Out of scope: adopting 2.12's new APIs (`convert_file_src` in Rust, `limit_navig
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 tauri, tauri-build and every tauri-plugin-* crate are on their current releases on the 2.12 line, and @tauri-apps/api, cli and every @tauri-apps/plugin-* on the matching releases
-- [ ] #2 webview2-com, windows-core and windows-sys match what wry uses, and the Windows arms of pdf.rs and modifier.rs compile in the paper job
+- [x] #2 webview2-com, windows-core and windows-sys match what wry uses, and the Windows arms of pdf.rs and modifier.rs compile in the paper job
 - [x] #3 Cargo.toml and package.json pin every tauri crate and package tauri-cli pairs (tauri, tauri-build, tauri-plugin-*, @tauri-apps/api, cli, @tauri-apps/plugin-*) with ~ to its current minor, and dependabot.yml's per-crate tauri ignore list is replaced by one rule ignoring minor and major updates of tauri* and @tauri-apps/*
 - [x] #4 Every AGENTS.md / AGENTS.ja.md citation into tauri, tauri-runtime-wry, muda and wry source is re-read against the new versions, and each one is updated, corrected or removed; decision-16's pin paragraph says what holds now
-- [ ] #5 The resolved zip is 9.0.5 or later and the zip entries are gone from src-tauri/.cargo/audit.toml, with cargo audit still passing
-- [ ] #6 pnpm lint, pnpm build, pnpm test, cargo fmt --check, cargo check, cargo test, the Audit workflow and the paper job on all three platforms pass
+- [x] #5 The resolved zip is 9.0.5 or later and the zip entries are gone from src-tauri/.cargo/audit.toml, with cargo audit still passing
+- [x] #6 pnpm lint, pnpm build, pnpm test, cargo fmt --check, cargo check, cargo test, the Audit workflow and the paper job on all three platforms pass
 - [ ] #7 On macOS, Windows and Linux by hand: printing (Linux still refused), the menu (CmdOrCtrl+W on Windows, a pointer-chosen menu entry on Linux), restoring several windows, a second launch handing a file over, and opening an image / PDF from a folder behave as before
 - [ ] #8 An update from the released v0.13.0 to a build of this branch is installed through the in-app updater on at least one platform, or the task records why it could not be
 <!-- AC:END -->
@@ -93,4 +93,10 @@ Out of scope: adopting 2.12's new APIs (`convert_file_src` in Rust, `limit_navig
 - `MALLOW_UNATTENDED=1 pnpm tauri build --debug --no-bundle --no-sign` が macOS で成功（tauri-cli のバージョン照合も通過）。
 - `pnpm audit --prod`: low 1 件（既存の許容済み katex）のみ。
 - 未実施: Windows アームのローカル確認（`cargo check --target x86_64-pc-windows-msvc` は ring の C ビルドが Windows SDK のヘッダを要して止まる）→ paper ジョブで確認。cargo-audit はローカルに無いので Audit ワークフローで確認。AC#2 / #5 / #6 は CI の結果、AC#7 / #8 はオーナーの手動確認待ち。
+
+## マージ後（2026-11-13、PR #113）
+
+- PR #113 の CI がすべて通過: paper（macOS 7m11s・Linux 4m17s・Windows 5m22s）、rust、frontend、Audit の npm / rust。paper ジョブの Windows ビルドで pdf.rs / modifier.rs の Windows アームが webview2-com 0.39 / windows-core 0.62 に対してコンパイルされた（AC#2）。Audit の cargo audit は zip の許容項目なしで通過（AC#5）。
+- 外部レビュー: Codex（gpt-6-astra、effort=low）が 1 ラウンドで指摘なし、bot が HEAD 4d62453 を APPROVE。
+- AC#7・#8 は次のリリースで確かめる（オーナー判断）。#8 はアップデータの endpoint が公開済みリリースの latest.json しか解決しないため、リリース前には確かめられない。#7 も同じタイミングで手で確認する。それまでタスクは In Review に置く。
 <!-- SECTION:NOTES:END -->
