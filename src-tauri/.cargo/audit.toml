@@ -6,10 +6,12 @@
 [advisories]
 ignore = [
   # zip 4.6.1 through tauri-plugin-updater, Windows only. The updater extracts
-  # only an archive whose minisign signature has verified, so a hostile archive
-  # needs the signing key. The fixed zip (9.0) arrives with updater 2.14, which
-  # needs tauri 2.12, past the 2.11.3 mallow holds (TASK-53). Clears when the
-  # tauri hold is lifted.
+  # a zip only when the downloaded update is one, and only after its minisign
+  # signature has verified; mallow's latest.json serves .msi and .exe, so that
+  # branch is not reached. The fixed zip arrives with updater 2.14 (zip ^9,
+  # which resolves to 9.0.5 or later, the version GitHub's GHSA-m665-v7pm-7grj
+  # needs), and updater 2.14 needs tauri 2.12, past the 2.11.3 mallow holds
+  # (TASK-53). Clears when the tauri hold is lifted.
   "RUSTSEC-2026-0367",
   "RUSTSEC-2026-0368",
   "RUSTSEC-2026-0369",
