@@ -3,10 +3,10 @@ id: TASK-53
 title: >-
   Update the dependencies that carry published advisories, within their declared
   ranges
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 05:08'
-updated_date: '2026-11-13 06:04'
+updated_date: '2026-11-13 08:45'
 labels:
   - chore
 dependencies: []
@@ -50,7 +50,7 @@ Out of scope: major-version moves (mermaid 12, vite 8, vitest 5, @vitejs/plugin-
 - [x] #3 A RustSec scan of src-tauri/Cargo.lock reports no vulnerability that cargo update fixes (rustls, rustls-webpki, webpki-root-certs, tokio, rustix, event-listener)
 - [x] #4 Whether katex is overridden past mermaid's range is settled, and the answer written in the task
 - [x] #5 Every advisory left unfixed is listed in the task with its path, why it is not reachable or not fixable here, and what upstream release would clear it
-- [ ] #6 A mermaid diagram, a TOML file and a malformed TOML file still render or report as before in pnpm tauri dev
+- [x] #6 A mermaid diagram, a TOML file and a malformed TOML file still render or report as before in pnpm tauri dev
 - [x] #7 pnpm lint, pnpm build, pnpm test, cargo fmt --check, cargo check and cargo test pass, and pnpm notices is regenerated if any bundled dependency's version changed
 <!-- AC:END -->
 
@@ -94,4 +94,6 @@ GHSA-238p-pmpm-9mq7 (low) は「別経路のプロトタイプ汚染が既にあ
 - cargo fmt --check / cargo check / cargo test (114 件): 通過
 - pnpm notices を再生成した。差分の大半はライセンス本文の参照番号 (T1…) の振り直しで、版の行は上の更新分と、mermaid 11.17 が新たに引く fastdom / strictdom、plist が引く base64 0.23.1 の追加
 - AC #6 のうち TOML の正常なパースと不正な TOML の行・列の報告は config-parse の単体テストで確認できている。mermaid の図の描画は WebView でしか見られないため、pnpm tauri dev での目視はオーナーの確認待ちとして未チェック
+
+AC #6: 2026-11-13、オーナーが pnpm tauri dev で _sandbox/task-53 のサンプル (mermaid の 5 種の図、正しい TOML、4 行目で壊れた TOML) を確認した。
 <!-- SECTION:NOTES:END -->
