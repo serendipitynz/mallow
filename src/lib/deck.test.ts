@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderDeck } from './deck';
 import { isDeck } from './is-deck';
+import type { DeckThemes } from './slide-themes';
 
 // The first render boots the Shiki highlighter; see markdown.test.ts.
 vi.setConfig({ testTimeout: 20_000 });
@@ -154,7 +155,7 @@ describe('renderDeck — the notice (decision-18 §3)', () => {
 
   it('names a theme other than default and draws it with the slide theme', async () => {
     const result = await renderDeck(deck('# One\n', 'theme: gaia\n'));
-    expect(result.unsupported).toEqual([{ kind: 'theme', name: 'gaia' }]);
+    expect(result.unsupported).toEqual([{ kind: 'theme', name: 'gaia', drawn: 'default' }]);
     expect(result.css).toContain('var(--color-bg)');
     expect((await renderDeck(deck('# One\n', 'theme: default\n'))).unsupported).toEqual([]);
   });
@@ -182,5 +183,78 @@ describe('renderDeck — heading ids', () => {
     const first = await renderDeck(source);
     const second = await renderDeck(source);
     expect(second.slides).toEqual(first.slides);
+  });
+});
+
+describe('renderDeck — the theme set (decision-19)', () => {
+  const paper: DeckThemes = {
+    themes: [
+      {
+        name: 'paper',
+        css: '/* @theme paper */\nsection { width: 1280px; height: 720px; color: light-dark(#111, #eee); }\n',
+        sizes: { '16:9': { width: '1280px', height: '720px' }, '4:3': { width: '960px', height: '720px' } },
+      },
+      { name: 'square', css: '/* @theme square */\nsection { width: 800px; height: 800px; }\n', sizes: {} },
+    ],
+    defaultName: 'default',
+  };
+  const withDefault = (defaultName: string): DeckThemes => ({ themes: paper.themes, defaultName });
+
+  it('draws a deck with the folder theme it names', async () => {
+    const result = await renderDeck(deck('# One\n', 'theme: paper\n'), { themes: paper });
+    expect(result.theme).toBe('paper');
+    expect(result.css).toContain('light-dark(#111, #eee)');
+    expect(result.css).not.toContain('var(--color-bg)');
+    expect(result.unsupported).toEqual([]);
+  });
+
+  it('keeps default for a deck naming it, whatever the preference', async () => {
+    const result = await renderDeck(deck('# One\n', 'theme: default\n'), { themes: withDefault('paper') });
+    expect(result.theme).toBe('default');
+    expect(result.css).toContain('var(--color-bg)');
+  });
+
+  it('draws a deck naming no theme with the default-theme preference', async () => {
+    const result = await renderDeck(deck('# One\n'), { themes: withDefault('paper') });
+    expect(result.theme).toBe('paper');
+    expect(result.unsupported).toEqual([]);
+  });
+
+  it('draws an unknown name with the preference and says so', async () => {
+    const result = await renderDeck(deck('# One\n', 'theme: gaia\n'), { themes: withDefault('paper') });
+    expect(result.theme).toBe('paper');
+    expect(result.unsupported).toEqual([{ kind: 'theme', name: 'gaia', drawn: 'paper' }]);
+  });
+
+  it('falls back to the slide theme for a preference the set does not hold', async () => {
+    const result = await renderDeck(deck('# One\n'), { themes: withDefault('gone') });
+    expect(result.theme).toBe('default');
+    expect(result.css).toContain('var(--color-bg)');
+  });
+
+  it('lists kinari as unknown while no copy is bundled', async () => {
+    const result = await renderDeck(deck('# One\n', 'theme: kinari\n'), { themes: paper });
+    expect(result.unsupported).toEqual([{ kind: 'theme', name: 'kinari', drawn: 'default' }]);
+  });
+
+  it("takes a deck's size from the theme's @size entry", async () => {
+    const result = await renderDeck(deck('# One\n', 'theme: paper\nsize: 4:3\n'), { themes: paper });
+    expect(result.size).toBe('4:3');
+    expect(result.slides[0]).toContain('viewBox="0 0 960 720"');
+    expect(result.unsupported).toEqual([]);
+  });
+
+  it('draws a theme with no entry for the size at its own size, and reports it', async () => {
+    const result = await renderDeck(deck('# One\n', 'theme: square\nsize: 4:3\n'), { themes: paper });
+    expect(result.size).toBeNull();
+    expect(result.slides[0]).toContain('viewBox="0 0 800 800"');
+    expect(result.unsupported).toEqual([{ kind: 'size', value: '4:3' }]);
+  });
+
+  it("keeps mallow's two generated sizes under the slide theme", async () => {
+    const result = await renderDeck(deck('# One\n', 'size: 4:3\n'), { themes: paper });
+    expect(result.theme).toBe('default');
+    expect(result.size).toBe('4:3');
+    expect(result.slides[0]).toContain('viewBox="0 0 960 720"');
   });
 });

@@ -838,6 +838,48 @@
   border-radius: $radius-control;
 }
 
+// What the slide theme folder gave: a theme's name with its file, or a file
+// left out with its reason.
+.settings-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: $ink;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 8px;
+  }
+}
+
+.settings-list__name {
+  font-weight: 600;
+}
+
+.settings-list__file {
+  font-family: $font-mono;
+  font-size: 12px;
+  word-break: break-all;
+  color: $muted;
+
+  .is-skipped & {
+    color: $ink;
+  }
+}
+
+.settings-list__note {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: $muted;
+}
+
 // ---- Update dialog ----------------------------------------------------------
 .update {
   display: flex;

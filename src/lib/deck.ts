@@ -1,7 +1,8 @@
 /** A Marp deck rendered as slides (decision-18): Marpit on a second instance of
- *  mallow's own markdown-it, under mallow's one slide theme, with the deck's CSS
- *  walked by `lib/deck-css` before Marpit merges it. Pure, so the split, the
- *  directives and the notice are tested under Node. */
+ *  mallow's own markdown-it, under the theme the deck names among mallow's slide
+ *  theme and the folder themes (decision-19), with the deck's CSS walked by
+ *  `lib/deck-css` before Marpit merges it. Pure, so the split, the directives and
+ *  the notice are tested under Node. */
 import { Marpit } from '@marp-team/marpit';
 import type MarkdownIt from 'markdown-it';
 import type StateCore from 'markdown-it/lib/rules_core/state_core.mjs';
@@ -10,6 +11,7 @@ import type Token from 'markdown-it/lib/token.mjs';
 import { walkDeckCss } from './deck-css';
 import type { RefResolver } from './html-doc';
 import { createMarkdownIt, getMarkdownConfigVersion, localImageSrc, resetHeadingState } from './markdown';
+import { type DeckTheme, type DeckThemes, MALLOW_THEME, NO_DECK_THEMES } from './slide-themes';
 
 /** Marp's own two sizes, in CSS pixels (decision-18 §4). */
 export const DECK_SIZES = {
@@ -26,7 +28,9 @@ export type DeckFeature =
   /** The `math` directive only: a `$…$` in the text is not told apart from a
    *  price, so a deck relying on Marp Core's default math goes unnamed. */
   | { kind: 'math' }
-  | { kind: 'theme'; name: string }
+  /** A theme name mallow does not hold, and the theme drawn instead. */
+  | { kind: 'theme'; name: string; drawn: string }
+  /** A size the drawn theme has no entry for, drawn at the theme's own size. */
   | { kind: 'size'; value: string }
   | { kind: 'fit' }
   | { kind: 'cssAtRule'; name: string }
@@ -39,7 +43,11 @@ export interface DeckResult {
    *  `div.marpit`, the container the CSS is scoped to. */
   slides: string[];
   css: string;
-  size: DeckSize;
+  /** The theme drawn. */
+  theme: string;
+  /** The size entry drawn, or `null` for a theme drawn at its own `section`
+   *  size; mallow's slide theme always draws one of `DECK_SIZES`. */
+  size: string | null;
   unsupported: DeckFeature[];
 }
 
@@ -47,13 +55,18 @@ export interface DeckOptions {
   /** How an image path relative to the document becomes a loadable URL, for
    *  `![](…)`, `![bg](…)` and every URL in the deck's CSS alike. */
   images?: RefResolver;
+  /** The folder themes and the default-theme preference; mallow's slide theme
+   *  alone when absent. Renderers are cached per value, so pass the same object
+   *  while the set is unchanged. */
+  themes?: DeckThemes;
 }
 
 /** What one render records while Marpit runs, which its directive parsers have
  *  no `env` to carry. A render is synchronous, so one record per instance holds. */
 interface RenderRecord {
   images: RefResolver | undefined;
-  themes: Set<string>;
+  /** Theme names the deck asked for that the set does not hold. */
+  unknownThemes: Set<string>;
   size: string | null;
   math: boolean;
   rawHtml: boolean;
@@ -66,7 +79,7 @@ interface RenderRecord {
 function emptyRecord(images: RefResolver | undefined): RenderRecord {
   return {
     images,
-    themes: new Set(),
+    unknownThemes: new Set(),
     size: null,
     math: false,
     rawHtml: false,
@@ -140,7 +153,20 @@ section.invert header, section.invert footer, section.invert::after { color: var
 `;
 }
 
-function createRenderer(md: MarkdownIt, size: DeckSize): DeckRenderer {
+/** A theme's CSS for one size: its `@size` entry of that name laid over its own
+ *  `section` size, as `:root` so it outranks a size the theme wrote on `:root`
+ *  itself, both in Marpit's size detection and in the cascade. The values are
+ *  lengths `readThemeMeta` checked, so nothing else reaches the CSS. */
+function themeCss(theme: DeckTheme, size: string | null): string {
+  const entry = size === null ? undefined : theme.sizes[size];
+  return entry ? `${theme.css}\n:root { width: ${entry.width}; height: ${entry.height}; }\n` : theme.css;
+}
+
+function hasSizeEntry(theme: DeckTheme | undefined, size: string): boolean {
+  return theme ? size in theme.sizes : size in DECK_SIZES;
+}
+
+function createRenderer(md: MarkdownIt, set: DeckThemes, size: string | null): DeckRenderer {
   const record = emptyRecord(undefined);
   const marpit = new DeckMarpit({
     markdown: md,
@@ -150,16 +176,27 @@ function createRenderer(md: MarkdownIt, size: DeckSize): DeckRenderer {
     // reach the app document rather than the slides.
     printable: false,
   });
-  const theme = marpit.themeSet.add(slideTheme(size));
-  marpit.themeSet.default = theme;
-  /* Every theme name a deck asks for is recorded here, because Marpit drops an
-     unknown one silently and draws the default instead (decision-18 §5) — so the
-     name is gone from the directives by the time anything could read it. Only
-     the directive parser asks `has`. */
+  const mallowTheme = marpit.themeSet.add(
+    slideTheme(size !== null && size in DECK_SIZES ? (size as DeckSize) : '16:9'),
+  );
+  marpit.themeSet.default = mallowTheme;
+  for (const theme of set.themes) {
+    const added = marpit.themeSet.add(themeCss(theme, size));
+    if (theme.name === set.defaultName) {
+      marpit.themeSet.default = added;
+    }
+  }
+  /* A theme name the set does not hold is recorded here, because Marpit drops
+     it silently and draws the default instead (decision-19 §2) — so the name is
+     gone from the directives by the time anything could read it. Only the
+     directive parser asks `has`. */
   const has = marpit.themeSet.has.bind(marpit.themeSet);
   marpit.themeSet.has = (name: string) => {
-    record.themes.add(name);
-    return has(name);
+    const held = has(name);
+    if (!held) {
+      record.unknownThemes.add(name);
+    }
+    return held;
   };
   marpit.customDirectives.global.size = (value) => {
     record.size = String(value);
@@ -248,22 +285,24 @@ function noteFeatures(token: Token, record: RenderRecord): void {
   }
 }
 
-let renderers: { version: number; bySize: Partial<Record<DeckSize, Promise<DeckRenderer>>> } | null = null;
+let renderers: { version: number; set: DeckThemes; bySize: Map<string | null, Promise<DeckRenderer>> } | null = null;
 
 /** One renderer per size, each on an instance of its own: Marpit installs its
  *  plugins into the instance it is handed, and the preview's must stay as it is.
- *  Rebuilt when the pipeline is reconfigured (custom emoji), as the preview's is. */
-function getRenderer(size: DeckSize): Promise<DeckRenderer> {
+ *  Rebuilt when the pipeline is reconfigured (custom emoji), as the preview's is,
+ *  and when the theme set is a different one. `null` is every theme at its own
+ *  size. */
+function getRenderer(set: DeckThemes, size: string | null): Promise<DeckRenderer> {
   const version = getMarkdownConfigVersion();
-  if (renderers?.version !== version) {
-    renderers = { version, bySize: {} };
+  if (renderers?.version !== version || renderers.set !== set) {
+    renderers = { version, set, bySize: new Map() };
   }
-  const existing = renderers.bySize[size];
+  const existing = renderers.bySize.get(size);
   if (existing) {
     return existing;
   }
-  const created = createMarkdownIt({ localImageRule: false }).then((md) => createRenderer(md, size));
-  renderers.bySize[size] = created;
+  const created = createMarkdownIt({ localImageRule: false }).then((md) => createRenderer(md, set, size));
+  renderers.bySize.set(size, created);
   return created;
 }
 
@@ -271,23 +310,57 @@ function renderWith(renderer: DeckRenderer, source: string, options: DeckOptions
   Object.assign(renderer.record, emptyRecord(options.images));
   resetHeadingState();
   const { html, css } = renderer.marpit.render(source, { htmlAsArray: true });
-  return { slides: html, css, record: renderer.record };
+  const named = renderer.marpit.globalDirectives?.theme;
+  const theme = typeof named === 'string' ? named : (renderer.marpit.themeSet.default?.name ?? MALLOW_THEME);
+  return { slides: html, css, theme, record: renderer.record };
 }
 
-/** Render a deck. The size is a global directive that can sit anywhere in the
- *  deck, so it is known only after a render: a `4:3` deck is rendered once more
- *  with the renderer whose theme carries that size. */
-export async function renderDeck(source: string, options: DeckOptions = {}): Promise<DeckResult> {
-  let size: DeckSize = '16:9';
-  let rendered = renderWith(await getRenderer(size), source, options);
-  if (rendered.record.size === '4:3') {
-    size = '4:3';
-    rendered = renderWith(await getRenderer(size), source, options);
+const corrected = new WeakMap<DeckThemes, DeckThemes>();
+
+/** The set as given, with a default name the set does not hold put back to
+ *  mallow's slide theme, so the theme Marpit draws and the one reported agree.
+ *  The correction is kept per set, since the renderer cache keys on identity. */
+function usableSet(set: DeckThemes | undefined): DeckThemes {
+  if (!set) {
+    return NO_DECK_THEMES;
   }
-  return { slides: rendered.slides, css: rendered.css, size, unsupported: unsupportedFeatures(rendered.record) };
+  if (set.defaultName === MALLOW_THEME || set.themes.some((theme) => theme.name === set.defaultName)) {
+    return set;
+  }
+  let fixed = corrected.get(set);
+  if (!fixed) {
+    fixed = { themes: set.themes, defaultName: MALLOW_THEME };
+    corrected.set(set, fixed);
+  }
+  return fixed;
 }
 
-function unsupportedFeatures(record: RenderRecord): DeckFeature[] {
+/** Render a deck. The size and the theme are global directives that can sit
+ *  anywhere in the deck, so both are known only after a render: a deck whose
+ *  theme has an entry for its size is rendered once more with the renderer whose
+ *  themes carry that size (decision-19 §6). */
+export async function renderDeck(source: string, options: DeckOptions = {}): Promise<DeckResult> {
+  const themes = usableSet(options.themes);
+  let rendered = renderWith(await getRenderer(themes, null), source, options);
+  const asked = rendered.record.size;
+  const drawn = themes.themes.find((theme) => theme.name === rendered.theme);
+  let size: string | null = drawn ? null : '16:9';
+  if (asked !== null && hasSizeEntry(drawn, asked)) {
+    size = asked;
+    if (drawn || asked !== '16:9') {
+      rendered = renderWith(await getRenderer(themes, asked), source, options);
+    }
+  }
+  return {
+    slides: rendered.slides,
+    css: rendered.css,
+    theme: rendered.theme,
+    size,
+    unsupported: unsupportedFeatures(rendered.record, rendered.theme, asked !== null && !hasSizeEntry(drawn, asked)),
+  };
+}
+
+function unsupportedFeatures(record: RenderRecord, drawn: string, sizeMissing: boolean): DeckFeature[] {
   const out: DeckFeature[] = [];
   if (record.rawHtml) {
     out.push({ kind: 'rawHtml' });
@@ -295,12 +368,10 @@ function unsupportedFeatures(record: RenderRecord): DeckFeature[] {
   if (record.math) {
     out.push({ kind: 'math' });
   }
-  for (const name of record.themes) {
-    if (name !== 'default') {
-      out.push({ kind: 'theme', name });
-    }
+  for (const name of record.unknownThemes) {
+    out.push({ kind: 'theme', name, drawn });
   }
-  if (record.size !== null && !(record.size in DECK_SIZES)) {
+  if (sizeMissing && record.size !== null) {
     out.push({ kind: 'size', value: record.size });
   }
   if (record.fit) {

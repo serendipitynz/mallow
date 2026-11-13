@@ -24,6 +24,12 @@ export interface Settings {
   explorerShown?: boolean;
   /** Folder holding the user's custom `:shortcode:` emoji (see lib/custom-emoji). */
   customEmojiDir?: string;
+  /** The slide theme folder (decision-19 §3, lib/slide-theme-folder). */
+  slideThemeDir?: string;
+  /** The theme a deck naming none, or one not held, is drawn with. Absent means
+   *  mallow's slide theme; a name no longer held is kept, not rewritten
+   *  (decision-19 §2). */
+  defaultSlideTheme?: string;
   /** Whether to run an update check after launch. Absent means on. Turning it
    *  off leaves the manual check in Settings, and neither installs anything on
    *  its own — so this is not an "auto-update" switch. */

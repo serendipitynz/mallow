@@ -103,6 +103,29 @@ pub(crate) fn file_kind(name: &str) -> Option<String> {
     )
 }
 
+/// The `.css` files directly inside `path`, sorted by name — the candidates of
+/// the slide theme folder (decision-19 §3), whose subfolders are not read.
+/// Separate from `read_dir_tree` because `.css` is not a kind the tree shows:
+/// adding it there would put every stylesheet in the explorer with no view for
+/// it.
+#[tauri::command]
+pub fn list_slide_theme_files(path: String) -> Result<Vec<String>, String> {
+    let dir = std::fs::read_dir(&path).map_err(|e| format!("{path}: {e}"))?;
+    let mut files: Vec<(String, String)> = Vec::new();
+    for entry in dir {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        let is_css = name
+            .rsplit_once('.')
+            .is_some_and(|(stem, ext)| !stem.is_empty() && ext.eq_ignore_ascii_case("css"));
+        if is_css && entry.path().is_file() {
+            files.push((name, entry.path().to_string_lossy().to_string()));
+        }
+    }
+    files.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()).then_with(|| a.0.cmp(&b.0)));
+    Ok(files.into_iter().map(|(_, path)| path).collect())
+}
+
 /// List the immediate children of `path`. Directories are always included;
 /// files are included only when their extension maps to a supported `kind`.
 /// Children are loaded lazily (one level at a time) as the user expands nodes.
@@ -354,6 +377,25 @@ mod tests {
         assert_eq!(file_kind("archive.zip"), None);
         assert_eq!(file_kind("Makefile"), None);
         assert_eq!(file_kind(".gitignore"), None);
+    }
+
+    #[test]
+    fn list_slide_theme_files_takes_css_files_directly_inside() {
+        let tmp = TempDir::new();
+        fs::create_dir(tmp.path().join("nested")).unwrap();
+        fs::write(tmp.path().join("nested").join("deep.css"), "x").unwrap();
+        fs::create_dir(tmp.path().join("folder.css")).unwrap();
+        fs::write(tmp.path().join("b.css"), "x").unwrap();
+        fs::write(tmp.path().join("A.CSS"), "x").unwrap();
+        fs::write(tmp.path().join(".css"), "x").unwrap();
+        fs::write(tmp.path().join("notes.md"), "x").unwrap();
+
+        let files = list_slide_theme_files(tmp.path().to_string_lossy().to_string()).unwrap();
+        let names: Vec<String> = files
+            .iter()
+            .map(|p| Path::new(p).file_name().unwrap().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(names, vec!["A.CSS", "b.css"]);
     }
 
     #[test]

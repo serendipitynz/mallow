@@ -36,6 +36,7 @@ import { createPrintChordHandler } from './lib/print';
 import { applyProseMeasure } from './lib/prose-measure';
 import { loadSettings, saveSetting } from './lib/settings';
 import { onSettingChange, type SettingChange, settingsReadStamp, snapshotStillCurrent } from './lib/settings-sync';
+import { applyDefaultSlideTheme, applySlideThemeDir } from './lib/slide-theme-folder';
 import {
   allowMediaDir,
   chooseRecent,
@@ -370,6 +371,17 @@ export default function App() {
     void applyEmojiDir(null, true);
   }, [applyEmojiDir]);
 
+  const pickSlideThemeDir = useCallback(async () => {
+    const dir = await pickFolder();
+    if (dir) {
+      await applySlideThemeDir(dir, true);
+    }
+  }, []);
+
+  const clearSlideThemeDir = useCallback(() => {
+    void applySlideThemeDir(null, true);
+  }, []);
+
   // ---- Explorer show / hide -------------------------------------------------
   const explorerToggleRef = useRef<HTMLButtonElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -447,6 +459,12 @@ export default function App() {
         case 'customEmojiDir':
           void applyEmojiDir(change.value);
           break;
+        case 'slideThemeDir':
+          void applySlideThemeDir(change.value);
+          break;
+        case 'defaultSlideTheme':
+          applyDefaultSlideTheme(change.value);
+          break;
         case 'autoCheckUpdates':
           setAutoCheckUpdates(change.value ?? DEFAULT_AUTO_CHECK_UPDATES);
           break;
@@ -518,6 +536,14 @@ export default function App() {
       }
       if (s.autoCheckUpdates === false && snapshotStillCurrent('autoCheckUpdates', readAt)) {
         setAutoCheckUpdates(false);
+      }
+      if (s.defaultSlideTheme && snapshotStillCurrent('defaultSlideTheme', readAt)) {
+        applyDefaultSlideTheme(s.defaultSlideTheme);
+      }
+      /* Not awaited: nothing below waits on the themes, and the Slides view
+         reads the folder again when it is entered. */
+      if (s.slideThemeDir && snapshotStillCurrent('slideThemeDir', readAt)) {
+        void applySlideThemeDir(s.slideThemeDir);
       }
       if (s.customEmojiDir && snapshotStillCurrent('customEmojiDir', readAt)) {
         await applyEmojiDir(s.customEmojiDir);
@@ -1155,6 +1181,8 @@ export default function App() {
         emoji={emoji}
         onPickEmojiDir={pickEmojiDir}
         onClearEmojiDir={clearEmojiDir}
+        onPickSlideThemeDir={pickSlideThemeDir}
+        onClearSlideThemeDir={clearSlideThemeDir}
         runningVersion={updater.runningVersion}
         autoCheckUpdates={autoCheckUpdates}
         onAutoCheckChange={changeAutoCheckUpdates}

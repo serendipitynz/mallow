@@ -8,7 +8,8 @@ import {
   modeAvailable,
 } from '../lib/color-choice';
 import type { CustomEmojiStatus } from '../lib/custom-emoji';
-import { LANGS, type Lang, useI18n } from '../lib/i18n';
+import { LANGS, type Lang, type TFn, useI18n, useT } from '../lib/i18n';
+import { basename } from '../lib/path';
 import {
   onProseMeasureChange,
   PROSE_MEASURES,
@@ -17,6 +18,13 @@ import {
   writeProseMeasure,
 } from '../lib/prose-measure';
 import { broadcastSetting } from '../lib/settings-sync';
+import {
+  chooseDefaultSlideTheme,
+  type FolderLoad,
+  getSlideThemes,
+  subscribeSlideThemes,
+} from '../lib/slide-theme-folder';
+import { type FolderTheme, MALLOW_THEME, type SkippedFile } from '../lib/slide-themes';
 import { getColorChoice, onColorChoiceChange } from '../lib/theme';
 import type { CheckState } from '../lib/update-flow';
 import { Busy } from './Busy';
@@ -33,6 +41,8 @@ interface SettingsModalProps {
   emoji: CustomEmojiStatus;
   onPickEmojiDir: () => void;
   onClearEmojiDir: () => void;
+  onPickSlideThemeDir: () => void;
+  onClearSlideThemeDir: () => void;
   /** Null only for the moment before the app version has been read. */
   runningVersion: string | null;
   autoCheckUpdates: boolean;
@@ -60,6 +70,8 @@ export function SettingsModal({
   emoji,
   onPickEmojiDir,
   onClearEmojiDir,
+  onPickSlideThemeDir,
+  onClearSlideThemeDir,
   runningVersion,
   autoCheckUpdates,
   onAutoCheckChange,
@@ -221,6 +233,8 @@ export function SettingsModal({
         ) : null}
       </section>
 
+      <SlideThemeSettings onPickDir={onPickSlideThemeDir} onClearDir={onClearSlideThemeDir} />
+
       <section className="settings-group">
         <h3 className="settings-group__label">{t('update')}</h3>
         <p className="settings-path">
@@ -271,4 +285,123 @@ export function SettingsModal({
       </section>
     </Modal>
   );
+}
+
+/** The slide theme section (decision-19 §2, §3): the default theme, the folder,
+ *  and what the folder gave — read from the store, since the Slides view reads
+ *  the folder again on its own and this list has to follow it. */
+function SlideThemeSettings({ onPickDir, onClearDir }: { onPickDir: () => void; onClearDir: () => void }) {
+  const t = useT();
+  const { dir, load, preference, defaultTheme } = useSyncExternalStore(subscribeSlideThemes, getSlideThemes);
+  const defaultId = useId();
+  const defaultHintId = useId();
+  const missingId = useId();
+  const dirId = useId();
+  const names = load?.themes.map((theme) => theme.name) ?? [];
+  /* A stored name not held stays selected, marked and disabled, with the reason
+     beside it, as a colour mode the family cannot draw does (decision-19 §2);
+     one only not read yet is listed plainly. */
+  const selected = preference ?? MALLOW_THEME;
+  const unlisted = selected !== MALLOW_THEME && !names.includes(selected);
+  const describedBy = defaultTheme.missing ? `${defaultHintId} ${missingId}` : defaultHintId;
+
+  return (
+    <section className="settings-group">
+      <h3 className="settings-group__label">{t('slideThemes')}</h3>
+      <div className="settings-field">
+        <label htmlFor={defaultId}>{t('slideThemeDefault')}</label>
+        <Select
+          id={defaultId}
+          value={selected}
+          aria-describedby={describedBy}
+          onChange={(e) => chooseDefaultSlideTheme(e.target.value)}
+        >
+          <option value={MALLOW_THEME}>{t('slideThemeMallow')}</option>
+          {names.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+          {unlisted && (
+            <option value={selected} disabled={defaultTheme.missing !== null}>
+              {defaultTheme.missing ? `${selected} (${t('slideThemeNotFound')})` : selected}
+            </option>
+          )}
+        </Select>
+      </div>
+      <p id={defaultHintId} className="settings-group__hint">
+        {t('slideThemeDefaultHint')}
+      </p>
+      {defaultTheme.missing && (
+        <p id={missingId} className="settings-group__hint">
+          {t('slideThemeMissing', { name: defaultTheme.missing })}
+        </p>
+      )}
+      <p className="settings-group__hint">{t('slideThemeDirHint')}</p>
+      <p id={dirId} className="settings-path" title={dir ?? undefined}>
+        {dir ?? t('slideThemeDirUnset')}
+      </p>
+      <div className="seg">
+        <button type="button" className="btn" onClick={onPickDir}>
+          {t('chooseFolder')}
+        </button>
+        {/* `aria-disabled` for the reason the custom emoji folder's Clear has it. */}
+        <button
+          type="button"
+          className="btn"
+          aria-disabled={dir ? undefined : true}
+          aria-describedby={dir ? undefined : dirId}
+          onClick={dir ? onClearDir : undefined}
+        >
+          {t('clear')}
+        </button>
+      </div>
+      {dir && <FolderReport load={load} />}
+    </section>
+  );
+}
+
+function FolderReport({ load }: { load: FolderLoad | null }) {
+  const t = useT();
+  if (!load) {
+    return <p className="settings-group__hint">{t('slideThemeLoading')}</p>;
+  }
+  if (load.error) {
+    return <p className="settings-group__hint is-error">{t('slideThemeDirFailed')}</p>;
+  }
+  if (load.themes.length === 0 && load.skipped.length === 0) {
+    return <p className="settings-group__hint">{t('slideThemeNone')}</p>;
+  }
+  return (
+    <ul className="settings-list">
+      {load.themes.map((theme) => {
+        const removed = removedText(theme, t);
+        return (
+          <li key={theme.path}>
+            <span className="settings-list__name">{theme.name}</span>{' '}
+            <span className="settings-list__file">{basename(theme.path)}</span>
+            {removed && <span className="settings-list__note">{removed}</span>}
+          </li>
+        );
+      })}
+      {load.skipped.map((file) => (
+        <li key={file.path} className="is-skipped">
+          <span className="settings-list__file">{basename(file.path)}</span>
+          <span className="settings-list__note">{skipText(file, t)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function removedText(theme: FolderTheme, t: TFn): string | null {
+  const items = [...theme.removed.atRules];
+  if (theme.removed.assetUrls > 0) {
+    items.push(t('slideThemeRemovedAssetUrls', { n: theme.removed.assetUrls }));
+  }
+  return items.length > 0 ? t('slideThemeRemoved', { items: items.join(t('listSeparator')) }) : null;
+}
+
+function skipText(file: SkippedFile, t: TFn): string {
+  return t(`slideThemeSkip.${file.reason}`, { name: file.name ?? '' });
 }

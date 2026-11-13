@@ -55,9 +55,12 @@ Installing an update may need the system's permission.
   between the two while presenting, a click advances, and `Esc` leaves. `L`
   turns a laser pointer on and off while presenting — a red dot that follows the
   mouse with a short fading trail, longer while Shift is held. Slides
-  are drawn with mallow's own theme in your colour family; a deck that relies on
-  Marp's other themes, raw HTML, math or CSS at-rules mallow drops says so in a
-  line above the slides.
+  are drawn with the theme the deck names — mallow's own theme (`default`), in
+  your colour family, or a theme from your
+  [slide theme folder](#slide-themes) — and a deck that names none is drawn with
+  the default theme chosen in Settings. A deck that relies on a theme mallow does
+  not have, raw HTML, math or CSS at-rules mallow drops says so in a line above
+  the slides.
 - **Custom emoji**: point Settings at a folder of images and each file name
   becomes a `:shortcode:` — Slack-style `:my-team:` renders as the picture
   instead of staying literal text. See [Custom emoji](#custom-emoji).
@@ -158,7 +161,8 @@ Installing an update may need the system's permission.
   explorer's width, and brings the explorer back at the width it had.
 - **Persisted settings / session restore**: theme, text width, explorer width,
   side and whether it is shown, the
-  custom emoji folder and the update-check switch are saved and restored on the
+  custom emoji folder, the slide theme folder and default theme, and the
+  update-check switch are saved and restored on the
   next launch — and so is the set of windows that was open at quit, each with its
   own folder, document, size and position.
 
@@ -317,6 +321,41 @@ subfolder does not exist. The files on disk are what count: an entry whose
 listed in the manifest are picked up anyway. Only names made of letters,
 digits, `_`, `+` and `-` are accepted.
 
+## Slide themes
+
+Settings → **Slide themes** → *Choose folder…* points mallow at a folder of Marp
+themes. Each `.css` file directly inside it (not in its subfolders) that carries
+an `@theme <name>` comment becomes a theme a deck can ask for with
+`theme: <name>`, as in Marp's own tools. Settings lists each theme with its file,
+and each file left out with the reason: no `@theme` comment, CSS that cannot be
+parsed, or a name that cannot be used — `default` and `kinari` are mallow's, and
+when two files claim one name neither is used, so which theme a name means never
+depends on the order the files are listed in. The folder is read again each time
+a deck is shown as slides, so an edited theme shows on the next visit.
+
+**Default theme** is the theme for a deck that names no theme, or one mallow
+does not have; out of the box it is mallow's own. A default theme whose file has
+since gone is shown as not found, and decks are drawn with mallow's theme until
+it comes back.
+
+A folder theme is CSS from outside the app, so it goes through the same rules as
+a deck's own CSS (see [Security](#security)): only its `@media`, `@supports` and
+`@container` at-rules are kept — a theme names installed fonts by family rather
+than loading them with `@font-face`, and cannot `@import` another theme —
+`url()`s are resolved against the theme file's own folder, and an `asset:` URL
+the theme writes itself is removed. What was removed is listed in Settings beside
+the theme.
+
+A deck's `size` takes the theme's `@size` entry of that name
+(`/* @size 4:3 960px 720px */`), as Marp's own tools do; a theme with no entry for
+it is drawn at its own size, and the line above the slides says so. mallow's own
+theme has `16:9` and `4:3`.
+
+A theme follows Light / Dark only if it is written to: mallow gives a slide the
+page's `color-scheme`, so a theme whose colours are `light-dark()` pairs follows
+the mode, and any other theme is drawn as written in both. Code blocks follow the
+mode whatever the theme.
+
 ## Security
 
 mallow is meant to open **untrusted** documents safely, so rendering has a clear
@@ -335,7 +374,9 @@ Markdown document never becomes live DOM and an HTML one does:
   and the rest are removed and named above the slides), resolves `url()`s like
   images — relative paths against the document, an `asset:` URL the deck writes
   itself removed — and is held inside the slide area, so nothing in it can draw
-  over the rest of the app. Remote `url()`s load, as remote images do.
+  over the rest of the app. Remote `url()`s load, as remote images do. A theme
+  from the [slide theme folder](#slide-themes) goes through the same rules, its
+  `url()`s resolved against the theme file's folder, and reaches no further.
 - **mermaid** runs with `securityLevel: 'strict'` — sanitized SVG, no click
   bindings or embedded script in diagrams.
 - **Content Security Policy** (in `tauri.conf.json`) is the second layer: scripts
@@ -344,8 +385,8 @@ Markdown document never becomes live DOM and an HTML one does:
   inline scripts and event handlers cannot run even if they reached the DOM.
 - **Local media** (images / PDFs / videos) is served over the Tauri asset
   protocol, whose scope starts empty and is widened only to folders the user
-  opens (and to the custom emoji folder). The CSP allows `asset:` URLs for
-  `img`/`media`/`frame` sources. In a Markdown document, mallow is the only
+  opens (and to the custom emoji and slide theme folders). The CSP allows
+  `asset:` URLs for `img`/`media`/`frame` sources. In a Markdown document, mallow is the only
   thing that writes one: an image path relative to the document is resolved
   against the document's folder and turned into an `asset:` URL, while an
   `asset:` URL the document writes itself is dropped from the image. A relative
