@@ -53,6 +53,24 @@ updates:
         update-types:
           - version-update:semver-minor
           - version-update:semver-major
+      # The platform crates pdf.rs, modifier.rs and side_buttons.rs call into
+      # share their types with wry, so each stays on the line wry uses and moves
+      # with a tauri upgrade: a major of one alone (PR #115, windows-core 0.100)
+      # makes wry's objects a different type and the arm stops compiling.
+      - dependency-name: webview2-com
+        update-types: [version-update:semver-major]
+      - dependency-name: windows-core
+        update-types: [version-update:semver-major]
+      - dependency-name: windows-sys
+        update-types: [version-update:semver-major]
+      - dependency-name: 'objc2*'
+        update-types: [version-update:semver-major]
+      - dependency-name: block2
+        update-types: [version-update:semver-major]
+      - dependency-name: gtk
+        update-types: [version-update:semver-major]
+      - dependency-name: webkit2gtk
+        update-types: [version-update:semver-major]
 
   - package-ecosystem: github-actions
     directory: /
