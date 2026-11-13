@@ -3,10 +3,10 @@ id: TASK-52
 title: >-
   Let a deck choose its slide theme, with a bundled kinari theme and a slide
   theme folder
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-11-13 00:15'
-updated_date: '2026-11-13 00:18'
+updated_date: '2026-11-13 02:59'
 labels:
   - feature
 dependencies: []
@@ -38,7 +38,16 @@ Out of scope: kinari's own design, README, licence and releases, which are the k
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A deck is drawn with the theme its theme directive names among mallow's slide theme, kinari and folder themes, and a deck naming none or an unknown one with the default-theme preference, per the subtasks
-- [ ] #2 mallow's copy of a kinari release ships with the app and follows the reader's light / dark mode in the Slides view and in a presentation
-- [ ] #3 No boundary AGENTS.md records is widened beyond what decision-19 says, and the CSP and the dependency list are unchanged
+- [x] #1 A deck is drawn with the theme its theme directive names among mallow's slide theme, kinari and folder themes, and a deck naming none or an unknown one with the default-theme preference, per the subtasks
+- [x] #2 mallow's copy of a kinari release ships with the app and follows the reader's light / dark mode in the Slides view and in a presentation
+- [x] #3 No boundary AGENTS.md records is widened beyond what decision-19 says, and the CSP and the dependency list are unchanged
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+子タスクの証跡で親の AC を確認した（2026-11-13）。
+- #1: TASK-52.1 の AC #1・#2（default とフォルダのテーマ、既定のテーマのフォールバックと通知）と、TASK-52.2 の deck.test.ts（theme: kinari がフォルダあり・なしで kinari で描かれること、既定のテーマ kinari）で満たす。PR #96・PR #97。
+- #2: TASK-52.2 の AC #1（写しを同梱）、AC #3（Chromium で color-scheme の light → dark に追従）、AC #4（オーナーがビルドしたアプリの macOS / Windows / Linux で、スライド表示と発表中のモード切り替えを確認し、問題なし）で満たす。
+- #3: TASK-52 着手前の fe3b288 から 0f904f3 までで、package.json・pnpm-lock.yaml・src-tauri/Cargo.toml・Cargo.lock・tauri.conf.json（CSP）・capabilities・index.html の差分は 0。AGENTS.md の境界の記述に増えたのは、フォルダのテーマをデッキの CSS と同じ走査と封じ込めに通すこと（decision-19 §4）と、kinari の写しはアプリの CSS なので走査しないこと（§7）の 2 点で、どちらも decision-19 が定めた範囲。フォルダは allow_media_dir で付与する（§3）。list_slide_theme_files はカスタムコマンドで、capability の対象外。
+<!-- SECTION:NOTES:END -->
