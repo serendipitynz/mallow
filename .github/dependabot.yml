@@ -1,0 +1,82 @@
+# Weekly version updates. Security updates are switched on in the repository
+# settings and need nothing here, but the ignore rules below apply to them too.
+#
+# Minor and patch updates arrive as one grouped pull request per ecosystem;
+# each major version gets its own, since a major is a change to read rather
+# than to batch.
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Pacific/Auckland
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: cargo
+    directory: /src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Pacific/Auckland
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      cargo-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # mallow holds tauri at 2.11.3: the tauri citations throughout AGENTS.md are
+    # pinned to it (decision-16). Each bound below is the first release of that
+    # crate declaring tauri ^2.12 (or tauri-build's tauri-utils ~2.10), so an
+    # update inside the hold still arrives. Lifting the hold means deleting this
+    # whole list along with the ~2.4 pin on tauri-plugin-single-instance.
+    ignore:
+      - dependency-name: tauri
+        versions: ['>=2.12']
+      - dependency-name: tauri-build
+        versions: ['>=2.7']
+      - dependency-name: tauri-plugin-dialog
+        versions: ['>=2.8']
+      - dependency-name: tauri-plugin-opener
+        versions: ['>=2.6']
+      - dependency-name: tauri-plugin-process
+        versions: ['>=2.4']
+      - dependency-name: tauri-plugin-single-instance
+        versions: ['>=2.5']
+      - dependency-name: tauri-plugin-store
+        versions: ['>=2.5']
+      - dependency-name: tauri-plugin-updater
+        versions: ['>=2.13']
+      - dependency-name: tauri-plugin-window-state
+        versions: ['>=2.5']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Pacific/Auckland
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      actions:
+        patterns:
+          - '*'
+    # Pinned to action-v0.6.2 because the shape of latest.json comes from it,
+    # and action-v1 renames inputs that Actions only warns about (AGENTS.md,
+    # "Signed self-update").
+    ignore:
+      - dependency-name: tauri-apps/tauri-action
