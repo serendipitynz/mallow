@@ -42,13 +42,14 @@ pub struct RecentLock(Mutex<()>);
 
 /// The settings store, which is **the same in-process instance the frontend
 /// holds**: `build_inner` hands back the store already registered for a path
-/// rather than building a second one (tauri-plugin-store-2.4.3
-/// `src/store.rs:194-203`), so there is nothing to clobber.
+/// rather than building a second one (tauri-plugin-store-2.5.1
+/// `src/store.rs:209-217`, and again under the write lock at `:253-257`), so
+/// there is nothing to clobber.
 ///
 /// What sharing one instance does cost is options: whichever side reaches the
 /// path first wins, and **the later side's options are dropped with no error**.
 /// Both ask for a 100 ms auto-save today (JS passes `autoSave: true`, the Rust
-/// default is the same at `src/store.rs:68`), so nothing diverges — but an option
+/// default is the same at `src/store.rs:82`), so nothing diverges — but an option
 /// set on one side alone would silently not take effect.
 fn settings_store(app: &AppHandle) -> Result<Arc<Store<Wry>>, String> {
     app.store(SETTINGS_STORE).map_err(|e| e.to_string())
@@ -104,7 +105,7 @@ fn existing_folders(list: Vec<String>, exists: impl Fn(&str) -> bool) -> Vec<Str
 ///
 /// **The lock is released before the menu is refreshed**, and that is not
 /// tidiness: refreshing marshals every menu mutation to the main thread and waits
-/// for it (tauri-2.11.3 `src/menu/mod.rs:25-39`), while the main thread is where
+/// for it (tauri-2.12.5 `src/menu/mod.rs:26-40`), while the main thread is where
 /// `Clear Recent` takes this same lock. Held across the refresh, the two would
 /// deadlock — each waiting for what the other holds.
 #[tauri::command]

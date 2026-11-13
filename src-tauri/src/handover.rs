@@ -2,7 +2,7 @@
 //!
 //! **Three routes, structurally different, and named apart for that reason**:
 //! a command-line argument (a Windows or Linux file association, and any CLI
-//! invocation), `RunEvent::Opened` (macOS only — tauri-2.11.3 compiles it on
+//! invocation), `RunEvent::Opened` (macOS only — tauri-2.12.5 compiles it on
 //! `cfg(any(macos, ios, android))`, `src/app.rs:257-266`), and a drop onto a
 //! window. The first two reach whichever window this module picks; a drop names
 //! its window, so it is classified here and opened by that window itself.
@@ -161,7 +161,7 @@ struct Handover {
 ///
 /// **Arrival is held until the restored windows exist**, because both of the
 /// earliest routes can beat them. `setup` runs at `RunEvent::Ready`
-/// (tauri-2.11.3 `src/app.rs:1423-1425`); a forwarded relaunch is served from the
+/// (tauri-2.12.5 `src/app.rs:1442-1444`); a forwarded relaunch is served from the
 /// single-instance plugin's own setup, which runs before that closure; and
 /// whether AppKit delivers a cold launch's `Opened` before or after
 /// `applicationDidFinishLaunching` is not something this code should have to
@@ -200,7 +200,7 @@ fn deliver(app: &AppHandle, items: Vec<Handed>) {
 }
 
 /// **Never route inline.** Creating a window deadlocks on Windows when reached
-/// from a WebView2 handler or an event handler (tauri-2.11.3
+/// from a WebView2 handler or an event handler (tauri-2.12.5
 /// `src/webview/webview_window.rs:114-116`, wry#583), and the single-instance
 /// callback runs inside a window procedure there — `WM_COPYDATA`.
 fn spawn_route(app: &AppHandle, items: Vec<Handed>) {

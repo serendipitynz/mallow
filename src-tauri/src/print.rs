@@ -11,7 +11,7 @@
 //! painted, not what is paginated, so the name would not become true later.
 //!
 //! One call, three routes, and `window.print()` is only the Windows one — wry
-//! 0.55.1 builds an `NSPrintOperation` on macOS, evaluates `window.print()` on
+//! 0.57.2 builds an `NSPrintOperation` on macOS, evaluates `window.print()` on
 //! Windows and runs GTK's `PrintOperation::run_dialog` on Linux. So a JS print
 //! event cannot be assumed to fire, in the shape decision-9 established for
 //! parent-registered listeners; anything needing the DOM rearranged before

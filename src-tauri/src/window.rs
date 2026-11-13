@@ -162,7 +162,7 @@ fn build_window(app: &AppHandle, label: &str) -> Result<WebviewWindow, String> {
 /// **Why it reads a restored position rather than the pre-restore one:** ordering,
 /// not thread affinity. The plugin restores from `on_window_ready`, which
 /// `attach_window` posts through the same main-thread queue this closure is posted
-/// to — and it posts it inside `build()` (tauri-2.11.3 `src/window/mod.rs:408-419`),
+/// to — and it posts it inside `build()` (tauri-2.12.5 `src/window/mod.rs:408-419`),
 /// so it is queued first whichever thread `build()` was called on: both inline
 /// when that is the main thread, both through the event proxy when it is not.
 /// **That is what let `open_window` become `async` without this having to change.**
@@ -190,7 +190,7 @@ fn offset_when_stacked_on(created: WebviewWindow, spawner: Window) {
 /// from Rust, where there is no calling window to be the spawner.
 ///
 /// **Never call this from a synchronous command or from an event handler.**
-/// On Windows `from_config` deadlocks there (tauri-2.11.3
+/// On Windows `from_config` deadlocks there (tauri-2.12.5
 /// `src/webview/webview_window.rs:114-116`, wry#583): WebView2 creation pumps the
 /// message loop, and reached from inside a WebView2 handler that loop is already
 /// on the stack — measured 2026-09-10, the created window painted white and could

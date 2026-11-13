@@ -7,8 +7,8 @@ import { useEffect, useRef } from 'react';
  *  The window-scoped target is half of per-window delivery rather than a
  *  refinement of it, and the same pairing `lib/watch` establishes for
  *  `fs:change`: a plain `listen()` registers `EventTarget::Any`, which matches
- *  whatever the emitter filtered on (tauri-2.11.3
- *  `src/event/listener.rs:305-311`), so a menu event narrowed to the focused
+ *  whatever the emitter filtered on (tauri-2.12.5
+ *  `src/event/listener.rs:345-351`), so a menu event narrowed to the focused
  *  window in Rust would still reach every window here.
  *
  *  `handler` is held in a ref so a caller need not memoise one: registration is a
