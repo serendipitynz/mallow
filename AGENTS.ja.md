@@ -1790,7 +1790,12 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `tauri-plugin-single-instance` の `~2.4` 固定、そのリスト、`audit.toml` の zip の
   項目（修正版の zip は tauri 2.12 を要求する updater で入るので、それまでの許容）。
   `tauri-apps/tauri-action` は固定しているのと同じ理由で ignore する（「署名付きの
-  自己更新」を参照）。**週次の実行が黙る経路が 2 つある**: 定期実行の失敗メールは
+  自己更新」を参照）。**cargo audit が見るのは RustSec だけなので、2 つは
+  ぴったり重ならない**: GitHub のデータベースにしかない Rust のアドバイザリは
+  Dependabot alerts としてオーナーに届き、このワークフローは落ちない — alerts を
+  有効にした日に、zip のアドバイザリ 2 件（うち 1 件は critical）がこの経路で
+  届いた。ここで許容したものへのアラートは、同じ理由を書いて tolerable risk として
+  dismiss し、2 つの記録を揃える。**週次の実行が黙る経路が 2 つある**: 定期実行の失敗メールは
   その `cron` を最後に編集した人にしか届かず、公開リポジトリで 60 日間活動がないと
   GitHub が定期実行のワークフローを無効にする。
 
