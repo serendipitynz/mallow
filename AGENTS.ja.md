@@ -95,8 +95,13 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`is-deck`（文書が Marp デッキか。
   描画側を必要時に読み込むため分けてある）、`deck`（2 つ目の markdown-it 上の Marpit、
-  スライドのテーマ、通知に載せる機能）、`deck-css`（デッキ自身の CSS の走査、
-  decision-18 §6）、`slide-nav`（キーでスライドがどこへ動くか）、`laser`（レーザーポインターの
+  mallow のスライドテーマとフォルダのテーマ、`@size` ごとの版、通知に載せる機能）、
+  `deck-css`（デッキ自身の CSS の走査、decision-18 §6）、`slide-themes`（テーマ名・予約名・
+  既定のテーマのフォールバック。純粋関数で軽い）、`slide-theme-css`（フォルダのどの
+  ファイルがテーマかを postcss で読み、デッキの CSS として走査する。純粋関数で、必要時に
+  読み込む）、`slide-theme-folder`（スライドテーマのフォルダと既定のテーマの設定を、
+  設定モーダルとスライド表示の両方が読むストアとして持つ。Tauri 側、decision-19）、
+  `slide-nav`（キーでスライドがどこへ動くか）、`laser`（レーザーポインターの
   キーと軌跡の寿命。純粋関数）、`present`（発表の
   コードとウィンドウの発表者）、`shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
@@ -154,6 +159,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   を素の `std::fs` で実装（fs プラグインは使わない）。ユーザーが選んだ任意フォルダを
   スコープ設定なしで扱える。`allow_media_dir` は開いたフォルダに asset protocol の
   スコープを広げ、その中の画像/PDF/動画を `convertFileSrc` で表示できるようにする。
+  `list_slide_theme_files` はスライドテーマのフォルダ直下の `.css` ファイルを列挙する。
+  `.css` をあえて `file_kind` にしていないのは、すべてのスタイルシートが表示ビューの
+  ないままツリーに並ぶため。
 - `watch.rs` — `notify` の再帰ウォッチャで、ウィンドウごとに 1 つ持つ。
   watcher registry（`WatcherRegistry`。ウィンドウラベルをキーにする）がハンドルを保持し、
   `start_watch` は呼び出したウィンドウの分だけを差し替え、`stop_watch` はその分だけを外す。
@@ -493,7 +501,12 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `contain: paint` を持つスライドの器。`lib/deck-css` が postcss で走査し、テキストも
   エンジンの CSSOM も使わない — `replaceSync` は WKWebView でも Chromium でも `@import` を
   跡形なく捨てる（計測済み）ので、通知がそれを名指しできない。リモートの `url()` は
-  読み込まれ、これはリモート画像がすでに持つ露出と同じ。
+  読み込まれ、これはリモート画像がすでに持つ露出と同じ。**スライドテーマのフォルダの
+  テーマは同じ CSS の 2 つ目の出どころで、届く範囲は広がらない**（decision-19 §4）:
+  `lib/slide-theme-css` が Marpit に登録する前に同じ `walkDeckCss` で走査し、`url()` は
+  テーマのファイルがあるディレクトリから解決し、Marpit が同じ `contain: paint` の器へ
+  スコープする。走査で除去したものはデッキの通知ではなく、設定のそのテーマの横に出す。
+  mallow 自身のスライドテーマはアプリの CSS なので走査しない。
 - **未信頼 HTML の境界**（描画表示。decision-3 を decision-9・decision-10 が改訂。README
   の "セキュリティ" 参照）: 文書は `sandbox="allow-same-origin"` かつ `allow-scripts`
   **無し**の iframe へ `srcdoc` で流し込む。文書中のスクリプトは一切実行されない一方、
@@ -1348,7 +1361,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   正しく起動するのも同じ理由である。永続化する setter を通すと、二度書いた**うえに**
   エコーを送り返す。
   **`saveSetting` は永続化と伝播を 1 回で行う**ので、store 側の設定
-  （エクスプローラの幅と位置、カスタム絵文字フォルダ、起動時の更新確認）は
+  （エクスプローラの幅と位置、カスタム絵文字フォルダ、スライドテーマのフォルダと
+  既定のテーマ、起動時の更新確認）は
   呼び出し側に何も要らない。配色・言語・文章の幅・アウトラインの開閉は代わりに
   `components/color`・`SettingsModal`・2 つのビューから送る — `lib/theme`・`lib/i18n`・
   `lib/prose-measure`・`lib/outline-pref` に Tauri 層の依存を持ち込まないため。**配色は `colorFamily` と
@@ -1646,6 +1660,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `explorer-width`・
   `visit-history`・
   `history-nav`・
+  `slide-themes`（既定のテーマのフォールバック）・
+  `slide-theme-css`（`@theme` と `@size`、予約名と重複した名前、`url()` をテーマの
+  ディレクトリから解決する走査）・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で

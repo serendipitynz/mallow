@@ -106,8 +106,14 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `is-deck` (whether a document is a
   Marp deck — kept apart so the renderer loads on demand), `deck` (Marpit on a
-  second markdown-it instance, the slide theme and the notice's features),
-  `deck-css` (the walk over a deck's own CSS, decision-18 §6), `slide-nav`
+  second markdown-it instance, mallow's slide theme beside the folder themes, the
+  `@size` variants and the notice's features), `deck-css` (the walk over a deck's
+  own CSS, decision-18 §6), `slide-themes` (the theme names, the reserved ones and
+  the default-theme fallback — pure and light), `slide-theme-css` (which folder
+  files are themes, read with postcss and walked as deck CSS — pure, loaded on
+  demand), `slide-theme-folder` (the slide theme folder and the default-theme
+  preference as a store the settings modal and the Slides view both read — the
+  Tauri half, decision-19), `slide-nav`
   (where a key moves a slide), `laser` (the laser pointer's key and the life of
   its trail — pure), `present` (the present chords and the window's
   presenter), `shiki` (highlighter singleton +
@@ -165,6 +171,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   via plain `std::fs` (NOT the fs plugin), so any user-picked folder works without
   scope config. `allow_media_dir` widens the asset-protocol scope to an opened
   folder so its image/pdf/video files can be rendered via `convertFileSrc`.
+  `list_slide_theme_files` lists the `.css` files directly inside the slide theme
+  folder; `.css` is deliberately not a `file_kind`, which would put every
+  stylesheet in the tree with no view for it.
 - `watch.rs` — `notify` recursive watcher, one per window. The watcher registry
   (`WatcherRegistry`, keyed by window label) holds the handles; `start_watch`
   replaces and `stop_watch` removes only the calling window's entry, and the
@@ -541,7 +550,13 @@ hold rather than as an exhaustive style guide.
   that establishes `contain: paint`. `lib/deck-css` walks it with postcss, never
   the text and never the engine's CSSOM — `replaceSync` drops an `@import` without
   a trace in WKWebView and Chromium alike (measured), so the notice could not name
-  one. Remote `url()`s load, the exposure a remote image already has.
+  one. Remote `url()`s load, the exposure a remote image already has. **A theme
+  from the slide theme folder is a second source of the same CSS and no new reach**
+  (decision-19 §4): `lib/slide-theme-css` walks it with the same `walkDeckCss`
+  before Marpit registers it, its `url()`s resolved against the theme file's own
+  directory, and Marpit scopes it into the same paint-contained host; what the walk
+  removed is listed in Settings beside the theme rather than in a deck's notice.
+  mallow's own slide theme is the app's CSS and is not walked.
 - **Untrusted-HTML boundary** (the rendered view — decision-3, amended by
   decision-9 and decision-10; see README "Security"): the document is fed to an
   iframe through `srcdoc` with `sandbox="allow-same-origin"` and deliberately
@@ -1533,8 +1548,8 @@ hold rather than as an exhaustive style guide.
   comes up correct with no propagation at all. Going through the persisting
   setter instead would write a second time **and** send an echo back out.
   **`saveSetting` is one call that persists and propagates**, so the store-backed preferences
-  (explorer width and side, the custom emoji folder, the launch update check)
-  need nothing at their call sites; the colour, language, prose measure and the
+  (explorer width and side, the custom emoji folder, the slide theme folder and
+  default theme, the launch update check) need nothing at their call sites; the colour, language, prose measure and the
   outline toggle are sent from `components/color`, `SettingsModal` and the two views
   instead, which is what keeps `lib/theme`, `lib/i18n`, `lib/prose-measure` and
   `lib/outline-pref` free of the Tauri layer. **The store half of `SettingChange` is derived from `Settings`** rather
@@ -1859,8 +1874,10 @@ hold rather than as an exhaustive style guide.
   (each one's cache and notification, and the stored measure read back),
   `color-choice` (each pre-split value read
   onto the two axes, and the side a one-sided family draws), `menu-nav`, `context-menu`, `segmented-nav`, `tree-nav`,
-  `explorer-width`, `visit-history`, `history-nav`, and `custom-emoji`
-  with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
+  `explorer-width`, `visit-history`, `history-nav`, `slide-themes` (the
+  default-theme fallback), `slide-theme-css` (`@theme` and `@size`, the reserved
+  and conflicting names, the walk with `url()` against the theme's directory), and
+  `custom-emoji` with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument
   call across lines) and not `vitest.config.ts` (a hung test in any other suite
