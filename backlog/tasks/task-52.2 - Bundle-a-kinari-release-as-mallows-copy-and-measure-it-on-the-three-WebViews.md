@@ -4,7 +4,7 @@ title: Bundle a kinari release as mallow's copy and measure it on the three WebV
 status: In Review
 assignee: []
 created_date: '2026-11-13 00:15'
-updated_date: '2026-11-13 01:59'
+updated_date: '2026-11-13 02:51'
 labels:
   - feature
 dependencies:
@@ -41,7 +41,7 @@ What has to be done:
 - [x] #1 mallow's copy of a kinari release is in the tree, its first line names the release, and it is registered under kinari
 - [x] #2 The release carries what decision-19 §7 takes from it: light-dark() colours, the @supports fallback to its light side, @size entries for 16:9 and 4:3, and nothing walkDeckCss would remove
 - [x] #3 A deck naming kinari, or one drawn with the default-theme preference set to kinari, follows the drawn mode in the Slides view and in a presentation
-- [ ] #4 On a built app on macOS, Windows and Linux, kinari follows a mode switch while a deck is shown and its paper texture shows no seam; the results are recorded in the task
+- [x] #4 On a built app on macOS, Windows and Linux, kinari follows a mode switch while a deck is shown and its paper texture shows no seam; the results are recorded in the task
 - [x] #5 AGENTS.md (en/ja) names the kinari repository beside snz-design and lists mallow's copy of kinari among the copies never edited by hand; README (en/ja) names kinari and its repository
 - [x] #6 Whether THIRD-PARTY-NOTICES.md needs a line for kinari is settled from its licence and recorded in the task
 - [x] #7 pnpm lint, pnpm build and pnpm test pass
@@ -100,4 +100,8 @@ pnpm tauri build --debug --no-bundle の macOS / Windows / Linux で、theme: ki
 
 ## 検証（AC #7）
 pnpm lint（188 files, no fixes）、pnpm build、pnpm test（53 files / 668 tests）すべて通過。node scripts/kinari.mjs verify ok。
+
+## AC #4 の計測（オーナー、2026-11-13）
+- ビルドしたアプリで macOS / Windows / Linux を確認し、問題なしとの報告。対象は、スライド表示中と発表中のモード切り替えへの追従と、紙のテクスチャの継ぎ目。
+- 報告には、light-dark() に対応していないエンジンがあったかは含まれていない。そのため @supports によるライト側へのフォールバックが実機で働いたかは記録がない（3 環境とも対応していたなら、この経路は通っていない）。
 <!-- SECTION:NOTES:END -->
