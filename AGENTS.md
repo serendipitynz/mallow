@@ -2022,7 +2022,13 @@ hold rather than as an exhaustive style guide.
   places together: the `~2.4` pin on `tauri-plugin-single-instance`, that list,
   and the zip entries in `audit.toml`, which exist only because the fixed zip
   arrives with an updater that needs tauri 2.12. `tauri-apps/tauri-action` is
-  ignored for the reason it is pinned (see "Signed self-update"). **Two ways the
+  ignored for the reason it is pinned (see "Signed self-update"). **cargo audit
+  sees only RustSec, so the two halves do not overlap exactly**: a Rust advisory
+  that exists only in GitHub's database reaches the owner as a Dependabot alert
+  and never fails this workflow — two zip advisories, one critical, arrived that
+  way the day alerts were switched on. An alert for something accepted here is
+  dismissed as tolerable risk with the same reason, so the two records agree.
+  **Two ways the
   weekly run can go quiet**: GitHub mails a scheduled run's failure only to whoever
   last edited its `cron`, and disables scheduled workflows in a public repository
   after 60 days without activity.
