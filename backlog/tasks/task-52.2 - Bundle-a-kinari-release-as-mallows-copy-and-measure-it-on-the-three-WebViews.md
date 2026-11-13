@@ -1,10 +1,10 @@
 ---
 id: TASK-52.2
 title: Bundle a kinari release as mallow's copy and measure it on the three WebViews
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 00:15'
-updated_date: '2026-11-13 02:51'
+updated_date: '2026-11-13 02:59'
 labels:
   - feature
 dependencies:
