@@ -3,10 +3,10 @@ id: TASK-52.1
 title: >-
   Choose a deck's slide theme from mallow's and a slide theme folder, with a
   default-theme preference
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 00:15'
-updated_date: '2026-11-13 01:10'
+updated_date: '2026-11-13 01:50'
 labels:
   - feature
 dependencies: []
@@ -45,14 +45,14 @@ To settle at the start and record in the notes: where the slide theme settings s
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A deck naming default or a registered folder theme is drawn with it, in the Slides view and in a presentation
+- [x] #1 A deck naming default or a registered folder theme is drawn with it, in the Slides view and in a presentation
 - [x] #2 A deck naming no theme or an unknown one is drawn with the default-theme preference; absent, that is mallow's slide theme; the notice lists an unknown name and says which theme was drawn
-- [ ] #3 The slide theme folder is chosen in Settings, registers the .css files carrying @theme directly inside it, refuses default and kinari, registers neither of two files claiming one name, and is re-read when Slides is entered
-- [ ] #4 Settings lists each registered folder theme with its file, each skipped file with its reason, what the walk removed from a theme, and a stored default-theme preference naming nothing held as missing
+- [x] #3 The slide theme folder is chosen in Settings, registers the .css files carrying @theme directly inside it, refuses default and kinari, registers neither of two files claiming one name, and is re-read when Slides is entered
+- [x] #4 Settings lists each registered folder theme with its file, each skipped file with its reason, what the walk removed from a theme, and a stored default-theme preference naming nothing held as missing
 - [x] #5 A folder theme's CSS passes through walkDeckCss before it is registered, its url()s resolved against the theme file's directory and an asset: URL it wrote removed
 - [x] #6 Under a theme other than mallow's slide theme a deck's size takes the theme's @size entry, and a size with no entry is reported
 - [x] #7 kinari's draft, placed in the slide theme folder under another name, draws in both colour modes and serves size: 4:3 from its @size entry
-- [ ] #8 Both preferences reach every window, and every new label reaches the reader in ja and en
+- [x] #8 Both preferences reach every window, and every new label reaches the reader in ja and en
 - [x] #9 pnpm lint, pnpm build and pnpm test pass; @theme and @size parsing, the name rules and the preference fallback are unit-tested
 - [x] #10 AGENTS.md (en/ja) and README (en/ja) describe the slide theme folder and state that a folder theme's CSS is walked and contained as a deck's CSS is
 <!-- AC:END -->
@@ -98,4 +98,8 @@ To settle at the start and record in the notes: where the slide theme settings s
 ## 未確認（オーナーの実機確認待ち）
 
 - #1・#3・#4・#8 は GUI での確認がまだ。描画と規則は単体テストで確かめたが、アプリ上での次の動作は見ていない: Slides 表示と発表でフォルダのテーマが描かれること、設定でのフォルダ選択と一覧（登録・スキップ理由・除去したもの・見つからない既定のテーマ）、テーマファイルを編集してから Slides に入り直すと反映されること、2 つのウィンドウで両方の設定が伝わること。
+
+## オーナーの実機確認（2026-11-13、マージ後）
+
+- #1・#3・#4・#8 をオーナーがアプリ上で確認した。kinari のリポジトリの `kinari.css`（`@theme kinari`）を置いたフォルダでは、予約名として外れ、設定にその理由が出ることも確かめた。kinari を `theme: kinari` でそのまま使うには TASK-52.2 の同梱が要る。
 <!-- SECTION:NOTES:END -->
