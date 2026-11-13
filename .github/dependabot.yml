@@ -22,6 +22,12 @@ updates:
         update-types:
           - minor
           - patch
+    # The npm half of the tauri hold; the cargo entry below says why.
+    ignore:
+      - dependency-name: '@tauri-apps/*'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
 
   - package-ecosystem: cargo
     directory: /src-tauri
@@ -37,30 +43,16 @@ updates:
         update-types:
           - minor
           - patch
-    # mallow holds tauri at 2.11.3: the tauri citations throughout AGENTS.md are
-    # pinned to it (decision-16). Each bound below is the first release of that
-    # crate declaring tauri ^2.12 (or tauri-build's tauri-utils ~2.10), so an
-    # update inside the hold still arrives. Lifting the hold means deleting this
-    # whole list along with the ~2.4 pin on tauri-plugin-single-instance.
+    # tauri's minors move by hand (AGENTS.md, "Verifying changes"): tauri-cli
+    # refuses a build whose crate and npm package differ in minor, and an update
+    # here cannot reach the npm half. Cargo.toml pins each tauri crate with `~`;
+    # this keeps Dependabot from rewriting those pins to the next minor. Patch
+    # releases still arrive.
     ignore:
-      - dependency-name: tauri
-        versions: ['>=2.12']
-      - dependency-name: tauri-build
-        versions: ['>=2.7']
-      - dependency-name: tauri-plugin-dialog
-        versions: ['>=2.8']
-      - dependency-name: tauri-plugin-opener
-        versions: ['>=2.6']
-      - dependency-name: tauri-plugin-process
-        versions: ['>=2.4']
-      - dependency-name: tauri-plugin-single-instance
-        versions: ['>=2.5']
-      - dependency-name: tauri-plugin-store
-        versions: ['>=2.5']
-      - dependency-name: tauri-plugin-updater
-        versions: ['>=2.13']
-      - dependency-name: tauri-plugin-window-state
-        versions: ['>=2.5']
+      - dependency-name: 'tauri*'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
