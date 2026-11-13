@@ -5,8 +5,7 @@
  */
 import { fromHighlighter } from '@shikijs/markdown-it/core';
 import GithubSlugger from 'github-slugger';
-import MarkdownIt from 'markdown-it';
-import type Token from 'markdown-it/lib/token.mjs';
+import markdownIt, { type Env, type MarkdownIt, type Token } from 'markdown-it';
 import anchor from 'markdown-it-anchor';
 import { full as emoji } from 'markdown-it-emoji';
 import builtinEmojiDefs from 'markdown-it-emoji/lib/data/full.mjs';
@@ -203,7 +202,7 @@ function taskLists(md: MarkdownIt): void {
       tokens[i - 2].attrJoin('class', 'task-list-item');
       // attrJoin would repeat the class once per item in the list.
       const list = listStack[listStack.length - 1];
-      if (list && !list.attrGet('class')?.includes('contains-task-list')) {
+      if (list && !String(list.attrGet('class') ?? '').includes('contains-task-list')) {
         list.attrJoin('class', 'contains-task-list');
       }
     }
@@ -271,9 +270,13 @@ function emojiRenderer(md: MarkdownIt): void {
   };
 }
 
-/** What one render is given beyond the source, through markdown-it's `env`. */
-export interface RenderEnv {
-  images?: RefResolver;
+/* What one render is given beyond the source travels in markdown-it's `env`,
+   whose own type carries an index signature of `unknown`; merging the field in
+   is what lets the image rule read it without a cast. */
+declare module 'markdown-it' {
+  interface Env {
+    images?: RefResolver;
+  }
 }
 
 /**
@@ -328,15 +331,15 @@ function localImages(md: MarkdownIt): void {
   /* biome-ignore lint/style/noNonNullAssertion: markdown-it always installs an image rule; see
      the same assertion on the fence rule for why a fabricated fallback would be worse. */
   const defaultImage = md.renderer.rules.image!;
-  md.renderer.rules.image = (tokens, idx, options, env: RenderEnv, self) => {
-    applyLocalImage(tokens[idx], env.images);
+  md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    applyLocalImage(tokens[idx], env?.images);
     return defaultImage(tokens, idx, options, env, self);
   };
 }
 
 /** Rewrite or drop an image token's `src` per {@link localImageSrc}. */
 function applyLocalImage(token: Token, images: RefResolver | undefined): void {
-  const src = token.attrGet('src') ?? '';
+  const src = String(token.attrGet('src') ?? '');
   const resolved = localImageSrc(src, images);
   if (resolved === null) {
     token.attrs = token.attrs?.filter(([name]) => name !== 'src') ?? null;
@@ -364,7 +367,7 @@ export async function createMarkdownIt(options: { localImageRule: boolean }): Pr
   // generates (Shiki code blocks, GitHub alerts, the mermaid fence rewrite below,
   // and the front-matter table) is emitted by the renderer regardless of this
   // flag — `html` only governs raw HTML *in the source* — so none of it breaks.
-  const md = new MarkdownIt({ html: false, linkify: true });
+  const md = markdownIt({ html: false, linkify: true });
 
   md.use(
     fromHighlighter(highlighter, {
@@ -440,7 +443,7 @@ export async function renderMarkdown(src: string, options: RenderOptions = {}): 
   const md = await getMd();
   const { data, body } = extractFrontMatter(src);
   resetHeadingState();
-  const env: RenderEnv = { images: options.images };
+  const env: Env = { images: options.images };
   const bodyHtml = md.render(body, env);
   const html = data && Object.keys(data).length > 0 ? renderFrontMatterTable(data) + bodyHtml : bodyHtml;
   return { html, headings: headingSink.slice() };

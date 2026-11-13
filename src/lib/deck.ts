@@ -4,10 +4,7 @@
  *  deck's CSS walked by `lib/deck-css` before Marpit merges it. Pure, so the
  *  split, the directives and the notice are tested under Node. */
 import { Marpit } from '@marp-team/marpit';
-import type MarkdownIt from 'markdown-it';
-import type StateCore from 'markdown-it/lib/rules_core/state_core.mjs';
-import type StateInline from 'markdown-it/lib/rules_inline/state_inline.mjs';
-import type Token from 'markdown-it/lib/token.mjs';
+import type { MarkdownIt, StateCore, StateInline, Token } from 'markdown-it';
 import { walkDeckCss } from './deck-css';
 import type { RefResolver } from './html-doc';
 import { KINARI } from './kinari';
@@ -219,7 +216,7 @@ function createRenderer(md: MarkdownIt, set: DeckThemes, size: string | null): D
       if (token.type === 'image') {
         // Emptied rather than removed when refused: Marpit's image parse reads
         // `src` unconditionally, and an empty URL fetches nothing.
-        const src = token.attrGet('src') ?? '';
+        const src = String(token.attrGet('src') ?? '');
         token.attrSet('src', localImageSrc(src, record.images) ?? '');
       }
     }

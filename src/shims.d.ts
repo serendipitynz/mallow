@@ -1,6 +1,6 @@
 // markdown-it-emoji v3 ships ESM without bundled type declarations.
 declare module 'markdown-it-emoji' {
-  import type { PluginWithOptions } from 'markdown-it';
+  import type { MarkdownIt } from 'markdown-it';
 
   interface EmojiOptions {
     /** shortcode -> replacement string. Replaces the preset's table wholesale. */
@@ -9,9 +9,11 @@ declare module 'markdown-it-emoji' {
     enabled?: string[];
   }
 
-  export const full: PluginWithOptions<EmojiOptions>;
-  export const light: PluginWithOptions<EmojiOptions>;
-  export const bare: PluginWithOptions<EmojiOptions>;
+  type EmojiPlugin = (md: MarkdownIt, options?: EmojiOptions) => void;
+
+  export const full: EmojiPlugin;
+  export const light: EmojiPlugin;
+  export const bare: EmojiPlugin;
 }
 
 // The preset's own definition table, imported so custom shortcodes can be merged
