@@ -8,10 +8,11 @@ ignore = [
   # zip 4.6.1 through tauri-plugin-updater, Windows only. The updater extracts
   # a zip only when the downloaded update is one, and only after its minisign
   # signature has verified; mallow's latest.json serves .msi and .exe, so that
-  # branch is not reached. The fixed zip arrives with updater 2.14 (zip ^9,
-  # which resolves to 9.0.5 or later, the version GitHub's GHSA-m665-v7pm-7grj
-  # needs), and updater 2.14 needs tauri 2.12, past the 2.11.3 mallow holds
-  # (TASK-53). Clears when the tauri hold is lifted.
+  # branch is not reached. The fixed zip arrives with updater 2.14.1, the first
+  # release declaring zip ^9 (2.14.0 and earlier declare ^4); check that the
+  # resolved zip in Cargo.lock is 9.0.5 or later, the version GitHub's
+  # GHSA-m665-v7pm-7grj needs, before removing these. Updater 2.13 onwards
+  # needs tauri 2.12, past the 2.11.3 mallow holds (TASK-53).
   "RUSTSEC-2026-0367",
   "RUSTSEC-2026-0368",
   "RUSTSEC-2026-0369",
