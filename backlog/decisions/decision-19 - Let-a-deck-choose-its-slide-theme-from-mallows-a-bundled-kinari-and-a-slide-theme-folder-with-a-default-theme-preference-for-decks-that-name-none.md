@@ -139,6 +139,8 @@ change.
 
 Code blocks keep following the drawn mode whatever the theme, because Shiki's
 dark tokens are swapped by the app's `on-dark` rule rather than by the theme.
+**Amended by TASK-60 (below): a code block on a slide takes the side of the
+ground it sits on.**
 
 ### 6. Slide size under a theme other than mallow's
 
@@ -212,4 +214,53 @@ settle and is not restated here.
   what a failure there looks like, not a new decision.
 - A single-sided folder theme shows dark code tokens on its own light code
   ground in dark mode (§5). That is the theme's to handle by styling `pre`
-  itself; mallow does not try to infer a theme's sides.
+  itself; mallow does not try to infer a theme's sides. **Withdrawn by the
+  amendment below**: the block now takes its ground's side.
+
+## Amendment — a code block takes the side of its ground (TASK-60, 2026-11-14)
+
+§5's second paragraph assumed a theme's code ground follows the drawn mode. kinari's
+does not on an `invert` slide: `section.invert` swaps every `light-dark()` pair,
+`--kinari-code-ground` included, so the ground is the other side of the paper while
+Shiki's tokens stay on the drawn mode's. Measured in a harness that renders a
+kinari deck through `renderDeck` and draws it with the built app CSS (Playwright
+1.62.1's WebKit and Chromium, alike in both): the lowest token contrast on an
+`invert` slide was **1.01** in Light mode and **1.22** in Dark, against 4.38 and
+3.07 on an ordinary slide. mallow's own theme never hit it, because its `pre` keeps
+`--color-surface` under `invert`; a folder theme with a dark `pre` in Light mode
+would hit it with no `invert` at all.
+
+**Amended decision: a Shiki code block on a slide is drawn with the token set for
+the side of the ground it sits on.** mallow reads the computed background colour of
+the `pre`, laying each translucent layer over the ones outside it out to the slide's
+`section`, and takes the dark side where that ground's relative luminance is below
+the point at which black and white ink contrast alike (√(1.05 × 0.05) − 0.05, about
+0.179). The answer is written on the block as `data-code-side`, which `slides.scss`
+draws by (`lib/code-side`). It is read again for each slide shown and whenever the
+drawn mode or the colour choice changes, since either can repaint a ground.
+
+- **Where no ground can be read, the block follows the drawn mode**, as every block
+  did before: nothing opaque between the `pre` and the slide (a transparent `pre`
+  on a slide whose only ground is an image, or Marpit's split-background content
+  layer). Nothing past the slide counts, because what lies there is the app's stage
+  rather than the theme's ground.
+- **This is still no contract with a theme.** §5's one promise, the inherited
+  `color-scheme`, is unchanged; a theme states nothing about its code side, and what
+  decides is what it paints. So the same rule covers kinari's `invert`, a folder
+  theme with a dark `pre` in Light mode, and the single-sided folder theme the last
+  Consequence above described — whose block now takes its own ground's side.
+- **Not a theme-declared side.** A class or custom property a theme sets to name its
+  code side would be a new contract kinari would have to release before mallow's copy
+  could meet it, and a theme that paints a ground has already said which side it is.
+- **Not highlight.js-compatible classes.** They are what would let kinari's own token
+  palette apply, but they would be a second highlighter beside Shiki, which
+  decision-18 declined for highlight.js at 1.0 MB, and legibility does not need them.
+  kinari's hljs colours therefore stay unused in mallow: a difference in look from
+  Marp's own tools, not in legibility. Nothing here changes mallow's copy of kinari.
+- **Slides only.** The preview's code blocks keep `markdown.scss`'s drawn-mode swap,
+  since their ground is mallow's own surface and always the drawn mode's side.
+- A deck's own CSS that repaints a ground under `@media (prefers-color-scheme)` while
+  the app's mode is fixed is not read again until the next slide is shown: an OS
+  scheme change that leaves the drawn mode alone notifies nothing.
+- Measured in WebKit and Chromium outside the app only; the three WebViews in both
+  modes are the owner's check (TASK-60 AC #5).
