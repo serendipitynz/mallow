@@ -1,10 +1,10 @@
 ---
 id: TASK-62
 title: Put a mallow command on PATH so a terminal can open a file or folder with it
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-14 00:42'
-updated_date: '2026-11-14 10:12'
+updated_date: '2026-11-14 10:31'
 labels:
   - feature
 dependencies: []
