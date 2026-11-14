@@ -3,10 +3,10 @@ id: TASK-60
 title: >-
   Keep a code block legible on a slide whose code ground is not the drawn mode's
   side
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 23:05'
-updated_date: '2026-11-14 06:02'
+updated_date: '2026-11-14 08:18'
 labels:
   - bug
 dependencies: []
@@ -40,11 +40,11 @@ Directions to weigh at the start, none chosen:
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Under kinari, a code block on an invert slide is legible in Light and Dark modes, with its tokens drawn for the side of its ground
-- [ ] #2 Code blocks on ordinary slides under kinari and mallow's theme look as they do now
+- [x] #1 Under kinari, a code block on an invert slide is legible in Light and Dark modes, with its tokens drawn for the side of its ground
+- [x] #2 Code blocks on ordinary slides under kinari and mallow's theme look as they do now
 - [x] #3 decision-19 §5 is amended to say what decides a code block's side under a theme
 - [x] #4 No change is made to mallow's copy of kinari, and no highlighter is added unless the amended decision gives the reason
-- [ ] #5 Checked on the three WebViews in both modes
+- [x] #5 Checked on the three WebViews in both modes
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -76,4 +76,7 @@ Directions to weigh at the start, none chosen:
 
 残したもの: AC #1・#2 はハーネスでは満たしているが、アプリ内の配線 (SlideStage の effect、モード切り替え時の測り直し) は通していないので、オーナーの確認待ち。AC #5 (3 つの WebView × 両モード) は未計測。
 pnpm 経由の lint / build / test は、pnpm 実行前のインストール検査がロックファイルの minimumReleaseAge 違反 (plugin-opener 2.7.3 など 4 件) で止まるため、node_modules/.bin のツールを直接実行した。
+
+オーナーの目視確認 (2026-11-14): kinari と mallow のテーマのデッキ (通常 + invert、コードブロック) を Light / Dark で表示し、macOS (WKWebView)・Windows (WebView2)・Linux (WebKitGTK) で同等の出力を確認した。どの組み合わせでもトークンの側がコードの地の明るさに合い (mallow のテーマの invert を Dark で見たときの、明るいスライド上の暗い地を含む)、通常スライドは従来どおり。表示中のモード切り替えでの測り直しも macOS で確認。AC #1・#2・#5 を満たす。
+PR #123 でマージ。
 <!-- SECTION:NOTES:END -->
