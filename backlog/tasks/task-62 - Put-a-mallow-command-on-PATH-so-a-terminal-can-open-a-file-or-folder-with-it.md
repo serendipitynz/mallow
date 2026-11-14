@@ -4,7 +4,7 @@ title: Put a mallow command on PATH so a terminal can open a file or folder with
 status: In Review
 assignee: []
 created_date: '2026-11-14 00:42'
-updated_date: '2026-11-14 09:01'
+updated_date: '2026-11-14 10:12'
 labels:
   - feature
 dependencies: []
@@ -35,10 +35,10 @@ To settle at the start:
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 How the command is installed on each platform, and what it runs, are settled and written in the task
-- [ ] #2 From a fresh terminal on macOS, Windows and Linux, 'mallow <file>' and 'mallow <folder>' open in mallow, whether or not it is running
-- [ ] #3 A relative path is resolved against the terminal's working directory on all three platforms, including when it is forwarded to a running mallow
-- [ ] #4 --help and --version behave as settled, and README's Command line section says what works on each platform
-- [ ] #5 'mallow .' opens the terminal's current directory as a folder on all three platforms, both when mallow is not running and when it is
+- [x] #2 From a fresh terminal on macOS, Windows and Linux, 'mallow <file>' and 'mallow <folder>' open in mallow, whether or not it is running
+- [x] #3 A relative path is resolved against the terminal's working directory on all three platforms, including when it is forwarded to a running mallow
+- [x] #4 --help and --version behave as settled, and README's Command line section says what works on each platform
+- [x] #5 'mallow .' opens the terminal's current directory as a folder on all three platforms, both when mallow is not running and when it is
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -85,4 +85,10 @@ To settle at the start:
 ## そのほか
 - 端末から起動したときの切り離し（起動し直し）は release ビルドだけで行う。debug では `pnpm tauri dev` が見張っているアプリを見失うため。
 - このマシンでは pnpm 11 のスクリプト実行前の依存チェックが lockfile の minimumReleaseAge 違反（plugin-opener 2.7.3 など 4 件、今回の変更とは無関係）で止まるので、biome / tsc / vite / vitest は node_modules/.bin から直接実行した。結果: biome ci、tsc、vite build がエラーなし、vitest 686 件が通過、cargo fmt --check / check（debug・release・unattended）/ test 126 件が通過。
+
+## 手作業での確認（2026-11-14、ユーザー実施）
+- Windows（NSIS インストーラ、PowerShell 7.6）: `mallow --help` / `--version` は文字がプロンプトより前に出て終わった。`reg query HKCU\Environment /v Path` の末尾に `C:\Users\<user>\AppData\Local\mallow\bin` が加わり、型は REG_EXPAND_SZ のまま、`%USERPROFILE%\go\bin` も展開されずに残った。手順②〜④（起動していないとき・起動中の `mallow .`、相対パスのファイル、`../..`）は期待どおり。
+- Linux（Ubuntu 24.04 の VM、deb）: `which mallow` → /usr/bin/mallow。`--help` / `--version` は期待どおり。②〜④も期待どおり。
+- 以上と macOS の実測をもって AC #2〜#5 にチェックした。macOS はメニューが書くのと同じ内容のスクリプトでの確認。
+- ユーザーの判断で、ここで確認を打ち切った。未実測のまま残るもの: macOS のメニュー項目そのもの（管理者認証・置き換えの確認・ダイアログ）、Windows の cmd.exe、MSI、同じ版の上書きインストールでの冪等性、Cancel したアンインストール（PR #124 のラウンド 1 の P2 で直した経路）と最後まで進めたアンインストール、AppImage の起動し直し、rpm。
 <!-- SECTION:NOTES:END -->
