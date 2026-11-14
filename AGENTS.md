@@ -1938,9 +1938,14 @@ hold rather than as an exhaustive style guide.
   forwarded launch carries the caller's directory too (tauri-plugin-single-instance
   2.5 sends `current_dir()` on all three platforms). **A debug build never
   detaches**, because `pnpm tauri dev` would lose the app it watches — so
-  checking the return needs a release build. **The Windows half and the AppImage
-  restart are unmeasured from this repository**; macOS was measured on a bundle
-  built locally (TASK-62's notes).
+  checking the return needs a release build. **Measured 2026-11-14** (TASK-62's
+  notes): macOS on a locally built bundle, through a script with the text the
+  menu writes; Windows with the NSIS installer from PowerShell 7.6, where the
+  user `PATH` gained the entry and kept its `REG_EXPAND_SZ` kind and an
+  unexpanded `%USERPROFILE%` entry; Linux with the deb on Ubuntu 24.04.
+  **Unmeasured**: the MSI, `cmd.exe`, a cancelled and a completed uninstall, a
+  reinstall over itself, the AppImage restart, the rpm, and the macOS menu item
+  itself.
 - **Closing the last window exits the app, on every platform including macOS.**
   The platform convention there is to stay alive with only the menu bar, and that
   is declined rather than overlooked: a menu-bar-only state needs New Window to
