@@ -62,10 +62,18 @@
     display: none;
   }
 
-  // Shiki's dark tokens, as the preview swaps them (markdown.scss).
+  // Shiki's dark tokens, swapped by the side of the ground a block sits on, which
+  // lib/code-side marks — a theme's code ground need not be the drawn mode's side
+  // (decision-19 §5). An unmarked block follows the drawn mode, as the preview's
+  // do (markdown.scss).
+  pre.shiki[data-code-side='dark'],
+  pre.shiki[data-code-side='dark'] span {
+    color: var(--shiki-dark) !important;
+  }
+
   @include on-dark {
-    pre.shiki,
-    pre.shiki span {
+    pre.shiki:not([data-code-side]),
+    pre.shiki:not([data-code-side]) span {
       color: var(--shiki-dark) !important;
     }
   }
