@@ -119,7 +119,7 @@ export function Toolbar({
         </button>
       </div>
       <span className="toolbar__path" title={selected?.path ?? undefined}>
-        {selected?.path ?? ''}
+        <bdi dir="ltr">{selected?.path ?? ''}</bdi>
       </span>
       <div className="toolbar__actions">
         <OpenWith file={selected} rootDir={rootDir} />

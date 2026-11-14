@@ -68,7 +68,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  direction: rtl; // keep the tail (filename) visible when truncating
+  // RTL puts the ellipsis at the head so the file name stays visible. The path
+  // itself sits in an LTR <bdi>: left to the RTL paragraph, a leading `/` or
+  // `\\` resolves to RTL and is drawn at the end instead (TASK-59).
+  direction: rtl;
   text-align: left;
 }
 
