@@ -119,7 +119,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   Tauri half, decision-19), `slide-nav`
   (where a key moves a slide), `laser` (the laser pointer's key and the life of
   its trail — pure), `present` (the present chords and the window's
-  presenter), `shiki` (highlighter singleton +
+  presenter), `code-side` (which of Shiki's token sets a slide's code block is
+  drawn with: the side of the ground it sits on, read from computed colours —
+  decision-19's amendment), `shiki` (highlighter singleton +
   `stripPreBackground`), `mermaid` + `mermaid-copy` + `codeblock` (imperative DOM
   enhancements), `frontmatter`, `config-parse`, `source-cap` (source-view size
   caps), `delimited` (CSV/TSV parser + table caps), `xml-tree` (XML DOM → bounded
@@ -1919,7 +1921,8 @@ hold rather than as an exhaustive style guide.
   default-theme fallback), `slide-theme-css` (`@theme` and `@size`, the reserved
   and conflicting names, the walk with `url()` against the theme's directory),
   `kinari` (what decision-19 §7 takes from the release, and the notice naming its
-  version), and
+  version), `code-side` (the ground composited from translucent layers and the side
+  its luminance gives), and
   `custom-emoji` with the Tauri layer mocked). Run a Node environment, so no jsdom/GUI is needed. The
   markdown suite raises its timeout with one `vi.setConfig` at the top of the
   file — not a third argument per `it` (the formatter expands a three-argument

@@ -4,6 +4,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
+import { markCodeSides } from '../lib/code-side';
 import type { DeckFeature, DeckResult } from '../lib/deck';
 import { type TFn, useT } from '../lib/i18n';
 import { isLaserToggleKey } from '../lib/laser';
@@ -14,6 +15,7 @@ import type { PresentPlace } from '../lib/present';
 import { clampSlide, slideStepForKey, stepSlide } from '../lib/slide-nav';
 import { getSlideThemes, reloadSlideThemes, subscribeSlideThemes } from '../lib/slide-theme-folder';
 import { MALLOW_THEME } from '../lib/slide-themes';
+import { onColorChoiceChange, onThemeChange } from '../lib/theme';
 import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 import { LaserPointer, type PointerSpot } from './LaserPointer';
 import { isModalOpen, onModalOpening } from './Modal';
@@ -270,6 +272,25 @@ function SlideStage({
     observer.observe(host);
     return () => observer.disconnect();
   }, [html, mermaidFailed]);
+
+  /* A family change can repaint a ground without changing the drawn side, so the
+     choice is listened to as well as the side. `css` is a dependency because a
+     deck's own CSS can paint a ground. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: html and css are what put new grounds under the host.
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host || !html.__html) {
+      return;
+    }
+    const mark = () => markCodeSides(host);
+    mark();
+    const offTheme = onThemeChange(mark);
+    const offChoice = onColorChoiceChange(mark);
+    return () => {
+      offTheme();
+      offChoice();
+    };
+  }, [html, css]);
 
   /* Links follow the preview's rule: `http(s)` opens in the OS browser and every
      other destination is inert, since a slide has nowhere in the app to go. A

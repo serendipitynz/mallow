@@ -106,7 +106,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   設定モーダルとスライド表示の両方が読むストアとして持つ。Tauri 側、decision-19）、
   `slide-nav`（キーでスライドがどこへ動くか）、`laser`（レーザーポインターの
   キーと軌跡の寿命。純粋関数）、`present`（発表の
-  コードとウィンドウの発表者）、`shiki`（ハイライタ singleton +
+  コードとウィンドウの発表者）、`code-side`（スライドのコードブロックを Shiki のどちらの
+  トークンで描くか。算出色から読んだ、ブロックが載る地の側。decision-19 の改訂）、
+  `shiki`（ハイライタ singleton +
   `stripPreBackground`）、`mermaid` + `mermaid-copy` + `codeblock`（命令的 DOM 強化）、
   `frontmatter`、`config-parse`、`source-cap`（ソースビューの上限）、
   `delimited`（CSV/TSV パーサ + 表ビューの上限）、
@@ -1699,6 +1701,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `slide-theme-css`（`@theme` と `@size`、予約名と重複した名前、`url()` をテーマの
   ディレクトリから解決する走査）・
   `kinari`（decision-19 §7 がリリースから取るもの、通知が名指す版）・
+  `code-side`（半透明の層を重ねて求める地と、その輝度から決まる側）・
   `custom-emoji`＝Tauri 層を
   モック）をカバーする。
   Node 環境で走るため jsdom/GUI は不要。markdown のテストはファイル先頭の `vi.setConfig` 1 行で
