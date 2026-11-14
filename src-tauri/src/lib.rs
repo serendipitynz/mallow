@@ -1,5 +1,6 @@
 use tauri::Manager;
 
+mod cli;
 mod commands;
 mod editors;
 mod handover;
@@ -70,6 +71,11 @@ fn handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
 pub fn run() {
     #[cfg(unattended)]
     let request = unattended::request_or_exit();
+
+    // Ahead of every plugin, single-instance included: `--help` must answer the
+    // terminal rather than be forwarded to a running mallow (TASK-62).
+    #[cfg(not(unattended))]
+    cli::answer_or_detach();
 
     let builder = tauri::Builder::default();
 
