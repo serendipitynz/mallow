@@ -1,0 +1,2 @@
+# A batch file read with LF line endings can mis-resolve its own labels.
+src-tauri/windows/*.cmd text eol=crlf
