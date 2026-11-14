@@ -2,8 +2,14 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { message as messageDialog, open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
+import {
+  ask as askDialog,
+  message as messageDialog,
+  open as openDialog,
+  save as saveDialog,
+} from '@tauri-apps/plugin-dialog';
 import type { Handed } from './handover';
+import type { PathCommandOutcome } from './path-command';
 import { type ReadResult, toReadError } from './read-error';
 import type { EditorInfo, FileEntry, InitialLocation, WindowInit } from './types';
 
@@ -150,6 +156,26 @@ export function writeWindowPdf(path: string): Promise<void> {
  *  success. */
 export async function showErrorDialog(title: string, text: string): Promise<void> {
   await messageDialog(text, { title, kind: 'error' });
+}
+
+/** Tell the reader something that has no view to live in. */
+export async function showInfoDialog(title: string, text: string): Promise<void> {
+  await messageDialog(text, { title, kind: 'info' });
+}
+
+/** Ask the reader a yes / no question; resolves `true` for yes. */
+export function askWarningDialog(title: string, text: string): Promise<boolean> {
+  return askDialog(text, { title, kind: 'warning' });
+}
+
+/** Write the `mallow` command to `/usr/local/bin` (macOS). `replace` lets it
+ *  overwrite a file mallow did not write, once the reader has agreed. */
+export function installPathCommand(replace: boolean): Promise<PathCommandOutcome> {
+  return invoke<PathCommandOutcome>('install_path_command', { replace });
+}
+
+export function uninstallPathCommand(): Promise<PathCommandOutcome> {
+  return invoke<PathCommandOutcome>('uninstall_path_command');
 }
 
 /** Create a window, opening `location` at mount when one is given, and answer the

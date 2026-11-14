@@ -30,6 +30,7 @@ import { isMarkdownPreviewActive, onMarkdownPreviewChange } from './lib/markdown
 import { createNewWindowChordHandler } from './lib/new-window';
 import { applyOutlineOpen } from './lib/outline-pref';
 import { ancestorDirs, isInside } from './lib/path';
+import { type PathCommandOutcome, pathCommandStep } from './lib/path-command';
 import { createPdfExportChordHandler, pdfDestinationFor, runExclusiveExport } from './lib/pdf-export';
 import { createPresentChordHandler, isPresentAvailable } from './lib/present';
 import { createPrintChordHandler } from './lib/print';
@@ -39,9 +40,11 @@ import { onSettingChange, type SettingChange, settingsReadStamp, snapshotStillCu
 import { applyDefaultSlideTheme, applySlideThemeDir } from './lib/slide-theme-folder';
 import {
   allowMediaDir,
+  askWarningDialog,
   chooseRecent,
   closeWindow,
   inspectDropped,
+  installPathCommand,
   listRecent,
   onDroppedPaths,
   openWindow,
@@ -55,8 +58,10 @@ import {
   reportMarkdownPreview,
   reportWindowContent,
   showErrorDialog,
+  showInfoDialog,
   takeHandover,
   takeWindowInit,
+  uninstallPathCommand,
   writeWindowPdf,
 } from './lib/tauri';
 import { applyColorChoice } from './lib/theme';
@@ -702,6 +707,35 @@ export default function App() {
   useWindowEvent('menu:settings', () => setSettingsOpen(true));
   useWindowEvent('menu:open', () => void openFolder());
   useWindowEvent('menu:print', () => void printWindow().catch((err) => console.error('print failed', err)));
+
+  /** The `mallow` command on macOS (TASK-62). The outcome is spoken here rather
+   *  than in Rust because the native menu has no language of its own and this
+   *  window does. */
+  const runPathCommand = useCallback(
+    async (action: 'install' | 'uninstall') => {
+      const run = (replace: boolean): Promise<PathCommandOutcome> =>
+        action === 'install' ? installPathCommand(replace) : uninstallPathCommand();
+      try {
+        let step = pathCommandStep(action, await run(false));
+        if (step !== 'nothing' && 'ask' in step) {
+          if (!(await askWarningDialog(t('pathCommandTitle'), t(step.ask.key, step.ask.params)))) {
+            return;
+          }
+          step = pathCommandStep(action, await run(true));
+        }
+        if (step === 'nothing' || 'ask' in step) {
+          return;
+        }
+        const show = step.tell.failure ? showErrorDialog : showInfoDialog;
+        await show(t('pathCommandTitle'), t(step.tell.key, step.tell.params));
+      } catch (err) {
+        console.error('the mallow command could not be changed', err);
+      }
+    },
+    [t],
+  );
+  useWindowEvent('menu:install-command', () => void runPathCommand('install'));
+  useWindowEvent('menu:uninstall-command', () => void runPathCommand('uninstall'));
 
   /** Open Recent resolved to replacing this window's folder, which is what the
    *  menu sends when the new-window modifier was not held.
