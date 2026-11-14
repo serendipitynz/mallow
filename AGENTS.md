@@ -1918,6 +1918,11 @@ hold rather than as an exhaustive style guide.
   unexpanded and its registry kind); the MSI installs per machine and adds it to
   the system `PATH` through `windows/cli-path.wxs`. An update reruns the install,
   so adding is idempotent and the uninstaller an update runs leaves the entry.
+  **The entry is removed after the uninstall, not before it**: tauri runs
+  `NSIS_HOOK_PREUNINSTALL` ahead of its check for a running mallow, whose Cancel
+  aborts the uninstall, so removing it there would leave mallow installed without
+  its command. The pre-uninstall hook only keeps the script aside in
+  `$PLUGINSDIR`, since the resources are gone by the post-uninstall hook.
   `mallow.cmd` starts the binary with `start` so the prompt returns, except for
   `--help` / `--version`, which it runs in place so the batch waits and the text
   lands before the prompt; the binary attaches to the parent console to print
