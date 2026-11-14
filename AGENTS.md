@@ -161,7 +161,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   gate and reason — the last two have no gate), `window-init` (what a
   window opens at mount, given what it was told at creation), `handover` (what
   a window does with a location the OS handed over — opened or reported — and
-  which of several dropped items it opens), `build-flags` (the unattended switch Vite substitutes), `render-signal`
+  which of several dropped items it opens), `path-command` (what the macOS
+  Install / Uninstall 'mallow' Command items tell the reader, and when they ask
+  first), `build-flags` (the unattended switch Vite substitutes), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
 - `unattended/` — the unattended export's driver (TASK-30), reached only from
@@ -320,6 +322,18 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   own argv; and `take_handover` / `inspect_dropped`, the two commands a window
   calls. **A live window takes what it was handed rather than being sent it**,
   so a restored window that has not mounted loses nothing. See the gotcha below.
+- `cli.rs` — what a launch from a terminal gets before anything of Tauri runs
+  (TASK-62): `--help` / `--version` printed and the process ended, **ahead of the
+  single-instance plugin** so neither is forwarded to a running mallow; and, in a
+  release build started with stdout on a terminal, the binary starting itself
+  again in a new process group and exiting, so the command returns at once. See
+  the gotcha below.
+- `path_command.rs` — the macOS `mallow` command (TASK-62):
+  `install_path_command` / `uninstall_path_command`, which write and remove a
+  script at `/usr/local/bin/mallow` that `exec`s the bundle's binary, through the
+  administrator prompt where that folder is not writable. Neither touches a file
+  that does not carry the script's marker line unless the reader agreed to
+  replace it.
 - `lib.rs` — plugin registration (**single-instance, first**, then opener,
   dialog, store, **the session**, window-state, updater, process — none
   `cfg(desktop)`-gated, per decision-11; both positions in that list are
@@ -1882,6 +1896,46 @@ hold rather than as an exhaustive style guide.
   under "Verifying changes"). None of the routes is reachable under `pnpm tauri
   dev` except a drop and the forwarded argv; `Opened` and the registrations need
   a bundled app.
+- **The `mallow` command is a different thing on each platform, and each shape
+  answers one constraint** (TASK-62). **macOS**: the app menu's Install 'mallow'
+  Command… writes a script to `/usr/local/bin/mallow` that `exec`s
+  `…/mallow.app/Contents/MacOS/mallow` by its absolute path. **Not a symlink**:
+  tauri-utils' `StartingBinary` makes `current_exe()` an error on macOS when the
+  executable path has a symlink anywhere in it (tauri-utils 2.10
+  `src/platform/starting_binary.rs`), and the resource directory and the updater
+  hang off that. **Not `open -a mallow --args`**: the app LaunchServices starts
+  runs in `/`, so `mallow .` would open the root, and `--args` reaches a mallow
+  already running not at all. `/usr/local/bin` because `/etc/paths` lists it on
+  every Mac. The script names where mallow.app was at install, so moving the app
+  breaks it until it is installed again, and an install from a disk image or a
+  translocated copy is refused for that reason. **Windows**: `bin\mallow.cmd`,
+  one level below `mallow.exe` and alone in its folder, is what goes on `PATH` —
+  the install folder itself would put `uninstall.exe` there too, which is the
+  shape VS Code takes for the same reason. The NSIS installer installs per user
+  and adds it to the user's `PATH` through `windows/hooks.nsh` and
+  `windows/cli-path.ps1` (PowerShell because NSIS strings stop at a fixed length
+  and a long `PATH` would be written back truncated; the edit keeps the value
+  unexpanded and its registry kind); the MSI installs per machine and adds it to
+  the system `PATH` through `windows/cli-path.wxs`. An update reruns the install,
+  so adding is idempotent and the uninstaller an update runs leaves the entry.
+  `mallow.cmd` starts the binary with `start` so the prompt returns, except for
+  `--help` / `--version`, which it runs in place so the batch waits and the text
+  lands before the prompt; the binary attaches to the parent console to print
+  them, since a GUI-subsystem process starts with none. The batch file is kept
+  CRLF by `.gitattributes`. **Linux**: tauri-bundler installs the deb and rpm
+  binary at `/usr/bin/mallow`, so nothing is added; an AppImage is left to the
+  reader, and `cli.rs` restarts the AppImage rather than the binary mounted
+  inside it, which the AppImage runtime unmounts when its child exits.
+  **Returning at once is a restart, not a fork**: in a release build with stdout
+  on a terminal, `cli.rs` starts the same binary again in a new process group
+  with stdio on `/dev/null` and exits. The child keeps the working directory,
+  which is the whole of what makes a relative path and `.` the terminal's; a
+  forwarded launch carries the caller's directory too (tauri-plugin-single-instance
+  2.5 sends `current_dir()` on all three platforms). **A debug build never
+  detaches**, because `pnpm tauri dev` would lose the app it watches — so
+  checking the return needs a release build. **The Windows half and the AppImage
+  restart are unmeasured from this repository**; macOS was measured on a bundle
+  built locally (TASK-62's notes).
 - **Closing the last window exits the app, on every platform including macOS.**
   The platform convention there is to stay alive with only the menu bar, and that
   is declined rather than overlooked: a menu-bar-only state needs New Window to
@@ -1941,7 +1995,10 @@ hold rather than as an exhaustive style guide.
   migration, which window is showing a folder, which live window was focused
   last, and where a handed folder opens — including that the claim survives the
   window's empty report and is settled by a folder), `handover`'s argument resolution and classification (a file opening its
-  folder, the three refusals, and the wire shape the frontend switches on) and
+  folder, the three refusals, and the wire shape the frontend switches on),
+  `cli`'s argv reading (help and version by each spelling, and an AppImage
+  restarted rather than its mounted binary), `path_command`'s script, marker and
+  refusal of an unsettled location, and
   `settings`'s raise rule
   (that a stamp at or below the mark is put past it, and that a change made after
   a settings read outranks it whichever key either touched) are covered without a GUI — the

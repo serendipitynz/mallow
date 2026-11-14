@@ -149,6 +149,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   後ろ 2 つは閉じるゲートを持たない）、
   `handover`（OS から渡された場所をウィンドウがどうするか — 開くか知らせるか — と、
   複数ドロップされたときにどれを開くか）、
+  `path-command`（macOS の Install / Uninstall 'mallow' Command 項目が読み手に何を伝え、
+  いつ先に尋ねるか）、
   `build-flags`（Vite が置き換える無人書き出しのスイッチ）、
   `render-signal`（描画済みの本文が変化し終わった時点）、
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
@@ -295,6 +297,15 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `open_handed_at_launch`、ウィンドウが呼ぶ 2 つのコマンド `take_handover` / `inspect_dropped`。
   **生きているウィンドウには送りつけず、ウィンドウの側が取りに来る** — まだ mount していない
   復元ウィンドウでも取りこぼさないため。下の gotcha を読む。
+- `cli.rs` — ターミナルからの起動が Tauri の何よりも先に受け取る処理（TASK-62）。
+  `--help` / `--version` を印字してプロセスを終える — **single-instance プラグインより前**に
+  置くのは、どちらも起動中の mallow へ転送させないため。release ビルドで stdout が端末の
+  ときは、binary が自分を新しいプロセスグループで起動し直して終了し、コマンドがすぐ戻る。
+  下の gotcha を読む。
+- `path_command.rs` — macOS の `mallow` コマンド（TASK-62）。`install_path_command` /
+  `uninstall_path_command` が、バンドルの binary を `exec` するスクリプトを
+  `/usr/local/bin/mallow` に書き込み・削除する。そのフォルダに書けなければ管理者認証を通す。
+  スクリプトの印の行を持たないファイルには、読み手が置き換えに同意しない限り触れない。
 - `lib.rs` — プラグイン登録（**single-instance を最初に**、続けて opener, dialog, store,
   **session**, window-state, updater, process。decision-11 によりどれも `cfg(desktop)` で括らない。
   2 つの位置はどちらも load-bearing —下の gotcha を読む）、`invoke_handler`、
@@ -1656,6 +1667,40 @@ Comments と Functions の規約は機械的に検査されない。コメント
   クレートと同じく、tauri `~2.12` と並べて `~2.5` に固定する（「変更の検証」の
   Dependabot の段落を参照）。`pnpm tauri dev` で届くのはドロップと転送された argv だけで、
   `Opened` と登録はバンドルしたアプリでないと試せない。
+- **`mallow` コマンドはプラットフォームごとに別物で、それぞれの形が 1 つずつ制約に
+  答えている**（TASK-62）。**macOS**: アプリメニューの Install 'mallow' Command… が、
+  `…/mallow.app/Contents/MacOS/mallow` を絶対パスで `exec` するスクリプトを
+  `/usr/local/bin/mallow` に書く。**symlink にしない**: tauri-utils の `StartingBinary` は、
+  macOS で実行パスのどこかに symlink があると `current_exe()` をエラーにし
+  （tauri-utils 2.10 `src/platform/starting_binary.rs`）、resource ディレクトリと updater が
+  それに依存する。**`open -a mallow --args` にしない**: LaunchServices が起動するアプリの
+  cwd は `/` なので `mallow .` がルートを開き、起動中の mallow には `--args` がまったく届かない。
+  `/usr/local/bin` にするのは `/etc/paths` がどの Mac でもそれを含むから。スクリプトは
+  インストール時の mallow.app の場所を書くので、アプリを移すとインストールし直すまで壊れる。
+  同じ理由で、ディスクイメージや translocation された複製からのインストールは断る。
+  **Windows**: PATH に載せるのは `mallow.exe` の 1 つ下で単独のフォルダにある
+  `bin\mallow.cmd`。インストール先そのものを足すと `uninstall.exe` まで PATH に乗るためで、
+  VS Code も同じ理由で同じ形を取っている。NSIS インストーラはユーザー単位でインストールし、
+  `windows/hooks.nsh` と `windows/cli-path.ps1` でユーザーの `PATH` に足す（PowerShell に
+  するのは、NSIS の文字列には長さの上限があり、長い `PATH` を切り詰めて書き戻すため。
+  値は展開せずに読み、レジストリの種類も保って書き戻す）。MSI はマシン単位でインストールし、
+  `windows/cli-path.wxs` でシステムの `PATH` に足す。更新はインストールをやり直すので、
+  追加は冪等で、更新が走らせるアンインストーラは項目を残す。`mallow.cmd` は `start` で
+  binary を起動してプロンプトをすぐ返すが、`--help` / `--version` だけはその場で実行して
+  バッチに待たせ、文字がプロンプトより先に出るようにする。GUI subsystem のプロセスは
+  コンソールを持たずに始まるので、binary は親のコンソールに接続して印字する。バッチ
+  ファイルは `.gitattributes` で CRLF に保つ。**Linux**: tauri-bundler が deb と rpm の
+  binary を `/usr/bin/mallow` に置くので何も足さない。AppImage は読み手に任せ、`cli.rs` は
+  中にマウントされた binary ではなく AppImage 自体を起動し直す — AppImage のランタイムは
+  子プロセスが終わるとマウントを外すから。
+  **すぐ戻るのは fork ではなく起動し直し**: release ビルドで stdout が端末のとき、`cli.rs`
+  は同じ binary を新しいプロセスグループで、stdio を `/dev/null` にして起動し直して終了する。
+  子は cwd を引き継ぎ、それだけが相対パスと `.` を端末のものにしている。転送される起動も
+  呼び出し側の cwd を運ぶ（tauri-plugin-single-instance 2.5 は 3 環境とも `current_dir()`
+  を送る）。**debug ビルドは切り離さない** — `pnpm tauri dev` が見張っているアプリを
+  見失うため。戻り方の確認には release ビルドが要る。**Windows 側と AppImage の起動し直しは
+  このリポジトリからは未実測**。macOS は手元でビルドしたバンドルで実測した（TASK-62 の
+  ノート）。
 - **最後のウィンドウを閉じるとアプリは終了する。macOS を含め全環境で同じ。**
   macOS の作法はメニューバーだけ残して生き続けることだが、見落としではなく選ばなかった:
   メニューバーのみの状態は「フォーカスされたウィンドウが無い状態で New Window が動く」
@@ -1719,7 +1764,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   フォーカス順・last-window rule・上限・移行の両半分・どのウィンドウがそのフォルダを
   表示しているか・最後にフォーカスされた生きているウィンドウ・渡されたフォルダがどこで
   開くかと、その確保がウィンドウの空の報告を越えて残り、フォルダの報告で解けること）、`handover` の引数の解決と
-  分類（ファイルはそのフォルダを開くこと、3 つの拒否、フロントが分岐に使う形）、`settings` の押し上げ規則（mark 以下の stamp がその先へ
+  分類（ファイルはそのフォルダを開くこと、3 つの拒否、フロントが分岐に使う形）、`cli` の argv の読み方
+  （help と version をそれぞれの綴りで受けること、AppImage はマウントされた binary ではなく
+  AppImage 自体を起動し直すこと）、`path_command` のスクリプト・印の行・落ち着かない場所の拒否、
+  `settings` の押し上げ規則（mark 以下の stamp がその先へ
   置かれること、設定の読み出しの後に行われた変更が、どちらがどのキーに触れたかに
   関わらずその読み出しを上回ること）も
   GUI なしで検査する。
