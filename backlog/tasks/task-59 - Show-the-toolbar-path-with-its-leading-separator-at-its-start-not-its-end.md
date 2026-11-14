@@ -1,10 +1,10 @@
 ---
 id: TASK-59
 title: 'Show the toolbar path with its leading separator at its start, not its end'
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 23:05'
-updated_date: '2026-11-14 00:02'
+updated_date: '2026-11-14 00:40'
 labels:
   - bug
 dependencies: []
@@ -30,7 +30,7 @@ The fix has to keep both halves: the separators where they belong, and the ellip
 - [x] #1 A POSIX path shows its leading / at the start and no trailing separator in the toolbar
 - [x] #2 A Windows drive path and a UNC path (\\host\share\…) show their separators where they are written
 - [x] #3 A path too long for the toolbar is still truncated at its head, keeping the file name visible
-- [ ] #4 Checked on macOS, Windows and Linux builds
+- [x] #4 Checked on macOS, Windows and Linux builds
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -72,4 +72,10 @@ WebKit と Chromium の結果は一致した。現状の不具合は先頭の区
 ## 検証
 
 biome ci、tsc + vite build、vitest run（53 ファイル・671 件）が通った。`pnpm <script>` は事前依存チェックが lockfile 中の公開 7 日以内のパッケージで止まるため、`node_modules/.bin` のバイナリを直接実行した。
+
+## プラットフォーム確認（AC #4）
+
+macOS・Windows・Linux のビルド（`pnpm tauri dev`）で、ユーザーがツールバーのパス表示を確認し、3 環境とも問題なし（2026-11-14）。
+
+PR: https://github.com/serendipitynz/mallow/pull/122
 <!-- SECTION:NOTES:END -->
