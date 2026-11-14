@@ -7,6 +7,7 @@ mod handover;
 mod menu;
 mod modifier;
 mod open_recent;
+mod path_command;
 mod pdf;
 mod print;
 mod recent;
@@ -51,7 +52,9 @@ macro_rules! app_handler {
             menu::report_find_available,
             menu::report_history_moves,
             handover::take_handover,
-            handover::inspect_dropped
+            handover::inspect_dropped,
+            path_command::install_path_command,
+            path_command::uninstall_path_command
             $(, $extra)*
         ]
     };

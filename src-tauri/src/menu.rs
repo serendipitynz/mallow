@@ -46,6 +46,8 @@ const FORWARD: &str = "view:forward";
 const FIND: &str = "edit:find";
 const FIND_NEXT: &str = "edit:find-next";
 const FIND_PREVIOUS: &str = "edit:find-previous";
+const INSTALL_COMMAND: &str = "app:install-command";
+const UNINSTALL_COMMAND: &str = "app:uninstall-command";
 /// Unprefixed because it predates this module and nothing is gained by churning
 /// it; the event it sends is still `menu:settings`.
 const SETTINGS: &str = "settings";
@@ -151,6 +153,8 @@ pub enum MenuAction {
     Find,
     FindNext,
     FindPrevious,
+    InstallCommand,
+    UninstallCommand,
 }
 
 pub fn menu_action(id: &str) -> MenuAction {
@@ -169,6 +173,8 @@ pub fn menu_action(id: &str) -> MenuAction {
         FIND => MenuAction::Find,
         FIND_NEXT => MenuAction::FindNext,
         FIND_PREVIOUS => MenuAction::FindPrevious,
+        INSTALL_COMMAND => MenuAction::InstallCommand,
+        UNINSTALL_COMMAND => MenuAction::UninstallCommand,
         path => MenuAction::OpenRecent(path.to_string()),
     }
 }
@@ -487,6 +493,11 @@ pub fn handle_event(app: &AppHandle, id: &str) {
         MenuAction::Find => emit_focused(app, "menu:find", ()),
         MenuAction::FindNext => emit_focused(app, "menu:find-next", ()),
         MenuAction::FindPrevious => emit_focused(app, "menu:find-previous", ()),
+        // The window asks the reader before replacing a file mallow did not write
+        // and says what happened, in the app's own language, which the native
+        // menu does not have.
+        MenuAction::InstallCommand => emit_focused(app, "menu:install-command", ()),
+        MenuAction::UninstallCommand => emit_focused(app, "menu:uninstall-command", ()),
         MenuAction::ClearRecent => {
             if let Err(e) = crate::recent::clear_recent_list(app) {
                 eprintln!("mallow: the recent folders could not be cleared ({e})");
@@ -735,10 +746,19 @@ fn compose(
 
     #[cfg(target_os = "macos")]
     {
+        // macOS alone: the binary is inside the bundle and on no `PATH`, while the
+        // Windows installers and the Linux packages put a command there themselves
+        // (TASK-62).
+        let install_command = MenuItemBuilder::with_id(INSTALL_COMMAND, "Install 'mallow' Command…").build(app)?;
+        let uninstall_command =
+            MenuItemBuilder::with_id(UNINSTALL_COMMAND, "Uninstall 'mallow' Command…").build(app)?;
         let app_menu = SubmenuBuilder::new(app, "mallow")
             .about(Some(about))
             .separator()
             .item(settings)
+            .separator()
+            .item(&install_command)
+            .item(&uninstall_command)
             .separator()
             .services()
             .separator()
@@ -848,6 +868,8 @@ mod tests {
         assert_eq!(menu_action(EXIT), MenuAction::Exit);
         assert_eq!(menu_action(TOGGLE_EXPLORER), MenuAction::ToggleExplorer);
         assert_eq!(menu_action(BACK), MenuAction::Back);
+        assert_eq!(menu_action(INSTALL_COMMAND), MenuAction::InstallCommand);
+        assert_eq!(menu_action(UNINSTALL_COMMAND), MenuAction::UninstallCommand);
         assert_eq!(menu_action(FORWARD), MenuAction::Forward);
         assert_eq!(menu_action(FIND), MenuAction::Find);
         assert_eq!(menu_action(FIND_NEXT), MenuAction::FindNext);
@@ -881,6 +903,8 @@ mod tests {
             FIND,
             FIND_NEXT,
             FIND_PREVIOUS,
+            INSTALL_COMMAND,
+            UNINSTALL_COMMAND,
         ] {
             assert!(!id.starts_with('/') && !id.starts_with('\\') && !id.contains('/') && !id.contains('\\'));
         }
