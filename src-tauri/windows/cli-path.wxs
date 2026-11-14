@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The MSI's half of the `mallow` command on Windows (TASK-62): put
+  [INSTALLDIR]bin, which holds mallow.cmd and nothing else, on PATH.
+
+  The system PATH rather than the user's, because tauri's MSI installs per
+  machine into Program Files; the NSIS installer installs per user and edits the
+  user's. Windows Installer removes the entry with the component.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="MallowCommandPath" Guid="C7035A19-C988-4373-8ED1-0CD30B188C3A">
+        <Environment Id="MallowCommandPathEntry" Name="PATH" Value="[INSTALLDIR]bin" Part="last" Action="set" System="yes" Permanent="no" />
+        <RegistryValue Root="HKLM" Key="Software\mallow" Name="CommandOnPath" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

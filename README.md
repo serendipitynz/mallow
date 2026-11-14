@@ -257,7 +257,21 @@ Previous keys and the bar's arrows move between matches and wrap at the ends;
   mallow registers no file type**,
   because the installer could only do that by taking over the default app; use
   *Open with → Choose another app* and browse to `mallow.exe`.
-- **Command line**: `mallow path/to/file.md` or `mallow path/to/folder`.
+- **Command line**: `mallow path/to/file.md`, `mallow path/to/folder`, or
+  `mallow .` for the current directory. A relative path is read against the
+  terminal's current directory, and the command returns at once. `mallow --help`
+  and `mallow --version` print to the terminal. Where the `mallow` command comes
+  from depends on the platform:
+  - **macOS**: choose **mallow → Install 'mallow' Command…** once. It writes a
+    small script to `/usr/local/bin/mallow`, asking for an administrator
+    password if that folder is not writable. Install it again after moving
+    mallow.app; **Uninstall 'mallow' Command…** removes it.
+  - **Windows**: both installers put the command on `PATH` (the `.exe`
+    installer on your own `PATH`, the `.msi` on the system's). Open a new
+    terminal after installing. Removing mallow removes it again.
+  - **Linux**: the `.deb` and `.rpm` packages install `/usr/bin/mallow`. An
+    AppImage is not on `PATH`; link it in yourself, for example
+    `ln -s ~/Applications/mallow.AppImage ~/.local/bin/mallow`.
 
 A file or folder handed over this way opens in the window already showing its
 folder, if there is one, and otherwise in a window of its own. **mallow runs one
