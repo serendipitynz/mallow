@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The Microsoft Store variant's package manifest (TASK-58), filled in by
-  scripts/msix-build.ps1: every {{TOKEN}} is replaced there, and the script
+  scripts/msix-build.ps1: every double-braced token is replaced there, and the script
   refuses to pack while one is left.
 
   The identity is a placeholder until the name is reserved in Partner Center,
