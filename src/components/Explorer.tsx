@@ -1,17 +1,31 @@
-import { type KeyboardEvent, type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type CompositionEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { useEditors } from '../hooks/useEditors';
 import type { FileTreeController } from '../hooks/useFileTree';
+import { useMenu } from '../hooks/useMenu';
 import { onMacPlatform } from '../lib/chord';
 import { isContextMenuKey } from '../lib/context-menu';
 import { useT } from '../lib/i18n';
 import { basename } from '../lib/path';
+import { arrangeTree, filterApplies, TREE_SORTS, type TreeSort } from '../lib/tree-arrange';
 import { isShownUnder, tabStopPath, treeKeyAction, visibleRows } from '../lib/tree-nav';
 import type { FileEntry } from '../lib/types';
 import { Busy } from './Busy';
 import { FileActionItems } from './FileActions';
 import { FileTree, type TreeRowHandlers } from './FileTree';
+import { ArrowUpDownIcon, CheckIcon, CloseIcon } from './icons';
 import { Notice } from './Notice';
 import { RecentFolders } from './RecentFolders';
 
@@ -23,6 +37,18 @@ interface ExplorerProps {
   onOpenFolder: () => void;
   recentFolders: string[];
   onChooseRecent: (folder: string, newWindow: boolean) => void;
+  sort: TreeSort;
+  onSortChange: (sort: TreeSort) => void;
+}
+
+/** The filter typed in this window, tied to the folder it was typed for: opening
+ *  another folder drops it without an effect resetting it a render late. `text`
+ *  is what the input shows and `query` what filters, which differ while an IME
+ *  is converting (snz-design doc-8 §6.3). */
+interface TreeFilter {
+  dir: string | null;
+  text: string;
+  query: string;
 }
 
 export function Explorer({
@@ -33,6 +59,8 @@ export function Explorer({
   onOpenFolder,
   recentFolders,
   onChooseRecent,
+  sort,
+  onSortChange,
 }: ExplorerProps) {
   const t = useT();
   const { rootDir, rootEntries, rootLoading, rootError, expanded, childrenByPath, toggle } = tree;
@@ -41,11 +69,17 @@ export function Explorer({
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const editors = useEditors();
   const contextMenu = useContextMenu<FileEntry>();
+  const [filter, setFilter] = useState<TreeFilter>({ dir: null, text: '', query: '' });
+  const filterText = filter.dir === rootDir ? filter.text : '';
+  const query = filter.dir === rootDir ? filter.query : '';
+  const filtering = filterApplies(query);
 
-  const rows = useMemo(
-    () => visibleRows(rootEntries, expanded, childrenByPath),
-    [rootEntries, expanded, childrenByPath],
+  const arranged = useMemo(
+    () => arrangeTree(rootEntries, childrenByPath, expanded, sort, query),
+    [rootEntries, childrenByPath, expanded, sort, query],
   );
+  const shownTree = { ...tree, childrenByPath: arranged.children };
+  const rows = useMemo(() => visibleRows(arranged.roots, expanded, arranged.children), [arranged, expanded]);
   const tabStop = tabStopPath(rows, focusedPath, selectedPath);
 
   const focusRow = useCallback((path: string) => {
@@ -166,11 +200,36 @@ export function Explorer({
     onRowKeyDown,
   };
 
+  const filterInputRef = useRef<HTMLInputElement>(null);
+  // Both clear buttons leave the screen when pressed, so the focus goes to the
+  // input rather than to the top of the document (snz-design doc-9 §5.1).
+  const clearFilter = useCallback(() => {
+    setFilter({ dir: rootDir, text: '', query: '' });
+    filterInputRef.current?.focus();
+  }, [rootDir]);
+
   return (
     <aside className="explorer" id={id}>
       <div className="explorer__header">
         <span title={rootDir ?? undefined}>{rootName ?? t('explorer')}</span>
       </div>
+      {rootDir && (
+        <div className="explorer__tools">
+          <FilterField
+            inputRef={filterInputRef}
+            text={filterText}
+            onChange={(text, composing) =>
+              setFilter((prev) => ({
+                dir: rootDir,
+                text,
+                query: composing ? (prev.dir === rootDir ? prev.query : '') : text,
+              }))
+            }
+            onClear={clearFilter}
+          />
+          <SortMenu sort={sort} onChange={onSortChange} />
+        </div>
+      )}
       <div className="explorer__scroll" ref={scrollRef}>
         {!rootDir && (
           <div className="explorer__empty">
@@ -196,8 +255,22 @@ export function Explorer({
             <p className="explorer__empty-words">{t('noFiles')}</p>
           </div>
         )}
-        {rootDir && rootEntries.length > 0 && (
-          <FileTree entries={rootEntries} tree={tree} rows={handlers} label={rootName ?? t('explorer')} />
+        {rootDir && filtering && rootEntries.length > 0 && arranged.roots.length === 0 && (
+          <div className="explorer__empty">
+            <p className="explorer__empty-words">{t('treeFilterNone', { query: query.trim() })}</p>
+            <button type="button" className="btn" onClick={clearFilter}>
+              {t('treeFilterClear')}
+            </button>
+          </div>
+        )}
+        {rootDir && arranged.roots.length > 0 && (
+          <FileTree
+            entries={arranged.roots}
+            tree={shownTree}
+            rows={handlers}
+            label={rootName ?? t('explorer')}
+            emptyWords={filtering ? t('treeFilterNoneHere') : t('empty')}
+          />
         )}
       </div>
       {contextMenu.target &&
@@ -219,5 +292,104 @@ export function Explorer({
           document.body,
         )}
     </aside>
+  );
+}
+
+/** snz-design doc-8 §6.3's single-line input with a visible label. Escape does
+ *  not clear it — Escape closes things (snz-design doc-9 §6.1) — so the clear is
+ *  a button. */
+function FilterField({
+  inputRef,
+  text,
+  onChange,
+  onClear,
+}: {
+  inputRef: RefObject<HTMLInputElement | null>;
+  text: string;
+  onChange: (text: string, composing: boolean) => void;
+  onClear: () => void;
+}) {
+  const t = useT();
+  const inputId = useId();
+  const composing = useRef(false);
+
+  return (
+    <search className="explorer__filter">
+      <label className="explorer__filter-label" htmlFor={inputId}>
+        {t('treeFilter')}
+      </label>
+      <input
+        ref={inputRef}
+        id={inputId}
+        className="explorer__filter-input"
+        type="text"
+        value={text}
+        onChange={(e) => onChange(e.target.value, composing.current)}
+        onCompositionStart={() => {
+          composing.current = true;
+        }}
+        onCompositionEnd={(e: CompositionEvent<HTMLInputElement>) => {
+          composing.current = false;
+          onChange(e.currentTarget.value, false);
+        }}
+        autoComplete="off"
+        spellCheck={false}
+      />
+      {text !== '' && (
+        <button
+          type="button"
+          className="icon-btn"
+          title={t('treeFilterClear')}
+          aria-label={t('treeFilterClear')}
+          onClick={onClear}
+        >
+          <CloseIcon />
+        </button>
+      )}
+    </search>
+  );
+}
+
+/** The order as a value menu (snz-design doc-9 §6.11). The trigger names the
+ *  current order, since its figure alone cannot. */
+function SortMenu({ sort, onChange }: { sort: TreeSort; onChange: (sort: TreeSort) => void }) {
+  const t = useT();
+  const menu = useMenu({ valueMenu: true });
+  const label = t('treeSort', { sort: t(`treeSort.${sort}`) });
+
+  function pick(next: TreeSort) {
+    menu.close(true);
+    if (next !== sort) {
+      onChange(next);
+    }
+  }
+
+  return (
+    <div className="menu" ref={menu.rootRef}>
+      <button type="button" className="icon-btn" title={label} aria-label={label} {...menu.triggerProps}>
+        <ArrowUpDownIcon />
+      </button>
+      {menu.open && (
+        <div className="menu__popup menu__popup--explorer" role="menu" aria-label={label} {...menu.popupProps}>
+          {TREE_SORTS.map((value) => {
+            const current = value === sort;
+            return (
+              <button
+                key={value}
+                type="button"
+                className={`menu__item${current ? ' is-active' : ''}`}
+                role="menuitemradio"
+                tabIndex={-1}
+                aria-checked={current}
+                onClick={() => pick(value)}
+              >
+                <span className="menu__item-check">{current && <CheckIcon />}</span>
+                {t(`treeSort.${value}`)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

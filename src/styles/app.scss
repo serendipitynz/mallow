@@ -178,6 +178,13 @@
 }
 
 // Kept on every item, so the labels line up whichever one is current.
+// The explorer is as narrow as 180px and clips what overflows it, so the sort
+// menu, opened from the right of its tools row, cannot take the 200px other
+// menus start at.
+.menu__popup--explorer {
+  min-width: 150px;
+}
+
 .menu__item-check {
   display: inline-flex;
   align-items: center;
@@ -353,6 +360,31 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-ink-strong);
+}
+
+.explorer__tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px 6px;
+}
+
+.explorer__filter {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.explorer__filter-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: $ink;
+}
+
+.explorer__filter-input {
+  flex: 1 1 auto;
 }
 
 .explorer__scroll {
@@ -590,8 +622,8 @@
 
 // snz-design doc-8 §6.3's single-line input: the control line, the raised
 // surface, and the focus added outside it.
-.find-bar__input {
-  flex: 0 1 260px;
+.find-bar__input,
+.explorer__filter-input {
   min-width: 0;
   padding: 4px 8px;
   font: inherit;
@@ -604,6 +636,10 @@
   &:focus-visible {
     @include focus-ring;
   }
+}
+
+.find-bar__input {
+  flex: 0 1 260px;
 }
 
 .find-bar__status {

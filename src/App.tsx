@@ -65,6 +65,7 @@ import {
   writeWindowPdf,
 } from './lib/tauri';
 import { applyColorChoice } from './lib/theme';
+import { DEFAULT_TREE_SORT, readTreeSort, type TreeSort } from './lib/tree-arrange';
 import type { FileEntry } from './lib/types';
 import {
   canGo,
@@ -106,6 +107,7 @@ export default function App() {
   const [explorerWidth, setExplorerWidth] = useState(DEFAULT_EXPLORER_WIDTH);
   const [explorerSide, setExplorerSide] = useState<'left' | 'right'>(DEFAULT_SIDE);
   const [explorerShown, setExplorerShown] = useState(DEFAULT_EXPLORER_SHOWN);
+  const [explorerSort, setExplorerSort] = useState<TreeSort>(DEFAULT_TREE_SORT);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const [emoji, setEmoji] = useState<CustomEmojiStatus>(NO_CUSTOM_EMOJI);
@@ -461,6 +463,9 @@ export default function App() {
         case 'explorerShown':
           applyExplorerShown(change.value ?? DEFAULT_EXPLORER_SHOWN);
           break;
+        case 'explorerSort':
+          setExplorerSort(readTreeSort(change.value));
+          break;
         case 'customEmojiDir':
           void applyEmojiDir(change.value);
           break;
@@ -538,6 +543,9 @@ export default function App() {
       }
       if (s.explorerShown === false && snapshotStillCurrent('explorerShown', readAt)) {
         setExplorerShown(false);
+      }
+      if (s.explorerSort && snapshotStillCurrent('explorerSort', readAt)) {
+        setExplorerSort(readTreeSort(s.explorerSort));
       }
       if (s.autoCheckUpdates === false && snapshotStillCurrent('autoCheckUpdates', readAt)) {
         setAutoCheckUpdates(false);
@@ -1112,6 +1120,11 @@ export default function App() {
     void saveSetting('explorerSide', side);
   }, []);
 
+  const changeSort = useCallback((sort: TreeSort) => {
+    setExplorerSort(sort);
+    void saveSetting('explorerSort', sort);
+  }, []);
+
   const explorer = (
     <Explorer
       id={EXPLORER_ID}
@@ -1121,6 +1134,8 @@ export default function App() {
       onOpenFolder={openFolder}
       recentFolders={recentFolders}
       onChooseRecent={chooseRecentFolder}
+      sort={explorerSort}
+      onSortChange={changeSort}
     />
   );
   const resizer = (

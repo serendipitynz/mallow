@@ -307,6 +307,18 @@ export function CheckIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** lucide: arrow-up-down (the explorer's sort) */
+export function ArrowUpDownIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m21 16-4 4-4-4" />
+      <path d="M17 20V4" />
+      <path d="m3 8 4-4 4 4" />
+      <path d="M7 4v16" />
+    </Icon>
+  );
+}
+
 // ---- Panes ------------------------------------------------------------------
 
 /** lucide: panel-left (the explorer's show / hide, explorer on the left) */

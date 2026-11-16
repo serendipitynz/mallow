@@ -2,6 +2,7 @@
  *  config dir). Theme is intentionally kept in localStorage (read before paint). */
 import { load, type Store } from '@tauri-apps/plugin-store';
 import { commitSetting, type SettingChange } from './settings-sync';
+import type { TreeSort } from './tree-arrange';
 
 export interface Settings {
   /** One entry per window open at quit, least-recently-focused first. **Rust owns
@@ -22,6 +23,9 @@ export interface Settings {
    *  than a width of 0, so hiding the explorer leaves `explorerWidth` as the
    *  reader set it. */
   explorerShown?: boolean;
+  /** The explorer's order. App-wide like its width and side; the filter is not
+   *  a preference and is not stored. */
+  explorerSort?: TreeSort;
   /** Folder holding the user's custom `:shortcode:` emoji (see lib/custom-emoji). */
   customEmojiDir?: string;
   /** The slide theme folder (decision-19 §3, lib/slide-theme-folder). */

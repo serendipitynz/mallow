@@ -47,14 +47,18 @@ interface TreeProps {
   tree: FileTreeState;
   rows: TreeRowHandlers;
   label: string;
+  /** What a folder with nothing to show says: under a filter that is "no match"
+   *  rather than "empty", which would be false of the folder (snz-design doc-9
+   *  §5.4). */
+  emptyWords: string;
 }
 
-export function FileTree({ entries, tree, rows, label }: TreeProps) {
+export function FileTree({ entries, tree, rows, label, emptyWords }: TreeProps) {
   return (
     // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the WAI-ARIA tree pattern puts `tree` on the list its items already form; a div would drop the list structure the rows are laid out in
     <ul className="tree" role="tree" aria-label={label}>
       {entries.map((entry) => (
-        <TreeItem key={entry.path} entry={entry} depth={0} tree={tree} rows={rows} />
+        <TreeItem key={entry.path} entry={entry} depth={0} tree={tree} rows={rows} emptyWords={emptyWords} />
       ))}
     </ul>
   );
@@ -65,9 +69,10 @@ interface ItemProps {
   depth: number;
   tree: FileTreeState;
   rows: TreeRowHandlers;
+  emptyWords: string;
 }
 
-function TreeItem({ entry, depth, tree, rows }: ItemProps) {
+function TreeItem({ entry, depth, tree, rows, emptyWords }: ItemProps) {
   const t = useT();
   const groupId = useId();
   const expanded = entry.isDir && tree.expanded.has(entry.path);
@@ -123,11 +128,18 @@ function TreeItem({ entry, depth, tree, rows }: ItemProps) {
           )}
           {!error && children && children.length === 0 && (
             <li role="none" className="tree__status" style={statusStyle}>
-              {t('empty')}
+              {emptyWords}
             </li>
           )}
           {children?.map((child) => (
-            <TreeItem key={child.path} entry={child} depth={depth + 1} tree={tree} rows={rows} />
+            <TreeItem
+              key={child.path}
+              entry={child}
+              depth={depth + 1}
+              tree={tree}
+              rows={rows}
+              emptyWords={emptyWords}
+            />
           ))}
         </ul>
       )}
