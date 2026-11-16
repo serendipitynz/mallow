@@ -1,10 +1,10 @@
 ---
 id: TASK-61
 title: Sort and filter the explorer tree
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 23:05'
-updated_date: '2026-11-16 10:35'
+updated_date: '2026-11-16 10:47'
 labels:
   - feature
 dependencies: []
@@ -34,9 +34,9 @@ To settle at the start:
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 What filtering means, where the sort and filter state lives and whether it propagates are settled and written in the task
-- [ ] #2 The tree can be sorted by name, kind, creation date and modification date, with entries lacking a creation time placed by a stated rule
-- [ ] #3 The tree can be filtered as settled, and the live watch keeps the order and the filter when entries change
-- [ ] #4 The control follows snz-design and is fully usable from the keyboard
+- [x] #2 The tree can be sorted by name, kind, creation date and modification date, with entries lacking a creation time placed by a stated rule
+- [x] #3 The tree can be filtered as settled, and the live watch keeps the order and the filter when entries change
+- [x] #4 The control follows snz-design and is fully usable from the keyboard
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -95,4 +95,11 @@ To settle at the start:
 - 虫眼鏡ではなくファンネルにしたのは、Cmd/Ctrl+F の文書内の検索がすでに「検索」の語を持ち、虫眼鏡がそれに見えるため。
 - 見出しのボタンは 24px にし、見出しの余白に食い込ませて見出しの高さを保った。mallow はタッチを対象にしないので、押せる範囲の規則 (doc-8 §5.7) は適用外。
 - 未計測: アクセント色の図形と選択の面の比、実窓での見え方。
+
+オーナーの実窓での確認 (2026-11-16、PR #129 のマージ前):
+- エクスプローラの最小幅 180px で、見出しのファンネルと並べ替えのボタン、絞り込みの入力欄が収まる。
+- 値のメニューのキー操作 (開いたときの焦点、矢印、Enter、Escape、Tab) と、ファンネルで出し入れしたときの焦点の移動に問題が無い (AC #4)。
+- 4 つの並び順への切り替えと、2 つの窓の間での並べ替えの反映 (AC #2)。
+- 絞り込んだままファイルを作る・消す・リネームしても、並び順と絞り込みが保たれる (AC #3)。
+- PR #129 でマージ (f60188d)。
 <!-- SECTION:NOTES:END -->
