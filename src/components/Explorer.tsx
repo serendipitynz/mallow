@@ -19,7 +19,7 @@ import { onMacPlatform } from '../lib/chord';
 import { isContextMenuKey } from '../lib/context-menu';
 import { useT } from '../lib/i18n';
 import { basename } from '../lib/path';
-import { arrangeTree, filterApplies, TREE_SORTS, type TreeSort } from '../lib/tree-arrange';
+import { arrangeTree, filterApplies, keptWhenClosed, TREE_SORTS, type TreeSort } from '../lib/tree-arrange';
 import { isShownUnder, tabStopPath, treeKeyAction, visibleRows } from '../lib/tree-nav';
 import type { FileEntry } from '../lib/types';
 import { Busy } from './Busy';
@@ -41,10 +41,9 @@ interface ExplorerProps {
   onSortChange: (sort: TreeSort) => void;
 }
 
-/** The filter typed in this window, tied to the folder it was typed for: opening
- *  another folder drops it without an effect resetting it a render late. `text`
- *  is what the input shows and `query` what filters, which differ while an IME
- *  is converting (snz-design doc-8 §6.3). */
+/** The filter typed in this window, for the folder it was typed for. `text` is
+ *  what the input shows and `query` what filters, which differ while an IME is
+ *  converting (snz-design doc-8 §6.3). */
 interface TreeFilter {
   dir: string | null;
   text: string;
@@ -69,10 +68,17 @@ export function Explorer({
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const editors = useEditors();
   const contextMenu = useContextMenu<FileEntry>();
-  const [filter, setFilter] = useState<TreeFilter>({ dir: null, text: '', query: '' });
+  const [filter, setFilter] = useState<TreeFilter>({ dir: rootDir, text: '', query: '' });
+  // Cleared while rendering rather than in an effect, so the new folder never
+  // draws once under the old filter. Cleared rather than masked: masked, the old
+  // filter came back when its folder was opened again.
+  if (filter.dir !== rootDir) {
+    setFilter({ dir: rootDir, text: '', query: '' });
+  }
   const filterText = filter.dir === rootDir ? filter.text : '';
   const query = filter.dir === rootDir ? filter.query : '';
   const filtering = filterApplies(query);
+  const filterInputRef = useRef<HTMLInputElement>(null);
 
   const arranged = useMemo(
     () => arrangeTree(rootEntries, childrenByPath, expanded, sort, query),
@@ -88,16 +94,28 @@ export function Explorer({
   }, []);
 
   // Closing a folder takes its rows off the screen, and a focused one would drop
-  // the focus to the top of the document (snz-design doc-9 §6.1.1).
+  // the focus to the top of the document (snz-design doc-9 §6.1.1). Under a
+  // filter the folder itself can go too, when it was kept only for being open;
+  // the focus then goes to its parent, which is open and so stays, or to the
+  // filter input from the top level.
   const toggleRow = useCallback(
     (path: string) => {
       const focused = document.activeElement instanceof HTMLElement ? document.activeElement.dataset.path : undefined;
-      if (expanded.has(path) && focused && isShownUnder(rows, focused, path)) {
-        focusRow(path);
+      if (expanded.has(path) && focused && (focused === path || isShownUnder(rows, focused, path))) {
+        if (keptWhenClosed(rootEntries, childrenByPath, expanded, query, path)) {
+          focusRow(path);
+        } else {
+          const parent = rows.find((row) => row.entry.path === path)?.parent ?? null;
+          if (parent) {
+            focusRow(parent);
+          } else {
+            filterInputRef.current?.focus();
+          }
+        }
       }
       toggle(path);
     },
-    [expanded, rows, focusRow, toggle],
+    [expanded, rows, rootEntries, childrenByPath, query, focusRow, toggle],
   );
 
   const activate = useCallback(
@@ -200,7 +218,6 @@ export function Explorer({
     onRowKeyDown,
   };
 
-  const filterInputRef = useRef<HTMLInputElement>(null);
   // Both clear buttons leave the screen when pressed, so the focus goes to the
   // input rather than to the top of the document (snz-design doc-9 §5.1).
   const clearFilter = useCallback(() => {
@@ -219,11 +236,7 @@ export function Explorer({
             inputRef={filterInputRef}
             text={filterText}
             onChange={(text, composing) =>
-              setFilter((prev) => ({
-                dir: rootDir,
-                text,
-                query: composing ? (prev.dir === rootDir ? prev.query : '') : text,
-              }))
+              setFilter((prev) => ({ dir: rootDir, text, query: composing ? prev.query : text }))
             }
             onClear={clearFilter}
           />

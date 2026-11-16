@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arrangeTree, compareEntries, filterApplies, readTreeSort } from './tree-arrange';
+import { arrangeTree, compareEntries, filterApplies, keptWhenClosed, readTreeSort } from './tree-arrange';
 import type { FileEntry, FileKind } from './types';
 
 const dir = (path: string): FileEntry => ({
@@ -148,5 +148,33 @@ describe('arrangeTree', () => {
     ]);
     const tree = arrangeTree([dir('/r/d')], read, none, 'modified', 'note');
     expect(names(tree.children.get('/r/d') ?? [])).toEqual(['b-note.md', 'a-note.md']);
+  });
+});
+
+describe('keptWhenClosed', () => {
+  const read = new Map<string, FileEntry[]>([
+    ['/r/docs', [file('/r/docs/guide.md')]],
+    ['/r/notes', [file('/r/notes/todo.md')]],
+  ]);
+  const roots = [dir('/r/docs'), dir('/r/notes')];
+  const open = new Set(['/r/docs', '/r/notes']);
+
+  it('is false for a folder the filter kept only for being open', () => {
+    expect(keptWhenClosed(roots, read, open, 'todo', '/r/docs')).toBe(false);
+  });
+
+  it('is true for a folder holding a match, and for any folder with no filter', () => {
+    expect(keptWhenClosed(roots, read, open, 'todo', '/r/notes')).toBe(true);
+    expect(keptWhenClosed(roots, read, open, '', '/r/docs')).toBe(true);
+  });
+
+  it('finds a nested folder by its place in its parent', () => {
+    const nested = new Map<string, FileEntry[]>([
+      ['/r/a', [dir('/r/a/b'), file('/r/a/hit.md')]],
+      ['/r/a/b', [file('/r/a/b/x.md')]],
+    ]);
+    const both = new Set(['/r/a', '/r/a/b']);
+    expect(keptWhenClosed([dir('/r/a')], nested, both, 'hit', '/r/a/b')).toBe(false);
+    expect(keptWhenClosed([dir('/r/a')], nested, both, 'x.md', '/r/a/b')).toBe(true);
   });
 });

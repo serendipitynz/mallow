@@ -157,3 +157,19 @@ export function arrangeTree(
 
   return { roots: arrange(roots, needle !== null), children };
 }
+
+/** Whether `path` is still shown once it is closed — false for a folder a
+ *  filter kept only because it was open. */
+export function keptWhenClosed(
+  roots: readonly FileEntry[],
+  childrenByPath: ReadonlyMap<string, readonly FileEntry[]>,
+  open: ReadonlySet<string>,
+  query: string,
+  path: string,
+): boolean {
+  const closed = new Set(open);
+  closed.delete(path);
+  const tree = arrangeTree(roots, childrenByPath, closed, DEFAULT_TREE_SORT, query);
+  const has = (entries: readonly FileEntry[]) => entries.some((entry) => entry.path === path);
+  return has(tree.roots) || [...tree.children.values()].some(has);
+}
