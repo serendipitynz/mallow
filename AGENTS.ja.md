@@ -132,7 +132,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `CmdOrCtrl+B` の chord。ゲートなし）、`visit-history`（ウィンドウの訪問履歴と
   ファイル表示状態、その上限、削除されたファイルの読み飛ばし。純粋関数）、`history-nav`
   （プラットフォームごとの戻る / 進むの chord とマウスのサイドボタン。常に消費する）、`tree-nav`（ツリーに出ている行・行の上でキーが
-  何をするか・Tab の止まりになる行）、`explorer-width`（エクスプローラの幅の上下限・
+  何をするか・Tab の止まりになる行）、`tree-arrange`（エクスプローラの並び順と名前の
+  絞り込み。どの並び順でもフォルダが先頭、日時の無い項目は日時を持つ項目の後ろ、
+  絞り込み中も中身を読んでいないフォルダは残す。純粋関数。TASK-61）、`explorer-width`（エクスプローラの幅の上下限・
   つまみのキーの刻み・置く押下が決める幅）、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
   積算）、`chord`（アクセラレータの一致判定、アプリ全体の chord handler・その 3 値、
@@ -168,7 +170,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   スコープを広げ、その中の画像/PDF/動画を `convertFileSrc` で表示できるようにする。
   `list_slide_theme_files` はスライドテーマのフォルダ直下の `.css` ファイルを列挙する。
   `.css` をあえて `file_kind` にしていないのは、すべてのスタイルシートが表示ビューの
-  ないままツリーに並ぶため。
+  ないままツリーに並ぶため。`read_dir_tree` は各項目の更新日時と作成日時を返し
+  （ファイルシステムが持たなければ `null`。一部の Linux のファイルシステムでは
+  `Metadata::created` がエラーを返す）、**並びはファイルシステムが返した順のまま**に
+  する。エクスプローラの並び順は `lib/tree-arrange` が決め、ここにも順序を持つと
+  2 か所を揃え続けることになる。
 - `watch.rs` — `notify` の再帰ウォッチャで、ウィンドウごとに 1 つ持つ。
   watcher registry（`WatcherRegistry`。ウィンドウラベルをキーにする）がハンドルを保持し、
   `start_watch` は呼び出したウィンドウの分だけを差し替え、`stop_watch` はその分だけを外す。
@@ -1408,7 +1414,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   正しく起動するのも同じ理由である。永続化する setter を通すと、二度書いた**うえに**
   エコーを送り返す。
   **`saveSetting` は永続化と伝播を 1 回で行う**ので、store 側の設定
-  （エクスプローラの幅と位置、カスタム絵文字フォルダ、スライドテーマのフォルダと
+  （エクスプローラの幅・位置・並び順、カスタム絵文字フォルダ、スライドテーマのフォルダと
   既定のテーマ、起動時の更新確認）は
   呼び出し側に何も要らない。配色・言語・文章の幅・アウトラインの開閉は代わりに
   `components/color`・`SettingsModal`・2 つのビューから送る — `lib/theme`・`lib/i18n`・
@@ -1747,6 +1753,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `context-menu`・
   `segmented-nav`・
   `tree-nav`・
+  `tree-arrange`＝各並び順、作成日時の無い項目の置き場所、読んだ・読んでいない・開いているフォルダのうち絞り込みが残すもの・
   `explorer-width`・
   `visit-history`・
   `history-nav`・
