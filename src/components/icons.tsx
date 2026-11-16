@@ -307,6 +307,31 @@ export function CheckIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** lucide: arrow-up-down (the explorer's sort) */
+export function ArrowUpDownIcon({ size = 16 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m21 16-4 4-4-4" />
+      <path d="M17 20V4" />
+      <path d="m3 8 4-4 4 4" />
+      <path d="M7 4v16" />
+    </Icon>
+  );
+}
+
+/** lucide: funnel (the explorer's filter). Filled while a filter applies, so
+ *  that state is told by shape as well as by colour. */
+export function FunnelIcon({ size = 16, filled = false }: IconProps & { filled?: boolean }) {
+  return (
+    <Icon size={size}>
+      <path
+        d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z"
+        fill={filled ? 'currentColor' : 'none'}
+      />
+    </Icon>
+  );
+}
+
 // ---- Panes ------------------------------------------------------------------
 
 /** lucide: panel-left (the explorer's show / hide, explorer on the left) */

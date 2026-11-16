@@ -2,8 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { isShownUnder, readsOnOpen, tabStopPath, treeKeyAction, visibleRows } from './tree-nav';
 import type { FileEntry } from './types';
 
-const dir = (path: string): FileEntry => ({ name: path, path, isDir: true, kind: 'directory' });
-const file = (path: string): FileEntry => ({ name: path, path, isDir: false, kind: 'markdown' });
+const dir = (path: string): FileEntry => ({
+  name: path,
+  path,
+  isDir: true,
+  kind: 'directory',
+  modified: null,
+  created: null,
+});
+const file = (path: string): FileEntry => ({
+  name: path,
+  path,
+  isDir: false,
+  kind: 'markdown',
+  modified: null,
+  created: null,
+});
 
 // a/            (open)
 //   a/x.md

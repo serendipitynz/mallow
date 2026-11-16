@@ -3,8 +3,8 @@
 //! Reading is done with `std::fs` directly (not the fs plugin) so the user can
 //! open any folder they pick via the native dialog without pre-declaring a scope.
 
-use std::cmp::Ordering;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Reject reading files larger than this to avoid loading huge blobs into the
 /// WebView. 10 MiB comfortably covers any hand-authored markdown / config file.
@@ -52,6 +52,11 @@ pub struct FileEntry {
     /// One of: "directory" | "markdown" | "mermaid" | "json" | "yaml" | "toml"
     /// | "image" | "pdf" | "video".
     kind: String,
+    /// Milliseconds since the Unix epoch, or `None` where the platform or the
+    /// filesystem cannot say — `Metadata::created` errors on some Linux
+    /// filesystems, so the frontend's sort has to place an absent time anyway.
+    modified: Option<u64>,
+    created: Option<u64>,
 }
 
 /// Map a file name to a supported viewer category by extension, or `None` when
@@ -129,6 +134,9 @@ pub fn list_slide_theme_files(path: String) -> Result<Vec<String>, String> {
 /// List the immediate children of `path`. Directories are always included;
 /// files are included only when their extension maps to a supported `kind`.
 /// Children are loaded lazily (one level at a time) as the user expands nodes.
+///
+/// The order is the filesystem's: the explorer sorts by the reader's chosen key
+/// (`lib/tree-arrange`), and a second order here would be one to keep in step.
 #[tauri::command]
 pub fn read_dir_tree(path: String) -> Result<Vec<FileEntry>, String> {
     let dir = std::fs::read_dir(&path).map_err(|e| format!("{path}: {e}"))?;
@@ -138,23 +146,30 @@ pub fn read_dir_tree(path: String) -> Result<Vec<FileEntry>, String> {
         let entry = entry.map_err(|e| e.to_string())?;
         let file_type = entry.file_type().map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
-        let full = entry.path().to_string_lossy().to_string();
-
-        if file_type.is_dir() {
-            entries.push(FileEntry { name, path: full, is_dir: true, kind: "directory".into() });
+        let (is_dir, kind) = if file_type.is_dir() {
+            (true, "directory".to_string())
         } else if let Some(kind) = file_kind(&name) {
-            entries.push(FileEntry { name, path: full, is_dir: false, kind });
-        }
+            (false, kind)
+        } else {
+            continue;
+        };
+        // Followed through a symlink, so a linked document sorts by the file the
+        // reader edits; the link's own times are the fallback for a dangling one.
+        let meta = std::fs::metadata(entry.path()).or_else(|_| entry.metadata()).ok();
+        let (modified, created) = match &meta {
+            Some(m) => (epoch_millis(m.modified()), epoch_millis(m.created())),
+            None => (None, None),
+        };
+        let full = entry.path().to_string_lossy().to_string();
+        entries.push(FileEntry { name, path: full, is_dir, kind, modified, created });
     }
 
-    // Directories first, then files; each group sorted case-insensitively.
-    entries.sort_by(|a, b| match (a.is_dir, b.is_dir) {
-        (true, false) => Ordering::Less,
-        (false, true) => Ordering::Greater,
-        _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-    });
-
     Ok(entries)
+}
+
+fn epoch_millis(time: std::io::Result<SystemTime>) -> Option<u64> {
+    let since = time.ok()?.duration_since(UNIX_EPOCH).ok()?;
+    u64::try_from(since.as_millis()).ok()
 }
 
 /// Read a text file as UTF-8, guarding against oversized files.
@@ -399,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn read_dir_tree_filters_unsupported_files_and_sorts_dirs_first() {
+    fn read_dir_tree_filters_unsupported_files() {
         let tmp = TempDir::new();
         fs::create_dir(tmp.path().join("zsub")).unwrap();
         fs::create_dir(tmp.path().join("Asub")).unwrap();
@@ -409,14 +424,35 @@ mod tests {
         fs::write(tmp.path().join("noext"), "x").unwrap(); // no extension
 
         let entries = read_dir_tree(tmp.path().to_string_lossy().to_string()).unwrap();
-        let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
-        // Directories first (case-insensitive), then the supported files.
-        assert_eq!(names, vec!["Asub", "zsub", "a.json", "b.md"]);
+        let mut names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+        names.sort_unstable();
+        assert_eq!(names, vec!["Asub", "a.json", "b.md", "zsub"]);
 
         let asub = entries.iter().find(|e| e.name == "Asub").unwrap();
         assert!(asub.is_dir);
         assert_eq!(asub.kind, "directory");
         assert_eq!(entries.iter().find(|e| e.name == "a.json").unwrap().kind, "json");
+    }
+
+    #[test]
+    fn read_dir_tree_reports_modification_times() {
+        let tmp = TempDir::new();
+        fs::write(tmp.path().join("a.md"), "x").unwrap();
+        let before = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+
+        let entries = read_dir_tree(tmp.path().to_string_lossy().to_string()).unwrap();
+        let modified = entries[0]
+            .modified
+            .expect("every supported platform reports a modification time");
+        // Written moments ago; the slack covers a filesystem's coarse timestamps.
+        assert!(modified.abs_diff(before) < 60_000);
+    }
+
+    #[test]
+    fn epoch_millis_is_none_for_an_unavailable_time() {
+        let unsupported = std::io::Error::new(std::io::ErrorKind::Unsupported, "no birth time");
+        assert_eq!(epoch_millis(Err(unsupported)), None);
+        assert_eq!(epoch_millis(Ok(UNIX_EPOCH + std::time::Duration::from_millis(1_500))), Some(1_500));
     }
 
     #[test]

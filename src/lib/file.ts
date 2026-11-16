@@ -101,5 +101,5 @@ export function fileEntryFromPath(path: string): FileEntry | null {
   if (kind === null) {
     return null;
   }
-  return { name, path, isDir: false, kind };
+  return { name, path, isDir: false, kind, modified: null, created: null };
 }

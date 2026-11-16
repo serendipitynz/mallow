@@ -146,7 +146,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   file view state, their bounds, and the skip over a deleted file — pure),
   `history-nav` (the back / forward chords per platform and the mouse's side
   buttons, always consumed), `tree-nav` (the tree's shown rows, what a key does on one, and
-  which row holds the tab stop), `explorer-width` (the explorer's width limits,
+  which row holds the tab stop), `tree-arrange` (the explorer's order and its
+  name filter — directories first in every order, an absent time after the dated
+  entries, and a folder never read kept under a filter — pure; TASK-61),
+  `explorer-width` (the explorer's width limits,
   the handle's key steps and where a placing press puts it), `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
   download accumulator), `chord` (accelerator matching plus the app-wide chord
@@ -180,7 +183,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   folder so its image/pdf/video files can be rendered via `convertFileSrc`.
   `list_slide_theme_files` lists the `.css` files directly inside the slide theme
   folder; `.css` is deliberately not a `file_kind`, which would put every
-  stylesheet in the tree with no view for it.
+  stylesheet in the tree with no view for it. `read_dir_tree` returns each
+  entry's modification and creation times (`null` where the filesystem keeps
+  none — `Metadata::created` errors on some Linux filesystems) **in the
+  filesystem's order**: the explorer's chosen order is `lib/tree-arrange`'s, and
+  a second order here would be one to keep in step.
 - `watch.rs` — `notify` recursive watcher, one per window. The watcher registry
   (`WatcherRegistry`, keyed by window label) holds the handles; `start_watch`
   replaces and `stop_watch` removes only the calling window's entry, and the
@@ -1604,7 +1611,7 @@ hold rather than as an exhaustive style guide.
   comes up correct with no propagation at all. Going through the persisting
   setter instead would write a second time **and** send an echo back out.
   **`saveSetting` is one call that persists and propagates**, so the store-backed preferences
-  (explorer width and side, the custom emoji folder, the slide theme folder and
+  (explorer width, side and sort, the custom emoji folder, the slide theme folder and
   default theme, the launch update check) need nothing at their call sites; the colour, language, prose measure and the
   outline toggle are sent from `components/color`, `SettingsModal` and the two views
   instead, which is what keeps `lib/theme`, `lib/i18n`, `lib/prose-measure` and
@@ -1981,6 +1988,8 @@ hold rather than as an exhaustive style guide.
   (each one's cache and notification, and the stored measure read back),
   `color-choice` (each pre-split value read
   onto the two axes, and the side a one-sided family draws), `menu-nav`, `context-menu`, `segmented-nav`, `tree-nav`,
+  `tree-arrange` (each order, the absent creation time's place, and what the
+  filter keeps of read, unread and open folders),
   `explorer-width`, `visit-history`, `history-nav`, `slide-themes` (the
   default-theme fallback), `slide-theme-css` (`@theme` and `@size`, the reserved
   and conflicting names, the walk with `url()` against the theme's directory),
