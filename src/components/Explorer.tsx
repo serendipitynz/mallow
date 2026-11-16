@@ -103,8 +103,8 @@ export function Explorer({
   // Closing a folder takes its rows off the screen, and a focused one would drop
   // the focus to the top of the document (snz-design doc-9 §6.1.1). Under a
   // filter the folder itself can go too, when it was kept only for being open;
-  // the focus then goes to its parent, which is open and so stays, or to the
-  // filter input from the top level.
+  // the focus then goes to its parent, which is open and so stays, or from the
+  // top level to the filter input — or its toggle, while the input is hidden.
   const toggleRow = useCallback(
     (path: string) => {
       const focused = document.activeElement instanceof HTMLElement ? document.activeElement.dataset.path : undefined;
@@ -116,7 +116,7 @@ export function Explorer({
           if (parent) {
             focusRow(parent);
           } else {
-            filterInputRef.current?.focus();
+            (filterInputRef.current ?? filterToggleRef.current)?.focus();
           }
         }
       }
