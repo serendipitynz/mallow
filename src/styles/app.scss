@@ -355,11 +355,47 @@
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px 6px;
+}
+
+// On the title alone, so the sort menu opened from the header does not inherit
+// the small capitals.
+.explorer__title {
+  min-width: 0;
+  overflow: hidden;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-ink-strong);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// Smaller than the 30px icon button and pulled into the header's padding, so the
+// header keeps the height of its title line. mallow has no touch target to keep
+// (snz-design doc-8 §5.7).
+.explorer__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  margin-block: -4px;
+
+  .icon-btn {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+// Shown is the pressed face and outline, as the toolbar's explorer toggle
+// (snz-design doc-9 §6.3.1).
+.explorer__filter-toggle[aria-expanded='true'] {
+  color: $ink;
+  background: var(--color-selection-bg);
+  border-color: var(--color-selected);
+}
+
+.explorer__filter-toggle.is-filtering {
+  color: var(--color-link);
 }
 
 .explorer__tools {

@@ -2,6 +2,7 @@ import {
   type CompositionEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type Ref,
   type RefObject,
   useCallback,
   useEffect,
@@ -25,7 +26,7 @@ import type { FileEntry } from '../lib/types';
 import { Busy } from './Busy';
 import { FileActionItems } from './FileActions';
 import { FileTree, type TreeRowHandlers } from './FileTree';
-import { ArrowUpDownIcon, CheckIcon, CloseIcon } from './icons';
+import { ArrowUpDownIcon, CheckIcon, CloseIcon, FunnelIcon } from './icons';
 import { Notice } from './Notice';
 import { RecentFolders } from './RecentFolders';
 
@@ -79,6 +80,12 @@ export function Explorer({
   const query = filter.dir === rootDir ? filter.query : '';
   const filtering = filterApplies(query);
   const filterInputRef = useRef<HTMLInputElement>(null);
+  const filterToggleRef = useRef<HTMLButtonElement>(null);
+  const focusFilterOnShow = useRef(false);
+  const filterRowId = useId();
+  // Per window and not stored: the row is room the reader lends the filter, and
+  // hiding it keeps the filter, which the toggle then shows it holds.
+  const [filterShown, setFilterShown] = useState(false);
 
   const arranged = useMemo(
     () => arrangeTree(rootEntries, childrenByPath, expanded, sort, query),
@@ -219,19 +226,52 @@ export function Explorer({
   };
 
   // Both clear buttons leave the screen when pressed, so the focus goes to the
-  // input rather than to the top of the document (snz-design doc-9 §5.1).
+  // input rather than to the top of the document (snz-design doc-9 §5.1) — or
+  // to the toggle while the input is hidden, since a filter outlives hiding it.
   const clearFilter = useCallback(() => {
     setFilter({ dir: rootDir, text: '', query: '' });
-    filterInputRef.current?.focus();
+    (filterInputRef.current ?? filterToggleRef.current)?.focus();
   }, [rootDir]);
+
+  const toggleFilterField = useCallback(() => {
+    if (filterShown) {
+      // Pressed with the pointer, WebKit leaves the focus in the input that is
+      // about to go (snz-design doc-9 §6.3.1).
+      filterToggleRef.current?.focus();
+    } else {
+      focusFilterOnShow.current = true;
+    }
+    setFilterShown(!filterShown);
+  }, [filterShown]);
+
+  useEffect(() => {
+    if (filterShown && focusFilterOnShow.current) {
+      focusFilterOnShow.current = false;
+      filterInputRef.current?.focus();
+    }
+  }, [filterShown]);
 
   return (
     <aside className="explorer" id={id}>
       <div className="explorer__header">
-        <span title={rootDir ?? undefined}>{rootName ?? t('explorer')}</span>
+        <span className="explorer__title" title={rootDir ?? undefined}>
+          {rootName ?? t('explorer')}
+        </span>
+        {rootDir && (
+          <div className="explorer__actions">
+            <FilterToggle
+              ref={filterToggleRef}
+              shown={filterShown}
+              query={filtering ? query.trim() : null}
+              controls={filterRowId}
+              onToggle={toggleFilterField}
+            />
+            <SortMenu sort={sort} onChange={onSortChange} />
+          </div>
+        )}
       </div>
-      {rootDir && (
-        <div className="explorer__tools">
+      {rootDir && filterShown && (
+        <div className="explorer__tools" id={filterRowId}>
           <FilterField
             inputRef={filterInputRef}
             text={filterText}
@@ -240,7 +280,6 @@ export function Explorer({
             }
             onClear={clearFilter}
           />
-          <SortMenu sort={sort} onChange={onSortChange} />
         </div>
       )}
       <div className="explorer__scroll" ref={scrollRef}>
@@ -360,6 +399,41 @@ function FilterField({
         </button>
       )}
     </search>
+  );
+}
+
+/** Shows and hides the filter row (snz-design doc-9 §6.3.1): shown is the pressed
+ *  face and outline with `aria-expanded`. A filter in force is told apart from
+ *  none by a filled funnel in the accent colour, and in words, so it is not told
+ *  by colour alone (1.4.1) — the row may be hidden while it applies. */
+function FilterToggle({
+  ref,
+  shown,
+  query,
+  controls,
+  onToggle,
+}: {
+  ref: Ref<HTMLButtonElement>;
+  shown: boolean;
+  query: string | null;
+  controls: string;
+  onToggle: () => void;
+}) {
+  const t = useT();
+  const label = query === null ? t('treeFilter') : t('treeFilterActive', { query });
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className={`icon-btn explorer__filter-toggle${query === null ? '' : ' is-filtering'}`}
+      title={label}
+      aria-label={label}
+      aria-expanded={shown}
+      aria-controls={shown ? controls : undefined}
+      onClick={onToggle}
+    >
+      <FunnelIcon filled={query !== null} />
+    </button>
   );
 }
 
