@@ -19,6 +19,7 @@ pnpm format         # 整形のみ
 pnpm lint:ci        # CI が走らせるもの (biome ci)。書き換えず、error で落ちる
 pnpm tauri build    # リリースビルド + バンドル
 ./scripts/macos-sign-build.sh   # 署名 + 公証済みの macOS ビルド（.env.signing が必要）
+pwsh scripts/msix-build.ps1 -Thumbprint <cert>   # Microsoft Store 向け MSIX の試作（Windows で実行、TASK-58）
 pnpm tauri icon src-tauri/icons/app-icon.png   # 全アプリアイコンの再生成
 pnpm notices        # THIRD-PARTY-NOTICES.md を再生成（同梱する依存ライセンス）
 node scripts/kinari.mjs verify   # mallow が持つ kinari の写しをリリースと照合（../marp-theme-kinari が必要）
@@ -153,7 +154,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   複数ドロップされたときにどれを開くか）、
   `path-command`（macOS の Install / Uninstall 'mallow' Command 項目が読み手に何を伝え、
   いつ先に尋ねるか）、
-  `build-flags`（Vite が置き換える無人書き出しのスイッチ）、
+  `build-flags`（Vite が置き換える 2 つのスイッチ。無人書き出しと、updater を持たない
+  Microsoft Store 版 `MALLOW_STORE`。Rust 側は `build.rs` が同じ変数を読む）、
   `render-signal`（描画済みの本文が変化し終わった時点）、
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
 - `unattended/` — 無人書き出しのドライバ（TASK-30）。`App` の `if (UNATTENDED)` からしか
@@ -313,7 +315,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `/usr/local/bin/mallow` に書き込み・削除する。そのフォルダに書けなければ管理者認証を通す。
   スクリプトの印の行を持たないファイルには、読み手が置き換えに同意しない限り触れない。
 - `lib.rs` — プラグイン登録（**single-instance を最初に**、続けて opener, dialog, store,
-  **session**, window-state, updater, process。decision-11 によりどれも `cfg(desktop)` で括らない。
+  **session**, window-state, updater（Store 版では `cfg(store)` で登録しない）, process。decision-11 によりどれも `cfg(desktop)` で括らない。
   2 つの位置はどちらも load-bearing —下の gotcha を読む）、`invoke_handler`、
   ウィンドウごとの `Destroyed` / `Focused(true)` フック、restored session を
   flush する `RunEvent::Exit` コールバック、id を `menu.rs` に渡すだけの 1 行に
