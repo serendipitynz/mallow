@@ -39,7 +39,7 @@ const ROOT = '/emoji';
 
 /** An image file entry as `read_dir_tree` would report it. */
 function image(dir: string, name: string): FileEntry {
-  return { name, path: `${dir}/${name}`, isDir: false, kind: 'image' };
+  return { name, path: `${dir}/${name}`, isDir: false, kind: 'image', modified: null, created: null };
 }
 
 beforeEach(() => {
@@ -57,7 +57,9 @@ describe('loadCustomEmoji', () => {
   });
 
   it('names each image after its file, with no manifest at all', async () => {
-    dirs.set(ROOT, [{ name: 'images', path: `${ROOT}/images`, isDir: true, kind: 'directory' }]);
+    dirs.set(ROOT, [
+      { name: 'images', path: `${ROOT}/images`, isDir: true, kind: 'directory', modified: null, created: null },
+    ]);
     dirs.set(`${ROOT}/images`, [image(`${ROOT}/images`, 'tmnf.png'), image(`${ROOT}/images`, 'male-support.png')]);
 
     const { set, count } = await loadCustomEmoji(ROOT);
@@ -86,7 +88,9 @@ describe('loadCustomEmoji', () => {
   it('falls back to a same-named file when the manifest names a missing one', async () => {
     // The exported manifest says .gif but what was saved is .png — the common
     // case with a Slack export.
-    dirs.set(ROOT, [{ name: 'images', path: `${ROOT}/images`, isDir: true, kind: 'directory' }]);
+    dirs.set(ROOT, [
+      { name: 'images', path: `${ROOT}/images`, isDir: true, kind: 'directory', modified: null, created: null },
+    ]);
     dirs.set(`${ROOT}/images`, [image(`${ROOT}/images`, 'progress.png')]);
     files.set(`${ROOT}/emoji.json`, JSON.stringify({ images: [{ name: 'progress', file: 'progress.gif' }] }));
 
@@ -105,7 +109,9 @@ describe('loadCustomEmoji', () => {
   });
 
   it('honours a custom image_dir', async () => {
-    dirs.set(ROOT, [{ name: 'pics', path: `${ROOT}/pics`, isDir: true, kind: 'directory' }]);
+    dirs.set(ROOT, [
+      { name: 'pics', path: `${ROOT}/pics`, isDir: true, kind: 'directory', modified: null, created: null },
+    ]);
     dirs.set(`${ROOT}/pics`, [image(`${ROOT}/pics`, 'falcon.png')]);
     files.set(`${ROOT}/emoji.json`, JSON.stringify({ image_dir: 'pics' }));
 

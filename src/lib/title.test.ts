@@ -3,7 +3,7 @@ import { documentTitle, windowTitle } from './title';
 import type { FileEntry } from './types';
 
 function file(name: string, kind: FileEntry['kind']): FileEntry {
-  return { name, path: `/x/${name}`, isDir: false, kind };
+  return { name, path: `/x/${name}`, isDir: false, kind, modified: null, created: null };
 }
 
 describe('documentTitle', () => {

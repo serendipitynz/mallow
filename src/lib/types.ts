@@ -23,6 +23,10 @@ export interface FileEntry {
   path: string;
   isDir: boolean;
   kind: FileKind;
+  /** Milliseconds since the Unix epoch, or `null` where the platform or the
+   *  filesystem cannot say (`created` on some Linux filesystems). */
+  modified: number | null;
+  created: number | null;
 }
 
 /** An external editor detected as installed (from `detect_editors`). */
