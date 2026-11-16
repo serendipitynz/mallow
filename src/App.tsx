@@ -13,7 +13,7 @@ import { useExitFade } from './hooks/useExitFade';
 import { useFileTree } from './hooks/useFileTree';
 import { useUpdater } from './hooks/useUpdater';
 import { useWindowEvent } from './hooks/useWindowEvent';
-import { UNATTENDED } from './lib/build-flags';
+import { STORE, UNATTENDED } from './lib/build-flags';
 import { matchesCmdOrCtrl, onMacPlatform } from './lib/chord';
 import { createCloseWindowChordHandler } from './lib/close-window';
 import { type CustomEmojiStatus, loadCustomEmoji, NO_CUSTOM_EMOJI } from './lib/custom-emoji';
@@ -676,7 +676,7 @@ export default function App() {
   const { checkForUpdate, resetCheck } = updater;
   const launchChecked = useRef(false);
   useEffect(() => {
-    if (!restoreSettled || !autoCheckUpdates || launchChecked.current) {
+    if (STORE || !restoreSettled || !autoCheckUpdates || launchChecked.current) {
       return;
     }
     const timer = window.setTimeout(() => {
@@ -1242,12 +1242,14 @@ export default function App() {
       />
       {/* After the settings modal in document order, so it paints over it when a
           manual check turns one up while the modal is still open. */}
-      <UpdateDialog
-        flow={updater.flow}
-        runningVersion={updater.runningVersion}
-        onConfirm={updater.confirmInstall}
-        onDismiss={updater.dismiss}
-      />
+      {STORE ? null : (
+        <UpdateDialog
+          flow={updater.flow}
+          runningVersion={updater.runningVersion}
+          onConfirm={updater.confirmInstall}
+          onDismiss={updater.dismiss}
+        />
+      )}
     </div>
   );
 }

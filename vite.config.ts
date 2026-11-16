@@ -7,6 +7,7 @@ const host = process.env.TAURI_DEV_HOST;
 const probe = process.env.MALLOW_PROBE === '1';
 // @ts-expect-error process is a nodejs global
 const unattended = process.env.MALLOW_UNATTENDED === '1';
+const store = process.env.MALLOW_STORE === '1';
 
 // Served at the app origin so `script-src 'self'` permits it. TASK-7 uses it to
 // measure the sandbox on its own: an inline script would be refused by the CSP
@@ -56,6 +57,9 @@ export default defineConfig(async () => ({
   // switched on apart.
   define: {
     __MALLOW_UNATTENDED__: JSON.stringify(unattended),
+    // The Microsoft Store build's switch (TASK-58), paired with `build.rs` the
+    // same way: what it removes is the updater, which a constant drops whole.
+    __MALLOW_STORE__: JSON.stringify(store),
   },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

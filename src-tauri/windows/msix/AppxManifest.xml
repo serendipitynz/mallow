@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Microsoft Store variant's package manifest (TASK-58), filled in by
+  scripts/msix-build.ps1: every double-braced token is replaced there, and the script
+  refuses to pack while one is left.
+
+  The identity is a placeholder until the name is reserved in Partner Center,
+  which issues the Name and Publisher the Store will accept.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="{{IDENTITY_NAME}}"
+    Publisher="{{PUBLISHER}}"
+    Version="{{VERSION}}"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>mallow</DisplayName>
+    <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Lightweight Markdown / config-file viewer</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="ja-jp" />
+  </Resources>
+
+  <Applications>
+    <Application Id="mallow" Executable="mallow.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="mallow"
+        Description="Lightweight Markdown / config-file viewer"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <!-- The extensions macOS claims (tauri.macos.conf.json). A package's
+             association puts mallow under Open with without taking the
+             default, which is what decision-16 asks for and what the NSIS and
+             MSI registrations cannot do. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="markdown">
+            <uap:DisplayName>Markdown document</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.md</uap:FileType>
+              <uap:FileType>.markdown</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="mermaid">
+            <uap:DisplayName>Mermaid diagram</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.mmd</uap:FileType>
+              <uap:FileType>.mermaid</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- An ordinary desktop process with no AppContainer: read_dir_tree's plain
+         std::fs, the notify watcher and editors.rs's processes depend on it. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

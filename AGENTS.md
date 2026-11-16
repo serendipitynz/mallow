@@ -19,6 +19,7 @@ pnpm format         # format only
 pnpm lint:ci        # what CI runs (biome ci) — non-writing, fails on errors
 pnpm tauri build    # release build + bundle
 ./scripts/macos-sign-build.sh   # signed + notarized macOS build (needs .env.signing)
+pwsh scripts/msix-build.ps1 -Thumbprint <cert>   # prototype Microsoft Store MSIX, on Windows (TASK-58)
 pnpm tauri icon src-tauri/icons/app-icon.png   # regenerate all app icons
 pnpm notices        # regenerate THIRD-PARTY-NOTICES.md (bundled dep licenses)
 node scripts/kinari.mjs verify   # check mallow's copy of kinari against its release (needs ../marp-theme-kinari)
@@ -166,7 +167,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   a window does with a location the OS handed over — opened or reported — and
   which of several dropped items it opens), `path-command` (what the macOS
   Install / Uninstall 'mallow' Command items tell the reader, and when they ask
-  first), `build-flags` (the unattended switch Vite substitutes), `render-signal`
+  first), `build-flags` (the two switches Vite substitutes: the unattended export
+  and the Microsoft Store build, `MALLOW_STORE`, which carries no updater —
+  `build.rs` reads the same variables for the Rust half), `render-signal`
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
 - `unattended/` — the unattended export's driver (TASK-30), reached only from
@@ -342,7 +345,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   that does not carry the script's marker line unless the reader agreed to
   replace it.
 - `lib.rs` — plugin registration (**single-instance, first**, then opener,
-  dialog, store, **the session**, window-state, updater, process — none
+  dialog, store, **the session**, window-state, updater (not in a Store build,
+  `cfg(store)`), process — none
   `cfg(desktop)`-gated, per decision-11; both positions in that list are
   load-bearing, see the gotchas below), the
   `invoke_handler`, the per-window `Destroyed` / `Focused(true)` hooks, the

@@ -113,10 +113,17 @@ pub fn run() {
     #[cfg(not(unattended))]
     let builder = builder.plugin(session::init());
 
+    let builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+
+    // The Store updates its package itself, so a Store build must never fetch
+    // and install a release over it (TASK-58). Left unregistered rather than
+    // made an optional crate: `updater:default` in the capability names the
+    // plugin's permissions, which exist only while the crate is a dependency.
+    #[cfg(not(store))]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
     #[allow(clippy::let_and_return)]
     let builder = builder
-        .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(watch::WatcherState::default())
         .manage(pdf::ExportLock::default())

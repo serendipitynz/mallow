@@ -8,3 +8,8 @@
  *  from inside it; a static import would ship whether the branch survives or not.
  */
 export const UNATTENDED: boolean = __MALLOW_UNATTENDED__;
+
+/** The Microsoft Store build (TASK-58), substituted the same way. The Store
+ *  updates the package itself, so this build carries no updater; `useUpdater`
+ *  reads it at module level so the GitHub updater drops out of the bundle. */
+export const STORE: boolean = __MALLOW_STORE__;
