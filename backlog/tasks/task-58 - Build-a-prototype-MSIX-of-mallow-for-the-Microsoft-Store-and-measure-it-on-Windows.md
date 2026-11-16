@@ -3,10 +3,10 @@ id: TASK-58
 title: >-
   Build a prototype MSIX of mallow for the Microsoft Store and measure it on
   Windows
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 19:41'
-updated_date: '2026-11-16 21:21'
+updated_date: '2026-11-16 21:32'
 labels:
   - feature
 dependencies: []
