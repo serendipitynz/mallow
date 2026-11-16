@@ -1,4 +1,5 @@
 import { type RefObject, useId, useSyncExternalStore } from 'react';
+import { STORE } from '../lib/build-flags';
 import {
   type ColorFamily,
   FAMILIES,
@@ -240,47 +241,55 @@ export function SettingsModal({
         <p className="settings-path">
           {runningVersion ? t('updateRunningVersion', { version: runningVersion }) : t('loading')}
         </p>
-        <div className="settings-field">
-          <span>{t('updateAutoCheck')}</span>
-          <Segmented
-            label={t('updateAutoCheck')}
-            options={[
-              { value: 'on', label: t('on') },
-              { value: 'off', label: t('off') },
-            ]}
-            value={autoCheckUpdates ? 'on' : 'off'}
-            onSelect={(next) => onAutoCheckChange(next === 'on')}
-          />
-        </div>
-        <p className="settings-group__hint">{t('updateAutoCheckHint')}</p>
-        <div className="seg">
-          {/* The check under way is told by the busy line below rather than inside
-              the button: the button has no figure for a busy figure to take the
-              place of, so one would change its width (snz-design doc-8 §6.1). */}
-          <button
-            type="button"
-            className="btn"
-            aria-disabled={checking || undefined}
-            aria-busy={checking || undefined}
-            aria-describedby={checking ? checkStatusId : undefined}
-            onClick={checking ? undefined : onCheckForUpdate}
-          >
-            {t('updateCheckNow')}
-          </button>
-        </div>
-        {updateCheck.status === 'idle' ? null : (
-          /* The failure text the plugin produced goes in `title` rather than on
-                 screen: offline is the normal outcome here, and the sentence is what
-                 the user acts on. The text is also logged. */
-          <p
-            id={checkStatusId}
-            className={`settings-group__hint${updateCheck.status === 'failed' ? ' is-error' : ''}`}
-            title={updateCheck.status === 'failed' ? updateCheck.message : undefined}
-          >
-            {checking ? <Busy>{t('updateChecking')}</Busy> : null}
-            {updateCheck.status === 'upToDate' ? t('updateUpToDate') : null}
-            {updateCheck.status === 'failed' ? t('updateCheckFailed') : null}
-          </p>
+        {/* The Store updates its package itself (TASK-58), so the Store build
+            offers no check and no switch for one — only where updates come from. */}
+        {STORE ? (
+          <p className="settings-group__hint">{t('updateByStore')}</p>
+        ) : (
+          <>
+            <div className="settings-field">
+              <span>{t('updateAutoCheck')}</span>
+              <Segmented
+                label={t('updateAutoCheck')}
+                options={[
+                  { value: 'on', label: t('on') },
+                  { value: 'off', label: t('off') },
+                ]}
+                value={autoCheckUpdates ? 'on' : 'off'}
+                onSelect={(next) => onAutoCheckChange(next === 'on')}
+              />
+            </div>
+            <p className="settings-group__hint">{t('updateAutoCheckHint')}</p>
+            <div className="seg">
+              {/* The check under way is told by the busy line below rather than inside
+                  the button: the button has no figure for a busy figure to take the
+                  place of, so one would change its width (snz-design doc-8 §6.1). */}
+              <button
+                type="button"
+                className="btn"
+                aria-disabled={checking || undefined}
+                aria-busy={checking || undefined}
+                aria-describedby={checking ? checkStatusId : undefined}
+                onClick={checking ? undefined : onCheckForUpdate}
+              >
+                {t('updateCheckNow')}
+              </button>
+            </div>
+            {updateCheck.status === 'idle' ? null : (
+              /* The failure text the plugin produced goes in `title` rather than on
+                     screen: offline is the normal outcome here, and the sentence is what
+                     the user acts on. The text is also logged. */
+              <p
+                id={checkStatusId}
+                className={`settings-group__hint${updateCheck.status === 'failed' ? ' is-error' : ''}`}
+                title={updateCheck.status === 'failed' ? updateCheck.message : undefined}
+              >
+                {checking ? <Busy>{t('updateChecking')}</Busy> : null}
+                {updateCheck.status === 'upToDate' ? t('updateUpToDate') : null}
+                {updateCheck.status === 'failed' ? t('updateCheckFailed') : null}
+              </p>
+            )}
+          </>
         )}
       </section>
     </Modal>

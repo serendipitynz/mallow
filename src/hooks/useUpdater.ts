@@ -2,6 +2,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { STORE } from '../lib/build-flags';
 import { advanceDownload, type CheckState, type UpdateFlow, updateNotes } from '../lib/update-flow';
 
 /** Where an update check came from. A launch check is silent about everything
@@ -23,8 +24,42 @@ export interface Updater {
   resetCheck: () => void;
 }
 
-export function useUpdater(): Updater {
+/** The GitHub Releases build's updater, or the Store build's stand-in. Chosen by
+ *  a build-time constant, so the branch not taken — and `check` and `relaunch`
+ *  with it — is not in the bundle at all. */
+export const useUpdater: () => Updater = STORE ? useStoreUpdater : useReleaseUpdater;
+
+function useRunningVersion(): string | null {
   const [runningVersion, setRunningVersion] = useState<string | null>(null);
+  useEffect(() => {
+    getVersion()
+      .then(setRunningVersion)
+      .catch((e) => console.error('Failed to read the app version', e));
+  }, []);
+  return runningVersion;
+}
+
+const NO_CHECK: CheckState = { status: 'idle' };
+const NO_FLOW: UpdateFlow = { phase: 'none' };
+const nothing = () => {};
+
+/** The Store delivers updates to its package, so nothing here checks or
+ *  installs; only the running version is still worth showing. */
+function useStoreUpdater(): Updater {
+  const runningVersion = useRunningVersion();
+  return {
+    runningVersion,
+    check: NO_CHECK,
+    flow: NO_FLOW,
+    checkForUpdate: nothing,
+    confirmInstall: nothing,
+    dismiss: nothing,
+    resetCheck: nothing,
+  };
+}
+
+function useReleaseUpdater(): Updater {
+  const runningVersion = useRunningVersion();
   const [checkState, setCheckState] = useState<CheckState>({ status: 'idle' });
   const [flow, setFlow] = useState<UpdateFlow>({ phase: 'none' });
 
@@ -42,12 +77,6 @@ export function useUpdater(): Updater {
   // sets no timeout of its own, so the window this covers is as long as the OS
   // connect timeout.
   const runningTrigger = useRef<CheckTrigger | null>(null);
-
-  useEffect(() => {
-    getVersion()
-      .then(setRunningVersion)
-      .catch((e) => console.error('Failed to read the app version', e));
-  }, []);
 
   const releasePending = useCallback(() => {
     const update = pending.current;
