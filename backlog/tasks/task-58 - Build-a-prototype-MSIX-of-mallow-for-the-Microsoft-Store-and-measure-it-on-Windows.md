@@ -6,7 +6,7 @@ title: >-
 status: In Review
 assignee: []
 created_date: '2026-11-13 19:41'
-updated_date: '2026-11-16 19:28'
+updated_date: '2026-11-16 21:21'
 labels:
   - feature
 dependencies: []
@@ -51,10 +51,10 @@ To settle at the start:
 <!-- AC:BEGIN -->
 - [x] #1 How the Store variant is switched and how the package is assembled are settled and written in the task
 - [x] #2 A Store build carries no updater: tauri_plugin_updater is not registered, and neither the launch check, the autoCheckUpdates control nor UpdateDialog is reachable, while the GitHub Releases build keeps all of them
-- [ ] #3 An MSIX built from pnpm tauri build's output installs and launches on a Windows machine, and the steps that built it are recorded
-- [ ] #4 The manifest declares the markdown and mermaid extensions as file type associations; whether mallow appears under Open with without becoming the default, and whether a file opened that way reaches handover.rs, are measured and recorded
-- [ ] #5 Where settings.json, .window-state.json and the WebView2 user data land inside the package, and whether an MSI install's settings carry over, are measured and recorded
-- [ ] #6 The everyday paths (folder open and watch, media via the asset protocol, Open Recent, Open With and Reveal, Print and PDF export, a second window, a second launch forwarded, quit and restore) are measured inside the package and the result recorded
+- [x] #3 An MSIX built from pnpm tauri build's output installs and launches on a Windows machine, and the steps that built it are recorded
+- [x] #4 The manifest declares the markdown and mermaid extensions as file type associations; whether mallow appears under Open with without becoming the default, and whether a file opened that way reaches handover.rs, are measured and recorded
+- [x] #5 Where settings.json, .window-state.json and the WebView2 user data land inside the package, and whether an MSI install's settings carry over, are measured and recorded
+- [x] #6 The everyday paths (folder open and watch, media via the asset protocol, Open Recent, Open With and Reveal, Print and PDF export, a second window, a second launch forwarded, quit and restore) are measured inside the package and the result recorded
 - [x] #7 No production dependency is added, and pnpm lint, pnpm build, pnpm test, cargo check and cargo test pass for both variants
 <!-- AC:END -->
 
@@ -90,10 +90,16 @@ To settle at the start:
 - 両方の変種で: biome ci 通過 (info 1 件は main にもともとある)、tsc + vite build 通過、Vitest 56 ファイル 706 件通過、cargo fmt --check / cargo check 通過 (警告なし)、cargo test 128 件通過。
 - `pnpm <script>` は実行前の依存チェックで止まる (lockfile の `@tauri-apps/plugin-opener@2.7.3`、`@tauri-apps/plugin-store@2.5.1`、`electron-to-chromium@1.5.479` が `minimumReleaseAge` の期限内)。このため、同じコマンドを `node_modules/.bin` から直接実行した。この作業とは関係ない。
 
-## オーナーの計測ラウンドに渡すもの (AC #3〜#6、未計測)
+## Windows での計測 (AC #3〜#6、2026-11-17、オーナーの計測ラウンド)
 
-- macOS には pwsh がなく、`msix-build.ps1` は一度も動かしていない。Windows での初回実行が、スクリプトとマニフェストの最初の検証になる (makeappx がマニフェストを受け付けるかを含む)。
-- 手順: スクリプト冒頭のヘルプにある自己署名証明書の作成と TrustedPeople への取り込み → `pwsh scripts/msix-build.ps1 -Thumbprint <拇印>` → `Add-AppxPackage src-tauri\target\msix\mallow_0.14.0.0_x64.msix`。
-- 計測項目: 起動 (#3) / Open with に出るが既定にならないか、.md を Open with で開いたときパスが引数として handover.rs に届くか (#4) / settings.json・.window-state.json・WebView2 のユーザーデータの置き場所 (AppData の書き込みが `%LOCALAPPDATA%\Packages\<PFN>\LocalCache` へ移されるか)、MSI 版の設定を引き継ぐか (#5) / フォルダを開く・監視、asset protocol の画像と PDF、Open Recent、Open With と Reveal、Print と PDF 書き出し、二つ目のウィンドウ、二度目の起動の転送、終了と復元 (#6)。
+- **組み立てとインストール (#3)**: スクリプト冒頭のヘルプどおりに自己署名証明書 `CN=mallow-prototype` を作り、管理者のシェルで `Cert:\LocalMachine\TrustedPeople` に取り込んだ。リポジトリのルートで `.\scripts\msix-build.ps1 -Thumbprint <拇印>` を実行し (Windows PowerShell 5.1 では先に `Set-ExecutionPolicy -Scope Process Bypass` が要る)、`MALLOW_STORE=1` のビルド、makeappx 10.0.26100.9457 によるパック (6 ファイル)、signtool の署名がどれも通った。`Add-AppxPackage src-tauri\target\msix\mallow_0.14.0.0_x64.msix` でインストールでき、PackageFamilyName は `mallow.prototype_8hzcgmcm5em22`、インストール先は `C:\Program Files\WindowsApps\mallow.prototype_0.14.0.0_x64__8hzcgmcm5em22`。`explorer.exe "shell:AppsFolder\<PFN>!mallow"` で起動し、WebView2 は OS のランタイムで動いた。設定画面の更新欄は版数と「Updates arrive through the Microsoft Store.」だけで、自動確認の切り替えと「今すぐ確認」は出なかった (#2 の実機確認。動いているのが Store 版のバイナリであることもこれで分かる)。
+- **ファイルの関連付け (#4)**: `.md` と `.mmd` の「プログラムから開く」に mallow が出て、既定のアプリは変わらなかった。そこから開いたファイルが表示された (パスが引数として handover.rs に届く)。起動中にもう一度開くと、新しいプロセスは立ち上がらず既存のプロセスへ転送された。
+- **設定の置き場所 (#5)**:
+  - 既存の設定がない場合 (通常版の `%APPDATA%\net.serenebach.mallow` と `%LOCALAPPDATA%\net.serenebach.mallow` を退避して計測): `settings.json` と `.window-state.json` は `%LOCALAPPDATA%\Packages\<PFN>\LocalCache\Roaming\net.serenebach.mallow\`、WebView2 のデータは `…\LocalCache\Local\net.serenebach.mallow\EBWebView\` に作られ、元の二か所には何も作られなかった。
+  - 通常版の設定がある場合 (GitHub の NSIS 版で計測。MSI 版は計測していないが置き場所は同じ): パッケージ版の初回起動で、セッション (開いていたフォルダとファイル)、ウィンドウの大きさと位置、言語とカラー (WebView2 の localStorage) がすべて引き継がれた。書き込みも元のファイルに行き (`%APPDATA%\net.serenebach.mallow` の 2 ファイルと `EBWebView` の更新時刻が進み、`LocalCache` には何も作られなかった)、二つの版が同じ設定を共有する。
+  - 帰結: Store から初めて入れた人の設定はパッケージ専用の場所に入り、後から通常版を入れてもそれは見えない。通常版から移った人は設定を引き継ぎ、両方を残せば共有し続ける。
+- **ふだんの操作 (#6)**: フォルダを開くことと監視、asset protocol の画像と PDF、Open Recent (メニューと空のウィンドウの一覧)、Open With と Reveal、Print と PDF 書き出し、`Ctrl+N` の二つ目のウィンドウ、二度目の起動の転送、二つのウィンドウでの終了と復元が、どれも通常版と同じに動いた。
+- **計測の前提**: 通常版とパッケージ版は識別子 `net.serenebach.mallow` を共有するので、二重起動の判定も共有している可能性がある (未計測)。計測は通常版を終了してから行った。
+- **計測していないもの**: パッケージのアンインストールで `LocalCache` のデータが消えるか、MSI 版からの移行、スタートメニューのパッケージ版のエントリからの起動。
 - 意図して外したもの: `mallow` コマンド。NSIS / MSI の PATH 登録は MSIX には入らない。パッケージで同じことをするなら `uap5:AppExecutionAlias` になるが、このタスクの範囲外なので未宣言。
 <!-- SECTION:NOTES:END -->
