@@ -4,7 +4,7 @@ title: Make the menu act on the window in front on Windows from launch
 status: In Review
 assignee: []
 created_date: '2026-11-16 21:31'
-updated_date: '2026-11-17T00:54:00Z'
+updated_date: '2026-11-17 01:10'
 labels:
   - bug
 dependencies: []
@@ -39,7 +39,7 @@ A candidate fix that keeps the constraint: on Windows, take the window whose HWN
 - [x] #2 On Windows, with one window open since launch, Settings…, Open…, Print…, Export as PDF…, Toggle Explorer, Back / Forward, Find… and Close Window act when chosen from the menu, and Print… and Export as PDF… enable on a markdown preview without switching windows
 - [ ] #3 No menu event acts on a window the reader cannot see on macOS or Windows, and Linux keeps TASK-49's fallback
 - [ ] #4 macOS and Linux keep working from the menu
-- [ ] #5 cargo fmt --check, cargo check and cargo test pass inside src-tauri/, and pnpm lint, pnpm build and pnpm test pass
+- [x] #5 cargo fmt --check, cargo check and cargo test pass inside src-tauri/, and pnpm lint, pnpm build and pnpm test pass
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -72,4 +72,13 @@ Windows の `menu::focused_window` を、`GetForegroundWindow()` の HWND と一
 
 - AC #3: Windows で mallow が別アプリの背面にあるときや最小化されているときに、メニューイベントが何もしないことは手で確かめていない（前面ウィンドウの定義から言えることだけ）。Linux のフォールバックと単体テストは変えていない。
 - AC #4: macOS と Linux の実機確認はしていない。コードは cfg で分けただけで変わっていない。
+
+## AC #5 の確認（2026-11-17、Mac、PR #131 の HEAD f2c69bd）
+
+- `src-tauri/` で `cargo fmt --check`・`cargo check`・`cargo test`（128件）が通った。
+- リポジトリ直下の `pnpm lint` / `pnpm build` / `pnpm test` は、実行前の依存チェックで止まった。pnpm 11 の minimumReleaseAge が、lockfile のうち 2026-11-10 公開の3件（`@tauri-apps/plugin-opener@2.7.3`・`@tauri-apps/plugin-store@2.5.1`・`electron-to-chromium@1.5.479`）を弾いたため。この PR は `pnpm-lock.yaml` も `package.json` も変えていないので、手元の環境の問題として扱った。同じスクリプトの中身を `node_modules/.bin` から直接実行し、`biome check` は修正なし、`tsc` と `vite build` も通り、`vitest run` は56ファイル・706件が通った。
+- 同じ HEAD の CI は、`frontend`・`rust`（2ジョブ）・`npm`・`paper`（macOS / Windows / ubuntu）がすべて通った。Windows で実行できなかった `cargo test` は、CI の ubuntu で通っている。
+- 外部レビューは Codex（gpt-6-astra, effort=low）が1回目で指摘なしと判断し、bot アカウントで f2c69bd に APPROVE した。
+
+AC #4 の macOS 分（メニューの手動確認）はまだやっていない。Linux も未確認のため、#4 はチェックしていない。
 <!-- SECTION:NOTES:END -->
