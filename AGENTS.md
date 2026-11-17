@@ -256,7 +256,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   the routing of its events. `menu_action` is the pure id → action map,
   `recent_label` the pure display text for a recent folder, `menu_window` the
   window every menu event resolves its target to (the `webview_windows()` scan
-  `focused_window`, with Linux's fallback — see the gotcha below), and
+  `focused_window` — the foreground window on Windows — with Linux's fallback;
+  see the gotcha below), and
   `MenuState` what has to change after the menu is built: the Open Recent
   submenu, `Clear Recent`, the two entries gated on the active view, Back /
   Forward, gated on the visit history, and the Edit menu's three find entries,
@@ -1493,7 +1494,17 @@ hold rather than as an exhaustive style guide.
   no menu, worked. `menu_window` therefore falls back to the most recently
   focused live window **on Linux alone**: on macOS and Windows no window focused
   means every window is minimised or behind another app, and acting on one the
-  reader cannot see is the wrong answer there. The gated entries read the same
+  reader cannot see is the wrong answer there. **On Windows "focused" is the
+  foreground window, not `is_focused`** (TASK-63): tao keeps its own record of the
+  top-level HWND's keyboard focus, and at launch that window is activated and
+  focused before its webview exists, so WebView2's child taking the focus leaves
+  the record false until the reader switches windows — measured 2026-11-17 with a
+  message hook, every per-window entry doing nothing and Print… staying disabled
+  on a markdown preview. A menu bar on Windows belongs to its window, so the
+  window a menu was chosen in is the foreground one, and the constraint above
+  holds by construction. `focused_window` itself answers this way rather than
+  `menu_window` alone, so `handover.rs`'s two calls mean the same thing by it. The
+  gated entries read the same
   answer, so an entry is enabled for the window it would act on. **The Rust
   half of per-window delivery is only half**: a listener registered with the plain
   `listen()` carries `EventTarget::Any` and matches whatever the emitter filtered

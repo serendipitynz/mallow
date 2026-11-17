@@ -225,10 +225,37 @@ fn home_dir() -> Option<String> {
 /// behind the `unstable` cargo feature this project does not enable and which
 /// tauri documents as free to break in a minor release (tauri-2.12.5
 /// `src/lib.rs:568-587`). Its implementation is this same scan.
+#[cfg(not(target_os = "windows"))]
 pub fn focused_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.webview_windows()
         .into_values()
         .find(|window| window.is_focused().unwrap_or(false))
+}
+
+/// The window that is the foreground window, if it is one of mallow's.
+///
+/// **Not `is_focused`, which stays false from launch until the reader switches
+/// windows** (TASK-63, measured 2026-11-17). tao answers it from its own record
+/// of the top-level HWND's keyboard focus (tao-0.37.2
+/// `src/platform_impl/windows/window_state.rs:188-190`), and at launch the
+/// top-level is activated and focused before its webview exists; WebView2's child
+/// HWND then takes the focus and the top-level sees only `WM_KILLFOCUS`. A later
+/// activation reads true only because wry's parent subclass moves the focus into
+/// the webview before tao handles the same `WM_SETFOCUS`.
+///
+/// The foreground window keeps TASK-49's constraint by construction: a menu bar on
+/// Windows belongs to its own window, so a menu chosen there is the foreground
+/// one, and with every window minimised or behind another app there is none.
+#[cfg(target_os = "windows")]
+pub fn focused_window(app: &AppHandle) -> Option<WebviewWindow> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+    let foreground = unsafe { GetForegroundWindow() };
+    if foreground.is_null() {
+        return None;
+    }
+    app.webview_windows()
+        .into_values()
+        .find(|window| window.hwnd().is_ok_and(|hwnd| hwnd.0 == foreground))
 }
 
 /// Whether a menu chosen with the pointer can be delivered while no window
