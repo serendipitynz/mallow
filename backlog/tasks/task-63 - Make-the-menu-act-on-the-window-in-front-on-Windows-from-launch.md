@@ -4,7 +4,7 @@ title: Make the menu act on the window in front on Windows from launch
 status: In Review
 assignee: []
 created_date: '2026-11-16 21:31'
-updated_date: '2026-11-17 04:00'
+updated_date: '2026-11-17 04:03'
 labels:
   - bug
 dependencies: []
@@ -37,7 +37,7 @@ A candidate fix that keeps the constraint: on Windows, take the window whose HWN
 <!-- AC:BEGIN -->
 - [x] #1 The cause is identified on Windows and recorded on this task, with what was measured
 - [x] #2 On Windows, with one window open since launch, Settings…, Open…, Print…, Export as PDF…, Toggle Explorer, Back / Forward, Find… and Close Window act when chosen from the menu, and Print… and Export as PDF… enable on a markdown preview without switching windows
-- [ ] #3 No menu event acts on a window the reader cannot see on macOS or Windows, and Linux keeps TASK-49's fallback
+- [x] #3 No menu event acts on a window the reader cannot see on macOS or Windows, and Linux keeps TASK-49's fallback
 - [x] #4 macOS and Linux keep working from the menu
 - [x] #5 cargo fmt --check, cargo check and cargo test pass inside src-tauri/, and pnpm lint, pnpm build and pnpm test pass
 <!-- AC:END -->
@@ -86,4 +86,10 @@ AC #4 の macOS 分（メニューの手動確認）はまだやっていない�
 
 - macOS と Linux で、ウィンドウ1つのまま切り替えずにメニューの各項目が動くこと、Markdown プレビューでゲート付きの項目が有効になることを、オーナーが確認した。macOS は `pnpm tauri dev` で確認した。Linux の環境とビルド種別は記録していない。
 - Linux の Print… は `print.rs` が拒否するため、この PR の前から常に無効になっている。Linux で有効になるのは Export as PDF… だけ。
+
+## AC #3 の確認（2026-11-17）
+
+- macOS: ウィンドウ1つを Cmd+M で最小化し、mallow が最前面のアプリのまま、メニューから Settings… を選んだ（オーナー、`pnpm tauri dev`）。何も起きず、dev ログには `mallow: a menu event found no window to act on (menu:settings)` が1行だけ出た。macOS で mallow のメニューを選べて、しかも見えるウィンドウがないのは、この状態だけ。別アプリが前面にあるときは、そのアプリのメニューバーが出る。
+- Windows: 手順を立てて確かめられる状態がない。メニューバーはウィンドウごとにあり、背面にあるウィンドウのメニューをクリックするとそのウィンドウが前面に来る。最小化中はメニューバーが見えず、アクセラレータは前面のウィンドウにしか届かない。そのため、メニューイベントが来るときは mallow のウィンドウが必ず前面にあり、`GetForegroundWindow` との照合で見えないウィンドウが選ばれることは起こらない。
+- Linux: フォールバックのコード（`MENU_EVENT_MAY_FIND_NO_FOCUS`）とその単体テストは変えていない。AC #4 の確認でもメニューは動いていた。
 <!-- SECTION:NOTES:END -->
