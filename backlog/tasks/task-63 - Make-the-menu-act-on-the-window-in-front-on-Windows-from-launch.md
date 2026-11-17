@@ -1,10 +1,10 @@
 ---
 id: TASK-63
 title: Make the menu act on the window in front on Windows from launch
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-16 21:31'
-updated_date: '2026-11-17 04:03'
+updated_date: '2026-11-17 04:11'
 labels:
   - bug
 dependencies: []
