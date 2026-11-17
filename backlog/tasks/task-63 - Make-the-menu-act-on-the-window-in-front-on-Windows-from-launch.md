@@ -4,7 +4,7 @@ title: Make the menu act on the window in front on Windows from launch
 status: In Review
 assignee: []
 created_date: '2026-11-16 21:31'
-updated_date: '2026-11-17 01:10'
+updated_date: '2026-11-17 04:00'
 labels:
   - bug
 dependencies: []
@@ -38,7 +38,7 @@ A candidate fix that keeps the constraint: on Windows, take the window whose HWN
 - [x] #1 The cause is identified on Windows and recorded on this task, with what was measured
 - [x] #2 On Windows, with one window open since launch, Settings…, Open…, Print…, Export as PDF…, Toggle Explorer, Back / Forward, Find… and Close Window act when chosen from the menu, and Print… and Export as PDF… enable on a markdown preview without switching windows
 - [ ] #3 No menu event acts on a window the reader cannot see on macOS or Windows, and Linux keeps TASK-49's fallback
-- [ ] #4 macOS and Linux keep working from the menu
+- [x] #4 macOS and Linux keep working from the menu
 - [x] #5 cargo fmt --check, cargo check and cargo test pass inside src-tauri/, and pnpm lint, pnpm build and pnpm test pass
 <!-- AC:END -->
 
@@ -81,4 +81,9 @@ Windows の `menu::focused_window` を、`GetForegroundWindow()` の HWND と一
 - 外部レビューは Codex（gpt-6-astra, effort=low）が1回目で指摘なしと判断し、bot アカウントで f2c69bd に APPROVE した。
 
 AC #4 の macOS 分（メニューの手動確認）はまだやっていない。Linux も未確認のため、#4 はチェックしていない。
+
+## AC #4 の確認（2026-11-17、オーナー）
+
+- macOS と Linux で、ウィンドウ1つのまま切り替えずにメニューの各項目が動くこと、Markdown プレビューでゲート付きの項目が有効になることを、オーナーが確認した。macOS は `pnpm tauri dev` で確認した。Linux の環境とビルド種別は記録していない。
+- Linux の Print… は `print.rs` が拒否するため、この PR の前から常に無効になっている。Linux で有効になるのは Export as PDF… だけ。
 <!-- SECTION:NOTES:END -->
