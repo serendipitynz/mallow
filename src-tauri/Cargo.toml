@@ -65,6 +65,10 @@ tauri-plugin-single-instance = "~2.5.5"
 # crate: a GUI-subsystem binary has no console, and attaching to the parent's is
 # a Win32 console call.
 #
+# Routing a menu event on Windows (TASK-63) costs one windows-sys feature and no
+# crate: the window a menu was chosen in is the foreground window, which
+# `GetForegroundWindow` answers where tao's `is_focused` does not.
+#
 # All of them are already in the dependency graph through tauri and wry, so what
 # this adds is `THIRD-PARTY-NOTICES.md` entries rather than compilation — but only
 # while the objc2 crates keep `default-features = false`. Their defaults enable
@@ -91,7 +95,7 @@ objc2-web-kit = { version = "0.3", default-features = false, features = ["std", 
 [target.'cfg(target_os = "windows")'.dependencies]
 webview2-com = "0.39"
 windows-core = "0.62"
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
