@@ -137,7 +137,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `outline-pref` (whether the outline is open — one preference across the views
   that have one, and across windows), `prose-measure` (how long a line of
   markdown prose may run — `standard`, `wide` or `full`, the widths themselves
-  being `markdown.scss`'s), `color-choice` (the two colour axes, the
+  being `markdown.scss`'s), `source-wrap` (whether the highlighted source view
+  wraps — one preference across every source view, and across windows),
+  `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
   a menu's focus), `context-menu` (where a context menu is placed, and which keys
@@ -997,6 +999,16 @@ hold rather than as an exhaustive style guide.
   text, never computed from the declared `--src-line-height`** — WebKit lays
   each line box out at an integer height, so the declared 20.8px is used as 20px
   and a computed position drifts a line every 25.
+  **Wrapping is the highlighted path's alone** (TASK-65, the `sourceWrap`
+  preference, on unless the reader turns it off): `.src-view[data-wrap='on']`
+  makes `pre.shiki` `pre-wrap` with `overflow-wrap: anywhere`, so a run with no
+  break opportunity wraps too, and gives `.line` a hanging indent — padded to the
+  text column, its first row pulled back by as much — so continuation rows start
+  under the text and the number opens the first row. **The number stays in the
+  flow** because it is what gives a blank line its height (Shiki's `text` grammar
+  emits a blank line as an empty token span, so `:empty` cannot find one), and the
+  separator rule moves to a `::after` of the line's full height, since a border on
+  the number stops at the first row. Unwrapped, the layout is the one above.
 - **The toolbar has to keep its own compositing layer, and the z-index numbers
   alone do not hold the dropdowns above `.doc__bar`.** The bar's
   `backdrop-filter` puts it on a layer of its own; open a toolbar menu while
@@ -1627,9 +1639,9 @@ hold rather than as an exhaustive style guide.
   setter instead would write a second time **and** send an echo back out.
   **`saveSetting` is one call that persists and propagates**, so the store-backed preferences
   (explorer width, side and sort, the custom emoji folder, the slide theme folder and
-  default theme, the launch update check) need nothing at their call sites; the colour, language, prose measure and the
-  outline toggle are sent from `components/color`, `SettingsModal` and the two views
-  instead, which is what keeps `lib/theme`, `lib/i18n`, `lib/prose-measure` and
+  default theme, the launch update check) need nothing at their call sites; the colour, language, prose measure, source
+  wrapping and the outline toggle are sent from `components/color`, `SettingsModal` and the two views
+  instead, which is what keeps `lib/theme`, `lib/i18n`, `lib/prose-measure`, `lib/source-wrap` and
   `lib/outline-pref` free of the Tauri layer. **The store half of `SettingChange` is derived from `Settings`** rather
   than listed a second time, so a preference added there makes the switch in
   `App` non-exhaustive until it is handled — a setting that broadcasts to
@@ -1999,8 +2011,8 @@ hold rather than as an exhaustive style guide.
   together, and that New Window has no gate to close), `settings-sync` (the
   ordering, what a commit sends Rust, and that a window applies its own change
   again when Rust raised the stamp — the listener and the emit are Tauri's),
-  `outline-pref` and `prose-measure`
-  (each one's cache and notification, and the stored measure read back),
+  `outline-pref`, `prose-measure` and `source-wrap`
+  (each one's cache and notification, and the stored value read back),
   `color-choice` (each pre-split value read
   onto the two axes, and the side a one-sided family draws), `menu-nav`, `context-menu`, `segmented-nav`, `tree-nav`,
   `tree-arrange` (each order, the absent creation time's place, and what the

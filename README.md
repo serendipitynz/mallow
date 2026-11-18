@@ -138,6 +138,11 @@ Installing an update may need the system's permission.
 - **Text width**: how long a line of Markdown prose may run — Standard, Wide
   or Full (no limit), chosen in Settings. Tables, code blocks, diagrams and an
   image on its own line widen with the window whichever is chosen.
+- **Long lines in source**: every source view wraps a line longer than the
+  view, continuing it under the text rather than under the line number; turn
+  it off in Settings to scroll sideways instead. A file past the highlighting
+  threshold is never wrapped, whichever is chosen, because its line numbers
+  would then fall out of step with the text.
 - **Self-update**: check for a newer version and install it. See
   [Install and update](#install-and-update).
 - **Multiple windows and the File menu**: New Window, Open…, Open Recent, and
@@ -159,7 +164,8 @@ Installing an update may need the system's permission.
 - **Hide the explorer**: `Cmd/Ctrl+B`, **View → Toggle Explorer** or the panel
   button at the end of the toolbar on the explorer's side gives the document the
   explorer's width, and brings the explorer back at the width it had.
-- **Persisted settings / session restore**: theme, text width, explorer width,
+- **Persisted settings / session restore**: theme, text width, source line
+  wrapping, explorer width,
   side and whether it is shown, the
   custom emoji folder, the slide theme folder and default theme, and the
   update-check switch are saved and restored on the
