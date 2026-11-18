@@ -38,6 +38,7 @@ import { applyProseMeasure } from './lib/prose-measure';
 import { loadSettings, saveSetting } from './lib/settings';
 import { onSettingChange, type SettingChange, settingsReadStamp, snapshotStillCurrent } from './lib/settings-sync';
 import { applyDefaultSlideTheme, applySlideThemeDir } from './lib/slide-theme-folder';
+import { applySourceWrap } from './lib/source-wrap';
 import {
   allowMediaDir,
   askWarningDialog,
@@ -453,6 +454,9 @@ export default function App() {
           break;
         case 'proseMeasure':
           applyProseMeasure(change.value);
+          break;
+        case 'sourceWrap':
+          applySourceWrap(change.value);
           break;
         case 'explorerSide':
           setExplorerSide(change.value ?? DEFAULT_SIDE);
