@@ -8,9 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { menuKeyTarget } from '../lib/menu-nav';
-
-export type OpenFocus = 'first' | 'last' | 'current';
+import { menuKeyTarget, type OpenFocus, openFocusIndex } from '../lib/menu-nav';
 
 const ITEM_SELECTOR = '[role^="menuitem"]';
 
@@ -41,17 +39,15 @@ export function useMenuBody({
       return;
     }
     const list = items();
-    if (list.length === 0) {
+    const index = openFocusIndex(
+      focusOnOpen.current,
+      list.map((el) => el.getAttribute('aria-checked') === 'true'),
+    );
+    if (index === null) {
       popupRef.current?.focus();
       return;
     }
-    let target = list[0];
-    if (focusOnOpen.current === 'last') {
-      target = list[list.length - 1];
-    } else if (focusOnOpen.current === 'current') {
-      target = list.find((el) => el.getAttribute('aria-checked') === 'true') ?? list[0];
-    }
-    target.focus();
+    list[index].focus();
   }, [open, items, focusOnOpen]);
 
   // A press outside does not pull the focus back: the pointer has already chosen
