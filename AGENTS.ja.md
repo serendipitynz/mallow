@@ -13,6 +13,7 @@ pnpm install
 pnpm tauri dev      # ホットリロード付きで起動
 pnpm build          # フロントの型チェック(tsc) + バンドル(vite)。FE 変更の検証用
 pnpm test           # フロントのユニットテスト(Vitest, 単発実行)。watch は pnpm test:watch
+pnpm mutation --since main   # ブランチの差分に限った src/lib のミューテーションテスト（Node 24 以上。引数なしで全体）
 pnpm lint           # Biome の lint + フォーマット + import 順の検査（書き換えなし）
 pnpm lint:fix       # Biome の安全な修正を適用し、import を並べ替え、整形する
 pnpm format         # 整形のみ
@@ -412,7 +413,7 @@ rustfmt はツールチェーン同梱なので依存は増えない。
 
 **対象範囲は `biome.json` の明示的な include 一覧と明示的な exclude 一覧**で、推測の余地を
 残さない。対象: `src/**/*.ts(x)`（ユニットテストを含む）・`scripts/*.mjs`・
-`vite.config.ts`・`vitest.config.ts`・`package.json`・`tsconfig*.json`・
+`vite.config.ts`・`vitest.config.ts`・`mutator.config.ts`・`package.json`・`tsconfig*.json`・
 `.vscode/extensions.json`。対象外: `src-tauri/**`（rustfmt の領分であり、Biome の JSON
 フォーマッタは同ディレクトリの 1 行 1 要素の `icon` と `permissions` 配列を 1 行に潰す）、
 および `.scss` と `.md`。生成物は `vcs.useIgnoreFile` が `.gitignore` を読むことで
@@ -1789,6 +1790,27 @@ Comments と Functions の規約は機械的に検査されない。コメント
   タイムアウトを上げる — `it` ごとの第 3 引数では持たない（フォーマッタが 3 引数の呼び出しを
   複数行に展開する）し、`vitest.config.ts` にも置かない（他のスイートで固まったテストは
   5 秒で落ちてほしい）。
+- **ミューテーションテスト**（TASK-66）: `pnpm mutation` は `src/lib` の純粋モジュールに
+  `@mizchi/mutator` を走らせ、テスト対象のコードを変えたときにテストが落ちるかを調べる —
+  行カバレッジでは分からないことである。対象から外すモジュール（DOM や Tauri に依存し、
+  どのテストも届かないもの）は `mutator.config.ts` に並べてある。`scripts/` も外す。
+  measure-paper は子プロセスでコードを動かし、mutator からは見えないためである。
+  **ブランチ上では `pnpm mutation --since main` を走らせる**: 差分の中の mutant だけを
+  実行し、`.mutator/`（git 管理外）のキャッシュを再利用するので、`src/lib` 全体の cold run が
+  9.5 分かかったところを数秒で終わる。テストだけを変えた差分には mutant が無いので、
+  テストを足した後はそのモジュールを `--include src/lib/<module>.ts` で走らせ直す。
+  ときどき全体を走らせると、テストが届いていない箇所が分かる。**Node 24 以上が要る**ことが、
+  **`check.yml` に入れない**理由の一つである（CI のワークフローはどれも Node 22 に固定して
+  いる）。ほかの理由は、cold run が数分かかり `src/lib` とともに伸びること、そして
+  ミューテーションスコアはコードが正しいかではなくテストがどこに欠けているかを示すもので、
+  合否の関門ではなく次のテストを書く手がかりであることである。どの入力からも観測できない
+  生存 mutant（等価 mutant）は `pnpm mutation accept <key> --reason "…"` で
+  `mutator.accepted.json`（git 管理対象）に記録する。key は
+  `.mutator/report/mutation.json` にある。**`critical` に指定したモジュールは無い**。
+  信頼できない入力の境界も含めてである: critical なモジュールは検出されない mutant が
+  一つでもあれば実行を失敗させるが、その 4 モジュール（`markdown`・`html-doc`・
+  `deck-css`・`slide-theme-css`）には初回の全体実行で 339 件あったので、仕分けが済むまでは
+  それらに触れるたびに失敗する。その境界を守っているのは名前の付いたテストと CSP である。
 - バックエンド: `src-tauri/` 内で `cargo fmt --check`・`cargo check`・`cargo test`。
   `commands` モジュールにユニットテストがある（`tempfile` 依存を避けた
   自己クリーンアップ式の temp-dir ヘルパー）。`watch` の registry、`window` の

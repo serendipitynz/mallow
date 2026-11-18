@@ -13,6 +13,7 @@ pnpm install
 pnpm tauri dev      # run the app with hot reload
 pnpm build          # frontend type-check (tsc) + bundle (vite) — validate FE changes
 pnpm test           # frontend unit tests (Vitest, run once); pnpm test:watch to watch
+pnpm mutation --since main   # mutation testing of src/lib on the branch's diff (Node 24+; a bare run is the full one)
 pnpm lint           # Biome lint + format + import-order check (no writes)
 pnpm lint:fix       # apply Biome's safe fixes, sort imports, format
 pnpm format         # format only
@@ -458,8 +459,8 @@ holds `max_width` at 120 with `use_small_heuristics = "Max"` but pins
 
 **Scope is an explicit include list plus an explicit exclude list** in
 `biome.json`, so there is nothing to infer. In: `src/**/*.ts(x)` (unit tests
-included), `scripts/*.mjs`, `vite.config.ts`, `vitest.config.ts`, `package.json`,
-`tsconfig*.json`, `.vscode/extensions.json`. Out: `src-tauri/**` (rustfmt's, and
+included), `scripts/*.mjs`, `vite.config.ts`, `vitest.config.ts`, `mutator.config.ts`,
+`package.json`, `tsconfig*.json`, `.vscode/extensions.json`. Out: `src-tauri/**` (rustfmt's, and
 Biome's JSON formatter would collapse the one-per-line `icon` and `permissions`
 arrays there onto single lines), plus `.scss` and `.md`. Generated output is
 covered by `vcs.useIgnoreFile` reading `.gitignore`, so `dist/` and
@@ -2028,6 +2029,29 @@ hold rather than as an exhaustive style guide.
   file — not a third argument per `it` (the formatter expands a three-argument
   call across lines) and not `vitest.config.ts` (a hung test in any other suite
   should still fail in 5s).
+- **Mutation testing** (TASK-66): `pnpm mutation` runs `@mizchi/mutator` over
+  the pure modules in `src/lib`, and asks whether a test fails when the code under
+  it changes — which line coverage cannot say. `mutator.config.ts` lists the
+  modules it leaves out (the ones bound to the DOM or Tauri, which no test can
+  reach), and `scripts/` is out because measure-paper runs its code in a child
+  process mutator cannot see. **While on a branch, run `pnpm mutation --since
+  main`**: it runs only the mutants inside the diff and reuses the cache in
+  `.mutator/` (git-ignored), so it takes seconds where a cold run over `src/lib`
+  took 9.5 minutes. A diff that touches only tests has no mutant in it, so after
+  adding a test, re-run its module with `--include src/lib/<module>.ts` instead.
+  A full run now and then shows where the tests stop short. **It needs Node 24 or
+  later**, which is one reason it is **not in `check.yml`**: every CI workflow
+  pins Node 22. The others are that a cold run is minutes long and grows with
+  `src/lib`, and that a mutation score says where a test is missing rather than
+  whether the code is right, so it is a signal for the next test and not a gate.
+  A survivor no input can observe (an *equivalent* mutant) is recorded with
+  `pnpm mutation accept <key> --reason "…"` in `mutator.accepted.json`, which is
+  tracked; the keys are in `.mutator/report/mutation.json`. **No module is marked
+  `critical`**, the untrusted-input boundary included: a critical module fails
+  the run on every undetected mutant, and those four modules (`markdown`,
+  `html-doc`, `deck-css`, `slide-theme-css`) carried 339 at the first full run,
+  so the gate would fail on every run that touches them until they are triaged —
+  what holds that boundary is its named tests and the CSP.
 - Backend: `cargo fmt --check`, `cargo check` and `cargo test` inside
   `src-tauri/`. The `commands` module has unit tests (a small self-cleaning
   temp-dir helper, no `tempfile` dep); `watch`'s registry, `window`'s label
