@@ -1,10 +1,10 @@
 ---
 id: TASK-65
 title: Wrap long lines in the source view
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-17 21:17'
-updated_date: '2026-11-18 09:24'
+updated_date: '2026-11-18 10:23'
 labels:
   - feature
 dependencies: []
@@ -38,9 +38,9 @@ Reading a plain-text file such as `_sandbox/samples/notes.txt` in the source vie
 - [x] #2 In the highlighted source view, a line longer than the view wraps to the view's width and the view does not scroll sideways (with wrapping on)
 - [x] #3 A wrapped line's continuation rows start at the text column, not under the line number, and the number stays beside the line's first row
 - [x] #4 A run with no break opportunity, such as the long run in _sandbox/samples/notes.txt, wraps rather than overflowing
-- [ ] #5 Find's match paint and scroll-into-view, the parse-error line band and the restored scroll position still land on the right line in a file whose lines wrap
+- [x] #5 Find's match paint and scroll-into-view, the parse-error line band and the restored scroll position still land on the right line in a file whose lines wrap
 - [x] #6 The unhighlighted path above the source caps stays unwrapped, and README / AGENTS.md say so
-- [ ] #7 Checked on macOS, Windows and Linux builds
+- [x] #7 Checked on macOS, Windows and Linux builds
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -75,4 +75,6 @@ Reading a plain-text file such as `_sandbox/samples/notes.txt` in the source vie
 **AC#6**: `PlainSource` (上限超えの経路) には手を入れておらず、CSS も `pre.shiki` と `.line` だけを対象にしている。README / README.ja / AGENTS / AGENTS.ja に、折り返すのは強調表示の経路だけと書いた。
 
 pnpm lint / build / test (57 ファイル 710 件) は通過。Rust は変更なし。
+
+AC#5・#7: マージ後、オーナーが実アプリ (macOS・Windows・Linux) で確認済み (2026-11-18)。
 <!-- SECTION:NOTES:END -->
