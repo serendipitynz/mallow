@@ -191,6 +191,9 @@ const ja: Dict = {
   'measure.wide': '幅広',
   'measure.full': 'フル（制限なし）',
   proseMeasureHint: '表・コード・図は、どれを選んでもウィンドウの幅まで広がります。',
+  sourceWrap: 'ソース表示の長い行',
+  'sourceWrap.on': '折り返す',
+  'sourceWrap.off': '折り返さない',
   language: '言語',
   customEmoji: 'カスタム絵文字',
   customEmojiHint:
@@ -424,6 +427,9 @@ const en: Dict = {
   'measure.wide': 'Wide',
   'measure.full': 'Full (no limit)',
   proseMeasureHint: 'Tables, code and diagrams widen with the window whichever you choose.',
+  sourceWrap: 'Long lines in source',
+  'sourceWrap.on': 'Wrap',
+  'sourceWrap.off': "Don't wrap",
   language: 'Language',
   customEmoji: 'Custom emoji',
   customEmojiHint:

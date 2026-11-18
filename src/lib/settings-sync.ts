@@ -68,7 +68,7 @@ type StoredChange = {
 
 /** One changed preference. The two keys Rust owns in settings.json — `windows`
  *  and `recentFolders` — are absent from `WritableKey` because no window writes
- *  them; the five that follow live in localStorage rather than the store.
+ *  them; the six that follow live in localStorage rather than the store.
  *
  *  **The colour choice travels as two keys**, one per axis, because the reader
  *  chooses each on its own: ordered as one value, a family chosen in one window
@@ -80,7 +80,8 @@ export type SettingChange =
   | { key: 'colorMode'; value: ModeChoice }
   | { key: 'lang'; value: Lang }
   | { key: 'outlineOpen'; value: boolean }
-  | { key: 'proseMeasure'; value: ProseMeasure };
+  | { key: 'proseMeasure'; value: ProseMeasure }
+  | { key: 'sourceWrap'; value: boolean };
 
 /** When a change was made and by which window.
  *

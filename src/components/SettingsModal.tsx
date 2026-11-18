@@ -26,6 +26,7 @@ import {
   subscribeSlideThemes,
 } from '../lib/slide-theme-folder';
 import { BUNDLED_THEME_NAMES, type FolderTheme, MALLOW_THEME, type SkippedFile } from '../lib/slide-themes';
+import { onSourceWrapChange, readSourceWrap, writeSourceWrap } from '../lib/source-wrap';
 import { getColorChoice, onColorChoiceChange } from '../lib/theme';
 import type { CheckState } from '../lib/update-flow';
 import { Busy } from './Busy';
@@ -85,6 +86,7 @@ export function SettingsModal({
   const familyLabel = useFamilyLabel();
   const { choice, unrecognized } = useSyncExternalStore(onColorChoiceChange, getColorChoice);
   const proseMeasure = useSyncExternalStore(onProseMeasureChange, readProseMeasure);
+  const sourceWrap = useSyncExternalStore(onSourceWrapChange, readSourceWrap);
   const familyId = useId();
   const modeId = useId();
   const reasonId = useId();
@@ -108,6 +110,11 @@ export function SettingsModal({
   const changeProseMeasure = (next: ProseMeasure) => {
     writeProseMeasure(next);
     broadcastSetting({ key: 'proseMeasure', value: next });
+  };
+
+  const changeSourceWrap = (next: boolean) => {
+    writeSourceWrap(next);
+    broadcastSetting({ key: 'sourceWrap', value: next });
   };
 
   if (!open) {
@@ -192,6 +199,18 @@ export function SettingsModal({
         <p id={measureHintId} className="settings-group__hint">
           {t('proseMeasureHint')}
         </p>
+        <div className="settings-field">
+          <span>{t('sourceWrap')}</span>
+          <Segmented
+            label={t('sourceWrap')}
+            options={[
+              { value: 'wrap', label: t('sourceWrap.on') },
+              { value: 'nowrap', label: t('sourceWrap.off') },
+            ]}
+            value={sourceWrap ? 'wrap' : 'nowrap'}
+            onSelect={(next) => changeSourceWrap(next === 'wrap')}
+          />
+        </div>
         <div className="settings-field">
           <label htmlFor={langId}>{t('language')}</label>
           <Select id={langId} value={lang} onChange={(e) => changeLang(e.target.value as Lang)}>
