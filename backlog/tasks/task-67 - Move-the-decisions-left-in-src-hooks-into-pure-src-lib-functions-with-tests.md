@@ -1,10 +1,10 @@
 ---
 id: TASK-67
 title: Move the decisions left in src/hooks into pure src/lib functions with tests
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-17 23:22'
-updated_date: '2026-11-18 21:28'
+updated_date: '2026-11-18 21:55'
 labels:
   - chore
 dependencies: []
@@ -55,7 +55,7 @@ The hook keeps the Tauri calls, the `Update` handle and its closing. A pure func
 - [x] #2 useFileTree's expand order and its refresh selection are pure functions in src/lib with unit tests
 - [x] #3 useMenuBody's focus target on open is a pure function in src/lib with unit tests, covering no checked item and an empty list
 - [x] #4 The three hooks call those functions and keep only their Tauri, React and DOM wiring, with no rule changed on the way
-- [ ] #5 Checked in pnpm tauri dev: expanding and refreshing the explorer after a file change, opening each toolbar menu from the keyboard, and Check for Updates from Settings
+- [x] #5 Checked in pnpm tauri dev: expanding and refreshing the explorer after a file change, opening each toolbar menu from the keyboard, and Check for Updates from Settings
 - [x] #6 AGENTS.md and AGENTS.ja.md describe the lib modules whose role widened
 - [x] #7 pnpm lint, pnpm build and pnpm test pass
 <!-- AC:END -->
@@ -93,7 +93,7 @@ The hook keeps the Tauri calls, the `Update` handle and its closing. A pure func
 - `pnpm mutation --include` で 3 モジュールを実行(6.8 秒): mutant 343 件、実行 158 件、Killed 152・Timeout 1・Survived 5、スコア 96.8%。**新しく足した関数の mutant はすべて Killed**。生き残った 5 件は既存の関数(`visibleRows`・`tabStopPath`・`isShownUnder`・`menuKeyTarget`)のもので、このタスクでは触っていない。
 - `--include` で範囲を絞ると、範囲外の `mutator.accepted.json` のエントリ(TASK-66 の find / delimited の 17 件)が「mutant がもう存在しないので削除せよ」と表示される。誤検知なので消していない。
 
-## 未確認(AC #5)
+## 手動確認(AC #5)
 
-`pnpm tauri dev` での手動確認はオーナーに依頼する: エクスプローラでフォルダを展開し、ファイルを変更して再読み込みされること、ツールバーの各メニューをキーボードで開くこと(↓ で先頭または選択中の値、↑ で末尾)、設定から更新を確認すること。
+`pnpm tauri dev` でオーナーが確認した(2026-11-19): エクスプローラでフォルダを展開し、ファイルを変更して再読み込みされること、ツールバーの各メニューをキーボードで開くこと(↓ で先頭または選択中の値、↑ で末尾)、設定から更新を確認すること。
 <!-- SECTION:NOTES:END -->
