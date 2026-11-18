@@ -48,9 +48,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   保存されたフォルダはもうどこからも読まない。表示中のフォルダと選択を見る効果 1 つが
   restored session への報告で、**呼び出し箇所ではなく述語**として書いてある。
 - `hooks/useFileTree.ts` — ファイルツリーの集中管理（展開集合・子マップ・`refresh`・
-  `expandPaths`）。ツリーコンポーネントはこれに制御される。
+  `expandPaths`）。ツリーコンポーネントはこれに制御される。`expandPaths` が
+  フォルダを開く順と、`refresh` が読み直すフォルダは `lib/tree-nav` が決める。
 - `hooks/useUpdater.ts` — 更新確認・導入の同意・再起動（tauri-plugin-updater +
   tauri-plugin-process）。更新確認から導入の同意までの間 `Update` ハンドルを保持する。
+  確認の要求・その結果・導入の同意で何が起きるかは `lib/update-flow` が決める（TASK-67）。
 - `hooks/useWindowEvent.ts` — **このウィンドウだけ**でイベントを購読する。
   ウィンドウごとに配るすべての emit のフロント側の半分（メニューのものと、
   `fs:change` で `lib/watch` が確立した対）。
@@ -58,6 +60,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   振る舞い。開いたら項目へ焦点を移す、矢印は端で回る、Escape で開いた元へ戻す、
   Tab は焦点を引き戻さずに閉じる（snz-design doc-9 §6.11）。共有する半分が
   `useMenuBody` で、`useMenu` はそこへツールバーのメニューのトリガーボタンを足す。
+  開いたときにどの項目へフォーカスを置くかは `lib/menu-nav` が決める。
 - `hooks/useContextMenu.ts` — エクスプローラの行のメニュー（TASK-50）。
   `useMenuBody` の上に作り、ポインタの位置か行の下に開き、位置は `lib/context-menu`
   が決め、背後のスクロールかリサイズで閉じ、焦点は開いた行へ戻す。
@@ -129,18 +132,20 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `source-wrap`（強調表示するソース表示が長い行を折り返すか。全ソース表示・全ウィンドウで 1 つ）、
   `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
-  メニューの焦点をどこへ移すか）、`context-menu`（コンテキストメニューをどこに置くか、
+  メニューの焦点をどこへ移すか、メニューを開いたときのフォーカスをどこに置くか）、`context-menu`（コンテキストメニューをどこに置くか、
   どのキーで開くか。純関数）、`segmented-nav`（キーがセグメントの焦点をどこへ移すか）、
   `explorer-toggle`（エクスプローラを出し入れする
   `CmdOrCtrl+B` の chord。ゲートなし）、`visit-history`（ウィンドウの訪問履歴と
   ファイル表示状態、その上限、削除されたファイルの読み飛ばし。純粋関数）、`history-nav`
   （プラットフォームごとの戻る / 進むの chord とマウスのサイドボタン。常に消費する）、`tree-nav`（ツリーに出ている行・行の上でキーが
-  何をするか・Tab の止まりになる行）、`tree-arrange`（エクスプローラの並び順と名前の
+  何をするか・Tab の止まりになる行・フォルダを開く・展開する・再読み込みするときに
+  どのフォルダをどの順で読むか）、`tree-arrange`（エクスプローラの並び順と名前の
   絞り込み。どの並び順でもフォルダが先頭、日時の無い項目は日時を持つ項目の後ろ、
   絞り込み中も中身を読んでいないフォルダは残す。純粋関数。TASK-61）、`explorer-width`（エクスプローラの幅の上下限・
   つまみのキーの刻み・置く押下が決める幅）、`i18n`（ja/en 辞書 + provider/hooks。言語は
   localStorage に永続化）、`update-flow`（更新確認と導入の状態・ダウンロード量の
-  積算）、`chord`（アクセラレータの一致判定、アプリ全体の chord handler・その 3 値、
+  積算・確認の要求とトリガーごとの結果と導入の同意で何が起きるか。更新の規則はここにあり、
+  `useUpdater` はプラグインの呼び出しだけを持つ）、`chord`（アクセラレータの一致判定、アプリ全体の chord handler・その 3 値、
   および click event から同じ解決をする `newWindowModifierHeld`）、
   `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲートと、
   それを 2 つのメニュー項目へ押し出す購読）、
@@ -1771,6 +1776,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   Tauri のもの・
   `outline-pref`・`prose-measure`・`source-wrap`＝それぞれのキャッシュと通知、保存された値の読み戻し・
   `color-choice`＝分割前の各保存値の 2 軸への読み替えと、片側だけの系統が描く側・
+  `update-flow`＝トリガーごとの更新確認の規則、起動時の確認を手動の押下が手動に格上げすること、再起動の失敗を導入済みとして報告すること・
   `menu-nav`・
   `context-menu`・
   `segmented-nav`・

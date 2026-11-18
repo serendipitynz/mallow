@@ -49,9 +49,12 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   this window's content to the restored session — a predicate, not a call site.
 - `hooks/useFileTree.ts` — centralized lazy file-tree state (expanded set, children
   map, `refresh`, `expandPaths`). The tree components are controlled by this.
+  The order `expandPaths` opens folders in and the folders `refresh` reads
+  again are `lib/tree-nav`'s.
 - `hooks/useUpdater.ts` — the update check, the install consent and the relaunch
   (tauri-plugin-updater + tauri-plugin-process). Holds the `Update` handle
-  between the check and the confirmation.
+  between the check and the confirmation; what a check request, its outcome and
+  an install consent do is `lib/update-flow`'s (TASK-67).
 - `hooks/useWindowEvent.ts` — listening for an event **on this window alone**,
   which is the frontend half of every per-window emit (the menu's, and the
   pairing `lib/watch` already establishes for `fs:change`).
@@ -59,7 +62,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   shares: focus onto an item on open, arrows that wrap, Escape back to where it
   was opened from, Tab closing without pulling the focus back (snz-design
   doc-9 §6.11). `useMenuBody` is that shared half; `useMenu` adds the toolbar
-  menus' trigger button.
+  menus' trigger button. Which item takes the focus on open is `lib/menu-nav`'s.
 - `hooks/useContextMenu.ts` — the explorer's row menu (TASK-50) on
   `useMenuBody`: opened at the pointer or under the row, placed by
   `lib/context-menu`, closed by a scroll or a resize behind it, and the row it
@@ -143,20 +146,23 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `color-choice` (the two colour axes, the
   pre-split value read onto them, and the scheme they draw — pure), `theme`
   (that choice on `<html>` and in localStorage), `menu-nav` (where a key moves
-  a menu's focus), `context-menu` (where a context menu is placed, and which keys
+  a menu's focus, and where it lands when the menu opens), `context-menu` (where a context menu is placed, and which keys
   open one — pure), `segmented-nav` (where a key moves a segmented control's focus),
   `explorer-toggle` (the `CmdOrCtrl+B` chord that shows and
   hides the explorer — no gate), `visit-history` (a window's visit history and
   file view state, their bounds, and the skip over a deleted file — pure),
   `history-nav` (the back / forward chords per platform and the mouse's side
-  buttons, always consumed), `tree-nav` (the tree's shown rows, what a key does on one, and
-  which row holds the tab stop), `tree-arrange` (the explorer's order and its
+  buttons, always consumed), `tree-nav` (the tree's shown rows, what a key does on one,
+  which row holds the tab stop, and which folders opening, expanding and
+  refreshing read, in what order), `tree-arrange` (the explorer's order and its
   name filter — directories first in every order, an absent time after the dated
   entries, and a folder never read kept under a filter — pure; TASK-61),
   `explorer-width` (the explorer's width limits,
   the handle's key steps and where a placing press puts it), `i18n` (ja/en dictionary + provider/hooks; language
   persisted in localStorage), `update-flow` (the check and install states, the
-  download accumulator), `chord` (accelerator matching plus the app-wide chord
+  download accumulator, and what a check request, its outcome per trigger and an
+  install consent do — the updater's rules, with `useUpdater` keeping only the
+  plugin calls), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share, and the subscription that pushes it to their menu
   items), `find` (the folding, the matching and the step — pure), `find-dom` (the
@@ -2015,7 +2021,9 @@ hold rather than as an exhaustive style guide.
   `outline-pref`, `prose-measure` and `source-wrap`
   (each one's cache and notification, and the stored value read back),
   `color-choice` (each pre-split value read
-  onto the two axes, and the side a one-sided family draws), `menu-nav`, `context-menu`, `segmented-nav`, `tree-nav`,
+  onto the two axes, and the side a one-sided family draws), `update-flow` (the
+  update check's rules per trigger, a manual press promoting a launch check, and
+  a failed relaunch reported as installed), `menu-nav`, `context-menu`, `segmented-nav`, `tree-nav`,
   `tree-arrange` (each order, the absent creation time's place, and what the
   filter keeps of read, unread and open folders),
   `explorer-width`, `visit-history`, `history-nav`, `slide-themes` (the
