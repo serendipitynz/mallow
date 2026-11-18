@@ -125,6 +125,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `outline-pref`（アウトラインの開閉。全ウィンドウで 1 つ）、
   `prose-measure`（markdown の散文 1 行の長さ。`standard`・`wide`・`full` のどれか。幅そのものは
   `markdown.scss` が持つ）、
+  `source-wrap`（強調表示するソース表示が長い行を折り返すか。全ソース表示・全ウィンドウで 1 つ）、
   `color-choice`（配色の 2 軸、分割前の保存値の読み替え、描かれる組。純関数）、
   `theme`（その選択を `<html>` と localStorage に置く）、`menu-nav`（キーが
   メニューの焦点をどこへ移すか）、`context-menu`（コンテキストメニューをどこに置くか、
@@ -884,6 +885,13 @@ Comments と Functions の規約は機械的に検査されない。コメント
   テキストから測った行送りで決める。宣言値の `--src-line-height` から計算してはいけない** —
   WebKit は行ボックスの高さを整数に丸めるので、宣言した 20.8px は 20px として使われ、
   計算で置いた帯は 25 行ごとに 1 行ずれる。
+  **折り返すのは強調表示する経路だけ**（TASK-65。`sourceWrap` 設定で、読み手が切らない限りオン）:
+  `.src-view[data-wrap='on']` は `pre.shiki` を `pre-wrap` + `overflow-wrap: anywhere` にして、
+  区切り位置の無い連続した文字列も折り返す。`.line` にはぶら下げインデントを付け、本文の列まで
+  padding を取って先頭行だけ同じ量を引き戻す。これで続きの行は本文の下から始まり、行番号は先頭行に
+  並ぶ。**行番号は通常のフローに残す** — 空行の高さを作っているのが行番号だから（Shiki の `text`
+  文法は空行を空のトークン span として出すので、`:empty` では見つけられない）。区切り線は行の高さ
+  いっぱいの `::after` に移す。行番号の border では先頭行で途切れるため。折り返さないときの配置は上の通り。
 - **ツールバーは自前のコンポジットレイヤを持ち続けなければならず、z-index の数字だけでは
   ドロップダウンを `.doc__bar` の上に保てない。** バーの `backdrop-filter` がバーを
   専用のレイヤに置くので、`.doc-scroll` がオーバーフローしている状態でツールバーの
@@ -1429,9 +1437,9 @@ Comments と Functions の規約は機械的に検査されない。コメント
   **`saveSetting` は永続化と伝播を 1 回で行う**ので、store 側の設定
   （エクスプローラの幅・位置・並び順、カスタム絵文字フォルダ、スライドテーマのフォルダと
   既定のテーマ、起動時の更新確認）は
-  呼び出し側に何も要らない。配色・言語・文章の幅・アウトラインの開閉は代わりに
+  呼び出し側に何も要らない。配色・言語・文章の幅・ソース表示の折り返し・アウトラインの開閉は代わりに
   `components/color`・`SettingsModal`・2 つのビューから送る — `lib/theme`・`lib/i18n`・
-  `lib/prose-measure`・`lib/outline-pref` に Tauri 層の依存を持ち込まないため。**配色は `colorFamily` と
+  `lib/prose-measure`・`lib/source-wrap`・`lib/outline-pref` に Tauri 層の依存を持ち込まないため。**配色は `colorFamily` と
   `colorMode` の 2 つのキーで運ぶ** — 利用者は軸ごとに選ぶので、1 つの値として
   順序を付けると、ある窓で選んだ配色系統と別の窓で選んだ明暗が近い時刻に重なった
   とき、片方が取り消される。
@@ -1760,7 +1768,7 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `settings-sync`＝順序づけと、commit が Rust へ何を送るか、Rust が stamp を
   押し上げたときにウィンドウが自分の変更をもう一度適用すること。listener と emit は
   Tauri のもの・
-  `outline-pref` と `prose-measure`＝それぞれのキャッシュと通知、保存された行長の読み戻し・
+  `outline-pref`・`prose-measure`・`source-wrap`＝それぞれのキャッシュと通知、保存された値の読み戻し・
   `color-choice`＝分割前の各保存値の 2 軸への読み替えと、片側だけの系統が描く側・
   `menu-nav`・
   `context-menu`・
