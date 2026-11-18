@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { contextMenuPlacement, type Point } from '../lib/context-menu';
-import { type OpenFocus, useMenuBody } from './useMenu';
+import type { OpenFocus } from '../lib/menu-nav';
+import { useMenuBody } from './useMenu';
 
 /** A menu opened on an element rather than from a trigger button — the
  *  explorer's rows. It behaves as the toolbar menus do once open

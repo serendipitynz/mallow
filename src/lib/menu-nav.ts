@@ -22,3 +22,23 @@ export function menuKeyTarget(key: string, index: number, count: number): number
       return null;
   }
 }
+
+/** Where a menu's focus lands when it opens. */
+export type OpenFocus = 'first' | 'last' | 'current';
+
+/** Which of the items an opening menu focuses, given which are marked
+ *  `aria-checked`, or `null` when there are none and the popup itself takes the
+ *  focus. `current` is the reader's value in a value menu; with nothing checked
+ *  it falls back to the first item. */
+export function openFocusIndex(focus: OpenFocus, checked: readonly boolean[]): number | null {
+  if (checked.length === 0) {
+    return null;
+  }
+  if (focus === 'last') {
+    return checked.length - 1;
+  }
+  if (focus === 'current') {
+    return Math.max(checked.indexOf(true), 0);
+  }
+  return 0;
+}
