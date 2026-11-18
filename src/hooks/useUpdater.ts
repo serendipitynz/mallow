@@ -3,12 +3,20 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { STORE } from '../lib/build-flags';
-import { advanceDownload, type CheckState, type UpdateFlow, updateNotes } from '../lib/update-flow';
-
-/** Where an update check came from. A launch check is silent about everything
- *  except an available update: offline is the normal case at launch, and an
- *  error box for it is worse than never checking (AC #9). */
-export type CheckTrigger = 'launch' | 'manual';
+import {
+  advanceDownload,
+  type CheckReport,
+  type CheckState,
+  type CheckTrigger,
+  canConfirmInstall,
+  reportCheck,
+  reportInstall,
+  requestCheck,
+  UPDATER_IDLE,
+  type UpdateFlow,
+  type UpdaterActivity,
+  updateNotes,
+} from '../lib/update-flow';
 
 export interface Updater {
   /** The running version, for Settings — until now it was legible only in the
@@ -67,16 +75,7 @@ function useReleaseUpdater(): Updater {
   // confirmation. Closed on dismissal and on unmount so the resource is not
   // leaked when the user says no.
   const pending = useRef<Update | null>(null);
-  // Guards both the check and the install: a second check while one is running
-  // would replace the handle a confirmation is about to use.
-  const inFlight = useRef(false);
-  // The trigger of the check that is running, null when none is. A manual press
-  // cannot start a second check, and a launch check reports none of its three
-  // outcomes — so without promoting the trigger the press would be swallowed
-  // whole, which is exactly what the manual path exists to answer. `check()`
-  // sets no timeout of its own, so the window this covers is as long as the OS
-  // connect timeout.
-  const runningTrigger = useRef<CheckTrigger | null>(null);
+  const activity = useRef<UpdaterActivity>(UPDATER_IDLE);
 
   const releasePending = useCallback(() => {
     const update = pending.current;
@@ -87,90 +86,79 @@ function useReleaseUpdater(): Updater {
   // Close the handle if the window goes away with an offer still on screen.
   useEffect(() => releasePending, [releasePending]);
 
+  const showReport = useCallback((report: CheckReport) => {
+    if (report.check) {
+      setCheckState(report.check);
+    }
+    if (report.flow) {
+      setFlow(report.flow);
+    }
+  }, []);
+
   const checkForUpdate = useCallback(
     (trigger: CheckTrigger) => {
-      if (inFlight.current) {
-        if (trigger === 'manual' && runningTrigger.current === 'launch') {
-          runningTrigger.current = 'manual';
-          setCheckState({ status: 'checking' });
-        }
-        return;
+      const request = requestCheck(activity.current, trigger);
+      activity.current = request.activity;
+      if (request.dropOffer) {
+        releasePending();
+        setFlow({ phase: 'none' });
       }
-      inFlight.current = true;
-      runningTrigger.current = trigger;
-      // An offer the user has not acted on is superseded by this check, whatever
-      // it returns: the handle it was made with is about to be closed. Dropping
-      // it here rather than in the branches below is what keeps `available` from
-      // outliving the handle a confirmation would act on. A check cannot reach
-      // this point while an install is running, since `inFlight` covers both.
-      releasePending();
-      setFlow({ phase: 'none' });
-      if (trigger === 'manual') {
-        setCheckState({ status: 'checking' });
+      if (request.check) {
+        setCheckState(request.check);
+      }
+      if (!request.start) {
+        return;
       }
       void (async () => {
         try {
           const update = await check();
-          // Read the trigger back rather than closing over it: a manual press
-          // landing mid-check promotes it, and the outcome is then owed to the
-          // screen.
-          if (!update) {
-            setCheckState(runningTrigger.current === 'manual' ? { status: 'upToDate' } : { status: 'idle' });
-            return;
-          }
           pending.current = update;
-          // The dialog takes over reporting from here, so the manual path's
-          // inline line goes back to saying nothing.
-          setCheckState({ status: 'idle' });
-          setFlow({ phase: 'available', target: { version: update.version, notes: updateNotes(update.body) } });
+          showReport(
+            reportCheck(
+              activity.current,
+              update
+                ? { kind: 'available', target: { version: update.version, notes: updateNotes(update.body) } }
+                : { kind: 'upToDate' },
+            ),
+          );
         } catch (e) {
           console.error('Update check failed', e);
-          if (runningTrigger.current === 'manual') {
-            setCheckState({ status: 'failed', message: String(e) });
-          }
+          showReport(reportCheck(activity.current, { kind: 'failed', message: String(e) }));
         } finally {
-          inFlight.current = false;
-          runningTrigger.current = null;
+          activity.current = UPDATER_IDLE;
         }
       })();
     },
-    [releasePending],
+    [releasePending, showReport],
   );
 
   const confirmInstall = useCallback(() => {
     const update = pending.current;
-    if (!update || inFlight.current) {
+    if (!canConfirmInstall(activity.current, update !== null) || !update) {
       return;
     }
-    inFlight.current = true;
+    activity.current = { kind: 'installing' };
     const target = { version: update.version, notes: updateNotes(update.body) };
     setFlow({ phase: 'downloading', target, received: 0, total: null });
     void (async () => {
       try {
         await update.downloadAndInstall((event) => setFlow((current) => advanceDownload(current, event)));
       } catch (e) {
-        // Any failure after consent is reported as the update not having been
-        // installed. The plugin's errors serialize to a bare string, and its
-        // variants do not line up with the causes anyway, so there is nothing to
-        // branch on and matching on the text would break on a reword.
         console.error('Update install failed', e);
-        setFlow({ phase: 'failed', target, message: String(e) });
-        inFlight.current = false;
+        setFlow(reportInstall(target, { kind: 'installFailed', message: String(e) }));
+        activity.current = UPDATER_IDLE;
         return;
       }
       // Only reached where the process survives the install: on Windows the
       // installer takes over and this process is already gone.
-      setFlow({ phase: 'relaunching', target });
+      setFlow(reportInstall(target, { kind: 'installSucceeded' }));
       try {
         await relaunch();
       } catch (e) {
-        // Outside the catch above on purpose: the update is in by now, so
-        // reporting a failure to restart as a failure to install would be a lie
-        // that invites a second install.
         console.error('Relaunch after install failed', e);
-        setFlow({ phase: 'installed', target });
+        setFlow(reportInstall(target, { kind: 'relaunchFailed' }));
       } finally {
-        inFlight.current = false;
+        activity.current = UPDATER_IDLE;
       }
     })();
   }, []);
