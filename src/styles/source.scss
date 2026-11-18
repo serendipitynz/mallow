@@ -76,6 +76,48 @@
   background: rgb(207 34 46 / 14%);
 }
 
+// Wrapping (TASK-65, the `sourceWrap` preference). A hanging indent: the line
+// is padded to the text column and its first row pulled back by as much, so the
+// number still opens the first row and every continuation row starts where the
+// text does. The number stays in the flow because it is what gives a blank line
+// its height. Its rule moves to a pseudo-element of the line's full height, since
+// a border on the number would stop at the first row. The unhighlighted path
+// never wraps — its numbers are one text node beside the text.
+.src-view[data-wrap='on'] {
+  pre.shiki {
+    white-space: pre-wrap;
+    // A run with no break opportunity has to wrap too, not overflow.
+    overflow-wrap: anywhere;
+  }
+
+  pre.shiki code {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .line {
+    position: relative;
+    // `box-sizing: border-box` puts the number's padding inside
+    // `--src-gutter-width`, so the text column is one margin past it.
+    padding-left: calc(var(--src-gutter-width) + 1em);
+    text-indent: calc(-1 * (var(--src-gutter-width) + 1em));
+  }
+
+  .line::before {
+    text-indent: 0;
+    border-right: 0;
+  }
+
+  .line::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--src-gutter-width) - 1px);
+    width: 1px;
+    background: $border;
+  }
+}
+
 // ---- Unhighlighted path (over the caps in lib/source-cap) -------------------
 .src-plain {
   display: flex;

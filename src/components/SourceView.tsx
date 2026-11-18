@@ -1,9 +1,10 @@
-import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { ShikiTransformer } from 'shiki';
 import { setFindTarget } from '../lib/find-target';
 import { useT } from '../lib/i18n';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from '../lib/shiki';
 import { countLines, highlightSkipReason } from '../lib/source-cap';
+import { onSourceWrapChange, readSourceWrap } from '../lib/source-wrap';
 import { Notice } from './Notice';
 
 /** Shared syntax-highlighted source view with line numbers. Used as one mode of
@@ -55,6 +56,7 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
   const code = useMemo(() => source.replace(/[\r\n]+$/, ''), [source]);
   const skipReason = useMemo(() => highlightSkipReason(code), [code]);
   const lineCount = useMemo(() => countLines(code), [code]);
+  const wrap = useSyncExternalStore(onSourceWrapChange, readSourceWrap);
 
   useEffect(() => {
     if (skipReason !== null) {
@@ -108,7 +110,12 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
   const sourceHtml = useMemo(() => ({ __html: html }), [html]);
 
   return (
-    <div className="src-view" ref={hostRef} style={{ '--src-gutter-digits': gutterDigits(lineCount) } as CSSProperties}>
+    <div
+      className="src-view"
+      ref={hostRef}
+      data-wrap={wrap ? 'on' : undefined}
+      style={{ '--src-gutter-digits': gutterDigits(lineCount) } as CSSProperties}
+    >
       {skipReason !== null && (
         <Notice level="degraded" className="notice--doc">
           {t('highlightSkipped')}
