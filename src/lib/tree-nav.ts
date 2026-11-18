@@ -112,6 +112,19 @@ export function readsOnOpen(
   return !childrenByPath.has(path) || errors.has(path);
 }
 
+/** The order a set of folders is opened in: shorter paths first, so a parent is
+ *  expanded and read before the folders inside it. */
+export function expandOrder(paths: readonly string[]): string[] {
+  return [...paths].sort((a, b) => a.length - b.length);
+}
+
+/** The folders a refresh reads again: those open with children already read. A
+ *  folder opened but never read has nothing on screen to bring up to date, and
+ *  its own read is already on the way. */
+export function refreshTargets(expanded: Iterable<string>, childrenByPath: ReadonlyMap<string, unknown>): string[] {
+  return Array.from(expanded).filter((path) => childrenByPath.has(path));
+}
+
 /** Whether `path` sits somewhere under `ancestor` among the shown rows — the case
  *  where closing `ancestor` would take the focused row off the screen. */
 export function isShownUnder(rows: readonly TreeRow[], path: string, ancestor: string): boolean {
