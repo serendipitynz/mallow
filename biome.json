@@ -13,6 +13,7 @@
       "scripts/**/*.mjs",
       "vite.config.ts",
       "vitest.config.ts",
+      "mutator.config.ts",
       "package.json",
       "tsconfig*.json",
       ".vscode/extensions.json",
