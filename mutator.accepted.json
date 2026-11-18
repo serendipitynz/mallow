@@ -1,0 +1,70 @@
+{
+  "15d92xtxp6m": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:55:6 codePoint >= 0x3041 -> codePoint > 0x3041"
+  },
+  "16tbgc7a8sb": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:54:5 codePoint < 0x80 -> codePoint <= 0x80"
+  },
+  "1ot97g87p5e": {
+    "reason": "Equivalent: at end of input the separator step moves i past n and the second i >= n check breaks with the same table.",
+    "where": "src/lib/delimited.ts:170:9 i >= n -> i > n"
+  },
+  "24w1ympkmgb": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:56:29 codePoint <= 0x9fff -> codePoint < 0x9fff"
+  },
+  "2a4sawctekn": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:56:6 codePoint >= 0x4e00 -> codePoint > 0x4e00"
+  },
+  "2ajn0qm4g95": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:55:6 codePoint >= 0x3041 && codePoint <= 0x30ff && codePoint !==… -> false"
+  },
+  "2ebwc8etnbq": {
+    "reason": "Equivalent: at end of input the separator step moves i past n and the second i >= n check breaks with the same table.",
+    "where": "src/lib/delimited.ts:170:9 i >= n -> false"
+  },
+  "2fg5oe3b1en": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:54:5 codePoint < 0x80 -> false"
+  },
+  "3shax5bqps": {
+    "reason": "Equivalent: at i >= n, text[i] is undefined and never equals the delimiter, so the i < n guard changes nothing.",
+    "where": "src/lib/delimited.ts:158:9 i < n -> true"
+  },
+  "apeqc3w8h1": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:54:5 codePoint < 0x80 || (codePoint >= 0x3041 && codePoint <= 0x… -> false"
+  },
+  "ccvz0w90ac": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:54:5 codePoint < 0x80 || (codePoint >= 0x3041 && codePoint <= 0x… -> ((codePoint < 0x80 || (codePoint >= 0x3041 && codePoint <= …"
+  },
+  "flhuy9uhn3": {
+    "reason": "Equivalent: at i >= n, text[i] is undefined and never equals the delimiter, so the i < n guard changes nothing.",
+    "where": "src/lib/delimited.ts:158:9 i < n -> i <= n"
+  },
+  "hfgqhujewq": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:56:6 codePoint >= 0x4e00 && codePoint <= 0x9fff -> false"
+  },
+  "jifju9idlj": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:55:29 codePoint <= 0x30ff -> codePoint < 0x30ff"
+  },
+  "lxh2mxnjri": {
+    "reason": "Equivalent: when fields equals columnCount, >= assigns the value it already holds.",
+    "where": "src/lib/delimited.ts:164:9 fields > columnCount -> fields >= columnCount"
+  },
+  "p2vib37ipb": {
+    "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
+    "where": "src/lib/find.ts:54:5 codePoint < 0x80 || (codePoint >= 0x3041 && codePoint <= 0x… -> (codePoint < 0x80 && (codePoint >= 0x3041 && codePoint <= 0…"
+  },
+  "r20sqb7lua": {
+    "reason": "Equivalent: at end of input the separator step moves i past n and the second i >= n check breaks with the same table.",
+    "where": "src/lib/delimited.ts:170:17 { break; } -> {}"
+  }
+}

@@ -51,6 +51,14 @@ describe('foldForFind', () => {
     expect([...folded.end]).toEqual([1, 2, 2, 4, 5]);
   });
 
+  it('composes a combining voiced mark with the kana before it, though both sit in the kana range', () => {
+    const voiced = foldForFind('か\u3099');
+    expect(voiced.text).toBe('が');
+    expect([...voiced.start]).toEqual([0]);
+    expect([...voiced.end]).toEqual([2]);
+    expect(foldForFind('は\u309A').text).toBe('ぱ');
+  });
+
   it('keeps a combining mark with the letter before it', () => {
     const folded = foldForFind('éx');
     expect(folded.text).toBe('éx');
