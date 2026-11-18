@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { isShownUnder, readsOnOpen, tabStopPath, treeKeyAction, visibleRows } from './tree-nav';
+import {
+  expandOrder,
+  isShownUnder,
+  readsOnOpen,
+  refreshTargets,
+  tabStopPath,
+  treeKeyAction,
+  visibleRows,
+} from './tree-nav';
 import type { FileEntry } from './types';
 
 const dir = (path: string): FileEntry => ({
@@ -108,6 +116,32 @@ describe('readsOnOpen', () => {
 
   it('reads again a folder whose refresh failed while its earlier children are still held', () => {
     expect(readsOnOpen('a', children, new Map([['a', 'Permission denied']]))).toBe(true);
+  });
+});
+
+describe('expandOrder', () => {
+  it('opens a parent before the folders inside it, whatever order they came in', () => {
+    expect(expandOrder(['a/b/c', 'a', 'a/b'])).toEqual(['a', 'a/b', 'a/b/c']);
+  });
+
+  it('leaves the list it was given alone', () => {
+    const paths = ['a/b', 'a'];
+    expandOrder(paths);
+    expect(paths).toEqual(['a/b', 'a']);
+  });
+});
+
+describe('refreshTargets', () => {
+  it('reads again only the open folders whose children were already read', () => {
+    const read = new Map([
+      ['a', []],
+      ['shut', []],
+    ]);
+    expect(refreshTargets(new Set(['a', 'never-read']), read)).toEqual(['a']);
+  });
+
+  it('reads nothing when no folder is open', () => {
+    expect(refreshTargets(new Set(), new Map([['a', []]]))).toEqual([]);
   });
 });
 
