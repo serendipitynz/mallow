@@ -2054,7 +2054,10 @@ hold rather than as an exhaustive style guide.
   whether the code is right, so it is a signal for the next test and not a gate.
   A survivor no input can observe (an *equivalent* mutant) is recorded with
   `pnpm mutation accept <key> --reason "…"` in `mutator.accepted.json`, which is
-  tracked; the keys are in `.mutator/report/mutation.json`. **No module is marked
+  tracked; the keys are in `.mutator/report/mutation.json`. **A run narrowed with
+  `--include` lists every accepted entry outside it as one whose mutant no longer
+  exists, and asks for it to be removed** — those mutants were simply not in the
+  run, so only a full run can say an entry is stale. **No module is marked
   `critical`**, the untrusted-input boundary included: a critical module fails
   the run on every undetected mutant, and those four modules (`markdown`,
   `html-doc`, `deck-css`, `slide-theme-css`) carried 339 at the first full run,

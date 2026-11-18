@@ -1812,7 +1812,10 @@ Comments と Functions の規約は機械的に検査されない。コメント
   合否の関門ではなく次のテストを書く手がかりであることである。どの入力からも観測できない
   生存 mutant（等価 mutant）は `pnpm mutation accept <key> --reason "…"` で
   `mutator.accepted.json`（git 管理対象）に記録する。key は
-  `.mutator/report/mutation.json` にある。**`critical` に指定したモジュールは無い**。
+  `.mutator/report/mutation.json` にある。**`--include` で範囲を絞った実行は、範囲外の
+  accept 済みエントリをすべて「mutant がもう存在しない」として挙げ、削除を求める** —
+  それらの mutant はその実行に含まれなかっただけなので、エントリが本当に古いかは
+  全体の実行でしか分からない。**`critical` に指定したモジュールは無い**。
   信頼できない入力の境界も含めてである: critical なモジュールは検出されない mutant が
   一つでもあれば実行を失敗させるが、その 4 モジュール（`markdown`・`html-doc`・
   `deck-css`・`slide-theme-css`）には初回の全体実行で 339 件あったので、仕分けが済むまでは
