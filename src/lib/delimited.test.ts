@@ -63,7 +63,10 @@ describe('parseDelimited', () => {
       ['a', 'b'],
       ['c', 'd'],
     ]);
-    expect(csv('a,b\rc,d').rowCount).toBe(2);
+    expect(csv('a,b\rc,d').rows).toEqual([
+      ['a', 'b'],
+      ['c', 'd'],
+    ]);
     expect(csv('a,b\r\nc,d\ne,f').rowCount).toBe(3);
   });
 
@@ -128,6 +131,15 @@ describe('parseDelimited caps', () => {
     const table = csv('a,b\n'.repeat(TABLE_MAX_ROWS * 3));
     expect(table.rowCount).toBe(TABLE_MAX_ROWS * 3);
     expect(table.rows.length).toBe(TABLE_MAX_ROWS);
+  });
+
+  it('stops building rows when the cell budget runs out, before the row cap', () => {
+    const columns = 10;
+    const records = (TABLE_MAX_CELLS / columns) * 1.5;
+    const table = csv(`${Array.from({ length: columns }, (_, i) => String(i)).join(',')}\n`.repeat(records));
+    expect(TABLE_MAX_CELLS / columns).toBeLessThan(TABLE_MAX_ROWS);
+    expect(table.rowCount).toBe(records);
+    expect(table.rows.length).toBe(TABLE_MAX_CELLS / columns);
   });
 
   it('counts every field of a very wide record but builds no more than the column cap', () => {
