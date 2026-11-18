@@ -23,6 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# Mutation testing's cache and reports (mutator.accepted.json is tracked)
+.mutator/
+
 # Local-only scratch space
 _sandbox/
 
