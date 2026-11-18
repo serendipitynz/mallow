@@ -1,10 +1,10 @@
 ---
 id: TASK-66
 title: Add mutation testing for the pure lib modules with mutator
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-17 23:07'
-updated_date: '2026-11-18 20:21'
+updated_date: '2026-11-18 21:23'
 labels:
   - chore
 dependencies: []
@@ -80,7 +80,7 @@ Line coverage no longer tells us much about the tests in `src/lib`. Mutation tes
 - [x] #3 Whether the untrusted-input boundary modules are marked critical is decided, and the reason is recorded
 - [x] #4 .mutator/ is git-ignored, and every entry in mutator.accepted.json carries a reason
 - [x] #5 A full cold run over src/lib is done, and each module's score and the run time are recorded in the task notes
-- [ ] #6 The gaps the trial found are killed by new tests: a lone CR line ending and the cell budget in delimited.ts, and the CJK range boundaries in find.ts
+- [x] #6 The gaps the trial found are killed by new tests where a test can observe them — a lone CR line ending and the cell budget in delimited.ts, and the voiced-mark exclusions beside find.ts's CJK ranges — and the range-boundary mutants no input can observe are accepted as equivalent, each with its reason
 - [x] #7 AGENTS.md and AGENTS.ja.md say when to run it (--since main while on a branch), why it is not in check.yml, and that it needs Node 24 or later
 - [x] #8 pnpm lint, pnpm build and pnpm test pass
 <!-- AC:END -->
@@ -145,7 +145,7 @@ Line coverage no longer tells us much about the tests in `src/lib`. Mutation tes
   - 同じ行で殺せるものは殺した: 濁点・半濁点の結合文字 U+3099 / U+309A をかな範囲から除く条件(`!== 0x3099` → `true` など 3 件)。分解済みの `が` → `が`、`ぱ` → `ぱ` のテストを足した。
 - 追加後の再実行(find・delimited の 2 モジュール、57 秒): 狙った mutant はすべて Killed。find 72.4%、delimited 91.3%。
 
-**AC #6 は未チェックのまま残す。** 「CJK 範囲の境界をテストで殺す」は文面どおりには満たせないため(上記の等価性)。この扱いでよいか、AC を直すかはオーナー判断。
+**AC #6 は文面を直してチェックした**(2026-11-19、オーナー判断)。元の「CJK 範囲の境界をテストで殺す」は上記の等価性のため満たせないので、「テストで観測できるギャップはテストで殺し、どの入力からも観測できない範囲境界の mutant は理由付きで等価として accept する」に改めた。
 
 ## accept した等価 mutant(AC #4)
 
