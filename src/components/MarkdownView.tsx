@@ -9,6 +9,7 @@ import { enhanceCodeBlocks } from '../lib/codeblock';
 import { setFindTarget } from '../lib/find-target';
 import { useT } from '../lib/i18n';
 import { isDeck } from '../lib/is-deck';
+import { watchLinks } from '../lib/link-status-dom';
 import { getMarkdownConfigVersion, type RenderResult, renderMarkdown, subscribeMarkdownConfig } from '../lib/markdown';
 import { setMarkdownPreviewActive } from '../lib/markdown-preview';
 import { renderMermaid } from '../lib/mermaid';
@@ -160,6 +161,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
       }
     };
     article.addEventListener('click', onClick);
+    const stopLinkStatus = watchLinks(article, { fragmentsMove: true });
 
     const anchor = pendingRestore.current;
     pendingRestore.current = null;
@@ -169,6 +171,7 @@ export function MarkdownView({ source, path, memory }: { source: string; path: s
 
     return () => {
       article.removeEventListener('click', onClick);
+      stopLinkStatus();
       cancelAnimationFrame(raf);
     };
   }, [result, shownMode, t]);

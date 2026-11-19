@@ -781,6 +781,35 @@
   height: 26px;
 }
 
+// The link destination (TASK-68) takes what the bar has left and never more:
+// one line, cut with an ellipsis, so a long URL neither wraps nor grows the bar.
+// The note stays whole, since it is what tells a dead link from a live one.
+.link-status {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  color: $muted;
+  white-space: nowrap;
+}
+
+.link-status__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.link-status__note {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid $border;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
 // ---- Settings modal ---------------------------------------------------------
 .modal-overlay {
   position: fixed;
