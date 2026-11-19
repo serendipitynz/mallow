@@ -42,6 +42,8 @@ describe('describeLink', () => {
     // A scheme-relative or bare host is not http(s) to the click handler either.
     expect(describeLink('//example.com', preview).kind).toBe('inert');
     expect(describeLink('example.com', preview).kind).toBe('inert');
+    // Only a leading scheme counts: a relative path naming a URL does not open.
+    expect(describeLink('./https://example.com', preview).kind).toBe('inert');
   });
 });
 
@@ -73,9 +75,42 @@ describe('link status', () => {
     setHoveredLink({ kind: 'inert', text: 'https://a.example' });
     expect(seen).toHaveBeenCalledTimes(2);
 
+    setHoveredLink({ kind: 'inert', text: './other.md' });
+    expect(seen).toHaveBeenCalledTimes(3);
+    expect(readLinkStatus()).toEqual({ kind: 'inert', text: './other.md' });
+
     stop();
     setHoveredLink(null);
+    expect(seen).toHaveBeenCalledTimes(3);
+  });
+
+  it('treats the focus the same way, and says nothing when nothing was shown and nothing is', () => {
+    const seen = vi.fn();
+    const stop = onLinkStatusChange(seen);
+    setHoveredLink(null);
+    setFocusedLink(null);
+    expect(seen).not.toHaveBeenCalled();
+
+    setFocusedLink(inert);
+    setFocusedLink({ kind: 'inert', text: './b.md' });
+    expect(seen).toHaveBeenCalledTimes(1);
+    setFocusedLink(web);
     expect(seen).toHaveBeenCalledTimes(2);
+    expect(readLinkStatus()).toBe(web);
+    stop();
+  });
+
+  it('clears when only one half holds a link', () => {
+    for (const set of [setHoveredLink, setFocusedLink]) {
+      const seen = vi.fn();
+      const stop = onLinkStatusChange(seen);
+      set(web);
+      seen.mockClear();
+      clearLinkStatus();
+      expect(seen).toHaveBeenCalledTimes(1);
+      expect(readLinkStatus()).toBeNull();
+      stop();
+    }
   });
 
   it('clears both halves at once, and says nothing when there was nothing to clear', () => {
