@@ -97,6 +97,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   Segmented（セグメント。各ビューアの表示切替と設定の選択。語を持つ組を置く側は
   `container: segmented / inline-size` を宣言し、22rem の縦積みはこの名前で問い合わせる。図形だけの組を置く側は宣言しない）、Select（ネイティブの select にシェブロンを重ねて描く。data URL のシェブロンは配色に追従できないため）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
+  LinkStatus（ポインタかフォーカスのあるリンクの行き先、または開かないことを
+  フッターに出す 1 行。TASK-68。live region にはしない。描画した HTML ビューと発表は
+  何も報告しない）、
   FindBar（開いている文書の中の検索。バー・件数・移動。下の gotcha を見る）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`is-deck`（文書が Marp デッキか。
@@ -149,6 +152,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   および click event から同じ解決をする `newWindowModifierHeld`）、
   `markdown-preview`（`Print…` と `Export as PDF…` が共有する唯一のゲートと、
   それを 2 つのメニュー項目へ押し出す購読）、
+  `link-status`（href を何と表示するか。クリックの処理と同じ判定で読む。窓ごとの
+  ポインタ優先の状態。純粋関数）と `link-status-dom`（ビューが記事要素を渡す委譲の
+  リスナー）、
   `find`（畳み込み・照合・移動。純粋関数）、`find-dom`（検索が読むテキスト、塗る
   ハイライト、一致を見える位置へ出す方法）、`find-target`（このウィンドウで検索する
   対象と、chord とメニューが読むゲート）、`find-chord`（検索の 3 つの chord の
@@ -1763,6 +1769,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `handover`＝渡された答えそれぞれが何になるかと、ドロップされたどれを開くか・
   `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
   Rust への invoke が 1 回走る）・
+  `link-status`＝href の種類ごとの表示、スライドで `#…` が開かないこと、ポインタが
+  フォーカスに勝つこと・
   `find`＝畳み込み（全角半角・大文字小文字・濁点・かなの区別）、元の位置への対応、
   ノードはまたぎブロックはまたがないこと、上限と折り返し・
   `find-target`＝差し替えられた対象の解放が新しい対象を消さないこと・

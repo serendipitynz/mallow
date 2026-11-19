@@ -107,7 +107,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   host declares none), Select (a native select with the chevron drawn over it,
   since a data-URL chevron cannot follow the palette), ViewPanel
   (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
-  (the turning figure beside its words), FindBar (find in the open document —
+  (the turning figure beside its words), LinkStatus (the footer's line saying
+  where the link under the pointer or the focus goes, or that it does not open —
+  TASK-68; not a live region, and the rendered HTML view and a presentation report
+  nothing to it), FindBar (find in the open document —
   the bar, the count and the steps; see the gotcha below), icons (inlined Lucide
   SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `is-deck` (whether a document is a
@@ -165,7 +168,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   plugin calls), `chord` (accelerator matching plus the app-wide chord
   handler and its three outcomes), `markdown-preview` (the one gate `Print…` and
   `Export as PDF…` share, and the subscription that pushes it to their menu
-  items), `find` (the folding, the matching and the step — pure), `find-dom` (the
+  items), `link-status` (what a link's href is shown as — read off the same test
+  the click handlers use — and the window's pointer-over-focus state — pure) with
+  `link-status-dom` (the delegated listeners a view hands its article to),
+  `find` (the folding, the matching and the step — pure), `find-dom` (the
   text find reads, the highlights it paints and how a match is brought into
   view), `find-target` (what find searches in this window, and the gate the
   chords and the menu read), `find-chord` (find's three chords per platform),
@@ -2007,7 +2013,9 @@ hold rather than as an exhaustive style guide.
   window opens in each of the three creation states), `handover` (what each
   handed answer becomes, and which dropped item is opened),
   `markdown-preview` (the gate, and that it notifies only on a change — one
-  invocation reaches Rust per notification), `find` (the folding — full and
+  invocation reaches Rust per notification), `link-status` (each kind of href,
+  the inert `#…` on a slide, and the pointer winning over the focus),
+  `find` (the folding — full and
   half width, case, a voiced mark, kana kept apart — the offsets mapped back,
   matching across nodes and not across blocks, the limit and the wrap),
   `find-target` (that a replaced target's release does not clear the new one),
