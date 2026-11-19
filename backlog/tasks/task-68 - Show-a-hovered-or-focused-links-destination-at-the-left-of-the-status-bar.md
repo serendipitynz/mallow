@@ -1,9 +1,10 @@
 ---
 id: TASK-68
 title: Show a hovered or focused link's destination at the left of the status bar
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-11-18 22:06'
+updated_date: '2026-11-19 06:39'
 labels:
   - feature
 dependencies: []
@@ -40,11 +41,51 @@ Before building, read snz-design doc-16 (§7.2) and mallow's adoption record (do
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Where the destination is shown (status bar or popup) and what is shown for each kind of href are confirmed by the owner and recorded before implementation
-- [ ] #2 In the markdown preview, pointing at a link shows its destination at the left of the bottom bar, beside the settings button, and it clears when the pointer leaves
-- [ ] #3 A link reached by keyboard focus shows its destination the same way and clears on blur
-- [ ] #4 A link whose click does nothing (relative path, mailto:, file: and the like) is shown as not opening, distinct from an http(s) link
+- [x] #1 Where the destination is shown (status bar or popup) and what is shown for each kind of href are confirmed by the owner and recorded before implementation
+- [x] #2 In the markdown preview, pointing at a link shows its destination at the left of the bottom bar, beside the settings button, and it clears when the pointer leaves
+- [x] #3 A link reached by keyboard focus shows its destination the same way and clears on blur
+- [x] #4 A link whose click does nothing (relative path, mailto:, file: and the like) is shown as not opening, distinct from an http(s) link
 - [ ] #5 A long destination is cut with an ellipsis; the bar does not grow taller or wrap, and the file information on the right yields to it in a narrow window
 - [ ] #6 The Slides view (and its presentation) is covered or its behaviour stated; the rendered HTML view is covered by a mechanism measured on all three WebViews, or left out with README saying so
 - [ ] #7 Checked on macOS, Windows and Linux builds
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+着手時の確認 (2026-11-19, オーナー): 4点とも提案どおり。
+- 表示場所: 下端のバー (.app__footer) の左、設定ボタンの右。ポップアップにはしない。
+- href ごとの表示: http(s) は URL をそのまま。#… は移動先の見出しの文字 (見出しが無ければ #id)。クリックで何も起きないもの (相対パス・mailto:・file: など) は href をそのまま出し、「開きません」を添える。
+- 描画した HTML ビュー: 対象外にし、README に書く (frame 内の hover は WebKit 系で親のリスナーから見えない、decision-9)。
+- バーの文字は live region にしない (hover のたびの読み上げは雑音になる)。
+- 発表中はバーが発表に覆われるので何も表示せず、README に書く。
+
+1. lib/link-status: href を種類 (web / fragment / inert) に分ける純関数と、窓ごとの表示状態 (hover と focus を別に持ち、hover を優先) のストア。単体テストを付ける。
+2. プレビュー (MarkdownView) と Slides (DeckView、発表中は除く) の記事要素に pointerover/out・focusin/out を委譲で付け、文書の差し替えとアンマウントで消す。スライドの #… はクリックで何も起きないので inert として扱う。
+3. フッターに LinkStatus を置く。1行、省略記号で切り、バーの高さを変えない。
+4. i18n (ja/en)、app.scss、README。
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+着手時の判断は Implementation Plan の冒頭に記録した (2026-11-19、オーナー確認。4 点とも提案どおり)。
+
+実装:
+- `lib/link-status` が href の種類 (web / fragment / inert) を決める。判定はビューのクリック処理と同じ `^https?://` で読むので、「開きません」の表示とクリックの結果がずれない。`#…` はプレビューでは移動先の見出しの文字 (見出しでない id、たとえば脚注は `#id` のまま)、スライドではクリックで何も起きないので inert とした。
+- 表示の状態は hover と focus を別に持ち、hover を優先する (ブラウザと同じ)。ポインタが離れるとフォーカス中のリンクの表示に戻る。
+- `lib/link-status-dom` の `watchLinks` が記事要素に pointerover / pointerleave / focusin / focusout を委譲で付ける。読むだけで DOM には何も書かない (TASK-29 の不変条件と find の MutationObserver のため)。文書の差し替えやアンマウントでは pointerleave が来ないので、解除のときに表示を消す。
+- 発表中はバーが発表に覆われるので watch しない。描画した HTML ビューは対象外で、README に書いた。
+- バーの文字は live region にしない。「開きません」は枠付きの小さい札にして、長い href でも切られないようにした (href 側だけが省略記号で縮む)。fg-faint は本文に使うとコントラストが足りない恐れがあるので、文字色は fg-muted のまま、語と枠で区別した。
+
+確認 (Electron のブラウザペイン = Blink。実際の `watchLinks` と `LinkStatus` と app.scss を、一時的に置いたプローブのページに載せた。プローブは削除済み):
+- http(s) は URL をそのまま、`#install` は「Go to: Installation」、`#fn1` (見出しでない) は「Go to: #fn1」、`./other.md` と `mailto:` は href と「Does not open」。
+- Tab で ./other.md にフォーカスすると表示され、その上で別のリンクを指すと指した方が出て、ポインタを外すとフォーカス側に戻り、他を押してフォーカスを外すと消えた。
+- 長い URL と長い相対パスは省略記号で切れ、相対パスでも札は残った。フッターの高さは 32px のまま、横にはみ出さなかった。
+- pnpm lint (既存の biome スキーマ版の info 1 件だけ)、pnpm build、pnpm test (58 ファイル・740 件) が通った。
+
+未確認として残したもの:
+- AC #5: 右端のファイル情報は TASK-69 でまだ無いので、「狭い窓で右側が譲る」は確かめられない。このバーは flex: 1 1 auto; min-width: 0 なので、TASK-69 は右側を先に縮めるか隠す側で作ること。
+- AC #6: README には、発表中は何も表示しないことと HTML ビューが対象外であることを書いた。Slides ビューは同じ watchLinks を付けているが、実際のアプリでは見ていない。
+- AC #7: macOS・Windows・Linux の実ビルドでの確認はオーナーに任せる。WebKit 系で pointerover / focusin が親の文書の中で届くことは前提にしている (frame の外なので decision-9 は関係しない)。
+<!-- SECTION:NOTES:END -->
