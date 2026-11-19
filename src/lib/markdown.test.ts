@@ -92,6 +92,55 @@ describe('renderMarkdown — normal rendering still works', () => {
     expect(html).toContain('<a href="http://www.example.com">www.example.com</a>');
   });
 
+  it('does not autolink a bare file name whose extension is a country code', async () => {
+    const names = [
+      'README.md',
+      'AGENTS.ja.md',
+      'main.rs',
+      'build.sh',
+      'setup.py',
+      'configure.ac',
+      'logo.ai',
+      'Makefile.am',
+      'util.cc',
+      'config.h.in',
+      'rules.mk',
+      'parser.ml',
+      'view.mm',
+      'tool.pl',
+      'Tool.pm',
+      'figure.ps',
+      'libfoo.so',
+      'main.tf',
+      'NOTES.MD',
+    ];
+    const { html } = await renderMarkdown(`${names.join(' ')} README.md#usage README.md:12\n`);
+    expect(html).not.toContain('<a ');
+  });
+
+  it('still autolinks a domain, www. under an excluded TLD, and anything with a scheme', async () => {
+    const { html } = await renderMarkdown(
+      'example.com www.example.com example.jp www.example.jp www.example.md http://README.md https://example.md/x\n',
+    );
+    expect(html).toContain('<a href="http://example.com">example.com</a>');
+    expect(html).toContain('<a href="http://www.example.com">www.example.com</a>');
+    expect(html).toContain('<a href="http://example.jp">example.jp</a>');
+    expect(html).toContain('<a href="http://www.example.jp">www.example.jp</a>');
+    expect(html).toContain('<a href="http://www.example.md">www.example.md</a>');
+    expect(html).toContain('<a href="http://README.md">http://README.md</a>');
+    expect(html).toContain('<a href="https://example.md/x">https://example.md/x</a>');
+  });
+
+  it('still autolinks a bare email address under an excluded TLD', async () => {
+    const { html } = await renderMarkdown('mail user@example.md\n');
+    expect(html).toContain('<a href="mailto:user@example.md">user@example.md</a>');
+  });
+
+  it('keeps a link written after a bare file name in the same text', async () => {
+    const { html } = await renderMarkdown('see README.md or example.com\n');
+    expect(html).toContain('see README.md or <a href="http://example.com">example.com</a>');
+  });
+
   it('ends an autolinked URL at CJK punctuation', async () => {
     const { html } = await renderMarkdown('（https://example.com/a）。\n');
     expect(html).toContain('<a href="https://example.com/a">https://example.com/a</a>）。');

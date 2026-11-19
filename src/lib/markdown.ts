@@ -348,6 +348,43 @@ function applyLocalImage(token: Token, images: RefResolver | undefined): void {
   }
 }
 
+// linkify-it accepts every two-letter country code as the TLD of a schemeless
+// link, so a file name written bare in prose (`README.md`, `main.rs`) became a
+// link to `http://README.md`. These are the country codes that are also common
+// file extensions (TASK-71). The price is that a real site under one of them
+// written bare (`docs.example.md`) is not linked; `www.` or a scheme brings it back.
+const FILE_EXTENSION_TLDS: ReadonlySet<string> = new Set([
+  'ac', // configure.ac
+  'ai', // Illustrator
+  'am', // Makefile.am
+  'cc', // C++
+  'in', // config.h.in, Makefile.in
+  'md', // Markdown
+  'mk', // make
+  'ml', // OCaml
+  'mm', // Objective-C++
+  'pl', // Perl
+  'pm', // Perl module
+  'ps', // PostScript
+  'py', // Python
+  'rs', // Rust
+  'sh', // shell
+  'so', // shared object
+  'tf', // Terraform
+]);
+
+/** Whether linkify-it's match reads a bare file name as a domain. */
+function isBareFileNameLink(link: { schema: string; raw: string }): boolean {
+  if (link.schema !== '') {
+    return false;
+  }
+  const host = link.raw.split(/[/?#:]/, 1)[0].toLowerCase();
+  if (host.startsWith('www.')) {
+    return false;
+  }
+  return FILE_EXTENSION_TLDS.has(host.slice(host.lastIndexOf('.') + 1));
+}
+
 /**
  * Build the pipeline every markdown view renders through.
  *
@@ -373,6 +410,11 @@ export async function createMarkdownIt(options: { localImageRule: boolean }): Pr
   // documents readers already have keep their links. `urlAuth` stays at its new
   // `false`: a `https://trusted.com@evil.com` is no longer linked whole.
   md.linkify.set({ fuzzyLink: true });
+  // Filtered at `match` because linkify-it has no per-match veto, and `tlds()`
+  // can only drop every country code at once, `www.example.jp` with them. Only
+  // markdown-it's core rule reads schemeless links, and only through `match`.
+  const linkifyMatch = md.linkify.match.bind(md.linkify);
+  md.linkify.match = (text) => linkifyMatch(text)?.filter((link) => !isBareFileNameLink(link)) ?? null;
 
   md.use(
     fromHighlighter(highlighter, {
