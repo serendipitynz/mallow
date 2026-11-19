@@ -47,6 +47,11 @@ Installing an update may need the system's permission.
     `../x.png`); a path starting with `/` or a drive letter is not resolved
   - Table of contents (outline with scroll-spy)
   - Preview / source toggle (source view has line numbers)
+  - Pointing at a link, or reaching it with Tab, shows where it goes at the
+    left of the bar along the bottom of the window: the address of a web link,
+    the heading an in-page link (`#…`) moves to, and for any other link — a
+    relative path, `mailto:`, `file:` — the link as written with **Does not
+    open**, since clicking it does nothing
 - **Marp slide decks**: a Markdown document whose front matter carries
   `marp: true` gains a Slides view beside preview and source — one slide at a
   time, scaled to the window, moved with the arrow keys, Page Up / Page Down,
@@ -60,7 +65,10 @@ Installing an update may need the system's permission.
   your [slide theme folder](#slide-themes) — and a deck that names none is drawn with
   the default theme chosen in Settings. A deck that relies on a theme mallow does
   not have, raw HTML, math or CSS at-rules mallow drops says so in a line above
-  the slides.
+  the slides. A link on a slide shows its destination at the bottom of the
+  window as in the preview, except that an in-page link (`#…`) does not open on
+  a slide; while presenting, the presentation covers that bar and nothing is
+  shown.
 - **Custom emoji**: point Settings at a folder of images and each file name
   becomes a `:shortcode:` — Slack-style `:my-team:` renders as the picture
   instead of staying literal text. See [Custom emoji](#custom-emoji).
@@ -102,6 +110,9 @@ Installing an update may need the system's permission.
     table of contents included. mallow detects that per document rather than
     reading it off the OS name, and says so above the document when it applies;
     the outline beside the document works everywhere
+  - Pointing at a link inside the document shows nothing at the bottom of the
+    window, unlike Markdown: the document is in a sandboxed frame whose pointer
+    and focus mallow cannot follow on every platform
   - An image map is the exception and its regions do nothing on **every**
     platform. Suppressing a mapped region's click has no effect on it, so the
     mechanism that leaves the document's other links working on some platforms
