@@ -3,6 +3,7 @@ import { Explorer } from './components/Explorer';
 import { ExplorerResizer } from './components/ExplorerResizer';
 import type { FindBarHandle } from './components/FindBar';
 import { SettingsIcon } from './components/icons';
+import { LinkStatus } from './components/LinkStatus';
 import { isModalOpen } from './components/Modal';
 import { Notice } from './components/Notice';
 import { SettingsModal } from './components/SettingsModal';
@@ -1225,6 +1226,7 @@ export default function App() {
         >
           <SettingsIcon />
         </button>
+        <LinkStatus />
       </footer>
       <SettingsModal
         open={settingsOpen}

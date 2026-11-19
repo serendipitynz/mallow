@@ -124,6 +124,8 @@ const ja: Dict = {
   viewMode: '表示モード',
   renderError: 'レンダリングエラー: {message}',
   mermaidFailed: '図を描画できませんでした: {message}',
+  linkMovesTo: '移動: {target}',
+  linkDoesNotOpen: '開きません',
   mermaidEmpty: '空のファイルです。',
   // slides (TASK-51.2)
   slides: 'スライド',
@@ -356,6 +358,8 @@ const en: Dict = {
   viewMode: 'View mode',
   renderError: 'Render error: {message}',
   mermaidFailed: 'The diagram could not be drawn: {message}',
+  linkMovesTo: 'Go to: {target}',
+  linkDoesNotOpen: 'Does not open',
   mermaidEmpty: 'The file is empty.',
   // slides (TASK-51.2)
   slides: 'Slides',

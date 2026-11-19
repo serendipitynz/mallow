@@ -8,6 +8,7 @@ import { markCodeSides } from '../lib/code-side';
 import type { DeckFeature, DeckResult } from '../lib/deck';
 import { type TFn, useT } from '../lib/i18n';
 import { isLaserToggleKey } from '../lib/laser';
+import { watchLinks } from '../lib/link-status-dom';
 import { getMarkdownConfigVersion, subscribeMarkdownConfig } from '../lib/markdown';
 import { renderMermaid } from '../lib/mermaid';
 import { dirname } from '../lib/path';
@@ -272,6 +273,16 @@ function SlideStage({
     observer.observe(host);
     return () => observer.disconnect();
   }, [html, mermaidFailed]);
+
+  /* A presentation covers the status bar, so it reports nothing to it (TASK-68).
+     `#…` is inert on a slide, which the click handler below decides. */
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !html.__html || presenting) {
+      return;
+    }
+    return watchLinks(host, { fragmentsMove: false });
+  }, [html, presenting]);
 
   /* A family change can repaint a ground without changing the drawn side, so the
      choice is listened to as well as the side. `css` is a dependency because a
