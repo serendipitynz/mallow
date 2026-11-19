@@ -1,10 +1,10 @@
 ---
 id: TASK-68
 title: Show a hovered or focused link's destination at the left of the status bar
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-18 22:06'
-updated_date: '2026-11-19 06:39'
+updated_date: '2026-11-19 21:41'
 labels:
   - feature
 dependencies: []
@@ -45,9 +45,9 @@ Before building, read snz-design doc-16 (§7.2) and mallow's adoption record (do
 - [x] #2 In the markdown preview, pointing at a link shows its destination at the left of the bottom bar, beside the settings button, and it clears when the pointer leaves
 - [x] #3 A link reached by keyboard focus shows its destination the same way and clears on blur
 - [x] #4 A link whose click does nothing (relative path, mailto:, file: and the like) is shown as not opening, distinct from an http(s) link
-- [ ] #5 A long destination is cut with an ellipsis; the bar does not grow taller or wrap, and the file information on the right yields to it in a narrow window
-- [ ] #6 The Slides view (and its presentation) is covered or its behaviour stated; the rendered HTML view is covered by a mechanism measured on all three WebViews, or left out with README saying so
-- [ ] #7 Checked on macOS, Windows and Linux builds
+- [x] #5 A long destination is cut with an ellipsis; the bar does not grow taller or wrap, and the file information on the right yields to it in a narrow window
+- [x] #6 The Slides view (and its presentation) is covered or its behaviour stated; the rendered HTML view is covered by a mechanism measured on all three WebViews, or left out with README saying so
+- [x] #7 Checked on macOS, Windows and Linux builds
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -88,4 +88,10 @@ Before building, read snz-design doc-16 (§7.2) and mallow's adoption record (do
 - AC #5: 右端のファイル情報は TASK-69 でまだ無いので、「狭い窓で右側が譲る」は確かめられない。このバーは flex: 1 1 auto; min-width: 0 なので、TASK-69 は右側を先に縮めるか隠す側で作ること。
 - AC #6: README には、発表中は何も表示しないことと HTML ビューが対象外であることを書いた。Slides ビューは同じ watchLinks を付けているが、実際のアプリでは見ていない。
 - AC #7: macOS・Windows・Linux の実ビルドでの確認はオーナーに任せる。WebKit 系で pointerover / focusin が親の文書の中で届くことは前提にしている (frame の外なので decision-9 は関係しない)。
+
+オーナー確認 (2026-11-20、PR #136 のマージ前):
+- AC #6: Slides ビューで、スライド上のリンク (`https://marp.app/`) を指すとフッターに行き先が出るのを、実際のアプリで確かめた。発表は全画面・ウィンドウ内のどちらもフッターを覆うので非表示のままでよい、とオーナーが了承した。
+- AC #7: macOS・Windows・Linux の実ビルドで確かめ、挙動差は無かった。
+- AC #5: 省略記号で切れることとバーの高さが変わらないことは確認済み。「狭い窓で右側のファイル情報が譲る」部分は、同じ内容の TASK-69 AC #6 で確かめることにして、ここでは満たしたものとした (オーナー了承)。
+- 確認の中で 2 件の後続タスクを起票した。TASK-71 は `README.md` のような素のファイル名が `http://README.md` へのリンクになる既存の不具合 (linkify-it の fuzzyLink が 2 文字の国別ドメインを受け入れるため)、TASK-72 は描画した HTML ビューでのリンク先表示。
 <!-- SECTION:NOTES:END -->
