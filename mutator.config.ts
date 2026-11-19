@@ -13,6 +13,7 @@ export default defineConfig({
     'src/lib/codeblock.ts',
     'src/lib/find-dom.ts',
     'src/lib/i18n.tsx',
+    'src/lib/link-status-dom.ts',
     'src/lib/mermaid.ts',
     'src/lib/mermaid-copy.ts',
     'src/lib/render-signal.ts',
