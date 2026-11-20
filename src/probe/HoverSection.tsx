@@ -111,7 +111,15 @@ export function HoverSection({ onError }: { onError: (message: string) => void }
           />{' '}
           free-running poll (the control; leave on)
         </label>
-        <button type="button">Focus start</button>
+        {/* WebKit does not focus a button on click, so Tab would start from wherever the focus was. */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.currentTarget.focus();
+          }}
+        >
+          Focus start
+        </button>
       </div>
       <div className="probe-host" ref={hostRef} />
       <pre className="probe-counters">
