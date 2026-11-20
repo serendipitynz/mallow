@@ -110,9 +110,12 @@ Installing an update may need the system's permission.
     table of contents included. mallow detects that per document rather than
     reading it off the OS name, and says so above the document when it applies;
     the outline beside the document works everywhere
-  - Pointing at a link inside the document shows nothing at the bottom of the
-    window, unlike Markdown: the document is in a sandboxed frame whose pointer
-    and focus mallow cannot follow on every platform
+  - Pointing at a link inside the document, or reaching it with Tab, shows it
+    at the bottom of the window as in Markdown. Where the document's links do
+    nothing, every link is shown with **Does not open**, web links included —
+    and an in-page link (`#…`) or a relative path shows nothing at all there,
+    since it is taken out of reach of the pointer and of Tab so that clicking it
+    cannot blank the view
   - An image map is the exception and its regions do nothing on **every**
     platform. Suppressing a mapped region's click has no effect on it, so the
     mechanism that leaves the document's other links working on some platforms
