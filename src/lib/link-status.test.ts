@@ -9,7 +9,7 @@ import {
 } from './link-status';
 
 const headings: Record<string, string> = { install: 'Installation', 'été-2024': 'Été 2024' };
-const preview = { fragmentsMove: true, headingText: (id: string) => headings[id] ?? null };
+const preview = { fragmentsMove: true, webOpens: true, headingText: (id: string) => headings[id] ?? null };
 const slide = { ...preview, fragmentsMove: false };
 
 describe('describeLink', () => {
@@ -33,6 +33,20 @@ describe('describeLink', () => {
 
   it('calls a fragment inert where the view does not follow it', () => {
     expect(describeLink('#install', slide)).toEqual({ kind: 'inert', text: '#install' });
+  });
+
+  it('calls a web link inert where a click on it opens nothing', () => {
+    // The rendered HTML view's frame where it runs no parent-registered listener
+    // (decision-9): every link there is described as not opening.
+    const scriptless = { ...preview, fragmentsMove: false, webOpens: false };
+    expect(describeLink('https://example.com/a', scriptless)).toEqual({ kind: 'inert', text: 'https://example.com/a' });
+    expect(describeLink('HTTP://example.com', scriptless)).toEqual({ kind: 'inert', text: 'HTTP://example.com' });
+    expect(describeLink('#install', scriptless)).toEqual({ kind: 'inert', text: '#install' });
+    // Fragments are decided by their own option, not by this one.
+    expect(describeLink('#install', { ...preview, webOpens: false })).toEqual({
+      kind: 'fragment',
+      text: 'Installation',
+    });
   });
 
   it('calls every other destination inert, as the click handlers treat it', () => {
