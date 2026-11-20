@@ -1,10 +1,10 @@
 ---
 id: TASK-71
 title: Stop linking bare file names whose extension spells a country-code TLD
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-19 20:43'
-updated_date: '2026-11-19 22:50'
+updated_date: '2026-11-20 05:26'
 labels:
   - bug
 dependencies: []
