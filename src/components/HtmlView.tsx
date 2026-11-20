@@ -8,7 +8,7 @@ import { neutralizeAppOriginLinks, transformHtmlDocument } from '../lib/html-doc
 import { assignHeadingIds } from '../lib/html-headings';
 import { renderedNoticeLines } from '../lib/html-notice';
 import { useT } from '../lib/i18n';
-import { headingTextOf, watchLinks } from '../lib/link-status-dom';
+import { headingTextOf, watchFrameLinks, watchLinks } from '../lib/link-status-dom';
 import { onOutlineOpenChange, readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { dirname } from '../lib/path';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
@@ -481,6 +481,7 @@ export function HtmlView({
          `#` link was measured doing (decision-10); decision-9 had inferred it
          would be inert, and it is not. */
       neutralizeAppOriginLinks(frameDocument);
+      stopLinkStatus = watchFrameLinks(frame, frameDocument);
     }
 
     // Late layout is observed, never listened for: a `load` listener on an image
