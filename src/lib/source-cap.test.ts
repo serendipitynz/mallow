@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countLines, HIGHLIGHT_MAX_BYTES, HIGHLIGHT_MAX_LINES, highlightSkipReason } from './source-cap';
+import { countLines, HIGHLIGHT_MAX_BYTES, HIGHLIGHT_MAX_LINES, highlightSkipReason, shownSource } from './source-cap';
 
 describe('countLines', () => {
   it('counts the lines the text actually occupies', () => {
@@ -11,6 +11,16 @@ describe('countLines', () => {
   it('counts the empty line a trailing newline opens', () => {
     expect(countLines('a\n')).toBe(2);
     expect(countLines('a\nb\n')).toBe(3);
+  });
+});
+
+describe('shownSource', () => {
+  it('drops every trailing break, CR and LF alike, and nothing else', () => {
+    expect(shownSource('a\r\n\r\n')).toBe('a');
+    expect(shownSource('a\r')).toBe('a');
+    expect(shownSource('a\n\nb\n')).toBe('a\n\nb');
+    expect(shownSource(' a ')).toBe(' a ');
+    expect(shownSource('\n\r')).toBe('');
   });
 });
 

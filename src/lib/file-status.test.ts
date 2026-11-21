@@ -55,6 +55,14 @@ describe('shownLineCount', () => {
     expect(shownLineCount('a\n\n\n')).toBe(1);
     expect(shownLineCount('a\r\nb\r\n')).toBe(2);
     expect(shownLineCount('a\n\nb')).toBe(3);
+    expect(shownLineCount('\r\n\n')).toBe(1);
+  });
+
+  it('takes linear time over a long run of breaks inside the text', () => {
+    const text = `a${'\n'.repeat(80_000)}b`;
+    const started = performance.now();
+    expect(shownLineCount(text)).toBe(80_001);
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });
 

@@ -21,7 +21,17 @@ export type HighlightSkipReason = 'bytes' | 'lines';
  *  file would otherwise end on a lone CR, which `countLines` does not count but
  *  an engine that breaks on it would show. */
 export function shownSource(source: string): string {
-  return source.replace(/[\r\n]+$/, '');
+  // A scan from the end rather than `/[\r\n]+$/`, which restarts at every break
+  // inside a long run of them: 80,000 blank lines mid-document took 3.9 s.
+  let end = source.length;
+  while (end > 0) {
+    const code = source.charCodeAt(end - 1);
+    if (code !== 0x0a && code !== 0x0d) {
+      break;
+    }
+    end -= 1;
+  }
+  return source.slice(0, end);
 }
 
 /** The source view's last line number for this text — the status bar's line
