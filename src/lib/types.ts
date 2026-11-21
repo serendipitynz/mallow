@@ -29,6 +29,14 @@ export interface FileEntry {
   created: number | null;
 }
 
+/** One file's size and times, from the `file_info` command (TASK-69). Times as
+ *  in `FileEntry`. */
+export interface FileInfo {
+  size: number;
+  modified: number | null;
+  created: number | null;
+}
+
 /** An external editor detected as installed (from `detect_editors`). */
 export interface EditorInfo {
   id: string;

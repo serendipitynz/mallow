@@ -29,6 +29,7 @@ macro_rules! app_handler {
             commands::read_dir_tree,
             commands::list_slide_theme_files,
             commands::read_file,
+            commands::file_info,
             commands::path_exists,
             commands::allow_media_dir,
             watch::start_watch,

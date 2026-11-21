@@ -126,6 +126,16 @@ const ja: Dict = {
   mermaidFailed: '図を描画できませんでした: {message}',
   linkMovesTo: '移動: {target}',
   linkDoesNotOpen: '開きません',
+  // file status (TASK-69)
+  fileModified: '更新 {date}',
+  fileModifiedUnknown: '更新 不明',
+  fileCreated: '作成 {date}',
+  fileCreatedUnknown: '作成 不明',
+  fileLines: '{n} 行',
+  fileLinesOne: '1 行',
+  fileChars: '{n} 文字',
+  fileCharsOne: '1 文字',
+  fileCharsCounting: '文字数を数えています…',
   mermaidEmpty: '空のファイルです。',
   // slides (TASK-51.2)
   slides: 'スライド',
@@ -360,6 +370,16 @@ const en: Dict = {
   mermaidFailed: 'The diagram could not be drawn: {message}',
   linkMovesTo: 'Go to: {target}',
   linkDoesNotOpen: 'Does not open',
+  // file status (TASK-69)
+  fileModified: 'Modified {date}',
+  fileModifiedUnknown: 'Modified unknown',
+  fileCreated: 'Created {date}',
+  fileCreatedUnknown: 'Created unknown',
+  fileLines: '{n} lines',
+  fileLinesOne: '1 line',
+  fileChars: '{n} characters',
+  fileCharsOne: '1 character',
+  fileCharsCounting: 'Counting characters…',
   mermaidEmpty: 'The file is empty.',
   // slides (TASK-51.2)
   slides: 'Slides',

@@ -11,6 +11,10 @@
     "reason": "Equivalent: at end of input the separator step moves i past n and the second i >= n check breaks with the same table.",
     "where": "src/lib/delimited.ts:170:9 i >= n -> i > n"
   },
+  "1voyw93seoc": {
+    "reason": "Equivalent: at end 0, charCodeAt(-1) is NaN, which is neither LF nor CR, so the loop breaks there either way.",
+    "where": "src/lib/source-cap.ts:27:10 end > 0 -> end >= 0"
+  },
   "24w1ympkmgb": {
     "reason": "Equivalent: neverComposesBackward only lets a character skip the pair test, so narrowing its ranges sends characters that never compose through the pair test, which folds them the same way. Only the speed changes.",
     "where": "src/lib/find.ts:56:29 codePoint <= 0x9fff -> codePoint < 0x9fff"
@@ -66,5 +70,9 @@
   "r20sqb7lua": {
     "reason": "Equivalent: at end of input the separator step moves i past n and the second i >= n check breaks with the same table.",
     "where": "src/lib/delimited.ts:170:17 { break; } -> {}"
+  },
+  "vv27wux4e6": {
+    "reason": "Equivalent: grapheme is Intl.Segmenter's default granularity, so dropping the option segments identically; it is kept to say what is counted.",
+    "where": "src/lib/char-count.ts:22:50 { granularity: 'grapheme' } -> {}"
   }
 }

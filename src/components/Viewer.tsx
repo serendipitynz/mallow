@@ -1,10 +1,11 @@
 import { type ReactNode, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useLeaveReport, useRememberedScroll, type ViewMemory } from '../hooks/useViewMemory';
 import { isJsonPlist } from '../lib/file';
+import { setFileInfo, setFileText, showFile } from '../lib/file-status';
 import { useT } from '../lib/i18n';
 import { type ReadError, readErrorMessage } from '../lib/read-error';
 import { captureScrollAnchor } from '../lib/scroll';
-import { readFile, setWindowTitle } from '../lib/tauri';
+import { fileInfo, readFile, setWindowTitle } from '../lib/tauri';
 import { documentTitle, windowTitle } from '../lib/title';
 import type { FileEntry } from '../lib/types';
 import type { FileViewState } from '../lib/visit-history';
@@ -119,6 +120,43 @@ export function Viewer({ file, reloadToken, remembered, onLeave, findRef }: View
       cancelled = true;
     };
   }, [file?.path, reloadToken]);
+
+  /* The status bar's facts about the file (TASK-69), declared ahead of the two
+     that fill them in so a path change resets them first. The metadata is read
+     beside the text rather than with it, since a media file has no text read,
+     and again on the watcher's token so an edit moves the size and the date. */
+  useEffect(() => {
+    showFile(filePath ?? null);
+  }, [filePath]);
+
+  /* biome-ignore lint/correctness/useExhaustiveDependencies: `reloadToken` is not read in the body;
+     it is the re-run trigger, the watcher's word that the file changed on disk. */
+  useEffect(() => {
+    if (filePath === undefined) {
+      return;
+    }
+    let cancelled = false;
+    fileInfo(filePath)
+      .then((info) => {
+        if (!cancelled) {
+          setFileInfo(filePath, info);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFileInfo(filePath, null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath, reloadToken]);
+
+  useEffect(() => {
+    if (filePath !== undefined) {
+      setFileText(filePath, text);
+    }
+  }, [filePath, text]);
 
   /* biome-ignore lint/correctness/useExhaustiveDependencies: `file` is read here but keyed on its
      path, kind and name, for the reason the read effect above gives — the parent rebuilds the
