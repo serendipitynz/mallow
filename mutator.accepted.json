@@ -66,5 +66,9 @@
   "r20sqb7lua": {
     "reason": "Equivalent: at end of input the separator step moves i past n and the second i >= n check breaks with the same table.",
     "where": "src/lib/delimited.ts:170:17 { break; } -> {}"
+  },
+  "vv27wux4e6": {
+    "reason": "Equivalent: grapheme is Intl.Segmenter's default granularity, so dropping the option segments identically; it is kept to say what is counted.",
+    "where": "src/lib/char-count.ts:22:50 { granularity: 'grapheme' } -> {}"
   }
 }
