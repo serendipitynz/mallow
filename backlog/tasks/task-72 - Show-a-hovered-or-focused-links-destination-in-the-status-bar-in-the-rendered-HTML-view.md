@@ -3,10 +3,10 @@ id: TASK-72
 title: >-
   Show a hovered or focused link's destination in the status bar in the rendered
   HTML view
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-19 20:50'
-updated_date: '2026-11-20 08:37'
+updated_date: '2026-11-21 00:56'
 labels:
   - feature
 dependencies:
@@ -44,12 +44,12 @@ Whether `:hover` and `activeElement` update in a frame that runs no script, and 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Whether the parent can read the link under the pointer and the focused link inside a frame that runs no parent listener is measured on WKWebView and WebKitGTK in a built app, and the approach per engine is recorded before implementation
-- [ ] #2 Where the frame runs parent listeners (WebView2), hover and keyboard focus show and clear the destination as in the preview, each href described by what HtmlView's click handler does with it
-- [ ] #3 Where it runs none, the links that can be detected are shown as not opening, http(s) included; links that cannot be detected (e.g. neutralized ones) are named in README
+- [x] #2 Where the frame runs parent listeners (WebView2), hover and keyboard focus show and clear the destination as in the preview, each href described by what HtmlView's click handler does with it
+- [x] #3 Where it runs none, the links that can be detected are shown as not opening, http(s) included; links that cannot be detected (e.g. neutralized ones) are named in README
 - [x] #4 Nothing is written into the frame's document outside the load pass, and any polling runs only while the pointer is over the frame or the focus is inside it
-- [ ] #5 A srcdoc swap, leaving the frame or unmounting the view clears the status
+- [x] #5 A srcdoc swap, leaving the frame or unmounting the view clears the status
 - [x] #6 README, AGENTS.md and AGENTS.ja.md say what the HTML view shows, and the describe rule's new case is unit-tested
-- [ ] #7 Checked on macOS, Windows and Linux
+- [x] #7 Checked on macOS, Windows and Linux
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -89,4 +89,10 @@ Whether `:hover` and `activeElement` update in a frame that runs no script, and 
 - 3 環境とも: フレームから出る・srcdoc の差し替え・ソース表示への切り替えで表示が消えること。
 
 README.ja.md は TASK-68 のステータスバー自体をまだ書いていないので、HTML 側だけを足すことはしなかった。
+
+アプリでの実機確認（AC #2・#3・#5・#7）: PR #138 のブランチを pnpm tauri build --debug --no-bundle でビルドし、_sandbox/task-72/check.html（http(s) 2 本・strong の中のリンク・mailto・#section・相対パス）で、macOS・Windows・Linux の 3 環境ともオーナーが手順 A〜H を確認し、すべて OK（2026-11-21）。
+- 確認した手順: ホバー → フレームの外へ出る → Tab でたどる → Tab でフレームの外へ出る → Shift+Tab で戻ってからホバー（ポインタが優先） → ソース表示へ切り替え → ホバーしたまま保存（srcdoc の差し替え） → リンク 4・5 のクリックとアウトラインからのジャンプ（退行の確認）。
+- 期待どおりだった点（WebView2）: 行き先が表示され、#section は見出し名で出た。Tab は 5 本すべてに届いた。
+- 期待どおりだった点（両 WebKit）: http(s) と mailto は「開きません」で出て、#section と相対パスでは何も出なかった。Tab は 1〜3 にだけ止まった。プローブで未確認だった macOS の strong の中のリンクへのホバーも、ここで表示された。
+- 3 環境共通: フレームから出たとき、差し替えのとき、ソース表示へ切り替えたときに表示が消えた。アウトラインからのジャンプは途中で止まらなかった。
 <!-- SECTION:NOTES:END -->
