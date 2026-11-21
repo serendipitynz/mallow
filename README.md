@@ -139,6 +139,18 @@ Installing an update may need the system's permission.
   can decode (e.g. PDF is unavailable on some Linux WebKitGTK builds).
 - **Live reload**: edits to the open file are detected and re-rendered automatically
   (scroll position preserved); the tree follows changes too.
+- **File information**: the right of the bar along the bottom of the window shows
+  the open file's modification date, size, line and character counts, and
+  creation date, and follows an edit picked up by live reload. Counts are of the
+  file's own text — a Markdown document or a deck is counted as written, not as
+  rendered. The line count is the source view's last line number; the character
+  count is of characters as you see them (an emoji with a skin tone, or `が`
+  written as `か` plus a voiced mark, is one), with line breaks left out and
+  spaces and tabs counted. Sizes are in KiB / MiB (1024 bytes to the KiB).
+  Images, PDFs, videos and files that cannot be read as text show dates and size
+  only, and a filesystem that keeps no creation date shows it as unknown. In a
+  narrow window, a link's destination keeps its place on the left and the file
+  information is cut from its end.
 - **Open in editor**: detects and launches VS Code / Zed / CotEditor / mi (macOS),
   Notepad++ / Sakura (Windows), etc. Can also reveal the file in the OS file manager.
 - **Explorer context menu**: right-click a row in the explorer (or press the

@@ -109,7 +109,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
   (the turning figure beside its words), LinkStatus (the footer's line saying
   where the link under the pointer or the focus goes, or that it does not open —
-  TASK-68; not a live region, and a presentation reports nothing to it), FindBar (find in the open document —
+  TASK-68; not a live region, and a presentation reports nothing to it),
+  FileStatus (the footer's facts about the open file at its right end — TASK-69;
+  it takes only what the link destination leaves, and is cut from its end), FindBar (find in the open document —
   the bar, the count and the steps; see the gotcha below), icons (inlined Lucide
   SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `is-deck` (whether a document is a
@@ -172,6 +174,11 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `link-status-dom` (the delegated listeners a view hands its article to, and
   the poll the rendered HTML view reads its frame with where the frame runs no
   listener — see the gotcha below),
+  `file-status` (the open file's facts as `Viewer` reports them, and the size
+  and date formats) with `char-count` (the character count — grapheme clusters,
+  line breaks left out — as a generator run in slices, since 10 MiB took 1.8 s
+  in one go under V8; the line count is `source-cap`'s `shownLineCount`, the
+  source view's own rule),
   `find` (the folding, the matching and the step — pure), `find-dom` (the
   text find reads, the highlights it paints and how a match is brought into
   view), `find-target` (what find searches in this window, and the gate the
@@ -206,7 +213,10 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   entry's modification and creation times (`null` where the filesystem keeps
   none — `Metadata::created` errors on some Linux filesystems) **in the
   filesystem's order**: the explorer's chosen order is `lib/tree-arrange`'s, and
-  a second order here would be one to keep in step.
+  a second order here would be one to keep in step. `file_info` reads one file's
+  size and times for the status bar (TASK-69) — apart from `read_file` because a
+  media file is never read as text, and apart from `read_dir_tree` because a
+  restored session has no tree entry for the file it selects.
 - `watch.rs` — `notify` recursive watcher, one per window. The watcher registry
   (`WatcherRegistry`, keyed by window label) holds the handles; `start_watch`
   replaces and `stop_watch` removes only the calling window's entry, and the
@@ -2034,6 +2044,10 @@ hold rather than as an exhaustive style guide.
   invocation reaches Rust per notification), `link-status` (each kind of href,
   the inert `#…` on a slide, a web link inert where nothing opens it, and the
   pointer winning over the focus),
+  `file-status` (the size and date formats, the line count matching the source
+  view, and that a late answer for a file no longer shown is dropped),
+  `char-count` (what counts as one character, line breaks left out, and the
+  slices yielding and stopping),
   `find` (the folding — full and
   half width, case, a voiced mark, kana kept apart — the offsets mapped back,
   matching across nodes and not across blocks, the limit and the wrap),
