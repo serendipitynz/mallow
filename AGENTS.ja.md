@@ -98,8 +98,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   `container: segmented / inline-size` を宣言し、22rem の縦積みはこの名前で問い合わせる。図形だけの組を置く側は宣言しない）、Select（ネイティブの select にシェブロンを重ねて描く。data URL のシェブロンは配色に追従できないため）、ViewPanel（表示切替が出す面。それ自身が Tab の止まり）、
   Notice（段つきの告知。TASK-40.5 までは失敗の段だけ）、Busy（回る図形と語）、
   LinkStatus（ポインタかフォーカスのあるリンクの行き先、または開かないことを
-  フッターに出す 1 行。TASK-68。live region にはしない。描画した HTML ビューと発表は
-  何も報告しない）、
+  フッターに出す 1 行。TASK-68。live region にはしない。発表は何も報告しない）、
   FindBar（開いている文書の中の検索。バー・件数・移動。下の gotcha を見る）、
   icons（Lucide の SVG をインライン化・ランタイム依存なし）。
 - `lib/` — `markdown`（markdown-it パイプライン）、`is-deck`（文書が Marp デッキか。
@@ -154,7 +153,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   それを 2 つのメニュー項目へ押し出す購読）、
   `link-status`（href を何と表示するか。クリックの処理と同じ判定で読む。窓ごとの
   ポインタ優先の状態。純粋関数）と `link-status-dom`（ビューが記事要素を渡す委譲の
-  リスナー）、
+  リスナーと、描画した HTML ビューが、フレームがリスナーを動かさないときにフレームを
+  読むポーリング。下の gotcha を見る）、
   `find`（畳み込み・照合・移動。純粋関数）、`find-dom`（検索が読むテキスト、塗る
   ハイライト、一致を見える位置へ出す方法）、`find-target`（このウィンドウで検索する
   対象と、chord とメニューが読むゲート）、`find-chord`（検索の 3 つの chord の
@@ -1029,6 +1029,21 @@ Comments と Functions の規約は機械的に検査されない。コメント
   着地オフセットも `tabindex` も。どれも `MutationObserver` が拾う属性変更であり、
   **mutation は restart を要求する**ようになったので、ジャンプを準備しながら書くと、
   ジャンプを殺すだけでなくフレームを播き直して読者を先頭へ飛ばすことになる。
+- **ステータスバーはフレームを 2 通りに読み、どちらを使うかはクリックの処理と同じ検査で
+  決まる**（TASK-72）。親のリスナーが動く環境（WebView2）では、load の一巡で `onClick`
+  の隣に `watchLinks` をフレームの文書へ付け、各 href を `onClick` がそれをどう扱うかで
+  表す（断片は `fragmentTarget` が見つけるもので表す）。動かない環境（両 WebKit）では
+  `watchFrameLinks` が文書の `:hover` と `activeElement` を 1 フレームごとに読む。
+  **読むのはポインタがフレームの上にある間か、フォーカスがその中にある間だけ**で、
+  iframe 要素の `pointerenter` / `pointerleave` と、親の window の `blur` / `focus`
+  （親の `activeElement` が iframe であること）で始めて止める。プローブの TASK-72 区画で
+  3 環境ともビルド済みアプリで計測した（2026-11-20）: スクリプトの動かないフレームでも
+  2 つの読みは動く。iframe 要素は `focus` / `blur` を受けず、中からの `pointermove` も
+  受けない。フレーム内でリンクからリンクへ移っても親には何も届かない — だからポーリング
+  になる。**そこでは全リンクを「開かない」と表す**（`http(s)` も。どれも開かないため）。
+  **無効化したリンクはそもそも名指されない** — `pointer-events: none` で `:hover` から、
+  `tabindex="-1"` でフォーカスから外れることを両方で計測した。どちらの経路も読むだけ
+  なので、上の `MutationObserver` には触れない。
 - **`srcdoc` 文書の base URL は「親の」URL なので、フレーム内の `#section` は
   同一文書内リンクではない。しかも `frame-src 'self'` はその読み込みを許す。**
   フレームはアプリ自身の URL へ遷移し、シェルはスクリプトを拒否されて白く描画され、
@@ -1769,8 +1784,8 @@ Comments と Functions の規約は機械的に検査されない。コメント
   `handover`＝渡された答えそれぞれが何になるかと、ドロップされたどれを開くか・
   `markdown-preview`＝ゲートと、変化したときだけ通知すること（通知 1 回につき
   Rust への invoke が 1 回走る）・
-  `link-status`＝href の種類ごとの表示、スライドで `#…` が開かないこと、ポインタが
-  フォーカスに勝つこと・
+  `link-status`＝href の種類ごとの表示、スライドで `#…` が開かないこと、何も開かない
+  ところで web リンクを開かないと言うこと、ポインタがフォーカスに勝つこと・
   `find`＝畳み込み（全角半角・大文字小文字・濁点・かなの区別）、元の位置への対応、
   ノードはまたぎブロックはまたがないこと、上限と折り返し・
   `find-target`＝差し替えられた対象の解放が新しい対象を消さないこと・

@@ -12,6 +12,12 @@ export interface DescribeOptions {
    *  the engine follows it; false on a slide, where every link but `http(s)` is
    *  inert — so saying it moves would be a promise the click does not keep. */
   fragmentsMove: boolean;
+  /** Whether a click on `http(s)` opens it in the OS browser. False in the
+   *  rendered HTML view's frame where it runs no parent-registered listener
+   *  (decision-9): `frame-src` stops the navigation and nothing hands the URL to
+   *  the browser, so calling it a web link would promise a click that does
+   *  nothing. */
+  webOpens: boolean;
   /** The text of the heading an id names, or `null` when the id names no
    *  heading. Injected so this module reads no DOM. */
   headingText: (id: string) => string | null;
@@ -21,7 +27,7 @@ export interface DescribeOptions {
  *  the OS browser, `#…` scrolls where the view lets it, and everything else is
  *  inert. Reading it off the same test is what keeps "does not open" true. */
 export function describeLink(href: string, options: DescribeOptions): LinkDestination {
-  if (/^https?:\/\//i.test(href)) {
+  if (options.webOpens && /^https?:\/\//i.test(href)) {
     return { kind: 'web', text: href };
   }
   if (options.fragmentsMove && href.startsWith('#')) {

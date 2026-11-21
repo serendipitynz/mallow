@@ -8,6 +8,7 @@ import { neutralizeAppOriginLinks, transformHtmlDocument } from '../lib/html-doc
 import { assignHeadingIds } from '../lib/html-headings';
 import { renderedNoticeLines } from '../lib/html-notice';
 import { useT } from '../lib/i18n';
+import { headingTextOf, watchFrameLinks, watchLinks } from '../lib/link-status-dom';
 import { onOutlineOpenChange, readOutlineOpen, writeOutlineOpen } from '../lib/outline-pref';
 import { dirname } from '../lib/path';
 import { captureScrollAnchor, restoreScrollAnchor, type ScrollAnchor } from '../lib/scroll';
@@ -460,8 +461,18 @@ export function HtmlView({
       }
       // Every other scheme is inert, as it is in the markdown view.
     };
+    let stopLinkStatus: (() => void) | null = null;
     if (listeners) {
       frameDocument.addEventListener('click', onClick);
+      // The status bar describes each link by what `onClick` does with it, so a
+      // fragment names what `fragmentTarget` finds — the named-anchor form too.
+      stopLinkStatus = watchLinks(frameDocument.documentElement, {
+        fragmentsMove: true,
+        headingText: (id) => {
+          const target = fragmentTarget(frameDocument, id);
+          return target ? headingTextOf(target) : null;
+        },
+      });
     } else {
       /* Where no parent-registered listener runs, nothing can `preventDefault` a
          click — and a link that resolves against the parent's URL then navigates
@@ -470,6 +481,7 @@ export function HtmlView({
          `#` link was measured doing (decision-10); decision-9 had inferred it
          would be inert, and it is not. */
       neutralizeAppOriginLinks(frameDocument);
+      stopLinkStatus = watchFrameLinks(frame, frameDocument);
     }
 
     // Late layout is observed, never listened for: a `load` listener on an image
@@ -502,6 +514,7 @@ export function HtmlView({
 
     disposeFrame.current = () => {
       frameDocument.removeEventListener('click', onClick);
+      stopLinkStatus?.();
       resizes.disconnect();
       mutations.disconnect();
       for (const poll of polls) {

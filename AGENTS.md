@@ -109,8 +109,7 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (what that switch shows, a Tab stop of its own), Notice (a level notice — the failure level only, until TASK-40.5), Busy
   (the turning figure beside its words), LinkStatus (the footer's line saying
   where the link under the pointer or the focus goes, or that it does not open —
-  TASK-68; not a live region, and the rendered HTML view and a presentation report
-  nothing to it), FindBar (find in the open document —
+  TASK-68; not a live region, and a presentation reports nothing to it), FindBar (find in the open document —
   the bar, the count and the steps; see the gotcha below), icons (inlined Lucide
   SVGs, no runtime dependency).
 - `lib/` — `markdown` (markdown-it pipeline), `is-deck` (whether a document is a
@@ -170,7 +169,9 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   `Export as PDF…` share, and the subscription that pushes it to their menu
   items), `link-status` (what a link's href is shown as — read off the same test
   the click handlers use — and the window's pointer-over-focus state — pure) with
-  `link-status-dom` (the delegated listeners a view hands its article to),
+  `link-status-dom` (the delegated listeners a view hands its article to, and
+  the poll the rendered HTML view reads its frame with where the frame runs no
+  listener — see the gotcha below),
   `find` (the folding, the matching and the step — pure), `find-dom` (the
   text find reads, the highlights it paints and how a match is brought into
   view), `find-target` (what find searches in this window, and the gate the
@@ -1176,6 +1177,23 @@ hold rather than as an exhaustive style guide.
   attribute mutation the `MutationObserver` reports, and a mutation now asks for
   a restart: a write made while preparing a jump would re-seed the frame and
   throw the reader to the top as well as killing the jump.
+- **The status bar reads the frame two ways, chosen by the same probe as the
+  click handler** (TASK-72). Where parent listeners run (WebView2), `watchLinks`
+  goes on the frame's document in the load pass beside `onClick`, and describes
+  each href by what `onClick` does with it — a fragment by what `fragmentTarget`
+  finds. Where none run (both WebKits), `watchFrameLinks` reads `:hover` and
+  `activeElement` off the document once a frame, and **only while the pointer is
+  over the frame or the focus is inside it**: `pointerenter` / `pointerleave` on
+  the iframe element and the parent window's `blur` / `focus` (the parent's
+  `activeElement` being the iframe) start and stop it. Measured with the probe's
+  TASK-72 section on all three in built apps (2026-11-20): both readings move in
+  a frame that runs no script, the iframe element hears no `focus` / `blur` and
+  no `pointermove` from inside, and moving between links inside the frame sends
+  the parent nothing — which is why it is a poll. **Every link there is
+  described as not opening**, `http(s)` included, because none does; **and a
+  neutralized link is never named at all** — `pointer-events: none` keeps it out
+  of `:hover` and `tabindex="-1"` out of the focus, measured on both. Both routes
+  only read, so neither touches the `MutationObserver` above.
 - **A `srcdoc` document's base URL is the *parent's*, so `#section` inside the
   frame is not a same-document link — and `frame-src 'self'` lets it load.** The
   frame navigates to the app's own URL, the shell renders blank because its
@@ -2014,7 +2032,8 @@ hold rather than as an exhaustive style guide.
   handed answer becomes, and which dropped item is opened),
   `markdown-preview` (the gate, and that it notifies only on a change — one
   invocation reaches Rust per notification), `link-status` (each kind of href,
-  the inert `#…` on a slide, and the pointer winning over the focus),
+  the inert `#…` on a slide, a web link inert where nothing opens it, and the
+  pointer winning over the focus),
   `find` (the folding — full and
   half width, case, a voiced mark, kana kept apart — the offsets mapped back,
   matching across nodes and not across blocks, the limit and the wrap),

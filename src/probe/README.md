@@ -3,12 +3,14 @@
 A measuring instrument, not part of mallow. It builds only when `MALLOW_PROBE=1`
 is set, and the ordinary build does not contain a byte of it.
 
-It was built for TASK-7 and grew three more sections: TASK-5.1's, whose transform
+It was built for TASK-7 and grew four more sections: TASK-5.1's, whose transform
 has to be exercised on a real engine (see **The transform section** below),
 TASK-23's, which measures the link cases decision-10 left open (see **The
-app-origin link section**), and TASK-46's, which measures the CSS Custom Highlight
-API that find-in-document paints with (see **The highlight section**). All four
-are kept apart on screen and in the report, because their `#N` are different
+app-origin link section**), TASK-46's, which measures the CSS Custom Highlight
+API that find-in-document paints with (see **The highlight section**), and
+TASK-72's, which measures whether the parent can read the link under the pointer
+or holding the focus inside the frame (see **The hover and focus section**). All
+five are kept apart on screen and in the report, because their `#N` are different
 tasks' acceptance criteria.
 
 TASK-7's part answers whether the two behaviours decision-3 rests on actually
@@ -341,3 +343,53 @@ Record "not applicable" on the other two platforms rather than leaving it blank.
 build restores the windows of the last real session (each showing the probe) and
 writes settings.json and `.window-state.json` back at exit. Copy both aside first
 if their state matters.
+
+## The hover and focus section (TASK-72)
+
+The status bar names the link under the pointer or holding the focus (TASK-68).
+The markdown preview learns it from `pointerover` / `focusin` listeners on its
+article, and inside the rendered HTML view's frame that route is closed wherever
+the frame runs no parent-registered listener — both WebKit engines (decision-9).
+What is left is reach-in: the parent reading `:hover` and `activeElement` off the
+frame's document, started and stopped by events the parent *can* hear on the
+iframe element, its own window and its own document. This section says whether
+either half works.
+
+**It stands alone**, like the highlight section: build, open the binary, scroll
+to it, press **Arm**, then follow the steps on screen. Its report has its own box
+and its first line says whether a CSP was in force.
+
+The frame is prepared as `HtmlView` prepares one — the listener probe, then
+`neutralizeAppOriginLinks` where no listener runs — so on WebKit the `#section`
+and `./other.html` links carry `pointer-events: none` and `tabindex="-1"`, as
+they would in the app. The task expects neither to be readable there; the table
+says.
+
+Three routes are logged side by side, and the table at the top of the report says
+which of them ever named each link:
+
+- **free** reads `a[href]:hover` and the frame's `activeElement` on every
+  animation frame from the arm on. It is the control: it says whether those
+  readings move at all in a frame that runs no script, without depending on any
+  trigger. Leave it on.
+- **triggered** reads the same two things, but only between a parent-side
+  "entered" (`pointerenter`, `mouseenter` or `mouseover` on the iframe element; a
+  `focus` on it; a window `focus` / `blur` or a document `focusin` that leaves the
+  iframe as the parent's `activeElement`) and the pointer leaving with the focus
+  outside the frame. It is the shape the app would ship (TASK-72 AC #4). A link
+  `free` names and `triggered` does not is a trigger that did not fire.
+- **listener** is the `watchLinks` route inside the frame. On WebView2 it is what
+  the app uses; on WebKit it is the control that the frame runs none.
+
+**Do the steps at a human pace.** The polls run on animation frames, so a key
+pressed many times a frame apart — or a pointer jumped across the frame in one
+event — can pass a link between two readings. That is a property of polling the
+app would inherit, so record it in the notes if it happens rather than repeating
+the step until it does not.
+
+**Nothing here is to be clicked.** The `https` links point at `probe.invalid`,
+and on WebView2 nothing in this fixture cancels a click.
+
+**WebView version** — as for the highlight section: on macOS
+`sw_vers -productVersion` and the WebKit bundle version, on Linux
+`pkg-config --modversion webkit2gtk-4.1`.

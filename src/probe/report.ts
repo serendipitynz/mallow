@@ -8,6 +8,7 @@
 
 import type { Check, ClickCounts, Environment, LateLayout } from './harness';
 import type { HighlightReading, HighlightRun } from './highlight-checks';
+import { type HoverLogEntry, summarizeHover } from './hover-checks';
 import {
   EXPECTED_ATTEMPTS,
   LINK_ATTEMPT_LABEL,
@@ -417,6 +418,88 @@ export function buildHighlightReport(
     '### Ctrl+F with nothing consuming it (AC #6, Windows)',
     '',
     `- ${manual.ctrlF || '(not recorded)'}`,
+    '',
+    '### Notes',
+    '',
+    manual.notes || '(none)',
+    '',
+  ].join('\n');
+}
+
+/** TASK-72's hand-recorded answers. Reported on its own, like TASK-46's: it needs
+ *  none of the other runs. */
+export interface HoverManual {
+  platform: string;
+  osVersion: string;
+  webviewVersion: string;
+  runMode: string;
+  pointerSteps: string;
+  keyboardSteps: string;
+  notes: string;
+}
+
+export interface HoverEnvironment {
+  userAgent: string;
+  cspPresent: boolean;
+  policy: string | null;
+  listenersRun: boolean;
+  neutralized: boolean;
+  freePoll: boolean;
+}
+
+/** Past this the log is cut from the front, so one long session of pointing
+ *  around still pastes; the summary table above it is read off the whole log. */
+const HOVER_LOG_LINES = 300;
+
+export function buildHoverReport(
+  env: HoverEnvironment,
+  entries: readonly HoverLogEntry[],
+  manual: HoverManual,
+): string {
+  const mark = (b: boolean) => (b ? 'yes' : '-');
+  const summary = summarizeHover(entries);
+  const shown = entries.slice(-HOVER_LOG_LINES);
+  return [
+    `## TASK-72 — reading hover and focus inside the frame: ${manual.platform || '(platform)'}`,
+    '',
+    `AC numbers in this report are **TASK-72's**.`,
+    '',
+    env.cspPresent
+      ? '**A CSP is in force on this run**, so it is a built app rather than `tauri dev`.'
+      : '**No CSP is in force on this run** — this is what `tauri dev` looks like. Rebuild with `MALLOW_PROBE=1 pnpm tauri build --debug --no-bundle`.',
+    '',
+    '### Environment',
+    '',
+    `- platform: ${manual.platform || '(not recorded)'} ${manual.osVersion}`,
+    `- WebView: ${manual.webviewVersion || '(not recorded)'}`,
+    `- run mode: ${manual.runMode || '(not recorded)'}`,
+    `- user agent: \`${env.userAgent}\``,
+    `- effective CSP in the app document: \`${env.policy ?? 'NONE REPORTED'}\``,
+    `- the frame runs parent-registered listeners: **${env.listenersRun}**`,
+    `- \`neutralizeAppOriginLinks\` applied (as HtmlView does where none run): **${env.neutralized}**`,
+    `- free-running poll armed: ${env.freePoll}`,
+    '',
+    '### Which route named each link (AC #1)',
+    '',
+    '`free` reads `:hover` / `activeElement` every frame from the arm on; `triggered` reads them only between a parent-side enter and leave; `listener` is the `watchLinks` route inside the frame.',
+    '',
+    '| href | what it is | hovered: free | hovered: triggered | focused: free | focused: triggered | listener pointerover | listener focusin |',
+    '|---|---|---|---|---|---|---|---|',
+    ...summary.map(
+      (r) =>
+        `| \`${r.href}\` | ${r.note} | ${mark(r.hoveredFree)} | ${mark(r.hoveredTriggered)} | ${mark(r.focusedFree)} | ${mark(r.focusedTriggered)} | ${mark(r.listenerOver)} | ${mark(r.listenerFocus)} |`,
+    ),
+    '',
+    '### What was done',
+    '',
+    `- pointer: ${manual.pointerSteps || '(not recorded)'}`,
+    `- keyboard: ${manual.keyboardSteps || '(not recorded)'}`,
+    '',
+    `### Log (${entries.length} entries${entries.length > shown.length ? `, the last ${shown.length} shown` : ''})`,
+    '',
+    '```',
+    ...shown.map((e) => `${String(Math.round(e.t)).padStart(7)} ms  ${e.source.padEnd(9)}  ${e.what}`),
+    '```',
     '',
     '### Notes',
     '',

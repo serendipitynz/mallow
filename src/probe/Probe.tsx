@@ -10,6 +10,7 @@ import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } fro
 import { type ColorChoice, FAMILIES, modeAvailable } from '../lib/color-choice';
 import { applyColorChoice } from '../lib/theme';
 import { TOP_NAV_QUERY } from './fixtures';
+import { HoverSection } from './HoverSection';
 import {
   armClickProbe,
   armLateLayoutProbe,
@@ -999,6 +1000,8 @@ export default function Probe() {
           </button>
         </div>
       </section>
+
+      <HoverSection onError={setError} />
 
       <section className="probe-manual">
         <h2>Recorded by hand</h2>
