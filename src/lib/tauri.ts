@@ -11,7 +11,7 @@ import {
 import type { Handed } from './handover';
 import type { PathCommandOutcome } from './path-command';
 import { type ReadResult, toReadError } from './read-error';
-import type { EditorInfo, FileEntry, InitialLocation, WindowInit } from './types';
+import type { EditorInfo, FileEntry, FileInfo, InitialLocation, WindowInit } from './types';
 
 /** Set the native window title (fire-and-forget; errors are logged). */
 export function setWindowTitle(title: string): void {
@@ -34,6 +34,10 @@ export async function readFile(path: string): Promise<ReadResult> {
   } catch (e) {
     return { ok: false, error: toReadError(e, path) };
   }
+}
+
+export function fileInfo(path: string): Promise<FileInfo> {
+  return invoke<FileInfo>('file_info', { path });
 }
 
 /** Whether a path still exists (used to validate a restored session). */

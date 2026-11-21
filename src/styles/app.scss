@@ -781,14 +781,14 @@
   height: 26px;
 }
 
-// The link destination (TASK-68) takes what the bar has left and never more:
-// one line, cut with an ellipsis, so a long URL neither wraps nor grows the bar.
-// The note stays whole, since it is what tells a dead link from a live one.
+// The link destination (TASK-68) takes its own width first, up to the whole
+// bar: one line, cut with an ellipsis, so a long URL neither wraps nor grows the
+// bar. The note stays whole, since it is what tells a dead link from a live one.
 .link-status {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   font-size: 12px;
@@ -808,6 +808,29 @@
   border: 1px solid $border;
   border-radius: 3px;
   font-size: 11px;
+}
+
+// The open file's facts (TASK-69) get what the destination leaves: a zero basis
+// is what makes them yield to it rather than share the shrinking. Right-aligned
+// while they fit; once they do not, an overflowing line starts at the left and
+// the ellipsis cuts its end, so the last items go first.
+.file-status {
+  flex: 1 1 0;
+  min-width: 0;
+  // With the bar's 6px gap, the destination stands as far from the first item
+  // as the items stand from each other.
+  padding-left: 8px;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: $muted;
+}
+
+.file-status__item + .file-status__item {
+  margin-left: 14px;
 }
 
 // ---- Settings modal ---------------------------------------------------------
