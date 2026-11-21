@@ -16,6 +16,20 @@ export const HIGHLIGHT_MAX_LINES = 10_000;
 /** Which cap was exceeded. Not worded per reason in the UI; see decision-6. */
 export type HighlightSkipReason = 'bytes' | 'lines';
 
+/** The text the source view shows: without its trailing line breaks, so there is
+ *  no spurious empty last line number. The CR is in the class because a CRLF
+ *  file would otherwise end on a lone CR, which `countLines` does not count but
+ *  an engine that breaks on it would show. */
+export function shownSource(source: string): string {
+  return source.replace(/[\r\n]+$/, '');
+}
+
+/** The source view's last line number for this text — the status bar's line
+ *  count is this, so the two cannot disagree (TASK-69). */
+export function shownLineCount(source: string): number {
+  return countLines(shownSource(source));
+}
+
 /** Lines the text occupies when rendered verbatim: no trailing newline means no trailing line. */
 export function countLines(source: string): number {
   let count = 1;
