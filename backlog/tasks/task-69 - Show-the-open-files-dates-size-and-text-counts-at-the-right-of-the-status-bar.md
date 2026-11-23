@@ -3,10 +3,10 @@ id: TASK-69
 title: >-
   Show the open file's dates, size and text counts at the right of the status
   bar
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-18 22:06'
-updated_date: '2026-11-21 02:47'
+updated_date: '2026-11-23 03:04'
 labels:
   - feature
 dependencies: []
@@ -46,13 +46,13 @@ Before building, read snz-design doc-16 (§7.2) and mallow's adoption record (do
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 The character count's unit, the line count's rule, the size unit, the date format and whether the information can be turned off are decided and recorded before implementation
-- [ ] #2 With a file open, the right end of the bottom bar shows its creation date, modification date and size, including for a file selected by session restore
+- [x] #2 With a file open, the right end of the bottom bar shows its creation date, modification date and size, including for a file selected by session restore
 - [x] #3 A text file also shows its character and line counts, and the line count matches the source view's last line number
-- [ ] #4 Media files and files that failed to read show dates and size without counts; a missing creation time is shown as absent by a stated rule
-- [ ] #5 An edit to the open file picked up by the live watch updates every shown value
+- [x] #4 Media files and files that failed to read show dates and size without counts; a missing creation time is shown as absent by a stated rule
+- [x] #5 An edit to the open file picked up by the live watch updates every shown value
 - [x] #6 In a narrow window the information yields to TASK-68's link destination by a stated rule, and the bar does not grow taller or wrap
 - [x] #7 Counting a file near the 10 MiB read cap does not stall the view (measured)
-- [ ] #8 Checked on macOS, Windows and Linux builds
+- [x] #8 Checked on macOS, Windows and Linux builds
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -100,4 +100,11 @@ Before building, read snz-design doc-16 (§7.2) and mallow's adoption record (do
 - AC #5: ライブ更新で、編集した後にサイズ・更新日時・行数・文字数がすべて動くこと。
 - AC #8: macOS・Windows・Linux の実ビルド。WebKitGTK の `Intl.Segmenter` (2.32 以降) と WebView2 での区切りの長さも未測定。
 - 既存の不足として、README.ja.md には TASK-68 のリンク先表示の説明が無い (README.md にはある)。今回は触れていない。
+
+実機確認 (2026-11-22〜23、オーナー。上の「未確認」はこれで埋まった):
+- macOS (ビルドしたアプリ): sample.md でサイズ・行数・文字数がソース表示と一致 (55 B・4 行・20 文字)。追記でライブ更新し、更新日時・66 B・7 行・30 文字に変わって、ソース表示の最終行番号も 7 だった (AC #3・#5)。画像 (53.9 KiB)、read_file の上限を超えたファイル (10.5 MiB)、読めなかったファイル (3 B) では日時とサイズだけが出た (AC #4)。セッション復元で選ばれたファイルでも出た (AC #2)。狭い窓ではリンク先が残り、ファイル情報が末尾から切れた (AC #6)。
+- near-cap.md (10 MiB 近い Markdown) の文字数は、プレビューが出てから約 1 秒で数え終わった。プレビューを出すまでの約 20 秒は v0.15.0 でも同じで、TASK-69 によるものではない (Markdown の描画そのものの時間)。
+- Windows・Linux: 表示を確認して OK (AC #8)。文字数が出たので WebKitGTK でも Intl.Segmenter は動いている。区切り 1 回の長さは WebView2・WebKitGTK では測っていない。
+- Linux の作成日時は ext4 上で普通に出た。「作成 不明」は Metadata::created がエラーを返すとき、つまり statx が birth time を返さないファイルシステム (NFS、VM の共有フォルダなど) でだけ出る。その表示は単体テストで確かめ、実機では出していない。
+- 確認中に気づいた TASK-68 側の点: 見出しの無いフラグメント (#カスタム絵文字) へのリンクは、markdown-it がエンコードした href のまま (#%E3%82%AB…) 表示される。TASK-69 の範囲外なので触れていない。
 <!-- SECTION:NOTES:END -->
