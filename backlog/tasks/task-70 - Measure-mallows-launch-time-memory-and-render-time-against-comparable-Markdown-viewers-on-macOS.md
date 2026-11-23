@@ -3,9 +3,10 @@ id: TASK-70
 title: >-
   Measure mallow's launch time, memory and render time against comparable
   Markdown viewers on macOS
-status: To Do
+status: In Review
 assignee: []
 created_date: '2026-11-18 22:15'
+updated_date: '2026-11-23 06:09'
 labels:
   - research
 dependencies: []
@@ -61,12 +62,39 @@ An app that needs real effort to build or set up may be dropped, with the reason
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 At least three apps including mallow are chosen, with each excluded candidate's reason recorded
-- [ ] #2 The environment (apps and versions, CPU, RAM, macOS version, background load, mallow's session and update-check state) is recorded, and every difference in conditions between apps is stated
-- [ ] #3 Small, Medium, Large and Mermaid test documents and the P2 folder layouts are reproducible from a generator script
-- [ ] #4 Launch time (cold and warm), memory (steady state and with the Large document) and render time are measured on one machine with the same data, five runs each, medians reported
-- [ ] #5 The memory method says which processes count toward each app and how shared memory is kept from being counted twice
-- [ ] #6 No figure from instrumentation added to mallow alone is compared with an outside measurement, and unsupported features are N/A rather than zero
-- [ ] #7 The procedure and the report are written as backlog docs, the report covering mallow's strengths and weak spots
-- [ ] #8 Improvement candidates are listed only for a clear weakness, each proposed as a separate task
+- [x] #1 At least three apps including mallow are chosen, with each excluded candidate's reason recorded
+- [x] #2 The environment (apps and versions, CPU, RAM, macOS version, background load, mallow's session and update-check state) is recorded, and every difference in conditions between apps is stated
+- [x] #3 Small, Medium, Large and Mermaid test documents and the P2 folder layouts are reproducible from a generator script
+- [x] #4 Launch time (cold and warm), memory (steady state and with the Large document) and render time are measured on one machine with the same data, five runs each, medians reported
+- [x] #5 The memory method says which processes count toward each app and how shared memory is kept from being counted twice
+- [x] #6 No figure from instrumentation added to mallow alone is compared with an outside measurement, and unsupported features are N/A rather than zero
+- [x] #7 The procedure and the report are written as backlog docs, the report covering mallow's strengths and weak spots
+- [x] #8 Improvement candidates are listed only for a clear weakness, each proposed as a separate task
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+着手時の判定 (オーナーと合意、2026-11-23):
+- 対象は mallow 0.15.0 / Marky 0.1.3 / MD Viewer 0.1.9 (プレリリースのみ) / SkimDown 0.16.0 の 4 本。除外なし。3 本とも ad-hoc 署名・未公証で Gatekeeper が「壊れている」と拒否し、オーナーが quarantine を外して起動 (doc-3 に記録)。
+- mallow の settings.json は退避し、毎回 windows: [] / autoCheckUpdates: false を差し込んで計測、終了後に元へ戻した (cmp で同一を確認)。
+- cold は sudo purge 後 (再起動ではない)。オーナーのターミナルで実行。
+- 「画面で使える状態」は画面録画のフレーム解析で判定。
+
+方式の選択:
+- ffmpeg の全画面録画は他のウィンドウ (オーナーの私的な画面) まで写るので捨てた。ScreenCaptureKit で「計測開始時に動いていた全アプリを除外」したストリームにし、起動したアプリのウィンドウだけを収録する Swift ツール (scripts/bench/launchwatch.swift) にした。
+- 変化検出は SCStream の dirty rect では誤る (除外したアプリの背面更新も dirty として報告され、8 ms から変化が出続けた)。ウィンドウ領域の 4×4 ブロック和をフレーム間で比べる方式に変更。後半の変化が実際の描画 (空状態 → ファイル選択 → 本文描画) であることは --frames-dir の画像で確認。
+- 経路は open -a <App> --args <path> に統一。Marky と SkimDown は open イベント (Finder の経路) で渡したファイルを無視するため。mallow は両経路を測り差は約 0.1 s。
+- WebKit の XPC プロセスは launchd の子なので、responsibility_get_pid_responsible_for_pid で帰属させた。比較は phys_footprint の合計 (所有者 1 つの台帳なので二重計上しない)。RSS 合計は参考値として記録のみ。
+- Marky は渡されたフォルダを settings.json に残して次回起動時に読むので、毎回の計測前に削除。SkimDown のフォルダごとの最終選択も削除。
+
+計測 (詳細は doc-3、手順は doc-2):
+- warm: 4 アプリ × 6 対象 × 5 回 = 120 回、失敗 0、unsettled 2。mallow の open イベント経路の補足 10 回。
+- cold: Small で 9〜10 回 (初回の 3 件は画面収録の許可前で失敗、その後オーナーが全体をもう一度回したため 5 回を超えた)。有効な回は全部数えた。
+- mallow の弱点 (5 回の範囲が重ならないもの): Small 表示後のメモリ 272 MiB に対し他は 152〜173 MiB (差はほぼ WebContent: 217 対 89〜114)。Medium の描画は 4 本中最遅 1,576 ms。→ TASK-73 / TASK-74 として起票。
+- 強み: Large のメモリは Tauri/WebView 系で最少 (438 対 560 / 664)、1,000 ファイルのフォルダでも 672 ms・104 MiB。
+
+計測していないもの: P2 のファイル切り替え (アプリ内のクリックが必要)。MD Viewer のフォルダ読み込みは引数でフォルダを開けないので N/A。
+
+検証: pnpm lint (既存の biome.json スキーマ info のみ)、pnpm test 767 件成功、gen-data.mjs を別ディレクトリへ再生成して diff -r が一致。
+<!-- SECTION:NOTES:END -->
