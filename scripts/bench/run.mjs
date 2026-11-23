@@ -69,6 +69,9 @@ function restoreMallow() {
     return;
   }
   copyFileSync(mallowBackup, mallowSettings);
+  // Kept past a successful restore, the backup would be the base of the next
+  // session and its restore would undo whatever the owner changed in between.
+  rmSync(mallowBackup);
   console.log(`restored ${mallowSettings}`);
 }
 
@@ -187,60 +190,92 @@ async function measure(args) {
     }
   }
   const versions = Object.fromEntries(apps.map((app) => [app, version(APPS[app])]));
+  // Run numbers restart with every session while the JSONL accumulates, so the
+  // screenshots carry the session's start as well; without it a second session
+  // writes over the first one's frames.
+  const session = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
 
-  for (let run = 1; run <= runs; run += 1) {
-    for (const target of targets) {
-      for (const app of apps) {
-        const appPath = APPS[app];
-        await quit(appPath);
-        resetState(app);
-        if (cold) {
-          spawnSync('sudo', ['purge'], { stdio: 'inherit' });
-          await sleep(3000);
-        }
-        const png = join(dirname(out), 'png', `${app}-${target}-${cold ? 'cold' : 'warm'}-${route}-${run}.png`);
-        const started = Date.now();
-        const watched = spawnSync(
-          launchwatch,
-          [
-            'watch',
-            '--app',
-            appPath,
-            '--file',
-            join(dataDir, TARGETS[target]),
-            '--route',
-            route,
-            '--seconds',
-            '12',
-            '--png',
-            png,
-          ],
-          { encoding: 'utf8' },
-        );
-        const record = { app, version: versions[app], target, route, cold, run, at: new Date(started).toISOString() };
-        if (watched.status !== 0) {
-          record.error = watched.stderr.trim();
-        } else {
-          const { app: appPathWatched, ...watchedResult } = JSON.parse(watched.stdout);
-          Object.assign(record, watchedResult, { appPath: appPathWatched });
-          await sleep(Math.max(0, settle * 1000 - (Date.now() - started)));
-          record.memory = memory(record.pid);
-        }
-        appendFileSync(out, `${JSON.stringify(record)}\n`);
-        console.log(
-          `${app} ${target} ${cold ? 'cold' : 'warm'} #${run}: ` +
-            (record.error ??
-              `paint ${record.firstPaintMs} ms, complete ${record.completeMs} ms${record.settled ? '' : ' (unsettled)'}, ` +
-                `footprint ${record.memory.footprintMiB.toFixed(0)} MiB, rss ${record.memory.rssMiB.toFixed(0)} MiB`),
-        );
-      }
+  try {
+    await runSessions();
+  } finally {
+    for (const app of apps) {
+      await quit(APPS[app]);
+    }
+    if (apps.includes('mallow')) {
+      restoreMallow();
     }
   }
-  for (const app of apps) {
-    await quit(APPS[app]);
-  }
-  if (apps.includes('mallow')) {
-    restoreMallow();
+
+  async function runSessions() {
+    for (let run = 1; run <= runs; run += 1) {
+      for (const target of targets) {
+        for (const app of apps) {
+          const appPath = APPS[app];
+          await quit(appPath);
+          resetState(app);
+          if (cold) {
+            // A cancelled password prompt or a failed purge leaves the cache warm,
+            // and a run recorded as cold then would sit inside the cold medians.
+            const purged = spawnSync('sudo', ['purge'], { stdio: 'inherit' });
+            if (purged.error || purged.status !== 0) {
+              throw new Error(
+                `sudo purge failed (${purged.error?.message ?? `exit ${purged.status}`}); session stopped`,
+              );
+            }
+            await sleep(3000);
+          }
+          const png = join(
+            dirname(out),
+            'png',
+            `${session}-${app}-${target}-${cold ? 'cold' : 'warm'}-${route}-${run}.png`,
+          );
+          const started = Date.now();
+          const watched = spawnSync(
+            launchwatch,
+            [
+              'watch',
+              '--app',
+              appPath,
+              '--file',
+              join(dataDir, TARGETS[target]),
+              '--route',
+              route,
+              '--seconds',
+              '12',
+              '--png',
+              png,
+            ],
+            { encoding: 'utf8' },
+          );
+          const record = {
+            app,
+            version: versions[app],
+            target,
+            route,
+            cold,
+            run,
+            session,
+            png,
+            at: new Date(started).toISOString(),
+          };
+          if (watched.status !== 0) {
+            record.error = watched.stderr.trim();
+          } else {
+            const { app: appPathWatched, ...watchedResult } = JSON.parse(watched.stdout);
+            Object.assign(record, watchedResult, { appPath: appPathWatched });
+            await sleep(Math.max(0, settle * 1000 - (Date.now() - started)));
+            record.memory = memory(record.pid);
+          }
+          appendFileSync(out, `${JSON.stringify(record)}\n`);
+          console.log(
+            `${app} ${target} ${cold ? 'cold' : 'warm'} #${run}: ` +
+              (record.error ??
+                `paint ${record.firstPaintMs} ms, complete ${record.completeMs} ms${record.settled ? '' : ' (unsettled)'}, ` +
+                  `footprint ${record.memory.footprintMiB.toFixed(0)} MiB, rss ${record.memory.rssMiB.toFixed(0)} MiB`),
+          );
+        }
+      }
+    }
   }
 }
 
