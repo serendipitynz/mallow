@@ -3,10 +3,10 @@ id: TASK-70
 title: >-
   Measure mallow's launch time, memory and render time against comparable
   Markdown viewers on macOS
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-18 22:15'
-updated_date: '2026-11-23 06:09'
+updated_date: '2026-11-23 07:26'
 labels:
   - research
 dependencies: []
