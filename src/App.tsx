@@ -1,6 +1,7 @@
 import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import { Explorer } from './components/Explorer';
 import { ExplorerResizer } from './components/ExplorerResizer';
+import { FileStatus } from './components/FileStatus';
 import type { FindBarHandle } from './components/FindBar';
 import { SettingsIcon } from './components/icons';
 import { LinkStatus } from './components/LinkStatus';
@@ -1227,6 +1228,7 @@ export default function App() {
           <SettingsIcon />
         </button>
         <LinkStatus />
+        <FileStatus />
       </footer>
       <SettingsModal
         open={settingsOpen}

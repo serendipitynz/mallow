@@ -197,6 +197,27 @@ pub fn read_file(path: String) -> Result<String, ReadError> {
     String::from_utf8(bytes).map_err(|_| ReadError::InvalidUtf8 { path })
 }
 
+/// What the status bar shows about the open file besides its text (TASK-69).
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileInfo {
+    /// Bytes, as `Metadata::len` reports them.
+    size: u64,
+    /// As in [`FileEntry`]: `None` where the platform or the filesystem cannot say.
+    modified: Option<u64>,
+    created: Option<u64>,
+}
+
+/// One file's size and times, read when it is opened and again when the watch
+/// reports a change. Not folded into `read_file`, because a media file is never
+/// read as text; and not taken from `read_dir_tree`, whose entries a restored
+/// session does not have for the file it selects.
+#[tauri::command]
+pub fn file_info(path: String) -> Result<FileInfo, String> {
+    let meta = std::fs::metadata(&path).map_err(|e| format!("{path}: {e}"))?;
+    Ok(FileInfo { size: meta.len(), modified: epoch_millis(meta.modified()), created: epoch_millis(meta.created()) })
+}
+
 /// Whether a path currently exists (used to validate the restored session).
 #[tauri::command]
 pub fn path_exists(path: String) -> bool {
@@ -459,6 +480,23 @@ mod tests {
     fn read_dir_tree_errors_on_missing_path() {
         let tmp = TempDir::new();
         assert!(read_dir_tree(tmp.s("does-not-exist")).is_err());
+    }
+
+    #[test]
+    fn file_info_reports_size_and_modification_time() {
+        let dir = TempDir::new();
+        let file = dir.path().join("a.md");
+        fs::write(&file, "héllo").unwrap();
+        let before = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+        let info = file_info(file.to_string_lossy().to_string()).expect("info");
+        assert_eq!(info.size, 6);
+        assert!(info.modified.expect("modified").abs_diff(before) < 60_000);
+    }
+
+    #[test]
+    fn file_info_errors_on_missing_file() {
+        let dir = TempDir::new();
+        assert!(file_info(dir.path().join("nope.md").to_string_lossy().to_string()).is_err());
     }
 
     #[test]

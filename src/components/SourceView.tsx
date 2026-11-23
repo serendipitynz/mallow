@@ -3,7 +3,7 @@ import type { ShikiTransformer } from 'shiki';
 import { setFindTarget } from '../lib/find-target';
 import { useT } from '../lib/i18n';
 import { getHighlighter, SHIKI_THEMES, stripPreBackground } from '../lib/shiki';
-import { countLines, highlightSkipReason } from '../lib/source-cap';
+import { countLines, highlightSkipReason, shownSource } from '../lib/source-cap';
 import { onSourceWrapChange, readSourceWrap } from '../lib/source-wrap';
 import { Notice } from './Notice';
 
@@ -50,10 +50,7 @@ export function SourceView({ source, lang, errorLine }: SourceViewProps) {
   const t = useT();
   const [html, setHtml] = useState('');
   const hostRef = useRef<HTMLDivElement>(null);
-  // Trim trailing newlines so there is no spurious empty final line number. The
-  // CR is in the class because a CRLF file would otherwise end on a lone CR,
-  // which `countLines` does not count but an engine that breaks on it would show.
-  const code = useMemo(() => source.replace(/[\r\n]+$/, ''), [source]);
+  const code = useMemo(() => shownSource(source), [source]);
   const skipReason = useMemo(() => highlightSkipReason(code), [code]);
   const lineCount = useMemo(() => countLines(code), [code]);
   const wrap = useSyncExternalStore(onSourceWrapChange, readSourceWrap);
