@@ -138,9 +138,11 @@ A difference is called clear below only where the five runs do not overlap.
 
 **Strengths**
 
-- **Large documents cost less memory than in the other Tauri app and MD
-  Viewer**: 438 MiB against Marky's 560 and MD Viewer's 664, behind only
-  SkimDown's 391.
+- **A large document's median memory is below the other Tauri app's and MD
+  Viewer's**: 438 MiB against Marky's 560 and MD Viewer's 664, behind only
+  SkimDown's 391. This is a lower median, not a clear difference: one mallow run
+  read 688 MiB, so its range (433–688) overlaps Marky's (552–749) and MD
+  Viewer's (637–669); the other four mallow runs were 433–439.
 - **Opening a folder is cheap and does not grow with it**: 672 ms and 104 MiB
   for 989 files, the same as for 104 — the lazy tree doing what it was built
   for. Marky holds about twice the memory for the same folder.
@@ -170,8 +172,13 @@ overlap.
 
 ## Limits
 
-- One machine, one session per start condition; the numbers compare apps under
-  the same conditions and are not absolute launch times for other Macs.
+- One machine; one warm session, and two cold sessions whose valid runs are
+  pooled. The numbers compare apps under the same conditions and are not
+  absolute launch times for other Macs.
+- **The first cold session's screenshots are lost**: the driver named a
+  screenshot by app, target, start and run number only, so the second cold
+  session wrote over the first one's frames (its records are intact). The
+  driver now puts the session's start time in the name and records the path.
 - Cold means after `sudo purge`, not after a reboot.
 - Complete is the last on-screen change in the window, and covers the visible
   part of a long document only.

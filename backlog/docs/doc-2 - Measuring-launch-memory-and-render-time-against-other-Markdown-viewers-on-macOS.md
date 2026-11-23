@@ -90,7 +90,7 @@ All in `scripts/bench/`:
 
 | App | Kept between launches | Reset to |
 | --- | --- | --- |
-| mallow | `settings.json`: the windows open at quit (restored at launch), and `autoCheckUpdates` | the owner's file, with `windows: []` and `autoCheckUpdates: false`; the original is kept in `_sandbox/bench/mallow-settings.backup.json` and put back at the end (`run.mjs restore-mallow` does it by hand) |
+| mallow | `settings.json`: the windows open at quit (restored at launch), and `autoCheckUpdates` | the owner's file, with `windows: []` and `autoCheckUpdates: false`; the original is kept in `_sandbox/bench/mallow-settings.backup.json` and put back at the end, after which the copy is deleted so a later session takes the owner's file as it is then (`run.mjs restore-mallow` does it by hand) |
 | Marky | `~/Library/Application Support/marky/settings.json`: every folder it was handed, reopened at launch | deleted |
 | SkimDown | the file last selected per folder (`lastSelectedMarkdownByFolder`) | deleted |
 | MD Viewer | nothing found | — |
@@ -113,6 +113,12 @@ node scripts/bench/run.mjs measure --apps mallow,marky,mdviewer,skimdown \
 
 node scripts/bench/run.mjs summary _sandbox/bench/results/*.jsonl
 ```
+
+A cold session stops at the first `sudo purge` that fails (a cancelled password
+prompt included), rather than recording a warm launch as cold; the apps are quit
+and mallow's settings restored on any exit. Screenshots are named with the
+session's start time, so sessions writing to one results folder do not
+overwrite each other.
 
 A warm session of 24 combinations × 5 runs takes about 50 minutes. Check the
 PNGs under `_sandbox/bench/results/png/` for any run whose numbers stand out: a
