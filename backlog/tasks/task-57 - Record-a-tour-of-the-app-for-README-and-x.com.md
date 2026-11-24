@@ -4,7 +4,7 @@ title: Record a tour of the app for README and x.com
 status: In Review
 assignee: []
 created_date: '2026-11-13 11:42'
-updated_date: '2026-11-24 09:33'
+updated_date: '2026-11-24 09:48'
 labels:
   - documentation
 dependencies: []
@@ -72,21 +72,22 @@ Nothing here adds a dependency to mallow: ffmpeg and the recording tools are the
 ## 着手時の決定 (2026-11-24, オーナー)
 
 - HD MP4 の配信元: 当初はリポジトリに同梱 (`docs/assets/tour.mp4`) して WebP から blob ページへリンクする案を選び、再生できなければ WebP のみにすると合意していた。push 後に確かめたところ、github.com の blob ページは `.mp4` にプレーヤーを出さず「View raw」だけで、raw (`raw.githubusercontent.com`) は `application/octet-stream` + `nosniff` で返るためダウンロードになり、ブラウザ内では再生できなかった (2026-11-24)。合意どおり **クリックスルーなし・WebP のみ** に切り替え、使わない 609 KB の MP4 が main の履歴に残らないよう、オーナーの了承を得て PR ブランチのコミットを作り直した (force push)。HD MP4 は X 版と同じく成果物としてオーナーに渡す。
-- X 版のキャプション: 英語で入れる。各シーンに機能名 1 つ (Markdown with GitHub-style rendering / Jump through the outline / Marp decks as slides / CSV as a table / JSON as a tree / Light and dark themes)。
+- X 版のキャプション: 英語で入れる。各シーンに機能名 1 つ (Markdown with GitHub-style rendering / Jump through the outline / Marp decks as slides / Present in a window, with a laser pointer / CSV as a table / JSON as a tree / Light and dark themes)。
 - 録画: osascript と CGEvent によるポインタ操作で自動実行。この Mac の画面は非 HiDPI のスケールモード (2048x1332、等倍) だったため、録画の間だけオーナーが HiDPI (1470x956) に切り替えた。録画後に戻すのはオーナーの作業。
 
 ## 録画の方法
 
 - `pnpm tauri build --debug --no-bundle` のバイナリを `HOME` を作業用ディレクトリに向けて起動した。インストール済み mallow と同じ identifier なので、こうしないと settings.json と復元セッションを上書きする。WebView の localStorage (アウトライン表示・配色) は `HOME` では隔離できず `~/Library/WebKit/mallow` (開発ビルド用) に残るため、録画前に配色を Light、アウトラインを閉に揃え、終了後に元の状態 (Auto / 閉) に戻した。
 - ツールバーはファイルの絶対パスを表示するので、デモフォルダは `/Users/Shared/project-notes` に置いて録画し、終わったら削除した。原本と操作スクリプト (`tour.sh`, `make.sh`, ポインタとカード描画の Swift) は `_sandbox/tour/` に置き、追跡しない。
-- ウィンドウ 960x600 pt を `screencapture -v -k -R` で 1920x1200 px / 60 fps 録画 (25.7 s)。シーン: Markdown (表・mermaid・コード) → アウトラインで Flow へジャンプ → Marp デッキを Slides 表示し次のスライドへ → CSV 表 → JSON ツリー全展開 → ダークへ切り替え。
+- ウィンドウ 960x600 pt を `screencapture -v -k -R` で 1920x1200 px / 60 fps 録画 (29.0 s)。シーン: Markdown (表・mermaid・コード) → アウトラインで Flow へジャンプ → Marp デッキを Slides 表示 → ウィンドウ内でプレゼンし、次のスライドでレーザーポインタ (L、Shift を押したまま動かす長い軌跡) で「0.6 s」を囲み、Esc で戻る → CSV 表 → JSON ツリー全展開 → ダークへ切り替え。
+- プレゼンとレーザーポインタのシーンは、PR 作成後のオーナーの依頼 (2026-11-24) で加えて録り直した。Shift は CGEvent のマウス移動イベントにフラグとして載せている。Shift のキーイベントを送ると、オーナーの環境ではグローバルなホットキーでランチャーが開いた。
 - この環境の ffmpeg には drawtext も libwebp もないので、WebP は img2webp、タイトルカードとキャプションは Swift (AppKit) で描いた PNG の overlay で作った。
 
 ## 成果物の仕様
 
-- `docs/assets/tour.webp`: 720x450、15 fps (67 ms/フレーム)、lossy q=80、19.3 s、ループ (loop count 0)、396,248 bytes (387 KB)。録画の 1.0–24.0 s を 1.2 倍速にして 15–20 s に収めた。q=75 (269 KB) は白地にブロック状のノイズが出て、q=85 は 660 KB と予算を超えたため q=80。
-- HD MP4 (`_sandbox/tour/out/tour.mp4`、コミットしない): 1440x900、H.264 High、yuv420p、30 fps、19.2 s、623,951 bytes、+faststart (moov が mdat より前)、音声なし。WebP と同じ切り出し・同じ速度。
-- X 版 MP4 (`_sandbox/tour/out/tour-x.mp4`、コミットしない): 1440x900、H.264 High、yuv420p、30 fps、27.7 s、933,257 bytes、+faststart、音声なし。等速で、両端に 2.5 s / 3 s のタイトルカード (0.4 s のクロスフェード)、英語キャプション付き。
-- README / README.ja は WebP を画像として埋め込むだけ (リンクなし)。再生の確認 (2026-11-24、PR ブランチの README.md): github.com のデスクトップ表示は Claude Code デスクトップアプリの内蔵ブラウザ (Chromium) で 720x450 として読み込まれ、5 秒おいた 2 枚のスクリーンショットでフレームが進んだ。iOS Safari は iPhone 16 シミュレータ (iOS 18.0) で同様にフレームが進むのを確認した。実機の iPhone と、Chromium 以外のデスクトップブラウザ (Safari, Firefox) は未確認。
+- `docs/assets/tour.webp`: 720x450、15 fps (67 ms/フレーム)、lossy q=80、19.8 s、ループ (loop count 0)、474,046 bytes (463 KB)。録画の 1.0–26.5 s を 1.3 倍速にして 15–20 s に収めた。q は最初のテイク (プレゼンなし) で比べて決めた: q=75 は白地にブロック状のノイズが出て、q=85 は予算の 500 KB 前後を大きく超えた。
+- HD MP4 (`_sandbox/tour/out/tour.mp4`、コミットしない): 1440x900、H.264 High、yuv420p、30 fps、19.7 s、835,109 bytes、+faststart (moov が mdat より前)、音声なし。WebP と同じ切り出し・同じ速度。
+- X 版 MP4 (`_sandbox/tour/out/tour-x.mp4`、コミットしない): 1440x900、H.264 High、yuv420p、30 fps、30.5 s、1,635,475 bytes、+faststart、音声なし。等速で、両端に 2.5 s / 3 s のタイトルカード (0.4 s のクロスフェード)、英語キャプション付き。プレゼンのシーンだけはキャプションを画面中ほど (スライドのタイトルと表の間) に置き、下端のキー操作の案内と重ならないようにした。
+- README / README.ja は WebP を画像として埋め込むだけ (リンクなし)。再生の確認 (2026-11-24、PR ブランチの README.md。プレゼンなしの最初の WebP で確認): github.com のデスクトップ表示は Claude Code デスクトップアプリの内蔵ブラウザ (Chromium) で 720x450 として読み込まれ、5 秒おいた 2 枚のスクリーンショットでフレームが進んだ。iOS Safari は iPhone 16 シミュレータ (iOS 18.0) で同様にフレームが進むのを確認した。実機の iPhone と、Chromium 以外のデスクトップブラウザ (Safari, Firefox) は未確認。
 - package.json / Cargo.toml / 両ロックファイルは無変更。`pnpm lint` / `pnpm build` / `pnpm test` (767 件) は通過。
 <!-- SECTION:NOTES:END -->
