@@ -10,7 +10,7 @@
 スクリプトを一切実行しない sandbox 付きのフレームの中で描画します。
 画像・PDF・動画も OS ネイティブの WebView で表示できます。
 
-![mallow のツアー (19 秒、音声なし)](docs/assets/tour.webp)
+![mallow のツアー (20 秒、音声なし)](docs/assets/tour.webp)
 
 ## インストールと更新
 

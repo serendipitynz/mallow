@@ -10,7 +10,7 @@ tree, and view Markdown with GitHub-equivalent rendering or config files
 are rendered too, in a sandboxed frame that runs none of their script. Images,
 PDFs, and videos are shown as well, rendered by the OS-native WebView.
 
-![A 19-second tour of mallow (no audio)](docs/assets/tour.webp)
+![A 20-second tour of mallow (no audio)](docs/assets/tour.webp)
 
 ## Install and update
 
