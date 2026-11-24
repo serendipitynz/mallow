@@ -1,10 +1,10 @@
 ---
 id: TASK-57
 title: Record a tour of the app for README and x.com
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-13 11:42'
-updated_date: '2026-11-24 09:49'
+updated_date: '2026-11-24 09:57'
 labels:
   - documentation
 dependencies: []
