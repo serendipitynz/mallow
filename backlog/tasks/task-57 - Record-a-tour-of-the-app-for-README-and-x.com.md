@@ -4,7 +4,7 @@ title: Record a tour of the app for README and x.com
 status: In Review
 assignee: []
 created_date: '2026-11-13 11:42'
-updated_date: '2026-11-24 09:48'
+updated_date: '2026-11-24 09:49'
 labels:
   - documentation
 dependencies: []
@@ -88,6 +88,6 @@ Nothing here adds a dependency to mallow: ffmpeg and the recording tools are the
 - `docs/assets/tour.webp`: 720x450、15 fps (67 ms/フレーム)、lossy q=80、19.8 s、ループ (loop count 0)、474,046 bytes (463 KB)。録画の 1.0–26.5 s を 1.3 倍速にして 15–20 s に収めた。q は最初のテイク (プレゼンなし) で比べて決めた: q=75 は白地にブロック状のノイズが出て、q=85 は予算の 500 KB 前後を大きく超えた。
 - HD MP4 (`_sandbox/tour/out/tour.mp4`、コミットしない): 1440x900、H.264 High、yuv420p、30 fps、19.7 s、835,109 bytes、+faststart (moov が mdat より前)、音声なし。WebP と同じ切り出し・同じ速度。
 - X 版 MP4 (`_sandbox/tour/out/tour-x.mp4`、コミットしない): 1440x900、H.264 High、yuv420p、30 fps、30.5 s、1,635,475 bytes、+faststart、音声なし。等速で、両端に 2.5 s / 3 s のタイトルカード (0.4 s のクロスフェード)、英語キャプション付き。プレゼンのシーンだけはキャプションを画面中ほど (スライドのタイトルと表の間) に置き、下端のキー操作の案内と重ならないようにした。
-- README / README.ja は WebP を画像として埋め込むだけ (リンクなし)。再生の確認 (2026-11-24、PR ブランチの README.md。プレゼンなしの最初の WebP で確認): github.com のデスクトップ表示は Claude Code デスクトップアプリの内蔵ブラウザ (Chromium) で 720x450 として読み込まれ、5 秒おいた 2 枚のスクリーンショットでフレームが進んだ。iOS Safari は iPhone 16 シミュレータ (iOS 18.0) で同様にフレームが進むのを確認した。実機の iPhone と、Chromium 以外のデスクトップブラウザ (Safari, Firefox) は未確認。
+- README / README.ja は WebP を画像として埋め込むだけ (リンクなし)。再生の確認 (2026-11-24、PR ブランチの README.md。最初の WebP と、プレゼンを加えて録り直した WebP の両方で確認): github.com のデスクトップ表示は Claude Code デスクトップアプリの内蔵ブラウザ (Chromium) で 720x450 として読み込まれ、5 秒おいた 2 枚のスクリーンショットでフレームが進んだ。iOS Safari は iPhone 16 シミュレータ (iOS 18.0) で同様にフレームが進むのを確認した。実機の iPhone と、Chromium 以外のデスクトップブラウザ (Safari, Firefox) は未確認。
 - package.json / Cargo.toml / 両ロックファイルは無変更。`pnpm lint` / `pnpm build` / `pnpm test` (767 件) は通過。
 <!-- SECTION:NOTES:END -->
