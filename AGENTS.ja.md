@@ -177,8 +177,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS。**Tailwind は不使用。*
   Microsoft Store 版 `MALLOW_STORE`。Rust 側は `build.rs` が同じ変数を読む）、
   `render-signal`（描画済みの本文が変化し終わった時点）、
   `file`、`path`、`tauri`（invoke ラッパ）、`types`。
-- `unattended/` — 無人書き出しのドライバ（TASK-30）。`App` の `if (UNATTENDED)` からしか
-  到達せず、通常のバンドルには入らない。
+- `unattended/` — 無人書き出しのドライバ（TASK-30）。`App` の `if (__MALLOW_UNATTENDED__)` から
+  しか到達せず、通常のバンドルには入らない。入った場合は `vite.config.ts` がビルドを失敗させる。
 - `styles/` — SCSS: `_vars`（パレット + `on-dark` mixin + 操作部品の状態の mixin）、
   `global`、`app`、`markdown`、`config`、`source`、`html`、`table`、`xml`、`slides`、`print`。
   ほかに共通トークンの写し `snz-tokens.css` と `_snz-tokens.scss` を置く（下の

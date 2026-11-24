@@ -196,7 +196,8 @@ Tauri v2 (Rust) + Vite + React + TypeScript + SCSS. **No Tailwind.**
   (when the rendered article stops changing), `file`, `path`, `tauri` (invoke
   wrappers), `types`.
 - `unattended/` — the unattended export's driver (TASK-30), reached only from
-  `if (UNATTENDED)` in `App` and absent from an ordinary bundle.
+  `if (__MALLOW_UNATTENDED__)` in `App` and absent from an ordinary bundle —
+  which `vite.config.ts` checks, failing the build if any of it gets in.
 - `styles/` — SCSS: `_vars` (palettes + `on-dark` mixin + the control-state
   mixins), `global`, `app`, `markdown`, `config`, `source`, `html`, `table`,
   `xml`, `slides`, `print`; plus the two vendored token copies `snz-tokens.css` and
