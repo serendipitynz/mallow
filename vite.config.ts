@@ -45,9 +45,27 @@ function probeEntry(): Plugin {
   };
 }
 
+/** Fails an ordinary build that carries any of `src/unattended`. The constant
+ *  that keeps it out is only as good as the bundler's handling of it, and
+ *  moving to Vite 8 made the module ship as an unreferenced chunk with every
+ *  check still green, so the bundle itself is what gets checked. */
+function unattendedStaysOut(): Plugin {
+  return {
+    name: 'mallow-unattended-stays-out',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type === 'chunk' && output.moduleIds.some((id) => id.includes('/src/unattended/'))) {
+          this.error(`${output.fileName} carries src/unattended in a build without MALLOW_UNATTENDED=1`);
+        }
+      }
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: probe ? [react(), probeEntry()] : [react()],
+  plugins: [react(), ...(probe ? [probeEntry()] : []), ...(unattended ? [] : [unattendedStaysOut()])],
 
   // The unattended export's switch, read by `lib/build-flags`. A constant rather
   // than a runtime check because that is what lets the ordinary bundle carry none

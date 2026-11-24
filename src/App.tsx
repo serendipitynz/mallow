@@ -505,9 +505,12 @@ export default function App() {
     /* An unattended build opens the document its command line named instead, and
        reads no settings at all — the store it would read is the installed app's,
        and a measurement run must leave a reader's session where it found it. The
-       condition is a build-time constant, so an ordinary bundle contains neither
-       this branch nor the module it imports (`lib/build-flags`). */
-    if (UNATTENDED) {
+       condition is the `define` itself and not `UNATTENDED`: Rolldown (Vite 8)
+       removes a branch guarded by a constant imported from another module but
+       still emits the chunk its dynamic import names, so only a condition that is
+       already `false` in this file keeps `unattended/run` out of an ordinary
+       bundle. `vite.config.ts` fails the build if it gets in anyway. */
+    if (__MALLOW_UNATTENDED__) {
       void import('./unattended/run').then(({ runUnattendedExport }) =>
         runUnattendedExport({
           openTree,

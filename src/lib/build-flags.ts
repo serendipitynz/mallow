@@ -6,6 +6,8 @@
  *  along with everything the branch reaches — the discipline `src/probe` set. So
  *  anything this mode needs must be behind that branch and imported dynamically
  *  from inside it; a static import would ship whether the branch survives or not.
+ *  The branch holding that dynamic import tests `__MALLOW_UNATTENDED__` itself
+ *  (see `App`), because a bundler can drop the branch and still emit the chunk.
  */
 export const UNATTENDED: boolean = __MALLOW_UNATTENDED__;
 
