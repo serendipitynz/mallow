@@ -20,7 +20,7 @@ pnpm format         # format only
 pnpm lint:ci        # what CI runs (biome ci) — non-writing, fails on errors
 pnpm tauri build    # release build + bundle
 ./scripts/macos-sign-build.sh   # signed + notarized macOS build (needs .env.signing)
-pwsh scripts/msix-build.ps1 -Thumbprint <cert>   # prototype Microsoft Store MSIX, on Windows (TASK-58)
+pwsh scripts/msix-build.ps1   # Microsoft Store MSIX from a release tag, on Windows (TASK-64; -AllowUntagged -Thumbprint <cert> for a local install)
 pnpm tauri icon src-tauri/icons/app-icon.png   # regenerate all app icons
 pnpm notices        # regenerate THIRD-PARTY-NOTICES.md (bundled dep licenses)
 node scripts/kinari.mjs verify   # check mallow's copy of kinari against its release (needs ../marp-theme-kinari)

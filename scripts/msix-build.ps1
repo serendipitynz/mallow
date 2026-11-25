@@ -1,50 +1,70 @@
 <#
 .SYNOPSIS
-  Builds a prototype MSIX of mallow's Microsoft Store variant (TASK-58).
+  Builds the MSIX of mallow's Microsoft Store variant (TASK-58, TASK-64).
 
 .DESCRIPTION
   Run on Windows from any directory, with the Windows SDK installed (it carries
   makeappx.exe and signtool.exe) and the repository's usual toolchain.
 
-  1. Builds the Store variant: MALLOW_STORE=1 pnpm tauri build --no-bundle.
-  2. Lays out mallow.exe, THIRD-PARTY-NOTICES.md and the tile logos under
+  1. Refuses unless HEAD is the tag of tauri.conf.json's version (vX.Y.Z) and
+     the working tree is clean; -AllowUntagged lifts both, for a package that
+     is only installed locally.
+  2. Builds the Store variant: MALLOW_STORE=1 pnpm tauri build --no-bundle.
+  3. Lays out mallow.exe, THIRD-PARTY-NOTICES.md and the tile logos under
      src-tauri\target\msix\layout.
-  3. Fills src-tauri\windows\msix\AppxManifest.xml, with the version from
-     tauri.conf.json as X.Y.Z.0.
-  4. Packs src-tauri\target\msix\mallow_<version>_x64.msix with makeappx and,
+  4. Fills src-tauri\windows\msix\AppxManifest.xml, with the version from
+     tauri.conf.json as X.Y.Z.0 and the identity Partner Center issued.
+  5. Packs src-tauri\target\msix\mallow_<version>_x64.msix with makeappx and,
      given -Thumbprint, signs it with signtool.
 
-  A package installs only when signed by a certificate the machine trusts whose
-  subject is exactly the manifest's Publisher. For a prototype, once:
+  The Store re-signs a package it accepts, so the one uploaded to Partner
+  Center is expected to need no signature of mallow's own; TASK-64 records
+  whether the first upload bore that out.
 
-    $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=mallow-prototype' `
-      -KeyUsage DigitalSignature -FriendlyName 'mallow MSIX prototype' `
+  A package installs locally only when signed by a certificate the machine
+  trusts whose subject is exactly the manifest's Publisher. Once:
+
+    $cert = New-SelfSignedCertificate -Type Custom `
+      -Subject 'CN=489A8945-B788-471B-A41E-79B040EEF003' `
+      -KeyUsage DigitalSignature -FriendlyName 'mallow MSIX local' `
       -CertStoreLocation Cert:\CurrentUser\My `
       -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
-    Export-Certificate -Cert $cert -FilePath mallow-prototype.cer
+    Export-Certificate -Cert $cert -FilePath mallow-local.cer
     # In an elevated shell:
-    Import-Certificate -FilePath mallow-prototype.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+    Import-Certificate -FilePath mallow-local.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 
   then pass $cert.Thumbprint as -Thumbprint, and install the result with
   Add-AppxPackage <path>. Remove it with
-  Get-AppxPackage mallow.prototype | Remove-AppxPackage.
+  Get-AppxPackage SerendpityNZ-SimpleBoxes.mallow | Remove-AppxPackage.
 
 .PARAMETER Thumbprint
   A code-signing certificate in Cert:\CurrentUser\My. Without it the package is
   left unsigned, which makeappx allows and Add-AppxPackage refuses.
 
+.PARAMETER AllowUntagged
+  Builds from whatever is checked out, uncommitted changes included. Such a
+  package is not a release and is never uploaded.
+
 .PARAMETER Publisher
   The manifest's Publisher. Has to equal the signing certificate's subject.
 
+.PARAMETER PublisherDisplayName
+  The manifest's PublisherDisplayName. Partner Center refuses an upload whose
+  value differs from the account's.
+
 .PARAMETER IdentityName
-  The manifest's identity name; a placeholder until Partner Center issues one.
+  The manifest's identity name.
 #>
 [CmdletBinding()]
 param(
   [string]$Thumbprint,
-  [string]$Publisher = 'CN=mallow-prototype',
-  [string]$PublisherDisplayName = 'mallow prototype',
-  [string]$IdentityName = 'mallow.prototype'
+  [switch]$AllowUntagged,
+  # Issued by Partner Center for the reserved name (Product identity). The
+  # misspelt "Serendpity" is how the account was created; correcting the
+  # account's display name did not change what the product page issues.
+  [string]$Publisher = 'CN=489A8945-B788-471B-A41E-79B040EEF003',
+  [string]$PublisherDisplayName = 'SerendpityNZ - SimpleBoxes',
+  [string]$IdentityName = 'SerendpityNZ-SimpleBoxes.mallow'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -93,6 +113,26 @@ if ($conf.version -notmatch '^\d+\.\d+\.\d+$') {
   throw "tauri.conf.json's version '$($conf.version)' is not X.Y.Z."
 }
 $version = "$($conf.version).0"
+
+# A package carries no record of the commit it came from, so what was built is
+# settled here: the release's tag, with nothing on top of it.
+if (-not $AllowUntagged) {
+  $tag = "v$($conf.version)"
+  $tagsAtHead = git -C $root tag --points-at HEAD
+  if ($LASTEXITCODE -ne 0) {
+    throw "git tag failed with exit code $LASTEXITCODE."
+  }
+  if ($tagsAtHead -notcontains $tag) {
+    throw "HEAD is not $tag. Check out the release's tag, or pass -AllowUntagged for a local package."
+  }
+  $changes = git -C $root status --porcelain
+  if ($LASTEXITCODE -ne 0) {
+    throw "git status failed with exit code $LASTEXITCODE."
+  }
+  if ($changes) {
+    throw "The working tree has changes on top of $tag; commit or stash them, or pass -AllowUntagged."
+  }
+}
 
 # --no-bundle because the package is assembled here, not by tauri's bundler;
 # --no-sign as the paper job builds, so no updater key is asked for. The build

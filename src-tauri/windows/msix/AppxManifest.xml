@@ -4,8 +4,8 @@
   scripts/msix-build.ps1: every double-braced token is replaced there, and the script
   refuses to pack while one is left.
 
-  The identity is a placeholder until the name is reserved in Partner Center,
-  which issues the Name and Publisher the Store will accept.
+  The identity is the one Partner Center issued for the reserved name, held
+  as the script's defaults; the Store refuses a package carrying any other.
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
