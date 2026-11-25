@@ -4,7 +4,7 @@ title: Submit mallow to the Microsoft Store
 status: In Progress
 assignee: []
 created_date: '2026-11-17 19:38'
-updated_date: '2026-11-25 22:14'
+updated_date: '2026-11-25 22:17'
 labels:
   - feature
 dependencies:
@@ -54,7 +54,7 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. 着手時の判断 (オーナー確認、2026-11-26): identity は scripts/msix-build.ps1 の既定値に置く。プライバシーポリシーはリポジトリの PRIVACY.md / PRIVACY.ja.md とし、github.com の URL を掲載ページに書く。最初の申請は v0.16.0。価格は無料、提供は全市場、カテゴリは開発者ツール、掲載は日英。PR は 2 本に分け、README (AC #6) は Store に掲載されてから別の PR にする。
+1. 着手時の判断 (オーナー確認、2026-11-26): identity は scripts/msix-build.ps1 の既定値に置く。プライバシーポリシーはリポジトリの PRIVACY.md / PRIVACY.ja.md とし、github.com の URL を掲載ページに書く。最初の申請は、この変更を含む次のリリース (v0.16.0 のタグのスクリプトは仮の identity のまま)。価格は無料、提供は全市場、カテゴリは開発者ツール、掲載は日英。PR は 2 本に分け、README (AC #6) は Store に掲載されてから別の PR にする。
 2. msix-build.ps1: 既定値を Partner Center が発行した identity に置き換える。HEAD が tauri.conf.json の版数の v タグを指していて作業ツリーがクリーンでなければ止める。計測用のビルドは -AllowUntagged で通す。ヘルプの自己署名証明書の手順は発行された CN で書き直す。マニフェストのコメントから「仮の identity」の記述を外す。
 3. PRIVACY.md / PRIVACY.ja.md: 収集するデータはないこと。ネットワークに出るのは文書が指すリモート画像 (CSP の img-src) と、GitHub 版の更新確認だけであること (Store 版には更新確認がない)。設定は端末の中にだけ保存されること。
 4. 掲載文、カテゴリ、プライバシーポリシーの URL、年齢区分の回答案、runFullTrust の理由をタスクのノートに書く (AC #4)。
@@ -68,7 +68,7 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 ## 着手時に決めたこと (オーナー確認、2026-11-26)
 
 - identity は `scripts/msix-build.ps1` の既定値に置く。秘密情報ではなく (インストールしたパッケージのマニフェストに載る)、どのビルドもそのまま申請に使える。手元に入れるときは同じ CN の自己署名証明書で署名する。
-- プライバシーポリシーはリポジトリの `PRIVACY.md` / `PRIVACY.ja.md`。最初の申請は v0.16.0 (タスク本文の v0.15.0 の後に v0.16.0 が出たため)。
+- プライバシーポリシーはリポジトリの `PRIVACY.md` / `PRIVACY.ja.md`。最初の申請は、この変更を含む次のリリース。タスク本文の v0.15.0 も、その後に出た v0.16.0 も、タグのスクリプトが仮の identity を既定値に持ち、タグの確認もしないため (PR #147 の 1 回目のレビュー)。v0.16.0 に引数で identity を渡す案は、タグの確認がないまま作ることになるので取らない。
 - PR は 2 本に分ける。1 本目は identity、タグの確認、ポリシー、AGENTS のコマンド一覧。README (AC #6) は Store に掲載されてから 2 本目で書く。掲載前の README に Store のリンクは書けないため。
 
 ## Partner Center の identity (AC #1、2026-11-26)
@@ -127,8 +127,8 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 3. 両方の版を同時に入れた場合 (GitHub の NSIS v0.16.0 とパッケージ): 片方を起動した状態でもう片方を起動し、新しいプロセスが立つか、起動中の版へ転送されるか。設定画面の更新欄 (GitHub 版は自動確認の切り替え、Store 版は「Updates arrive through the Microsoft Store.」) で、どちらの版のウィンドウかが分かる。順序を逆にしてもう一度。設定をどちらの場所から読んでいるか (`%APPDATA%\net.serenebach.mallow` と `%LOCALAPPDATA%\Packages\SerendpityNZ-SimpleBoxes.mallow_<hash>\LocalCache`)。
 4. アンインストール: `Get-AppxPackage SerendpityNZ-SimpleBoxes.mallow | Remove-AppxPackage` の後に、`%LOCALAPPDATA%\Packages\<PFN>` と `%APPDATA%\net.serenebach.mallow` が残るか。
 
-**AC #3** (v0.16.0 タグから):
-1. `git checkout v0.16.0` の後に `.\scripts\msix-build.ps1 -Thumbprint <拇印>` を実行する。WACK はパッケージをインストールして調べるので、署名が要るはず (未確認)。
+**AC #3** (この変更を含む最初のリリースタグ `vX.Y.Z` から):
+1. `git checkout vX.Y.Z` の後に `.\scripts\msix-build.ps1 -Thumbprint <拇印>` を実行する。WACK はパッケージをインストールして調べるので、署名が要るはず (未確認)。
 2. `& "${env:ProgramFiles(x86)}\Windows Kits\10\App Certification Kit\appcert.exe" test -appxpackagepath <msix> -reportoutputpath wack.xml`。GUI の Windows App Cert Kit でもよい。結果と、失敗した項目があればその内容を記録する。
 
 **AC #5**: 申請の開始 → 上の文面を入力 → パッケージをアップロードする。署名付きのパッケージが受け付けられるか、署名なしで作り直す必要があるかも記録する。
