@@ -20,7 +20,7 @@ pnpm format         # 整形のみ
 pnpm lint:ci        # CI が走らせるもの (biome ci)。書き換えず、error で落ちる
 pnpm tauri build    # リリースビルド + バンドル
 ./scripts/macos-sign-build.sh   # 署名 + 公証済みの macOS ビルド（.env.signing が必要）
-pwsh scripts/msix-build.ps1 -Thumbprint <cert>   # Microsoft Store 向け MSIX の試作（Windows で実行、TASK-58）
+pwsh scripts/msix-build.ps1   # リリースタグから Microsoft Store 向け MSIX を作る（Windows で実行、TASK-64。手元に入れるなら -AllowUntagged -Thumbprint <cert>）
 pnpm tauri icon src-tauri/icons/app-icon.png   # 全アプリアイコンの再生成
 pnpm notices        # THIRD-PARTY-NOTICES.md を再生成（同梱する依存ライセンス）
 node scripts/kinari.mjs verify   # mallow が持つ kinari の写しをリリースと照合（../marp-theme-kinari が必要）
