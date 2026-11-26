@@ -4,7 +4,7 @@ title: Submit mallow to the Microsoft Store
 status: In Progress
 assignee: []
 created_date: '2026-11-17 19:38'
-updated_date: '2026-11-25 22:17'
+updated_date: '2026-11-26 05:21'
 labels:
   - feature
 dependencies:
@@ -79,11 +79,11 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 |---|---|
 | Package/Identity/Name | `SerendpityNZ-SimpleBoxes.mallow` |
 | Package/Identity/Publisher | `CN=489A8945-B788-471B-A41E-79B040EEF003` |
-| Package/Properties/PublisherDisplayName | `SerendpityNZ - SimpleBoxes` |
+| Package/Properties/PublisherDisplayName | `SerendipityNZ - SimpleBoxes` |
 | Package Family Name | `SerendpityNZ-SimpleBoxes.mallow_amkd9pgwdnzqg` |
 | Store ID / URL | `9MZ73QHVHCWD` / https://apps.microsoft.com/detail/9MZ73QHVHCWD |
 
-- `SerendpityNZ` は Serendipity の i が抜けた綴りで、アカウント作成時のもの。オーナーがアカウント設定の発行者の表示名を直したが、製品 ID ページの値は変わらなかった (2026-11-26)。発行された値をそのまま既定値にした。アップロード時の検証が別の PublisherDisplayName を求めたら、それに合わせる。
+- `SerendpityNZ` は Serendipity の i が抜けた綴りで、アカウント作成時のもの。オーナーがアカウント設定の発行者の表示名を直した (2026-11-26)。直後は製品 ID ページの値が変わらなかったが、同日のうちに PublisherDisplayName だけが `SerendipityNZ - SimpleBoxes` に変わった。Name と PFN は `SerendpityNZ` のまま。発行された値をそのまま既定値にしている。アップロード時の検証が別の PublisherDisplayName を求めたら、それに合わせる。
 - 置き場所: `msix-build.ps1` の `-IdentityName` / `-Publisher` / `-PublisherDisplayName` の既定値。マニフェストのコメントから仮の identity の記述を外した。
 
 ## スクリプトの変更
@@ -132,4 +132,9 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 2. `& "${env:ProgramFiles(x86)}\Windows Kits\10\App Certification Kit\appcert.exe" test -appxpackagepath <msix> -reportoutputpath wack.xml`。GUI の Windows App Cert Kit でもよい。結果と、失敗した項目があればその内容を記録する。
 
 **AC #5**: 申請の開始 → 上の文面を入力 → パッケージをアップロードする。署名付きのパッケージが受け付けられるか、署名なしで作り直す必要があるかも記録する。
+
+## PR
+
+- 1 本目: PR#147 (identity の既定値、スクリプトのタグ確認、プライバシーポリシー)。2026-11-26 マージ。
+- 追加の修正: PublisherDisplayName の既定値を、製品 ID ページの更新後の値に合わせる。PR#147 のマージ後に値の変化が分かったため。README の PR (AC #6) は予定どおり掲載後に出す。
 <!-- SECTION:NOTES:END -->
