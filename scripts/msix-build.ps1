@@ -60,10 +60,11 @@ param(
   [string]$Thumbprint,
   [switch]$AllowUntagged,
   # Issued by Partner Center for the reserved name (Product identity). The
-  # misspelt "Serendpity" is how the account was created; correcting the
-  # account's display name did not change what the product page issues.
+  # misspelt "Serendpity" in the name is how the account was created:
+  # correcting the account's display name changed what the product page issues
+  # as PublisherDisplayName, and left the name as it was.
   [string]$Publisher = 'CN=489A8945-B788-471B-A41E-79B040EEF003',
-  [string]$PublisherDisplayName = 'SerendpityNZ - SimpleBoxes',
+  [string]$PublisherDisplayName = 'SerendipityNZ - SimpleBoxes',
   [string]$IdentityName = 'SerendpityNZ-SimpleBoxes.mallow'
 )
 
