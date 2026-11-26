@@ -4,7 +4,7 @@ title: Submit mallow to the Microsoft Store
 status: In Progress
 assignee: []
 created_date: '2026-11-17 19:38'
-updated_date: '2026-11-26 05:21'
+updated_date: '2026-11-26 09:51'
 labels:
   - feature
 dependencies:
@@ -44,7 +44,7 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 The app name is reserved in Partner Center, the identity it issued (Name, Publisher, PublisherDisplayName) is recorded in the task, and where those values live in the repository is decided
-- [ ] #2 Inside an MSIX built with that identity, TASK-63's fix, a launch from the Start menu entry, both builds installed side by side (single-instance forwarding and settings) and what an uninstall leaves behind are measured and recorded
+- [x] #2 Inside an MSIX built with that identity, TASK-63's fix, a launch from the Start menu entry, both builds installed side by side (single-instance forwarding and settings) and what an uninstall leaves behind are measured and recorded
 - [ ] #3 A package built from a release tag passes the Windows App Certification Kit, and the steps that built and checked it are recorded
 - [x] #4 The submission's listing, category, privacy policy URL, age rating and runFullTrust justification are written, and their text is recorded in the task
 - [ ] #5 The submission passes certification and mallow installs from the Microsoft Store, or the refusal and its stated reason are recorded
@@ -137,4 +137,19 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 
 - 1 本目: PR#147 (identity の既定値、スクリプトのタグ確認、プライバシーポリシー)。2026-11-26 マージ。
 - 追加の修正: PublisherDisplayName の既定値を、製品 ID ページの更新後の値に合わせる。PR#147 のマージ後に値の変化が分かったため。README の PR (AC #6) は予定どおり掲載後に出す。
+
+## AC #2 の計測結果 (Windows、2026-11-26)
+
+Windows 11 Home 25H2 (10.0.26200)。パッケージは main の `e8e4f0d` から `-AllowUntagged` で作った `0.16.0.0`、GitHub 版は NSIS の `0.16.0` (per-user、`%LOCALAPPDATA%\mallow`)。計測は Windows の Claude Code (指示書 `_sandbox/handoff/task-64/windows-measure.md`、報告 `windows-report.md` と生ログ・スクリーンショット)。メニュー操作とスタートメニューのクリックはオーナーの手作業。
+
+- スクリプト: Windows で最初から最後まで動き、署名したパッケージが `Add-AppxPackage` で入った (「スクリプトの変更」の未確認を解消)。設定画面の更新欄は「Updates arrive through the Microsoft Store.」で、`MALLOW_STORE=1` のビルドが入っている。
+- TASK-63: パッケージを起動したウィンドウ 1 枚のまま、Settings… / Open… / Print… / Export as PDF… / Toggle Explorer / Back / Forward / Find… / Close Window がすべて有効で動いた (オーナーの目視。スクリーンショットなし)。
+- スタートメニュー: パッケージは起動する。ただし GitHub 版と並べて入れると、検索結果に同じ名前・同じアイコンの「mallow」が 2 つ並び、**どちらをクリックしてもパッケージ版が起動した**。GitHub 版は検索からは起動できず、デスクトップのショートカット (AUMID `net.serenebach.mallow`) と `shell:AppsFolder\net.serenebach.mallow` からは起動した。検索結果の 2 つがそれぞれ何に対応しているかは計測していない。
+- 同時起動: 両方の順序で、2 つ目のビルドは起動から約 10〜15 ms で終了し、ウィンドウは増えず、1 つ目のビルドのウィンドウが前面に来た (8/8 回、オーナーの手作業でも同じ)。**2 つのビルドは同時に動かせない。** tauri-plugin-single-instance 2.5.5 は Windows のミューテックスとウィンドウの名前をアプリの identifier から作る (`src/platform_impl/windows.rs:81-90`、`{id}-sim` / `{id}-sic` / `{id}-siw`)。両ビルドとも identifier が `net.serenebach.mallow` なので、互いに転送し合う。両ビルドのウィンドウ一覧にこの名前のウィンドウがあることも観測した。
+- 設定: **両ビルドが同じ設定を読み書きする。** パッケージも実際の `%APPDATA%\net.serenebach.mallow\settings.json` を読み (`explorerSide` と復元セッション)、終了時に書き込んだ。localStorage も実際の `%LOCALAPPDATA%\net.serenebach.mallow\EBWebView` に書き込んでいる。Light / Dark はパッケージで変えると GitHub 版に引き継がれた (オーナーの手作業)。パッケージの `Packages\<PFN>\LocalCache` には `settings.json` も `EBWebView` も一度も作られなかった。
+- アンインストール: `Packages\<PFN>`、`WindowsApps` のインストール先、スタートメニューの項目は消えた。実際の `%APPDATA%` / `%LOCALAPPDATA%` にある mallow の設定は、前後で名前・サイズ・更新時刻・ハッシュとも変わらず、GitHub 版はその設定のまま起動した。
+
+**未計測**: GitHub 版を入れたことのないマシンに Store 版だけを入れた場合。上の「実際の AppData を読み書きする」は、GitHub 版の設定フォルダがすでにある状態での結果。MSIX は、新しく作るファイルをパッケージ専用の場所 (`LocalCache`) へ振り替えて、既存のファイルはその場で変更させる。そのため、Store 版だけの環境では設定が `LocalCache` に作られ、アンインストールで消える可能性がある (推測)。README (AC #6) で「設定の場所」と「アンインストールで消えるもの」を書く前に、実際の設定フォルダ 2 つを一時的に別名にした状態で計測する。AC #3 でタグからのパッケージを入れるときに一緒に行う。
+
+README (AC #6) に書くこと (計測から): 2 つのビルドは同時に動かず、設定を共有する。両方を入れるとスタートメニューの検索では Store 版しか起動しない。
 <!-- SECTION:NOTES:END -->
