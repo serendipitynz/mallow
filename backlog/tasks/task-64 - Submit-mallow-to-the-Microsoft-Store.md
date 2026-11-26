@@ -4,7 +4,7 @@ title: Submit mallow to the Microsoft Store
 status: In Progress
 assignee: []
 created_date: '2026-11-17 19:38'
-updated_date: '2026-11-26 09:51'
+updated_date: '2026-11-26 21:25'
 labels:
   - feature
 dependencies:
@@ -45,7 +45,7 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 <!-- AC:BEGIN -->
 - [x] #1 The app name is reserved in Partner Center, the identity it issued (Name, Publisher, PublisherDisplayName) is recorded in the task, and where those values live in the repository is decided
 - [x] #2 Inside an MSIX built with that identity, TASK-63's fix, a launch from the Start menu entry, both builds installed side by side (single-instance forwarding and settings) and what an uninstall leaves behind are measured and recorded
-- [ ] #3 A package built from a release tag passes the Windows App Certification Kit, and the steps that built and checked it are recorded
+- [x] #3 A package built from a release tag passes the Windows App Certification Kit, and the steps that built and checked it are recorded
 - [x] #4 The submission's listing, category, privacy policy URL, age rating and runFullTrust justification are written, and their text is recorded in the task
 - [ ] #5 The submission passes certification and mallow installs from the Microsoft Store, or the refusal and its stated reason are recorded
 - [ ] #6 README tells Windows readers about the Store route and how it differs from the GitHub bundles: updates through the Store, no mallow command, and where settings live
@@ -152,4 +152,33 @@ Windows 11 Home 25H2 (10.0.26200)。パッケージは main の `e8e4f0d` から
 **未計測**: GitHub 版を入れたことのないマシンに Store 版だけを入れた場合。上の「実際の AppData を読み書きする」は、GitHub 版の設定フォルダがすでにある状態での結果。MSIX は、新しく作るファイルをパッケージ専用の場所 (`LocalCache`) へ振り替えて、既存のファイルはその場で変更させる。そのため、Store 版だけの環境では設定が `LocalCache` に作られ、アンインストールで消える可能性がある (推測)。README (AC #6) で「設定の場所」と「アンインストールで消えるもの」を書く前に、実際の設定フォルダ 2 つを一時的に別名にした状態で計測する。AC #3 でタグからのパッケージを入れるときに一緒に行う。
 
 README (AC #6) に書くこと (計測から): 2 つのビルドは同時に動かず、設定を共有する。両方を入れるとスタートメニューの検索では Store 版しか起動しない。
+
+## AC #3 の計測結果 (Windows、2026-11-27)
+
+Windows 11 Home 25H2 (10.0.26200)、WACK 10.0.26100.9457、makeappx 10.0.26100.9457。
+
+- ビルド: `v1.0.0` (311bdf4) をチェックアウトし、`-AllowUntagged` なしで `.\scripts\msix-build.ps1 -Thumbprint <自己署名証明書>` と `.\scripts\msix-build.ps1` を実行した。**タグの確認と作業ツリーの確認はどちらも通った** (このスクリプトでタグから作ったのは初めて)。未追跡の `.vs/` (Visual Studio が作る) があると作業ツリーの確認で止まるため、オーナーの判断でリポジトリの外へ一時的に移した。パッケージの中身は `AppxManifest.xml`、`THIRD-PARTY-NOTICES.md`、`mallow.exe`、タイルのロゴ 3 つの 6 ファイル。マニフェストは Name `SerendpityNZ-SimpleBoxes.mallow`、Publisher `CN=489A8945-B788-471B-A41E-79B040EEF003`、PublisherDisplayName `SerendipityNZ - SimpleBoxes`、Version `1.0.0.0`。
+  - 署名あり: 7,220,900 bytes、SHA-256 `A620BE44DDBEC397C3E1F28E8E77DC644D6B7734639DA33E327971B5B2E239A6`、`Get-AuthenticodeSignature` は Valid
+  - 署名なし: 7,217,854 bytes、SHA-256 `C39351531D0CF6204C4848B1D5BDD2349277266B5E1B8196D398F3DC3D40299E`
+  - どちらも Windows のリポジトリの `_sandbox\handoff\task-64\ac3\` にあり、Mac のリポジトリの `_sandbox/handoff/task-64/ac3/` にも写した (SHA-256 は上と一致)。AC #5 のアップロードはこのどちらかを使う (署名ありを先に試す)。
+  - **2 つのパッケージの `mallow.exe` は同じバイト列ではない** (署名ありの中身の SHA-256 `74968799…`、署名なしは `41abfc05…`)。signtool はパッケージに署名するだけで exe には触れないため、2 回目のビルドで再コンパイルされた (報告では `Compiling mallow v1.0.0` が再び走った) ことによる違い。WACK が検査したのは署名ありのほうだけなので、署名なしをアップロードする場合はその前に WACK をかけ直す。
+- WACK: 管理者の PowerShell で `appcert.exe test -appxpackagepath <署名ありの .msix> -reportoutputpath wack.xml`。**`OVERALL_RESULT="PASS"`** (`PARTIAL_RUN="FALSE"`)。24 テストのうち PASS 23、FAIL 1、WARNING 0。
+  - FAIL は任意 (`OPTIONAL="TRUE"`) のテスト **Blocked executables** の 1 件。`mallow.exe` が `CreateProcessW` / `ShellExecuteW` / `ShellExecuteExW` を参照していることと、文字列 `cmd`、`cmd.exe`、`\cmd.exe`、`powershell`、`reg`、`basH`、`CDb`、`CSI`、`dnX` を含むことを挙げている。mallow 自身のコード (`editors.rs`、`cli.rs`) が起動するのは `rundll32`、`explorer`、エディタ、`mallow.exe` 自身で、`cmd` / `powershell` / `reg` を名指しする箇所はない。exe の中の文字列を調べると、`powershell` と `reg` は exe に埋め込んだフロントエンドの Shiki の言語定義のファイル名 (`/assets/powershell-….js`、`/assets/reg-….js`)、`cmd.exe` と `\cmd.exe` は Rust 標準ライブラリがバッチファイルを `cmd.exe /e:ON /v:OFF /d /c` で起動する処理の文字列と、ビルドパスの一部だった。`basH`、`CDb`、`CSI`、`dnX` は大文字小文字の混ざり方から、バイナリ中の任意のバイト列に一致しただけと見ている (推測、個別には調べていない)。このテストが申請で問題になるかは AC #5 で分かる。
+  - コンソールに `Running tests without application deployment.` と出ており、WACK はパッケージをインストールも起動もしない静的な検査だけを行った (起動・性能のテストはレポートにない)。
+  - `mallow.exe` のバージョン情報の CompanyName / LegalCopyright は `tauri.conf.json` の `publisher` / `copyright` (オーナーの個人名) から来ており、パッケージの PublisherDisplayName とは違う。WACK は問題にしていない。
+
+## Store 版だけを入れた場合の設定 (AC #2 で未計測だった項目、2026-11-27)
+
+実際の `%APPDATA%\net.serenebach.mallow` と `%LOCALAPPDATA%\net.serenebach.mallow` を別名にしてから、v1.0.0 の署名ありパッケージを入れ、フォルダを開く、エクスプローラーを右、ダークモードにして終了した。
+
+- **実際の設定フォルダは作られなかった。** 書き込みはすべて `%LOCALAPPDATA%\Packages\SerendpityNZ-SimpleBoxes.mallow_amkd9pgwdnzqg` の下: `LocalCache\Roaming\net.serenebach.mallow\settings.json` と `.window-state.json`、`LocalCache\Local\net.serenebach.mallow\EBWebView` (localStorage の設定はここ)。
+- 2 回目の起動で、開いていたファイル、エクスプローラーの位置、ダークモードの 3 つとも戻った (オーナーの目視)。
+- `Remove-AppxPackage` で `Packages\<PFN>` ごと消えた。実際の設定フォルダは最後まで作られなかった。
+- 別名にしたフォルダは元に戻し、`%APPDATA%` 側はハッシュ、`%LOCALAPPDATA%` 側は全 2,899 ファイルのパス、サイズ、更新時刻がバックアップと一致した。
+
+AC #2 の結果と合わせると、設定の置き場所は、Store 版を入れる前に実際の設定フォルダがあったかどうかで変わる: あれば両ビルドがそれを共有し、なければ Store 版はパッケージ専用の場所に置いてアンインストールで消える。後者で観測したのは「フォルダがないときにパッケージ側へ書かれた」ことだけで、MSIX の振り替えの仕組みで説明できるが、その仕組みを確かめたわけではない。
+
+**未計測**: Store から (Partner Center の配布で) 入れた場合も同じ場所になるか (今回は自己署名のサイドロード)。署名なしのパッケージへの WACK。
+
+README (AC #6) に足すこと: GitHub 版を入れていない環境では、Store 版の設定は `%LOCALAPPDATA%\Packages\SerendpityNZ-SimpleBoxes.mallow_amkd9pgwdnzqg` に置かれ、アンインストールで消える。GitHub 版の設定フォルダがすでにあれば、Store 版もそれを使い、アンインストールしても残る。
 <!-- SECTION:NOTES:END -->
