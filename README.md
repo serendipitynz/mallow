@@ -62,7 +62,10 @@ Where the Store version keeps its settings depends on whether the `.exe` or
 
 - **They exist**: the Store version reads and writes those same folders, so the
   two versions share their settings, and uninstalling the Store version leaves
-  them in place.
+  them in place. **Windows 10 before version 1903 is the exception**: there the
+  Store version starts from those settings but saves its changes to a copy
+  inside the package, which the other version does not see and which
+  uninstalling the Store version removes.
 - **They do not**: the settings are kept inside the package, under
   `%LOCALAPPDATA%\Packages\SerendpityNZ-SimpleBoxes.mallow_amkd9pgwdnzqg`, and
   uninstalling the Store version removes them.
