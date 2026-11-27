@@ -1,10 +1,10 @@
 ---
 id: TASK-64
 title: Submit mallow to the Microsoft Store
-status: In Review
+status: Done
 assignee: []
 created_date: '2026-11-17 19:38'
-updated_date: '2026-11-27 19:35'
+updated_date: '2026-11-27 19:41'
 labels:
   - feature
 dependencies:
@@ -206,4 +206,6 @@ README.md / README.ja.md の「Install and update」に、表の行 (Microsoft S
 - 設定の置き場所は、入れた時点で GitHub 版の設定フォルダがあるかどうかで変わる (AC #2 と、その後の Store 版だけの計測)。この 2 つの計測は自己署名のサイドロードによるもので、Store から入れた場合は確かめていない。MSIX の振り替えは配布元によらないはずなので、README では区別せずに書いた (推測)。
 
 - PR#150 の 1 回目のレビュー (Codex) を受けて、設定を共有する場合の説明に Windows 10 の 1903 より前の例外を足した。マニフェストの MinVersion は `10.0.17763.0` (1809) で、Microsoft の文書 (desktop-to-uwp-behind-the-scenes の「AppData operations on OSes earlier than Windows 10 version 1903」) によれば、それより前の Windows では既存の AppData のファイルへの書き込みがパッケージ専用のコピーに振り替えられ、アンインストールで消える。計測は Windows 11 25H2 だけで、1903 より前の動作は文書から書いた (未計測)。
+
+- 2 本目: PR#150 (README の Microsoft Store 版の説明)。2026-11-28 マージ (ebdeba0)。
 <!-- SECTION:NOTES:END -->
