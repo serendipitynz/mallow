@@ -4,7 +4,7 @@ title: Submit mallow to the Microsoft Store
 status: In Progress
 assignee: []
 created_date: '2026-11-17 19:38'
-updated_date: '2026-11-26 21:25'
+updated_date: '2026-11-27 19:19'
 labels:
   - feature
 dependencies:
@@ -47,7 +47,7 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 - [x] #2 Inside an MSIX built with that identity, TASK-63's fix, a launch from the Start menu entry, both builds installed side by side (single-instance forwarding and settings) and what an uninstall leaves behind are measured and recorded
 - [x] #3 A package built from a release tag passes the Windows App Certification Kit, and the steps that built and checked it are recorded
 - [x] #4 The submission's listing, category, privacy policy URL, age rating and runFullTrust justification are written, and their text is recorded in the task
-- [ ] #5 The submission passes certification and mallow installs from the Microsoft Store, or the refusal and its stated reason are recorded
+- [x] #5 The submission passes certification and mallow installs from the Microsoft Store, or the refusal and its stated reason are recorded
 - [ ] #6 README tells Windows readers about the Store route and how it differs from the GitHub bundles: updates through the Store, no mallow command, and where settings live
 <!-- AC:END -->
 
@@ -115,9 +115,9 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 - 検索語 (最大 7): Markdown, viewer, YAML, JSON, TOML, mermaid, Marp
 - スクリーンショット: 1 枚以上必須。`docs/assets/tour.webp` は動画なので使えない。オーナーが Windows で撮る (1366×768 以上の PNG)。
 - 年齢区分 (IARC の回答案): アプリの種類は「ゲームではない」。暴力・性的表現・薬物・ギャンブル・不適切な言葉はすべて「いいえ」。利用者同士のやり取りやコンテンツ共有、位置情報の共有、アプリ内購入はすべて「いいえ」。「制限のないインターネットアクセス (Web ブラウザなど)」も「いいえ」。mallow はブラウザではなく、ネットワークに出るのは開いた文書が参照する画像と、利用者が選んだリンクを既定のブラウザに渡す場合だけ。見込みは IARC 3+ / 全年齢。
-- runFullTrust の理由 (en。申請画面の欄は英語で書く):
+- runFullTrust の理由 (en。申請画面の欄は英語で書く。欄は 500 文字までで、最初の 642 文字の案は途中で切れたため、短くした 458 文字の文を送った):
 
-  > mallow is a desktop Win32 application (Tauri / WebView2) packaged with the Desktop Bridge, and runFullTrust is what lets it run as one. It is a viewer for a folder of documents the user chooses: it lists and reads files anywhere on disk with ordinary file APIs, watches the folder so that edits made in another application appear at once, and opens a file in the user's own editor or reveals it in File Explorer by starting those programs. None of this fits inside an AppContainer without asking for a file location the user has not chosen yet. mallow collects no data and makes no network request of its own; the Store build has no self-updater.
+  > mallow is a Win32 desktop app (Tauri / WebView2) packaged with the Desktop Bridge; runFullTrust is what lets it run. It is a viewer for document folders the user chooses: it reads files anywhere on disk with ordinary file APIs, watches the folder so edits made elsewhere appear at once, and opens a file in the user's editor or reveals it in File Explorer. mallow collects no data and makes no network request of its own; the Store build has no self-updater.
 
 ## Windows での作業 (オーナー、AC #2 / #3 / #5)
 
@@ -181,4 +181,17 @@ AC #2 の結果と合わせると、設定の置き場所は、Store 版を入�
 **未計測**: Store から (Partner Center の配布で) 入れた場合も同じ場所になるか (今回は自己署名のサイドロード)。署名なしのパッケージへの WACK。
 
 README (AC #6) に足すこと: GitHub 版を入れていない環境では、Store 版の設定は `%LOCALAPPDATA%\Packages\SerendpityNZ-SimpleBoxes.mallow_amkd9pgwdnzqg` に置かれ、アンインストールで消える。GitHub 版の設定フォルダがすでにあれば、Store 版もそれを使い、アンインストールしても残る。
+
+## AC #5 の結果: 認定に合格し、Store からインストールできた (2026-11-28)
+
+- 申請: 提出 ID `1152921505702519162`。アップロードしたのは AC #3 の**署名ありのパッケージ** (`mallow_1.0.0.0_x64.signed.msix`) で、Partner Center の検証を通った (Validated)。自己署名の署名が付いたままでも受け付けられ、署名なしで作り直す必要はなかった。公開は手動にして申請した。
+- 認定: **合格**。runFullTrust は上の 458 文字の理由で通り、サポートへの問い合わせは要らなかった。WACK の任意のテスト Blocked executables の FAIL (AC #3) も、認定では問題にならなかった。
+- 公開: オーナーが「今すぐ公開」を押し、同じ時期に GitHub の v1.0.0 も公開した (2026-11-27T19:06Z)。公開後の `releases/latest/download/latest.json` は `1.0.0` を返し、Linux の種類なしのキーは消えていることを確認した。
+- インストール: https://apps.microsoft.com/detail/9MZ73QHVHCWD が開けるようになってから、オーナーが Windows の実機で Store からインストールし、起動できることを確認した。
+
+**掲載情報の CSV の取り込み**: 日本語の画面でエクスポートした掲載情報の CSV は、画像の行の Type 列が `相対パス (またはパートナー センターにあるファイルへの URL)` になる。このままだと、画像を 1 枚でも含めた取り込みは、エラーの一覧が空のまま失敗した。画像の行の Type を英語の `Relative path (or URL to file in Partner Center)` に書き換えると取り込めた。テキストの行 (Type `テキスト`) はそのままで取り込める。画像のパスは CSV と同じ場所から見た `フォルダ/ファイル.png` の形で書く。
+
+**トレーラー**: 掲載ページに日英のトレーラーを載せた (1920×1080、約 30 秒、無音)。映像は Mac で撮ったツアーの映像を、macOS のタイトルバーより下だけ切り出したもの。字幕の WebVTT は Partner Center で必須だった。作り方は `_sandbox/tour/store/` (git の管理外)。
+
+**未計測のまま**: Store から入れた場合の設定の置き場所が、サイドロードと同じになるか (AC #3 の後の計測は自己署名のサイドロードによる)。
 <!-- SECTION:NOTES:END -->
