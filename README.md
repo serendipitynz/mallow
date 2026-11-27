@@ -15,12 +15,15 @@ PDFs, and videos are shown as well, rendered by the OS-native WebView.
 ## Install and update
 
 Download a build for your platform from the
-[latest release](https://github.com/serendipitynz/mallow/releases/latest).
+[latest release](https://github.com/serendipitynz/mallow/releases/latest). On
+Windows, mallow is also in the
+[Microsoft Store](https://apps.microsoft.com/detail/9MZ73QHVHCWD).
 
 | Platform | Files | In-app update |
 |---|---|---|
 | macOS (Apple Silicon + Intel) | `_universal.dmg` | yes |
 | Windows (x86_64) | `x64-setup.exe`, `x64_en-US.msi` | yes |
+| Windows (x86_64) | Microsoft Store | through the Store |
 | Linux (x86_64 / arm64) | `.AppImage`, `.deb`, `.rpm` | yes |
 
 **On Windows, Edge may warn before it saves the file, and the way past the
@@ -36,6 +39,36 @@ check exists from 0.7.0 onward, so from a version earlier than that, download
 once by hand.
 
 Installing an update may need the system's permission.
+
+### The Microsoft Store version
+
+The Store version is the same app, installed and updated differently:
+
+- **Updates come through the Store.** mallow's own update check is left out, and
+  Settings says so where its switch would be.
+- **There is no `mallow` command.** The command line needs the `.exe` or `.msi`
+  installer.
+- **Open with lists mallow** for `.md`, `.markdown`, `.mmd` and `.mermaid` files,
+  without changing the default app.
+
+**Install one Windows version, not both.** The two cannot run at the same time:
+starting one while the other is open brings the open one to the front instead.
+With both installed, searching the Start menu for mallow starts the Store
+version, whichever of the two results you choose.
+
+Where the Store version keeps its settings depends on whether the `.exe` or
+`.msi` version's settings folders (`%APPDATA%\net.serenebach.mallow` and
+`%LOCALAPPDATA%\net.serenebach.mallow`) already exist when it is installed:
+
+- **They exist**: the Store version reads and writes those same folders, so the
+  two versions share their settings, and uninstalling the Store version leaves
+  them in place. **Windows 10 before version 1903 is the exception**: there the
+  Store version starts from those settings but saves its changes to a copy
+  inside the package, which the other version does not see and which
+  uninstalling the Store version removes.
+- **They do not**: the settings are kept inside the package, under
+  `%LOCALAPPDATA%\Packages\SerendpityNZ-SimpleBoxes.mallow_amkd9pgwdnzqg`, and
+  uninstalling the Store version removes them.
 
 ## Features
 
@@ -290,7 +323,9 @@ Previous keys and the bar's arrows move between matches and wrap at the ends;
   choose it as the default from your file manager's *Open With*. **On Windows
   mallow registers no file type**,
   because the installer could only do that by taking over the default app; use
-  *Open with → Choose another app* and browse to `mallow.exe`.
+  *Open with → Choose another app* and browse to `mallow.exe`. The
+  [Microsoft Store version](#the-microsoft-store-version) is listed under
+  *Open with* without this step.
 - **Command line**: `mallow path/to/file.md`, `mallow path/to/folder`, or
   `mallow .` for the current directory. A relative path is read against the
   terminal's current directory, and the command returns at once. `mallow --help`
@@ -302,7 +337,8 @@ Previous keys and the bar's arrows move between matches and wrap at the ends;
     mallow.app; **Uninstall 'mallow' Command…** removes it.
   - **Windows**: both installers put the command on `PATH` (the `.exe`
     installer on your own `PATH`, the `.msi` on the system's). Open a new
-    terminal after installing. Removing mallow removes it again.
+    terminal after installing. Removing mallow removes it again. The
+    Microsoft Store version has no `mallow` command.
   - **Linux**: the `.deb` and `.rpm` packages install `/usr/bin/mallow`. An
     AppImage is not on `PATH`; link it in yourself, for example
     `ln -s ~/Applications/mallow.AppImage ~/.local/bin/mallow`.

@@ -15,12 +15,14 @@
 ## インストールと更新
 
 [最新リリース](https://github.com/serendipitynz/mallow/releases/latest)から
-お使いのプラットフォーム向けのビルドを取得してください。
+お使いのプラットフォーム向けのビルドを取得してください。Windows では
+[Microsoft Store](https://apps.microsoft.com/detail/9MZ73QHVHCWD) からも入れられます。
 
 | プラットフォーム | ファイル | アプリ内更新 |
 |---|---|---|
 | macOS（Apple Silicon + Intel） | `_universal.dmg` | あり |
 | Windows（x86_64） | `x64-setup.exe`・`x64_en-US.msi` | あり |
+| Windows（x86_64） | Microsoft Store | Store から |
 | Linux（x86_64 / arm64） | `.AppImage`・`.deb`・`.rpm` | あり |
 
 **Windows では、ファイルを保存する前に Edge が警告を出すことがあり、そこを通り抜ける
@@ -35,6 +37,35 @@ mallow には更新をチェックする機能があります。設定から自�
 前のバージョンからは 1 度だけ手動でダウンロードしてください。
 
 更新が実施される際には、システムの許可が必要な場合があります。
+
+### Microsoft Store 版
+
+Store 版は中身は同じアプリで、入れ方と更新の仕方が違います。
+
+- **更新は Store から届きます。** mallow 自身の更新チェックは入っておらず、設定画面の
+  その切り替えがある場所にそう表示されます。
+- **`mallow` コマンドはありません。** コマンドラインで使うには `.exe` か `.msi` の
+  インストーラが必要です。
+- **「プログラムから開く」に mallow が出ます**（`.md`・`.markdown`・`.mmd`・`.mermaid`）。
+  既定のアプリは変わりません。
+
+**Windows 版はどちらか一方だけを入れてください。** 2 つは同時に動きません。片方が
+開いているときにもう片方を起動すると、起動せずに開いているほうが前面に出ます。両方を
+入れていると、スタートメニューで mallow を検索したとき、2 つ並ぶ結果のどちらを選んでも
+Store 版が起動します。
+
+Store 版の設定の置き場所は、入れた時点で `.exe` か `.msi` 版の設定フォルダ
+（`%APPDATA%\net.serenebach.mallow` と `%LOCALAPPDATA%\net.serenebach.mallow`）が
+あるかどうかで変わります。
+
+- **ある場合**: Store 版もそのフォルダを読み書きするので、2 つの版で設定を共有します。
+  Store 版をアンインストールしても設定は残ります。**ただし Windows 10 の
+  バージョン 1903 より前は例外です**: Store 版はそのフォルダの設定から始めますが、
+  変更はパッケージの中のコピーに保存します。このコピーはもう片方の版からは見えず、
+  Store 版をアンインストールすると消えます。
+- **ない場合**: 設定はパッケージの中
+  （`%LOCALAPPDATA%\Packages\SerendpityNZ-SimpleBoxes.mallow_amkd9pgwdnzqg`）に
+  置かれ、Store 版をアンインストールすると消えます。
 
 ## 主な機能
 
@@ -235,6 +266,7 @@ Windows と Linux では、描画中の HTML 文書の上ではマウスのボ�
   **Windows ではファイルの種類を登録しません。**
   インストーラが登録するには既定のアプリを奪う方法しかないためです。
   「プログラムから開く → 別のアプリを選択」で `mallow.exe` を参照してください。
+  [Microsoft Store 版](#microsoft-store-版)はこの手順なしで「プログラムから開く」に出ます。
 - **コマンドライン**: `mallow path/to/file.md` または `mallow path/to/folder`。
 
 こうして渡されたファイルやフォルダは、そのフォルダを表示中のウィンドウがあればそこで、

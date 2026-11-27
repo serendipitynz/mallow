@@ -1,10 +1,10 @@
 ---
 id: TASK-64
 title: Submit mallow to the Microsoft Store
-status: In Progress
+status: In Review
 assignee: []
 created_date: '2026-11-17 19:38'
-updated_date: '2026-11-27 19:19'
+updated_date: '2026-11-27 19:35'
 labels:
   - feature
 dependencies:
@@ -48,7 +48,7 @@ Out of scope: building the MSIX in CI (a separate task once the Store route is s
 - [x] #3 A package built from a release tag passes the Windows App Certification Kit, and the steps that built and checked it are recorded
 - [x] #4 The submission's listing, category, privacy policy URL, age rating and runFullTrust justification are written, and their text is recorded in the task
 - [x] #5 The submission passes certification and mallow installs from the Microsoft Store, or the refusal and its stated reason are recorded
-- [ ] #6 README tells Windows readers about the Store route and how it differs from the GitHub bundles: updates through the Store, no mallow command, and where settings live
+- [x] #6 README tells Windows readers about the Store route and how it differs from the GitHub bundles: updates through the Store, no mallow command, and where settings live
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -194,4 +194,16 @@ README (AC #6) に足すこと: GitHub 版を入れていない環境では、St
 **トレーラー**: 掲載ページに日英のトレーラーを載せた (1920×1080、約 30 秒、無音)。映像は Mac で撮ったツアーの映像を、macOS のタイトルバーより下だけ切り出したもの。字幕の WebVTT は Partner Center で必須だった。作り方は `_sandbox/tour/store/` (git の管理外)。
 
 **未計測のまま**: Store から入れた場合の設定の置き場所が、サイドロードと同じになるか (AC #3 の後の計測は自己署名のサイドロードによる)。
+
+## AC #6: README の Store 版の説明 (2026-11-28)
+
+README.md / README.ja.md の「Install and update」に、表の行 (Microsoft Store、更新は Store から) と小節「The Microsoft Store version」を足した。書いたことと、その根拠:
+
+- 更新は Store から届き、mallow 自身の更新チェックはない (`MALLOW_STORE=1`。設定画面の表示は AC #2 で確認)。
+- `mallow` コマンドはない (タスク本文の対象外: `uap5:AppExecutionAlias`)。英語版のコマンドラインの Windows の項にも 1 文足した。日本語版のコマンドラインの項には、もともと各プラットフォームの説明がないため、足していない。
+- 「プログラムから開く」に `.md`・`.markdown`・`.mmd`・`.mermaid` で出て、既定のアプリは変わらない (TASK-58 #4 の計測)。「mallow の外から開く」の Windows の文にも、Store 版はこの手順が要らないことを足した。
+- 2 つの版は同時に動かず、両方入れるとスタートメニューの検索ではどちらを選んでも Store 版が起動する (AC #2)。そのため「どちらか一方だけを入れる」と書いた。
+- 設定の置き場所は、入れた時点で GitHub 版の設定フォルダがあるかどうかで変わる (AC #2 と、その後の Store 版だけの計測)。この 2 つの計測は自己署名のサイドロードによるもので、Store から入れた場合は確かめていない。MSIX の振り替えは配布元によらないはずなので、README では区別せずに書いた (推測)。
+
+- PR#150 の 1 回目のレビュー (Codex) を受けて、設定を共有する場合の説明に Windows 10 の 1903 より前の例外を足した。マニフェストの MinVersion は `10.0.17763.0` (1809) で、Microsoft の文書 (desktop-to-uwp-behind-the-scenes の「AppData operations on OSes earlier than Windows 10 version 1903」) によれば、それより前の Windows では既存の AppData のファイルへの書き込みがパッケージ専用のコピーに振り替えられ、アンインストールで消える。計測は Windows 11 25H2 だけで、1903 より前の動作は文書から書いた (未計測)。
 <!-- SECTION:NOTES:END -->
