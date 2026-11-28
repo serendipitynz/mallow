@@ -4,8 +4,10 @@
 //   - npm production dependencies (the JS bundled into the WebView), via `pnpm licenses`
 //   - Rust/Cargo dependencies (the native backend), via `cargo metadata`
 //
-// mallow itself is MIT (see LICENSE). All bundled deps are permissive
-// (MIT / ISC / BSD / Apache-2.0 / CC0 / MPL-2.0 / etc.) — no GPL/LGPL/AGPL copyleft.
+// mallow itself is MIT (see LICENSE). All bundled deps are permissive or weak
+// copyleft (MIT / ISC / BSD / Apache-2.0 / CC0 / MPL-2.0 / EPL-2.0 / etc.); elkjs
+// (through mermaid) is EPL-2.0 OR GPL-3.0-or-later and is used under EPL-2.0, so
+// nothing is taken under GPL/LGPL/AGPL. The header the file opens with says the same.
 // This file satisfies the attribution requirement when distributing the built app.
 //
 // Identical license texts are stored once in the "License texts" appendix and
@@ -225,8 +227,10 @@ out.push(
 );
 out.push('');
 out.push('All bundled dependencies are under permissive or weak-copyleft licenses');
-out.push('(MIT / ISC / BSD / Apache-2.0 / CC0 / Unlicense / Unicode / MPL-2.0). None are strong');
-out.push('copyleft (no GPL / LGPL / AGPL).');
+out.push('(MIT / ISC / BSD / Apache-2.0 / CC0 / Unlicense / Unicode / MPL-2.0 / EPL-2.0). elkjs,');
+out.push('the layout engine mermaid draws diagrams with, is offered under EPL-2.0 OR');
+out.push('GPL-3.0-or-later, and mallow uses it under EPL-2.0; its source is at the homepage its');
+out.push('entry gives. None is used under a strong copyleft license (no GPL / LGPL / AGPL).');
 out.push('');
 out.push('> This file is generated. Regenerate with `pnpm notices` after changing dependencies.');
 out.push('');
